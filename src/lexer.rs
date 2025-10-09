@@ -1,4 +1,5 @@
 use crate::i18n::{fmt_msg, msg, MsgKey};
+use crate::value::FStringPart;
 
 /// ソースコード上の位置
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -21,6 +22,7 @@ pub enum Token {
     Integer(i64),
     Float(f64),
     String(String),
+    FString(Vec<FStringPart>),  // f"hello {name}"
     Symbol(String),
     Keyword(String),
     True,
@@ -146,6 +148,75 @@ impl Lexer {
         Err(msg(MsgKey::UnclosedString).to_string())
     }
 
+    fn read_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
+        self.advance(); // f
+        self.advance(); // "
+        let mut parts = Vec::new();
+        let mut current_text = String::new();
+
+        while let Some(ch) = self.current() {
+            if ch == '"' {
+                // 残ったテキストを追加
+                if !current_text.is_empty() {
+                    parts.push(FStringPart::Text(current_text));
+                }
+                self.advance();
+                return Ok(parts);
+            } else if ch == '{' {
+                // テキスト部分を確定
+                if !current_text.is_empty() {
+                    parts.push(FStringPart::Text(current_text.clone()));
+                    current_text.clear();
+                }
+                // {}内のコードを読み取る
+                self.advance(); // {
+                let mut code = String::new();
+                let mut depth = 1;
+                while let Some(ch) = self.current() {
+                    if ch == '{' {
+                        depth += 1;
+                        code.push(ch);
+                        self.advance();
+                    } else if ch == '}' {
+                        depth -= 1;
+                        if depth == 0 {
+                            self.advance(); // }
+                            break;
+                        }
+                        code.push(ch);
+                        self.advance();
+                    } else {
+                        code.push(ch);
+                        self.advance();
+                    }
+                }
+                if depth != 0 {
+                    return Err("f-string: 閉じられていない { があります".to_string());
+                }
+                parts.push(FStringPart::Code(code));
+            } else if ch == '\\' {
+                self.advance();
+                match self.current() {
+                    Some('n') => current_text.push('\n'),
+                    Some('t') => current_text.push('\t'),
+                    Some('r') => current_text.push('\r'),
+                    Some('\\') => current_text.push('\\'),
+                    Some('"') => current_text.push('"'),
+                    Some('{') => current_text.push('{'),
+                    Some('}') => current_text.push('}'),
+                    Some(c) => current_text.push(c),
+                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
+                }
+                self.advance();
+            } else {
+                current_text.push(ch);
+                self.advance();
+            }
+        }
+
+        Err("f-string: 閉じられていない文字列です".to_string())
+    }
+
     fn read_number(&mut self) -> Token {
         let mut num_str = String::new();
         let mut is_float = false;
@@ -266,6 +337,10 @@ impl Lexer {
                 }
                 Some('-') if self.peek(1).map_or(false, |c| c.is_numeric()) => {
                     return Ok(self.read_number());
+                }
+                Some('f') if self.peek(1) == Some('"') => {
+                    let parts = self.read_fstring()?;
+                    return Ok(Token::FString(parts));
                 }
                 Some(':') => {
                     return Ok(self.read_symbol_or_keyword());

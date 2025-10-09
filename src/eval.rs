@@ -1,6 +1,6 @@
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::value::{Env, Expr, Function, MatchArm, NativeFunc, Pattern, Value};
+use crate::value::{Env, Expr, FStringPart, Function, MatchArm, NativeFunc, Pattern, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -90,6 +90,7 @@ impl Evaluator {
             Expr::Integer(n) => Ok(Value::Integer(*n)),
             Expr::Float(f) => Ok(Value::Float(*f)),
             Expr::String(s) => Ok(Value::String(s.clone())),
+            Expr::FString(parts) => self.eval_fstring(parts, env.clone()),
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
 
             Expr::Symbol(name) => env
@@ -1240,5 +1241,58 @@ impl Evaluator {
         // モジュールが登録されているか確認
         self.modules.get(name).cloned()
             .ok_or_else(|| format!("モジュール{}はexportを含む必要があります", name))
+    }
+
+    /// f-stringを評価
+    fn eval_fstring(&mut self, parts: &[FStringPart], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let mut result = String::new();
+
+        for part in parts {
+            match part {
+                FStringPart::Text(text) => result.push_str(text),
+                FStringPart::Code(code) => {
+                    // コードをパースして評価
+                    let mut parser = crate::parser::Parser::new(code)
+                        .map_err(|e| format!("f-string: コードのパースエラー: {}", e))?;
+                    let expr = parser.parse()
+                        .map_err(|e| format!("f-string: コードのパースエラー: {}", e))?;
+                    let value = self.eval_with_env(&expr, env.clone())?;
+
+                    // 値を文字列に変換
+                    let s = match value {
+                        Value::String(s) => s,
+                        Value::Integer(n) => n.to_string(),
+                        Value::Float(f) => f.to_string(),
+                        Value::Bool(b) => b.to_string(),
+                        Value::Nil => "nil".to_string(),
+                        Value::Keyword(k) => format!(":{}", k),
+                        Value::Symbol(s) => s,
+                        Value::List(items) => {
+                            let strs: Vec<_> = items.iter()
+                                .map(|v| format!("{}", v))
+                                .collect();
+                            format!("({})", strs.join(" "))
+                        }
+                        Value::Vector(items) => {
+                            let strs: Vec<_> = items.iter()
+                                .map(|v| format!("{}", v))
+                                .collect();
+                            format!("[{}]", strs.join(" "))
+                        }
+                        Value::Map(m) => {
+                            let strs: Vec<_> = m.iter()
+                                .map(|(k, v)| format!(":{} {}", k, v))
+                                .collect();
+                            format!("{{{}}}", strs.join(" "))
+                        }
+                        Value::Function(_) => "<function>".to_string(),
+                        Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
+                    };
+                    result.push_str(&s);
+                }
+            }
+        }
+
+        Ok(Value::String(result))
     }
 }

@@ -3,6 +3,13 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
+/// f-stringの部品（文字列またはコード）
+#[derive(Debug, Clone, PartialEq)]
+pub enum FStringPart {
+    Text(String),   // 通常の文字列部分
+    Code(String),   // {expr} 内のコード
+}
+
 /// Qi言語の値を表現する型
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -114,6 +121,7 @@ pub enum Expr {
     Integer(i64),
     Float(f64),
     String(String),
+    FString(Vec<FStringPart>),
     Symbol(String),
     Keyword(String),
 

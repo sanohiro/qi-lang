@@ -852,19 +852,51 @@ string
 """
 ```
 
-### 🚧 補間（f-string）（未実装）
+### ✅ 補間（f-string）（実装済み）
+
+f-stringは`f"...{expr}..."`の形式で、`{}`内に変数や式を埋め込むことができます。
+
 ```lisp
-f"Hello, {name}! You are {age} years old."
+;; 基本的な使い方
+f"Hello, World!"  ;; => "Hello, World!"
+
+;; 変数の補間
+(def name "Alice")
+f"Hello, {name}!"  ;; => "Hello, Alice!"
 
 ;; 式も使える
-f"Result: {(+ 1 2)}"  ;; "Result: 3"
+f"Result: {(+ 1 2)}"  ;; => "Result: 3"
 
-;; ネスト可能
-f"Items: {(join \", \" items)}"
+;; リストやベクタの補間
+f"List: {[1 2 3]}"  ;; => "List: [1 2 3]"
+
+;; マップアクセス
+(def user {:name "Bob" :age 30})
+f"Name: {(get user :name)}, Age: {(get user :age)}"
+;; => "Name: Bob, Age: 30"
+
+;; エスケープ
+f"Escaped: \{not interpolated\}"  ;; => "Escaped: {not interpolated}"
+
+;; ネスト可能（文字列関数と組み合わせ）
+(def items ["apple" "banana" "cherry"])
+f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 
 ;; 実用例
 (def greet (fn [user]
-  f"Welcome, {(:name user)}! You have {(:messages user)} new messages."))
+  f"Welcome, {(get user :name)}! You have {(get user :messages)} new messages."))
+
+(greet {:name "Alice" :messages 3})
+;; => "Welcome, Alice! You have 3 new messages."
+```
+
+**対応する値の型**:
+- 文字列: そのまま埋め込み
+- 数値（整数・浮動小数点）: 文字列に変換
+- bool/nil: "true"/"false"/"nil"に変換
+- キーワード: `:keyword`形式で埋め込み
+- リスト/ベクタ/マップ: 表示形式で埋め込み
+- 関数: `<function>`または`<native-fn:name>`に変換
 ```
 
 ## 11. 実用例
@@ -1060,7 +1092,7 @@ f"Items: {(join \", \" items)}"
 - `loop`/`recur` で末尾再帰
 - `defer` でリソース管理
 - 回復可能なエラーは `{:ok/:error}`、致命的なエラーは `error`
-- f-string `f"..."` で文字列補間
+- ✅ f-string `f"..."` で文字列補間（実装済み）
 - マクロでは `uvar` で変数衝突を回避
 - 短い変数名OK（スコープが短ければ）
 
@@ -1107,7 +1139,7 @@ $ qi update
 **名前空間**: ✅ Lisp-1、coreが優先（実装済み）
 **nil/bool**: ✅ 別物、条件式では nil も falsy（実装済み）
 **並行**: 🚧 `go`（並行）、`pmap`（並列）、チャネル（未実装）
-**文字列**: ✅ 基本文字列操作（実装済み）、🚧 f-string補間・str/csv/regexモジュール（未実装）
+**文字列**: ✅ 基本文字列操作・f-string補間（実装済み）、🚧 str/csv/regexモジュール（未実装）
 **モジュール**: ✅ 基本機能実装済み（`module`/`export`/`use :only`/`:all`）、🚧 `:as`エイリアス（未実装）
 **哲学**: Simple, Fast, Concise - エネルギーの流れのようなプログラミング
 

@@ -105,6 +105,11 @@ impl Parser {
                 self.advance();
                 Ok(Expr::String(s))
             }
+            Some(Token::FString(parts)) => {
+                let parts = parts.clone();
+                self.advance();
+                Ok(Expr::FString(parts))
+            }
             Some(Token::Symbol(s)) => {
                 let s = s.clone();
                 self.advance();
