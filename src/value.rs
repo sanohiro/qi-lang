@@ -37,6 +37,8 @@ pub enum Value {
     Function(Rc<Function>),
     /// ネイティブ関数（Rustで実装された関数）
     NativeFunc(NativeFunc),
+    /// マクロ
+    Macro(Rc<Macro>),
 }
 
 impl Value {
@@ -53,6 +55,16 @@ pub struct Function {
     pub body: Expr,
     pub env: Env,
     pub is_variadic: bool, // &argsに対応
+}
+
+/// マクロの定義
+#[derive(Debug, Clone, PartialEq)]
+pub struct Macro {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body: Expr,
+    pub env: Env,
+    pub is_variadic: bool,
 }
 
 /// ネイティブ関数
@@ -159,6 +171,17 @@ pub enum Expr {
     },
     Recur(Vec<Expr>),
 
+    // マクロ
+    Mac {
+        name: String,
+        params: Vec<String>,
+        is_variadic: bool,
+        body: Box<Expr>,
+    },
+    Quasiquote(Box<Expr>),
+    Unquote(Box<Expr>),
+    UnquoteSplice(Box<Expr>),
+
     // モジュール
     Module(String),
     Export(Vec<String>),
@@ -262,6 +285,7 @@ impl fmt::Display for Value {
             }
             Value::Function(_) => write!(f, "#<function>"),
             Value::NativeFunc(nf) => write!(f, "#<native-function:{}>", nf.name),
+            Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
         }
     }
 }

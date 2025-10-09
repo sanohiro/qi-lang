@@ -1,6 +1,6 @@
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::value::{Env, Expr, FStringPart, Function, MatchArm, NativeFunc, Pattern, Value};
+use crate::value::{Env, Expr, FStringPart, Function, Macro, MatchArm, NativeFunc, Pattern, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -250,6 +250,33 @@ impl Evaluator {
                 Err(format!("__RECUR__:{}", values.len()))
             }
 
+            // マクロ
+            Expr::Mac {
+                name,
+                params,
+                is_variadic,
+                body,
+            } => {
+                let mac = Macro {
+                    name: name.clone(),
+                    params: params.clone(),
+                    body: (**body).clone(),
+                    env: env.borrow().clone(),
+                    is_variadic: *is_variadic,
+                };
+                env.borrow_mut()
+                    .set(name.clone(), Value::Macro(Rc::new(mac)));
+                Ok(Value::Symbol(name.clone()))
+            }
+
+            Expr::Quasiquote(expr) => self.eval_quasiquote(expr, env, 0),
+
+            Expr::Unquote(_) => Err("unquote: quasiquote外では使用できません".to_string()),
+
+            Expr::UnquoteSplice(_) => {
+                Err("unquote-splice: quasiquote外では使用できません".to_string())
+            }
+
             // モジュールシステム
             Expr::Module(name) => {
                 self.current_module = Some(name.clone());
@@ -300,6 +327,13 @@ impl Evaluator {
                 }
 
                 let func_val = self.eval_with_env(func, env.clone())?;
+
+                // マクロの場合は展開してから評価
+                if let Value::Macro(mac) = &func_val {
+                    let expanded = self.expand_macro(&mac, args, env.clone())?;
+                    return self.eval_with_env(&expanded, env);
+                }
+
                 let arg_vals: Result<Vec<_>, _> = args
                     .iter()
                     .map(|e| self.eval_with_env(e, env.clone()))
@@ -556,59 +590,6 @@ impl Evaluator {
         self.expr_to_value(&args[0])
     }
 
-    /// ExprをValueに変換（評価せずに）
-    fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
-        match expr {
-            Expr::Nil => Ok(Value::Nil),
-            Expr::Bool(b) => Ok(Value::Bool(*b)),
-            Expr::Integer(n) => Ok(Value::Integer(*n)),
-            Expr::Float(f) => Ok(Value::Float(*f)),
-            Expr::String(s) => Ok(Value::String(s.clone())),
-            Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
-            Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
-            Expr::List(items) => {
-                let values: Result<Vec<_>, _> = items
-                    .iter()
-                    .map(|e| self.expr_to_value(e))
-                    .collect();
-                Ok(Value::List(values?))
-            }
-            Expr::Vector(items) => {
-                let values: Result<Vec<_>, _> = items
-                    .iter()
-                    .map(|e| self.expr_to_value(e))
-                    .collect();
-                Ok(Value::Vector(values?))
-            }
-            Expr::Map(pairs) => {
-                let mut map = HashMap::new();
-                for (k, v) in pairs {
-                    let key = match self.expr_to_value(k)? {
-                        Value::Keyword(k) => k,
-                        Value::String(s) => s,
-                        Value::Symbol(s) => s,
-                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
-                    };
-                    let value = self.expr_to_value(v)?;
-                    map.insert(key, value);
-                }
-                Ok(Value::Map(map))
-            }
-            // 特殊形式やCallは評価せずにリストとして返す
-            Expr::Call { func, args } => {
-                let mut items = vec![self.expr_to_value(func)?];
-                for arg in args {
-                    items.push(self.expr_to_value(arg)?);
-                }
-                Ok(Value::List(items))
-            }
-            // モジュール関連とtry、deferはquoteできない
-            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) | Expr::Loop { .. } | Expr::Recur(_) => {
-                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer/loop/recur"]))
-            }
-            _ => Err(fmt_msg(MsgKey::CannotQuote, &[&format!("{:?}", expr)])),
-        }
-    }
 }
 
 // eval.rs内でのみ必要な特別な組み込み関数
@@ -1314,6 +1295,7 @@ impl Evaluator {
                         }
                         Value::Function(_) => "<function>".to_string(),
                         Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
+                        Value::Macro(m) => format!("<macro:{}>", m.name),
                     };
                     result.push_str(&s);
                 }
@@ -1391,6 +1373,368 @@ impl Evaluator {
             }
             Expr::Do(exprs) => exprs.iter().find_map(Self::find_recur),
             _ => None,
+        }
+    }
+
+    /// quasiquoteを評価
+    fn eval_quasiquote(&mut self, expr: &Expr, env: Rc<RefCell<Env>>, depth: usize) -> Result<Value, String> {
+        match expr {
+            Expr::Unquote(e) if depth == 0 => {
+                // depth 0のunquoteは評価
+                self.eval_with_env(e, env)
+            }
+            Expr::Unquote(e) => {
+                // ネストしたquasiquote内のunquote
+                let inner = self.eval_quasiquote(e, env, depth - 1)?;
+                Ok(inner)
+            }
+            Expr::Quasiquote(e) => {
+                // ネストしたquasiquote
+                self.eval_quasiquote(e, env, depth + 1)
+            }
+            Expr::List(items) => {
+                let mut result = Vec::new();
+                for item in items {
+                    if let Expr::UnquoteSplice(e) = item {
+                        if depth == 0 {
+                            // unquote-spliceは評価してリストを展開
+                            let val = self.eval_with_env(e, env.clone())?;
+                            match val {
+                                Value::List(v) | Value::Vector(v) => {
+                                    result.extend(v);
+                                }
+                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                            }
+                        } else {
+                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            result.push(val);
+                        }
+                    } else {
+                        let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                        result.push(val);
+                    }
+                }
+                Ok(Value::List(result))
+            }
+            Expr::Vector(items) => {
+                let mut result = Vec::new();
+                for item in items {
+                    let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                    result.push(val);
+                }
+                Ok(Value::Vector(result))
+            }
+            Expr::Call { func, args } => {
+                // Callもリストとして扱う
+                let mut result = vec![self.eval_quasiquote(func, env.clone(), depth)?];
+                for arg in args {
+                    if let Expr::UnquoteSplice(e) = arg {
+                        if depth == 0 {
+                            // unquote-spliceは評価してリストを展開
+                            let val = self.eval_with_env(e, env.clone())?;
+                            match val {
+                                Value::List(v) | Value::Vector(v) => {
+                                    result.extend(v);
+                                }
+                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                            }
+                        } else {
+                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            result.push(val);
+                        }
+                    } else {
+                        let val = self.eval_quasiquote(arg, env.clone(), depth)?;
+                        result.push(val);
+                    }
+                }
+                Ok(Value::List(result))
+            }
+            // 特殊形式もリスト形式に変換
+            Expr::If { test, then, otherwise } => {
+                let mut result = vec![Value::Symbol("if".to_string())];
+                result.push(self.eval_quasiquote(test, env.clone(), depth)?);
+                result.push(self.eval_quasiquote(then, env.clone(), depth)?);
+                if let Some(o) = otherwise {
+                    result.push(self.eval_quasiquote(o, env.clone(), depth)?);
+                }
+                Ok(Value::List(result))
+            }
+            Expr::Do(exprs) => {
+                let mut result = vec![Value::Symbol("do".to_string())];
+                for e in exprs {
+                    if let Expr::UnquoteSplice(us) = e {
+                        if depth == 0 {
+                            // unquote-spliceは評価してリストを展開
+                            let val = self.eval_with_env(us, env.clone())?;
+                            match val {
+                                Value::List(v) | Value::Vector(v) => {
+                                    result.extend(v);
+                                }
+                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                            }
+                        } else {
+                            result.push(self.eval_quasiquote(us, env.clone(), depth - 1)?);
+                        }
+                    } else {
+                        result.push(self.eval_quasiquote(e, env.clone(), depth)?);
+                    }
+                }
+                Ok(Value::List(result))
+            }
+            // その他は変換してValueに
+            _ => self.expr_to_value(expr),
+        }
+    }
+
+    /// ExprをValueに変換（データとして扱う）
+    fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
+        match expr {
+            Expr::Nil => Ok(Value::Nil),
+            Expr::Bool(b) => Ok(Value::Bool(*b)),
+            Expr::Integer(n) => Ok(Value::Integer(*n)),
+            Expr::Float(f) => Ok(Value::Float(*f)),
+            Expr::String(s) => Ok(Value::String(s.clone())),
+            Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
+            Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
+            Expr::List(items) => {
+                let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
+                Ok(Value::List(vals?))
+            }
+            Expr::Vector(items) => {
+                let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
+                Ok(Value::Vector(vals?))
+            }
+            Expr::Map(pairs) => {
+                let mut map = HashMap::new();
+                for (k, v) in pairs {
+                    let key = match self.expr_to_value(k)? {
+                        Value::Keyword(k) => k,
+                        Value::String(s) => s,
+                        Value::Symbol(s) => s,
+                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
+                    };
+                    let value = self.expr_to_value(v)?;
+                    map.insert(key, value);
+                }
+                Ok(Value::Map(map))
+            }
+            // 特殊形式やCallは評価せずにリストとして返す
+            Expr::Call { func, args } => {
+                let mut items = vec![self.expr_to_value(func)?];
+                for arg in args {
+                    items.push(self.expr_to_value(arg)?);
+                }
+                Ok(Value::List(items))
+            }
+            Expr::If { test, then, otherwise } => {
+                let mut items = vec![Value::Symbol("if".to_string())];
+                items.push(self.expr_to_value(test)?);
+                items.push(self.expr_to_value(then)?);
+                if let Some(o) = otherwise {
+                    items.push(self.expr_to_value(o)?);
+                }
+                Ok(Value::List(items))
+            }
+            Expr::Do(exprs) => {
+                let mut items = vec![Value::Symbol("do".to_string())];
+                for e in exprs {
+                    items.push(self.expr_to_value(e)?);
+                }
+                Ok(Value::List(items))
+            }
+            Expr::Def(name, value) => {
+                Ok(Value::List(vec![
+                    Value::Symbol("def".to_string()),
+                    Value::Symbol(name.clone()),
+                    self.expr_to_value(value)?,
+                ]))
+            }
+            Expr::Let { bindings, body } => {
+                let mut items = vec![Value::Symbol("let".to_string())];
+                let mut binding_vec = Vec::new();
+                for (name, expr) in bindings {
+                    binding_vec.push(Value::Symbol(name.clone()));
+                    binding_vec.push(self.expr_to_value(expr)?);
+                }
+                items.push(Value::Vector(binding_vec));
+                items.push(self.expr_to_value(body)?);
+                Ok(Value::List(items))
+            }
+            Expr::Fn { params, body, is_variadic } => {
+                let mut items = vec![Value::Symbol("fn".to_string())];
+                let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
+                    vec![Value::Symbol("&".to_string()), Value::Symbol(params[0].clone())]
+                } else if *is_variadic {
+                    let mut v: Vec<Value> = params[..params.len()-1]
+                        .iter()
+                        .map(|p| Value::Symbol(p.clone()))
+                        .collect();
+                    v.push(Value::Symbol("&".to_string()));
+                    v.push(Value::Symbol(params[params.len()-1].clone()));
+                    v
+                } else {
+                    params.iter().map(|p| Value::Symbol(p.clone())).collect()
+                };
+                items.push(Value::Vector(param_vals));
+                items.push(self.expr_to_value(body)?);
+                Ok(Value::List(items))
+            }
+            Expr::Quasiquote(e) => {
+                Ok(Value::List(vec![
+                    Value::Symbol("quasiquote".to_string()),
+                    self.expr_to_value(e)?,
+                ]))
+            }
+            Expr::Unquote(e) => {
+                Ok(Value::List(vec![
+                    Value::Symbol("unquote".to_string()),
+                    self.expr_to_value(e)?,
+                ]))
+            }
+            Expr::UnquoteSplice(e) => {
+                Ok(Value::List(vec![
+                    Value::Symbol("unquote-splice".to_string()),
+                    self.expr_to_value(e)?,
+                ]))
+            }
+            // モジュール関連とtry、deferはquoteできない
+            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) | Expr::Loop { .. } | Expr::Recur(_) | Expr::Match { .. } | Expr::Mac { .. } => {
+                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer/loop/recur/match/mac"]))
+            }
+            Expr::FString(_) => {
+                Err("f-string はquoteできません".to_string())
+            }
+        }
+    }
+
+    /// マクロを展開
+    fn expand_macro(&mut self, mac: &Macro, args: &[Expr], _env: Rc<RefCell<Env>>) -> Result<Expr, String> {
+        // マクロ用の環境を作成
+        let parent_env = Rc::new(RefCell::new(mac.env.clone()));
+        let mut new_env = Env::with_parent(parent_env);
+
+        if mac.is_variadic {
+            // 可変長引数の処理：最後のパラメータが可変引数
+            if mac.params.is_empty() {
+                return Err(format!("mac {}: 可変長マクロはパラメータが必要です", mac.name));
+            }
+
+            let fixed_count = mac.params.len() - 1;
+
+            // 固定引数が足りない場合エラー
+            if args.len() < fixed_count {
+                return Err(format!(
+                    "mac {}: 引数の数が不足しています（最低: {}, 実際: {}）",
+                    mac.name,
+                    fixed_count,
+                    args.len()
+                ));
+            }
+
+            // 固定引数を設定
+            for i in 0..fixed_count {
+                let arg_val = self.expr_to_value(&args[i])?;
+                new_env.set(mac.params[i].clone(), arg_val);
+            }
+
+            // 残りを可変引数として設定
+            let rest: Vec<Value> = args[fixed_count..]
+                .iter()
+                .map(|e| self.expr_to_value(e))
+                .collect::<Result<Vec<_>, _>>()?;
+            new_env.set(mac.params[fixed_count].clone(), Value::List(rest));
+        } else {
+            // 通常の引数
+            if mac.params.len() != args.len() {
+                return Err(format!(
+                    "mac {}: 引数の数が一致しません（期待: {}, 実際: {}）",
+                    mac.name,
+                    mac.params.len(),
+                    args.len()
+                ));
+            }
+            for (param, arg) in mac.params.iter().zip(args.iter()) {
+                // 引数をそのまま環境に（評価しない）
+                let arg_val = self.expr_to_value(arg)?;
+                new_env.set(param.clone(), arg_val);
+            }
+        }
+
+        // マクロ本体を評価
+        let new_env_rc = Rc::new(RefCell::new(new_env));
+        let result = self.eval_with_env(&mac.body, new_env_rc)?;
+
+        // 結果をExprに変換
+        self.value_to_expr(&result)
+    }
+
+    /// ValueをExprに変換（マクロ展開の結果をコードとして扱う）
+    fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
+        match val {
+            Value::Nil => Ok(Expr::Nil),
+            Value::Bool(b) => Ok(Expr::Bool(*b)),
+            Value::Integer(n) => Ok(Expr::Integer(*n)),
+            Value::Float(f) => Ok(Expr::Float(*f)),
+            Value::String(s) => Ok(Expr::String(s.clone())),
+            Value::Symbol(s) => Ok(Expr::Symbol(s.clone())),
+            Value::Keyword(k) => Ok(Expr::Keyword(k.clone())),
+            Value::List(items) if items.is_empty() => {
+                Ok(Expr::List(vec![]))
+            }
+            Value::List(items) => {
+                // 先頭がシンボルの場合、特殊形式かチェック
+                if let Some(Value::Symbol(s)) = items.first() {
+                    match s.as_str() {
+                        "if" if items.len() >= 3 && items.len() <= 4 => {
+                            return Ok(Expr::If {
+                                test: Box::new(self.value_to_expr(&items[1])?),
+                                then: Box::new(self.value_to_expr(&items[2])?),
+                                otherwise: if items.len() == 4 {
+                                    Some(Box::new(self.value_to_expr(&items[3])?))
+                                } else {
+                                    None
+                                },
+                            });
+                        }
+                        "do" => {
+                            let exprs: Result<Vec<_>, _> = items[1..].iter().map(|v| self.value_to_expr(v)).collect();
+                            return Ok(Expr::Do(exprs?));
+                        }
+                        "def" if items.len() == 3 => {
+                            if let Value::Symbol(name) = &items[1] {
+                                return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[2])?)));
+                            }
+                        }
+                        // quasiquote/unquote/unquote-spliceは展開後には出現しないはず
+                        // もし出現した場合は通常のリストとして扱う
+                        _ => {}
+                    }
+                }
+                // 通常のリストまたは関数呼び出し
+                let exprs: Result<Vec<_>, _> = items.iter().map(|v| self.value_to_expr(v)).collect();
+                let exprs = exprs?;
+
+                // 先頭がシンボルの場合はCallに変換（関数呼び出しとして扱う）
+                if let Some(Expr::Symbol(_)) = exprs.first() {
+                    if exprs.len() == 1 {
+                        // 単一のシンボルはそのまま
+                        Ok(Expr::List(exprs))
+                    } else {
+                        // 関数呼び出し
+                        Ok(Expr::Call {
+                            func: Box::new(exprs[0].clone()),
+                            args: exprs[1..].to_vec(),
+                        })
+                    }
+                } else {
+                    Ok(Expr::List(exprs))
+                }
+            }
+            Value::Vector(items) => {
+                let exprs: Result<Vec<_>, _> = items.iter().map(|v| self.value_to_expr(v)).collect();
+                Ok(Expr::Vector(exprs?))
+            }
+            _ => Err("value_to_expr: この値は変換できません".to_string()),
         }
     }
 }

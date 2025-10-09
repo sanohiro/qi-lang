@@ -39,9 +39,11 @@ pub enum Token {
 
     // その他
     Quote,  // '
+    Backquote,  // `
+    Unquote,    // ,
+    UnquoteSplice,  // ,@
     Arrow,  // ->
     Pipe,   // |>
-    When,   // when
 
     // ファイル終端
     Eof,
@@ -256,7 +258,7 @@ impl Lexer {
         }
 
         while let Some(ch) = self.current() {
-            if ch.is_alphanumeric() || "+-*/%<>=!?_-".contains(ch) {
+            if ch.is_alphanumeric() || "+-*/%<>=!?_-&".contains(ch) {
                 result.push(ch);
                 self.advance();
             } else {
@@ -273,7 +275,6 @@ impl Lexer {
             "nil" => Token::Nil,
             "true" => Token::True,
             "false" => Token::False,
-            "when" => Token::When,
             _ => Token::Symbol(result),
         }
     }
@@ -318,6 +319,19 @@ impl Lexer {
                     self.advance();
                     return Ok(Token::Quote);
                 }
+                Some('`') => {
+                    self.advance();
+                    return Ok(Token::Backquote);
+                }
+                Some(',') if self.peek(1) == Some('@') => {
+                    self.advance(); // ,
+                    self.advance(); // @
+                    return Ok(Token::UnquoteSplice);
+                }
+                Some(',') => {
+                    self.advance();
+                    return Ok(Token::Unquote);
+                }
                 Some('"') => {
                     let s = self.read_string()?;
                     return Ok(Token::String(s));
@@ -345,7 +359,7 @@ impl Lexer {
                 Some(':') => {
                     return Ok(self.read_symbol_or_keyword());
                 }
-                Some(ch) if ch.is_alphabetic() || "+-*/%<>=!?_-".contains(ch) => {
+                Some(ch) if ch.is_alphabetic() || "+-*/%<>=!?_-&".contains(ch) => {
                     return Ok(self.read_symbol_or_keyword());
                 }
                 Some(ch) => {

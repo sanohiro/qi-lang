@@ -124,6 +124,9 @@ impl Parser {
             Some(Token::LBracket) => self.parse_vector(),
             Some(Token::LBrace) => self.parse_map(),
             Some(Token::Quote) => self.parse_quote(),
+            Some(Token::Backquote) => self.parse_quasiquote(),
+            Some(Token::Unquote) => self.parse_unquote(),
+            Some(Token::UnquoteSplice) => self.parse_unquote_splice(),
             Some(token) => Err(fmt_msg(MsgKey::UnexpectedToken, &[&format!("{:?}", token)])),
             None => Err(msg(MsgKey::UnexpectedEof).to_string()),
         }
@@ -152,6 +155,7 @@ impl Parser {
                 "defer" => return self.parse_defer(),
                 "loop" => return self.parse_loop(),
                 "recur" => return self.parse_recur(),
+                "mac" => return self.parse_mac(),
                 "module" => return self.parse_module(),
                 "export" => return self.parse_export(),
                 "use" => return self.parse_use(),
@@ -364,7 +368,7 @@ impl Parser {
             let pattern = self.parse_pattern()?;
 
             // ガード条件のチェック
-            let guard = if self.current() == Some(&Token::When) {
+            let guard = if matches!(self.current(), Some(Token::Symbol(s)) if s == "when") {
                 self.advance();
                 Some(Box::new(self.parse_expr()?))
             } else {
@@ -449,6 +453,80 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Recur(args))
+    }
+
+    /// macをパース
+    fn parse_mac(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'mac'をスキップ
+
+        // マクロ名
+        let name = match self.current() {
+            Some(Token::Symbol(s)) => s.clone(),
+            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["mac"]).to_string()),
+        };
+        self.advance();
+
+        // パラメータリスト
+        self.expect(Token::LBracket)?;
+        let mut params = Vec::new();
+        let mut is_variadic = false;
+
+        while self.current() != Some(&Token::RBracket) {
+            match self.current() {
+                Some(Token::Symbol(s)) if s == "&" => {
+                    is_variadic = true;
+                    self.advance();
+                    // 次のシンボルが可変引数名
+                    match self.current() {
+                        Some(Token::Symbol(s)) => {
+                            params.push(s.clone());
+                            self.advance();
+                        }
+                        _ => return Err("mac: &の後にシンボルが必要です".to_string()),
+                    }
+                }
+                Some(Token::Symbol(s)) => {
+                    params.push(s.clone());
+                    self.advance();
+                }
+                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["mac"]).to_string()),
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体
+        let body = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Mac {
+            name,
+            params,
+            is_variadic,
+            body,
+        })
+    }
+
+    /// quasiquoteをパース
+    fn parse_quasiquote(&mut self) -> Result<Expr, String> {
+        self.advance(); // `をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::Quasiquote(expr))
+    }
+
+    /// unquoteをパース
+    fn parse_unquote(&mut self) -> Result<Expr, String> {
+        self.advance(); // ,をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::Unquote(expr))
+    }
+
+    /// unquote-spliceをパース
+    fn parse_unquote_splice(&mut self) -> Result<Expr, String> {
+        self.advance(); // ,@をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::UnquoteSplice(expr))
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {
