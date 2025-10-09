@@ -51,11 +51,23 @@ QI_LANG=en qi script.qi  # 英語
  |> log)
 ```
 
-## インストール
+## 使い方
 
 ```bash
-# まだ実装されていません
-qi install
+# REPL起動
+qi
+
+# スクリプトファイル実行
+qi script.qi
+
+# ワンライナー実行
+qi -e '(+ 1 2 3)'
+
+# ファイルをロードしてREPL起動
+qi -l utils.qi
+
+# ヘルプ表示
+qi --help
 ```
 
 ## ドキュメント
