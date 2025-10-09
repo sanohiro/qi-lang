@@ -17,7 +17,7 @@ pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, St
         Value::List(items) | Value::Vector(items) => {
             let mut results = Vec::new();
             for item in items {
-                let result = evaluator.apply_function(func, &[item.clone()])?;
+                let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
                 results.push(result);
             }
             Ok(Value::List(results))
@@ -39,7 +39,7 @@ pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
         Value::List(items) | Value::Vector(items) => {
             let mut results = Vec::new();
             for item in items {
-                let result = evaluator.apply_function(pred, &[item.clone()])?;
+                let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 if result.is_truthy() {
                     results.push(item.clone());
                 }

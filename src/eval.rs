@@ -23,6 +23,12 @@ pub struct Evaluator {
     call_stack: Vec<String>, // 関数呼び出しスタック（スタックトレース用）
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         let env = Env::new();
