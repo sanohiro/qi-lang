@@ -1169,6 +1169,98 @@ env.set(
 
 実用的なプログラムを書けるように、組み込み関数を充実させる。
 
+### Rustのクレート（crate）とは
+
+Qiの実装では、いくつかの外部機能を**クレート**を使って実装しています。
+
+**クレートの基本**:
+- Rustのパッケージ管理システムの単位
+- `Cargo.toml`で依存関係を指定
+- [crates.io](https://crates.io/)から取得できる
+
+**Pure Rust vs 外部ライブラリ**:
+
+Qiでは、以下の方針でクレートを選択しています：
+
+✅ **採用**: Pure Rustクレート（C/C++依存なし）
+- ビルドが簡単
+- クロスプラットフォーム
+- 静的リンク
+
+❌ **避ける**: 動的リンクライブラリ（libssl等）が必要なもの
+- ビルド環境に依存
+- 配布が複雑
+
+**Qiで使用しているクレート**:
+
+```toml
+[dependencies]
+base64 = "0.21"          # Base64エンコード/デコード
+urlencoding = "2.1"      # URLエンコード/デコード
+html-escape = "0.2"      # HTMLエスケープ処理
+sha2 = "0.10"            # SHA-256ハッシュ生成
+uuid = "1.6"             # UUID生成
+```
+
+これらはすべてPure Rustで実装されており、外部ライブラリへの依存がありません。
+
+**実装例**:
+
+```rust
+// src/builtins/string.rs
+use base64::{Engine as _, engine::general_purpose};
+use sha2::{Sha256, Digest};
+use uuid::Uuid;
+
+pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
+    match &args[0] {
+        Value::String(s) => {
+            let encoded = general_purpose::STANDARD.encode(s);
+            Ok(Value::String(encoded))
+        }
+        _ => Err("to-base64: 文字列が必要です".to_string()),
+    }
+}
+
+pub fn native_hash(args: &[Value]) -> Result<Value, String> {
+    match &args[0] {
+        Value::String(s) => {
+            let mut hasher = Sha256::new();
+            hasher.update(s.as_bytes());
+            let hash = format!("{:x}", hasher.finalize());
+            Ok(Value::String(hash))
+        }
+        _ => Err("hash: 文字列が必要です".to_string()),
+    }
+}
+
+pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
+    let uuid = Uuid::new_v4();
+    Ok(Value::String(uuid.to_string()))
+}
+```
+
+**Qi言語での使用例**:
+
+```lisp
+;; Base64エンコード/デコード
+(to-base64 "hello")        ;; => "aGVsbG8="
+(from-base64 "aGVsbG8=")   ;; => "hello"
+
+;; URLエンコード/デコード
+(url-encode "hello world")  ;; => "hello%20world"
+(url-decode "hello%20world") ;; => "hello world"
+
+;; HTMLエスケープ
+(html-escape "<div>test</div>")  ;; => "&lt;div&gt;test&lt;/div&gt;"
+
+;; ハッシュ生成
+(hash "hello")  ;; => "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+
+;; UUID生成
+(uuid)  ;; => "550e8400-e29b-41d4-a716-446655440000" (毎回異なる)
+```
+
 ### 実装する関数
 
 #### リスト操作

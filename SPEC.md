@@ -735,6 +735,20 @@ uvar variable
 ;; NLP
 (s/word-count "hello world")     ;; 2
 
+;; ✅ エンコード/デコード（実装済み）
+(s/to-base64 "hello")            ;; "aGVsbG8="
+(s/from-base64 "aGVsbG8=")       ;; "hello"
+(s/url-encode "hello world")     ;; "hello%20world"
+(s/url-decode "hello%20world")   ;; "hello world"
+(s/html-escape "<div>test</div>") ;; "&lt;div&gt;test&lt;/div&gt;"
+(s/html-unescape "&lt;div&gt;test&lt;/div&gt;") ;; "<div>test</div>"
+
+;; ✅ ハッシュ/UUID（実装済み）
+(s/hash "hello")                 ;; "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+(s/hash "hello" :sha256)         ;; SHA-256 (デフォルト)
+(s/uuid)                         ;; "550e8400-e29b-41d4-a716-446655440000"
+(s/uuid :v4)                     ;; UUID v4 (デフォルト)
+
 ;; 生成（未実装）
 (s/random 16)          ;; "d7f3k9m2p5q8w1x4"
 (s/random 16 :hex)     ;; "3f8a9c2e1b4d7056"

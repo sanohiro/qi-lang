@@ -2,6 +2,9 @@
 
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
+use base64::{Engine as _, engine::general_purpose};
+use sha2::{Sha256, Digest};
+use uuid::Uuid;
 
 /// str - 値を文字列に変換して連結
 pub fn native_str(args: &[Value]) -> Result<Value, String> {
@@ -1055,4 +1058,145 @@ pub fn native_word_count(args: &[Value]) -> Result<Value, String> {
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["word-count", "strings"])),
     }
+}
+
+/// to-base64 - Base64エンコード
+pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["to-base64"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            let encoded = general_purpose::STANDARD.encode(s);
+            Ok(Value::String(encoded))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["to-base64", "strings"])),
+    }
+}
+
+/// from-base64 - Base64デコード
+pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["from-base64"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            match general_purpose::STANDARD.decode(s) {
+                Ok(bytes) => {
+                    match String::from_utf8(bytes) {
+                        Ok(result) => Ok(Value::String(result)),
+                        Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "valid UTF-8 bytes"])),
+                    }
+                }
+                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "valid base64 string"])),
+            }
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "strings"])),
+    }
+}
+
+/// url-encode - URLエンコード
+pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["url-encode"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            Ok(Value::String(urlencoding::encode(s).to_string()))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["url-encode", "strings"])),
+    }
+}
+
+/// url-decode - URLデコード
+pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["url-decode"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            match urlencoding::decode(s) {
+                Ok(decoded) => Ok(Value::String(decoded.to_string())),
+                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["url-decode", "valid URL-encoded string"])),
+            }
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["url-decode", "strings"])),
+    }
+}
+
+/// html-escape - HTMLエスケープ
+pub fn native_html_escape(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["html-escape"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            Ok(Value::String(html_escape::encode_text(s).to_string()))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-escape", "strings"])),
+    }
+}
+
+/// html-unescape - HTMLアンエスケープ
+pub fn native_html_unescape(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["html-unescape"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            Ok(Value::String(html_escape::decode_html_entities(s).to_string()))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-unescape", "strings"])),
+    }
+}
+
+/// hash - ハッシュ生成
+pub fn native_hash(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 1 || args.len() > 2 {
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["hash"]));
+    }
+    match &args[0] {
+        Value::String(s) => {
+            let algo = if args.len() == 2 {
+                match &args[1] {
+                    Value::Keyword(k) => k.as_str(),
+                    _ => "sha256",
+                }
+            } else {
+                "sha256"
+            };
+
+            let hash = match algo {
+                "sha256" => {
+                    let mut hasher = Sha256::new();
+                    hasher.update(s.as_bytes());
+                    format!("{:x}", hasher.finalize())
+                }
+                _ => return Err(fmt_msg(MsgKey::TypeOnly, &["hash (algorithm)", "sha256"])),
+            };
+            Ok(Value::String(hash))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["hash", "strings"])),
+    }
+}
+
+/// uuid - UUID生成
+pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
+    if args.len() > 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["uuid"]));
+    }
+    let version = if args.len() == 1 {
+        match &args[0] {
+            Value::Keyword(k) => k.as_str(),
+            _ => "v4",
+        }
+    } else {
+        "v4"
+    };
+
+    let uuid_str = match version {
+        "v4" => Uuid::new_v4().to_string(),
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["uuid (version)", "v4"])),
+    };
+    Ok(Value::String(uuid_str))
 }

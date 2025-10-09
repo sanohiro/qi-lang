@@ -140,6 +140,14 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "parse-float" => string::native_parse_float,
         "slugify" => string::native_slugify,
         "word-count" => string::native_word_count,
+        "to-base64" => string::native_to_base64,
+        "from-base64" => string::native_from_base64,
+        "url-encode" => string::native_url_encode,
+        "url-decode" => string::native_url_decode,
+        "html-escape" => string::native_html_escape,
+        "html-unescape" => string::native_html_unescape,
+        "hash" => string::native_hash,
+        "uuid" => string::native_uuid,
 
         // マップ操作
         "get" => map::native_get,

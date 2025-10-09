@@ -13,3 +13,8 @@ name = "qi"
 path = "src/main.rs"
 
 [dependencies]
+base64 = "0.21"
+urlencoding = "2.1"
+html-escape = "0.2"
+sha2 = "0.10"
+uuid = { version = "1.6", features = ["v4"] }
