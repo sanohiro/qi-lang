@@ -1291,6 +1291,86 @@ nil?, list?, number?, string?
 
 ---
 
+#### 文字列処理関数（実装済み）
+
+Qiでは実用的な文字列処理を重視しており、以下のような関数群が実装されています。
+
+##### 1. 検索系 - フィルタやバリデーションで頻用
+```lisp
+(contains? "hello world" "world")  ;; true - 部分一致判定
+(starts-with? "hello" "he")        ;; true - URLやファイル拡張子チェック
+(ends-with? "hello" "lo")          ;; true - 拡張子やプロトコル判定
+(index-of "hello world" "world")   ;; 6 - 部分文字列の開始位置
+(last-index-of "hello hello" "hello")  ;; 6 - ログ解析やタグ抽出
+```
+
+##### 2. 部分取得系 - サブ文字列の抽出
+```lisp
+(slice "hello world" 0 5)          ;; "hello" - インデックス範囲で抽出
+(take-str "hello" 3)               ;; "hel" - ログプレビューや短縮表示
+(drop-str "hello" 2)               ;; "llo" - プレフィックス除去
+(sub-before "user@example.com" "@")  ;; "user" - キーやパスの抽出
+(sub-after "user@example.com" "@")   ;; "example.com" - 拡張子やクエリ抽出
+```
+
+##### 3. 分割・結合 - CSVやテキスト処理
+```lisp
+(split "a,b,c" ",")    ;; ["a" "b" "c"] - 区切り文字で分割
+(lines "hello\nworld") ;; ["hello" "world"] - テキスト処理やスクレイピング
+(words "hello world")  ;; ["hello" "world"] - NLPやキーワード抽出
+(join ", " ["a" "b"])  ;; "a, b" - パイプライン終端でフォーマット整形
+```
+
+##### 4. 置換 - フォーマット変換やクレンジング
+```lisp
+(replace "hello hello" "hello" "hi")      ;; "hi hi" - 全て置換
+(replace-first "hello hello" "hello" "hi") ;; "hi hello" - 最初のみ置換
+```
+
+##### 5. 変換・正規化 - 入力値クリーニング
+```lisp
+(upper "hello")        ;; "HELLO" - UIやデータフォーマット統一
+(lower "HELLO")        ;; "hello" - 比較の前処理、正規化
+(capitalize "hello")   ;; "Hello" - 人名やタイトル整形
+(trim "  hello  ")     ;; "hello" - 入力値クリーニング
+(trim-left "  hello")  ;; "hello" - インデント調整
+(trim-right "hello  ") ;; "hello" - フォーマット調整
+(squish "  hello   world  \n")  ;; "hello world" - 連続空白を1つに（超重要）
+(expand-tabs "\thello")         ;; "    hello" - タブをスペースに変換
+```
+
+##### 6. 繰り返し・フォーマット - CLI/UI整形
+```lisp
+(repeat "-" 80)              ;; 80個の"-" - 区切り線生成
+(pad-left "Total" 20)        ;; "               Total" - 整列やコード生成
+(pad-right "Name" 20)        ;; "Name               " - 表やログ整形
+(pad "hi" 10)                ;; "    hi    " - 中央揃え
+(pad "hi" 10 "*")            ;; "****hi****" - カスタム文字で詰める
+```
+
+##### 7. 判定（バリデーション） - 入力検証
+```lisp
+(digit? "12345")   ;; true - 数字のみ
+(alpha? "hello")   ;; true - アルファベットのみ
+(alnum? "hello123") ;; true - 英数字のみ
+(space? "  \n\t")  ;; true - 空白文字のみ
+(lower? "abc")     ;; true - 小文字のみ
+(upper? "ABC")     ;; true - 大文字のみ
+```
+
+##### 8. Unicode対応 - 国際化対応
+```lisp
+(chars-count "hello")      ;; 5 - Unicode文字数（見た目の文字数）
+(bytes-count "hello")      ;; 5 - バイト数（保存時や通信時の容量制御）
+(chars-count "こんにちは")   ;; 5
+(bytes-count "こんにちは")   ;; 15
+```
+
+**実装のポイント**:
+- Rustの`str`型のメソッド（`contains`, `starts_with`, `split_whitespace`等）を活用
+- Unicode文字数は`chars().count()`、バイト数は`len()`を使用
+- パディング系は文字数ベースで動作（Unicode対応）
+
 ## Phase 5: マクロシステム
 
 ### 目標
