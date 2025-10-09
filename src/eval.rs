@@ -319,6 +319,19 @@ impl Evaluator {
 
                         self.eval_with_env(&f.body, Rc::new(RefCell::new(new_env)))
                     }
+                    Value::Keyword(key) => {
+                        // キーワードを関数として使う: (:name map) => (get map :name)
+                        if arg_vals.len() != 1 {
+                            return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
+                        }
+                        match &arg_vals[0] {
+                            Value::Map(m) => m
+                                .get(&key)
+                                .cloned()
+                                .ok_or_else(|| fmt_msg(MsgKey::KeyNotFound, &[&key])),
+                            _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
+                        }
+                    }
                     _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func_val)])),
                 }
             }

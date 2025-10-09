@@ -92,6 +92,7 @@ pub enum MsgKey {
     FirstArgMustBe,     // {0}の第1引数は{1}が必要です
     SecondArgMustBe,    // {0}の第2引数は{1}が必要です
     KeyMustBeKeyword,   // キーは文字列またはキーワードが必要
+    KeyNotFound,        // キーが見つかりません: {0}
 
     // 特殊な引数エラー
     SplitTwoStrings,
@@ -205,6 +206,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::FirstArgMustBe), "{0}'s first argument must be {1}");
         messages.insert((Lang::En, MsgKey::SecondArgMustBe), "{0}'s second argument must be {1}");
         messages.insert((Lang::En, MsgKey::KeyMustBeKeyword), "key must be a string or keyword");
+        messages.insert((Lang::En, MsgKey::KeyNotFound), "key not found: {0}");
 
         // 英語メッセージ - 特殊な引数エラー
         messages.insert((Lang::En, MsgKey::SplitTwoStrings), "split requires two strings");
@@ -258,6 +260,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::FirstArgMustBe), "{0}の第1引数は{1}が必要です");
         messages.insert((Lang::Ja, MsgKey::SecondArgMustBe), "{0}の第2引数は{1}が必要です");
         messages.insert((Lang::Ja, MsgKey::KeyMustBeKeyword), "キーは文字列またはキーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::KeyNotFound), "キーが見つかりません: {0}");
 
         // 日本語メッセージ - 特殊な引数エラー
         messages.insert((Lang::Ja, MsgKey::SplitTwoStrings), "splitは2つの文字列が必要です");

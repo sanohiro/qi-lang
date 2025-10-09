@@ -1463,6 +1463,88 @@ Qiでは実用的な文字列処理を重視しており、以下のような関
 - Unicode文字数は`chars().count()`、バイト数は`len()`を使用
 - パディング系は文字数ベースで動作（Unicode対応）
 
+---
+
+#### キーワード関数（実装済み）
+
+Qiでは、キーワードを関数として使うことができます。これはClojureなどのLisp系言語でよく見られる機能で、マップからの値取得を簡潔に書けます。
+
+**基本的な使い方**:
+
+```lisp
+;; マップからの値取得
+(def user {:name "Alice" :age 30})
+
+;; getを使う方法（従来）
+(get user :name)  ;; => "Alice"
+
+;; キーワードを関数として使う方法（簡潔）
+(:name user)  ;; => "Alice"
+(:age user)   ;; => 30
+```
+
+**実装方法**:
+
+評価器の関数呼び出し部分で、`Value::Keyword`を特別扱いします：
+
+```rust
+// src/eval.rs の Expr::Call 処理
+match func_val {
+    Value::NativeFunc(nf) => (nf.func)(&arg_vals),
+    Value::Function(f) => {
+        // ... 通常の関数呼び出し処理
+    }
+    Value::Keyword(key) => {
+        // キーワードを関数として使う: (:name map) => (get map :name)
+        if arg_vals.len() != 1 {
+            return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
+        }
+        match &arg_vals[0] {
+            Value::Map(m) => m
+                .get(&key)
+                .cloned()
+                .ok_or_else(|| fmt_msg(MsgKey::KeyNotFound, &[&key])),
+            _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
+        }
+    }
+    _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func_val)])),
+}
+```
+
+**f-stringとの組み合わせ**:
+
+キーワード関数は、f-stringと組み合わせると特に便利です：
+
+```lisp
+(def user {:name "Bob" :age 30})
+
+;; getを使う場合（冗長）
+f"Name: {(get user :name)}, Age: {(get user :age)}"
+
+;; キーワード関数を使う場合（簡潔）
+f"Name: {(:name user)}, Age: {(:age user)}"
+;; => "Name: Bob, Age: 30"
+```
+
+**エラーハンドリング**:
+
+存在しないキーにアクセスするとエラーになります：
+
+```lisp
+(:notexist {:name "Alice"})
+;; エラー: キーが見つかりません: notexist
+```
+
+**学習ポイント**:
+
+1. **Rustの`match`**: 関数呼び出し時の分岐処理
+2. **言語設計**: データをコードとして扱う（Lisp-1の利点）
+3. **Qi言語**: 関数型プログラミングの糖衣構文
+
+この機能により、マップ操作がより簡潔で読みやすくなります。
+
+---
+
 ## Phase 5: マクロシステム
 
 ### 目標

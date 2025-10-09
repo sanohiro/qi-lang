@@ -231,8 +231,14 @@ nil false true          ;; 3つの異なる値
 ```lisp
 {:name "Alice" :age 30}
 {}  ;; 空マップ
+
+;; ✅ マップへのアクセス（実装済み）
 (get {:a 1} :a)           ;; 1
-(:name {:name "Alice"})   ;; "Alice" (キーワードは関数)
+(:name {:name "Alice"})   ;; "Alice" (キーワードは関数として使える)
+(:age {:name "Bob" :age 30})  ;; 30
+
+;; エラーケース
+(:notexist {:name "Alice"})  ;; エラー: キーが見つかりません
 ```
 
 ### ベクタ
@@ -870,9 +876,13 @@ f"Result: {(+ 1 2)}"  ;; => "Result: 3"
 ;; リストやベクタの補間
 f"List: {[1 2 3]}"  ;; => "List: [1 2 3]"
 
-;; マップアクセス
+;; マップアクセス（getまたはキーワード関数）
 (def user {:name "Bob" :age 30})
 f"Name: {(get user :name)}, Age: {(get user :age)}"
+;; => "Name: Bob, Age: 30"
+
+;; キーワードを関数として使う（より簡潔）
+f"Name: {(:name user)}, Age: {(:age user)}"
 ;; => "Name: Bob, Age: 30"
 
 ;; エスケープ
@@ -882,9 +892,9 @@ f"Escaped: \{not interpolated\}"  ;; => "Escaped: {not interpolated}"
 (def items ["apple" "banana" "cherry"])
 f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 
-;; 実用例
+;; 実用例（キーワード関数を使った簡潔な記述）
 (def greet (fn [user]
-  f"Welcome, {(get user :name)}! You have {(get user :messages)} new messages."))
+  f"Welcome, {(:name user)}! You have {(:messages user)} new messages."))
 
 (greet {:name "Alice" :messages 3})
 ;; => "Welcome, Alice! You have 3 new messages."
