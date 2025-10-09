@@ -9,268 +9,92 @@ pub struct Evaluator {
     defer_stack: Vec<Vec<Expr>>, // スコープごとのdeferスタック（LIFO）
 }
 
+/// 組み込み関数を登録するマクロ
+macro_rules! register_native {
+    ($env:expr, $($name:expr => $func:expr),* $(,)?) => {
+        $(
+            $env.set(
+                $name.to_string(),
+                Value::NativeFunc(NativeFunc {
+                    name: $name.to_string(),
+                    func: $func,
+                }),
+            );
+        )*
+    };
+}
+
+/// 引数の数をチェックするマクロ
+macro_rules! check_args {
+    ($args:expr, $expected:expr, $func_name:expr) => {
+        if $args.len() != $expected {
+            return Err(fmt_msg(
+                MsgKey::NeedExactlyNArgs,
+                &[$func_name, &$expected.to_string()],
+            ));
+        }
+    };
+    ($args:expr, $min:expr, $max:expr, $func_name:expr) => {
+        if $args.len() < $min || $args.len() > $max {
+            return Err(format!(
+                "{}には{}〜{}個の引数が必要です",
+                $func_name, $min, $max
+            ));
+        }
+    };
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         let mut env = Env::new();
 
-        // 基本的な組み込み関数を登録
-        env.set(
-            "+".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "+".to_string(),
-                func: native_add,
-            }),
-        );
-        env.set(
-            "-".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "-".to_string(),
-                func: native_sub,
-            }),
-        );
-        env.set(
-            "*".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "*".to_string(),
-                func: native_mul,
-            }),
-        );
-        env.set(
-            "/".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "/".to_string(),
-                func: native_div,
-            }),
-        );
-        env.set(
-            "=".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "=".to_string(),
-                func: native_eq,
-            }),
-        );
-        env.set(
-            "<".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "<".to_string(),
-                func: native_lt,
-            }),
-        );
-        env.set(
-            ">".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: ">".to_string(),
-                func: native_gt,
-            }),
-        );
-        env.set(
-            "<=".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "<=".to_string(),
-                func: native_le,
-            }),
-        );
-        env.set(
-            ">=".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: ">=".to_string(),
-                func: native_ge,
-            }),
-        );
-        env.set(
-            "!=".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "!=".to_string(),
-                func: native_ne,
-            }),
-        );
-        env.set(
-            "%".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "%".to_string(),
-                func: native_mod,
-            }),
-        );
-        env.set(
-            "list".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "list".to_string(),
-                func: native_list,
-            }),
-        );
-        env.set(
-            "first".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "first".to_string(),
-                func: native_first,
-            }),
-        );
-        env.set(
-            "rest".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "rest".to_string(),
-                func: native_rest,
-            }),
-        );
-        env.set(
-            "len".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "len".to_string(),
-                func: native_len,
-            }),
-        );
-        env.set(
-            "print".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "print".to_string(),
-                func: native_print,
-            }),
-        );
-        env.set(
-            "cons".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "cons".to_string(),
-                func: native_cons,
-            }),
-        );
-        env.set(
-            "conj".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "conj".to_string(),
-                func: native_conj,
-            }),
-        );
-        env.set(
-            "empty?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "empty?".to_string(),
-                func: native_empty,
-            }),
-        );
-        env.set(
-            "nil?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "nil?".to_string(),
-                func: native_nil,
-            }),
-        );
-        env.set(
-            "str".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "str".to_string(),
-                func: native_str,
-            }),
-        );
-        env.set(
-            "not".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "not".to_string(),
-                func: native_not,
-            }),
-        );
+        // 組み込み関数を登録
+        register_native!(env,
+            // 算術演算
+            "+" => native_add,
+            "-" => native_sub,
+            "*" => native_mul,
+            "/" => native_div,
+            "%" => native_mod,
 
-        // リスト操作関数
-        env.set(
-            "first".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "first".to_string(),
-                func: native_first,
-            }),
-        );
-        env.set(
-            "rest".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "rest".to_string(),
-                func: native_rest,
-            }),
-        );
-        env.set(
-            "nth".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "nth".to_string(),
-                func: native_nth,
-            }),
-        );
-        env.set(
-            "count".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "count".to_string(),
-                func: native_count,
-            }),
-        );
-        env.set(
-            "reverse".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "reverse".to_string(),
-                func: native_reverse,
-            }),
-        );
+            // 比較演算
+            "=" => native_eq,
+            "<" => native_lt,
+            ">" => native_gt,
+            "<=" => native_le,
+            ">=" => native_ge,
+            "!=" => native_ne,
 
-        // 型チェック関数
-        env.set(
-            "list?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "list?".to_string(),
-                func: native_is_list,
-            }),
-        );
-        env.set(
-            "vector?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "vector?".to_string(),
-                func: native_is_vector,
-            }),
-        );
-        env.set(
-            "map?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "map?".to_string(),
-                func: native_is_map,
-            }),
-        );
-        env.set(
-            "string?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "string?".to_string(),
-                func: native_is_string,
-            }),
-        );
-        env.set(
-            "number?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "number?".to_string(),
-                func: native_is_number,
-            }),
-        );
-        env.set(
-            "fn?".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "fn?".to_string(),
-                func: native_is_fn,
-            }),
-        );
+            // リスト操作
+            "list" => native_list,
+            "first" => native_first,
+            "rest" => native_rest,
+            "nth" => native_nth,
+            "count" => native_count,
+            "reverse" => native_reverse,
+            "cons" => native_cons,
+            "conj" => native_conj,
 
-        // 数学関数
-        env.set(
-            "abs".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "abs".to_string(),
-                func: native_abs,
-            }),
-        );
-        env.set(
-            "min".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "min".to_string(),
-                func: native_min,
-            }),
-        );
-        env.set(
-            "max".to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: "max".to_string(),
-                func: native_max,
-            }),
+            // 述語関数
+            "empty?" => native_empty,
+            "nil?" => native_nil,
+            "list?" => native_is_list,
+            "vector?" => native_is_vector,
+            "map?" => native_is_map,
+            "string?" => native_is_string,
+            "number?" => native_is_number,
+            "fn?" => native_is_fn,
+
+            // ユーティリティ
+            "len" => native_len,
+            "print" => native_print,
+            "str" => native_str,
+            "not" => native_not,
+
+            // 数学関数
+            "abs" => native_abs,
+            "min" => native_min,
+            "max" => native_max,
         );
 
         Evaluator {
@@ -866,9 +690,7 @@ fn native_mul(args: &[Value]) -> Result<Value, String> {
 }
 
 fn native_div(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["/", "2"]));
-    }
+    check_args!(args, 2, "/");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => {
             if *b == 0 {
@@ -1099,9 +921,7 @@ fn native_not(args: &[Value]) -> Result<Value, String> {
 
 /// nth - リストまたはベクタのn番目の要素を取得（0始まり）
 fn native_nth(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["nth", "2"]));
-    }
+    check_args!(args, 2, "nth");
     let index = match &args[1] {
         Value::Integer(n) => *n as usize,
         _ => return Err("nthの第2引数は整数が必要です".to_string()),
@@ -1116,9 +936,7 @@ fn native_nth(args: &[Value]) -> Result<Value, String> {
 
 /// count - コレクションの要素数を取得
 fn native_count(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["count", "1"]));
-    }
+    check_args!(args, 1, "count");
     match &args[0] {
         Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
         Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
@@ -1150,53 +968,39 @@ fn native_reverse(args: &[Value]) -> Result<Value, String> {
 // 型チェック関数
 
 fn native_is_list(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["list?", "1"]));
-    }
+    check_args!(args, 1, "list?");
     Ok(Value::Bool(matches!(args[0], Value::List(_))))
 }
 
 fn native_is_vector(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["vector?", "1"]));
-    }
+    check_args!(args, 1, "vector?");
     Ok(Value::Bool(matches!(args[0], Value::Vector(_))))
 }
 
 fn native_is_map(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["map?", "1"]));
-    }
+    check_args!(args, 1, "map?");
     Ok(Value::Bool(matches!(args[0], Value::Map(_))))
 }
 
 fn native_is_string(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["string?", "1"]));
-    }
+    check_args!(args, 1, "string?");
     Ok(Value::Bool(matches!(args[0], Value::String(_))))
 }
 
 fn native_is_number(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["number?", "1"]));
-    }
+    check_args!(args, 1, "number?");
     Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
 }
 
 fn native_is_fn(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["fn?", "1"]));
-    }
+    check_args!(args, 1, "fn?");
     Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
 }
 
 // 数学関数
 
 fn native_abs(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["abs", "1"]));
-    }
+    check_args!(args, 1, "abs");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n.abs())),
         Value::Float(f) => Ok(Value::Float(f.abs())),
