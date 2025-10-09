@@ -4,9 +4,19 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+/// モジュール情報
+#[derive(Debug, Clone)]
+struct Module {
+    name: String,
+    exports: HashMap<String, Value>,
+}
+
 pub struct Evaluator {
     global_env: Rc<RefCell<Env>>,
     defer_stack: Vec<Vec<Expr>>, // スコープごとのdeferスタック（LIFO）
+    modules: HashMap<String, Rc<Module>>, // ロード済みモジュール
+    current_module: Option<String>, // 現在評価中のモジュール名
+    loading_modules: Vec<String>, // 循環参照検出用
 }
 
 /// 組み込み関数を登録するマクロ
@@ -100,6 +110,9 @@ impl Evaluator {
         Evaluator {
             global_env: Rc::new(RefCell::new(env)),
             defer_stack: Vec::new(),
+            modules: HashMap::new(),
+            current_module: None,
+            loading_modules: Vec::new(),
         }
     }
 
@@ -154,8 +167,8 @@ impl Evaluator {
 
             Expr::Def(name, value) => {
                 let val = self.eval_with_env(value, env.clone())?;
-                // グローバル環境に定義
-                self.global_env.borrow_mut().set(name.clone(), val.clone());
+                // 現在の環境に定義（モジュール内ならmodule_env、通常ならglobal_env）
+                env.borrow_mut().set(name.clone(), val.clone());
                 Ok(val)
             }
 
@@ -259,20 +272,39 @@ impl Evaluator {
                 Ok(Value::Nil)
             }
 
-            // モジュールシステム（暫定実装）
-            Expr::Module(_name) => {
-                // TODO: モジュール定義の実装
+            // モジュールシステム
+            Expr::Module(name) => {
+                self.current_module = Some(name.clone());
                 Ok(Value::Nil)
             }
 
-            Expr::Export(_symbols) => {
-                // TODO: エクスポートの実装
+            Expr::Export(symbols) => {
+                // 現在のモジュール名を取得
+                let module_name = self.current_module.clone()
+                    .ok_or_else(|| "exportはmodule定義の中でのみ使用できます".to_string())?;
+
+                // エクスポートする値を収集
+                let mut exports = HashMap::new();
+                for symbol in symbols {
+                    if let Some(value) = env.borrow().get(symbol) {
+                        exports.insert(symbol.clone(), value);
+                    } else {
+                        return Err(format!("シンボル{}が見つかりません（モジュール: {}）", symbol, module_name));
+                    }
+                }
+
+                // モジュールを登録
+                let module = Module {
+                    name: module_name.clone(),
+                    exports,
+                };
+                self.modules.insert(module_name, Rc::new(module));
+
                 Ok(Value::Nil)
             }
 
-            Expr::Use { module: _, mode: _ } => {
-                // TODO: インポートの実装
-                Ok(Value::Nil)
+            Expr::Use { module, mode } => {
+                self.eval_use(module, mode, env)
             }
 
             Expr::Call { func, args } => {
@@ -1553,5 +1585,117 @@ mod tests {
         assert_eq!(eval_str("(max 3 1 4 1 5)").unwrap(), Value::Integer(5));
         assert_eq!(eval_str("(min 10)").unwrap(), Value::Integer(10));
         assert_eq!(eval_str("(max 10)").unwrap(), Value::Integer(10));
+    }
+}
+
+// モジュールシステムのヘルパー関数
+impl Evaluator {
+    /// useモジュールの評価
+    fn eval_use(
+        &mut self,
+        module_name: &str,
+        mode: &crate::value::UseMode,
+        env: Rc<RefCell<Env>>,
+    ) -> Result<Value, String> {
+        use crate::value::UseMode;
+
+        // モジュールをロード
+        let module = self.load_module(module_name)?;
+
+        // インポートモードに応じて環境に追加
+        match mode {
+            UseMode::Only(names) => {
+                // 指定された関数のみインポート
+                for name in names {
+                    if let Some(value) = module.exports.get(name) {
+                        env.borrow_mut().set(name.clone(), value.clone());
+                    } else {
+                        return Err(format!(
+                            "シンボル{}はモジュール{}にエクスポートされていません",
+                            name, module_name
+                        ));
+                    }
+                }
+            }
+            UseMode::All => {
+                // 全てインポート
+                for (name, value) in &module.exports {
+                    env.borrow_mut().set(name.clone(), value.clone());
+                }
+            }
+            UseMode::As(_alias) => {
+                // TODO: エイリアス機能は将来実装
+                return Err(":as モードはまだ実装されていません".to_string());
+            }
+        }
+
+        Ok(Value::Nil)
+    }
+
+    /// モジュールファイルをロード
+    fn load_module(&mut self, name: &str) -> Result<Rc<Module>, String> {
+        // 既にロード済みならキャッシュから返す
+        if let Some(module) = self.modules.get(name) {
+            return Ok(module.clone());
+        }
+
+        // 循環参照チェック
+        if self.loading_modules.contains(&name.to_string()) {
+            return Err(format!(
+                "循環参照を検出しました: {}",
+                self.loading_modules.join(" -> ")
+            ));
+        }
+
+        // ロード中のモジュールリストに追加
+        self.loading_modules.push(name.to_string());
+
+        // ファイルを探す（カレントディレクトリとexamples/）
+        let paths = vec![
+            format!("{}.qi", name),
+            format!("examples/{}.qi", name),
+        ];
+
+        let mut content = None;
+        for path in &paths {
+            if let Ok(c) = std::fs::read_to_string(path) {
+                content = Some(c);
+                break;
+            }
+        }
+
+        let content = content.ok_or_else(|| {
+            format!("モジュール{}が見つかりません（{}.qi）", name, name)
+        })?;
+
+        // パースして評価
+        let mut parser = crate::parser::Parser::new(&content)
+            .map_err(|e| format!("モジュール{}のパーサー初期化エラー: {}", name, e))?;
+
+        let exprs = parser.parse_all()
+            .map_err(|e| format!("モジュール{}のパースエラー: {}", name, e))?;
+
+        // 新しい環境で評価
+        let module_env = Rc::new(RefCell::new(Env::new()));
+
+        // グローバル環境から組み込み関数をコピー
+        let bindings: Vec<_> = self.global_env.borrow().bindings()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        for (key, value) in bindings {
+            module_env.borrow_mut().set(key, value);
+        }
+
+        // 式を順次評価
+        for expr in exprs {
+            self.eval_with_env(&expr, module_env.clone())?;
+        }
+
+        // ロード中リストから削除
+        self.loading_modules.pop();
+
+        // モジュールが登録されているか確認
+        self.modules.get(name).cloned()
+            .ok_or_else(|| format!("モジュール{}はexportを含む必要があります", name))
     }
 }

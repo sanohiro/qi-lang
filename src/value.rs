@@ -91,6 +91,11 @@ impl Env {
     pub fn set(&mut self, name: String, value: Value) {
         self.bindings.insert(name, value);
     }
+
+    /// バインディングの反復子を取得（モジュールシステム用）
+    pub fn bindings(&self) -> impl Iterator<Item = (&String, &Value)> {
+        self.bindings.iter()
+    }
 }
 
 /// AST（抽象構文木）の式

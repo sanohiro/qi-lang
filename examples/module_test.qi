@@ -1,0 +1,19 @@
+; モジュールシステムのテスト
+
+(print "=== モジュールシステムのテスト ===")
+
+; パターン1: :only で特定の関数のみインポート
+(use math_utils :only [square cube])
+
+(print (str "square(5) = " (square 5)))     ; 25
+(print (str "cube(3) = " (cube 3)))         ; 27
+
+; パターン2: :all で全てインポート
+(use math_utils :all)
+
+(print (str "average(10, 20) = " (average 10 20)))  ; 15
+(print (str "even(4) = " (even 4)))                  ; true
+(print (str "odd(4) = " (odd 4)))                    ; false
+(print (str "odd(5) = " (odd 5)))                    ; true
+
+(print "\n✓ モジュールシステムが正常に動作しています")
