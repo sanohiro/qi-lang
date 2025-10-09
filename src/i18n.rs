@@ -41,7 +41,7 @@ impl Lang {
     }
 }
 
-/// メッセージキー
+/// エラーメッセージキー
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MsgKey {
     // パーサーエラー
@@ -84,10 +84,46 @@ pub enum MsgKey {
     CannotQuote,
 }
 
+/// UIメッセージキー
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UiMsg {
+    // REPL
+    ReplWelcome,
+    ReplPressCtrlC,
+    ReplGoodbye,
+    ReplLoading,
+    ReplLoaded,
+
+    // ヘルプ
+    HelpTitle,
+    HelpUsage,
+    HelpOptions,
+    HelpExamples,
+    HelpEnvVars,
+
+    // オプション説明
+    OptExecute,
+    OptLoad,
+    OptHelp,
+    OptVersion,
+
+    // エラー
+    ErrorFailedToRead,
+    ErrorRequiresArg,
+    ErrorRequiresFile,
+    ErrorUnknownOption,
+    ErrorUseHelp,
+    ErrorInput,
+    ErrorParse,
+    ErrorLexer,
+    ErrorRuntime,
+}
+
 /// メッセージマネージャー
 pub struct Messages {
     lang: Lang,
     messages: HashMap<(Lang, MsgKey), &'static str>,
+    ui_messages: HashMap<(Lang, UiMsg), &'static str>,
 }
 
 impl Messages {
@@ -148,7 +184,60 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::Need2Or3Args), "{0}には2または3個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::CannotQuote), "quoteできない式: {0}");
 
-        Messages { lang, messages }
+        // UIメッセージ
+        let mut ui_messages = HashMap::new();
+
+        // 英語UI
+        ui_messages.insert((Lang::En, UiMsg::ReplWelcome), "Qi REPL v{0}");
+        ui_messages.insert((Lang::En, UiMsg::ReplPressCtrlC), "Press Ctrl+C to exit");
+        ui_messages.insert((Lang::En, UiMsg::ReplGoodbye), "Goodbye!");
+        ui_messages.insert((Lang::En, UiMsg::ReplLoading), "Loading {0}...");
+        ui_messages.insert((Lang::En, UiMsg::ReplLoaded), "Loaded.");
+        ui_messages.insert((Lang::En, UiMsg::HelpTitle), "Qi - A Lisp that flows");
+        ui_messages.insert((Lang::En, UiMsg::HelpUsage), "USAGE:");
+        ui_messages.insert((Lang::En, UiMsg::HelpOptions), "OPTIONS:");
+        ui_messages.insert((Lang::En, UiMsg::HelpExamples), "EXAMPLES:");
+        ui_messages.insert((Lang::En, UiMsg::HelpEnvVars), "ENVIRONMENT VARIABLES:");
+        ui_messages.insert((Lang::En, UiMsg::OptExecute), "Execute code string and exit");
+        ui_messages.insert((Lang::En, UiMsg::OptLoad), "Load file and start REPL");
+        ui_messages.insert((Lang::En, UiMsg::OptHelp), "Print help information");
+        ui_messages.insert((Lang::En, UiMsg::OptVersion), "Print version information");
+        ui_messages.insert((Lang::En, UiMsg::ErrorFailedToRead), "Failed to read file");
+        ui_messages.insert((Lang::En, UiMsg::ErrorRequiresArg), "{0} requires an argument");
+        ui_messages.insert((Lang::En, UiMsg::ErrorRequiresFile), "{0} requires a file path");
+        ui_messages.insert((Lang::En, UiMsg::ErrorUnknownOption), "Unknown option: {0}");
+        ui_messages.insert((Lang::En, UiMsg::ErrorUseHelp), "Use --help for usage information");
+        ui_messages.insert((Lang::En, UiMsg::ErrorInput), "Input error");
+        ui_messages.insert((Lang::En, UiMsg::ErrorParse), "Parse error");
+        ui_messages.insert((Lang::En, UiMsg::ErrorLexer), "Lexer error");
+        ui_messages.insert((Lang::En, UiMsg::ErrorRuntime), "Error");
+
+        // 日本語UI
+        ui_messages.insert((Lang::Ja, UiMsg::ReplWelcome), "Qi REPL v{0}");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplPressCtrlC), "終了するには Ctrl+C を押してください");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplGoodbye), "さようなら！");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplLoading), "{0} を読み込んでいます...");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplLoaded), "読み込み完了");
+        ui_messages.insert((Lang::Ja, UiMsg::HelpTitle), "Qi - 流れるLisp");
+        ui_messages.insert((Lang::Ja, UiMsg::HelpUsage), "使い方:");
+        ui_messages.insert((Lang::Ja, UiMsg::HelpOptions), "オプション:");
+        ui_messages.insert((Lang::Ja, UiMsg::HelpExamples), "例:");
+        ui_messages.insert((Lang::Ja, UiMsg::HelpEnvVars), "環境変数:");
+        ui_messages.insert((Lang::Ja, UiMsg::OptExecute), "コード文字列を実行して終了");
+        ui_messages.insert((Lang::Ja, UiMsg::OptLoad), "ファイルを読み込んでREPLを起動");
+        ui_messages.insert((Lang::Ja, UiMsg::OptHelp), "ヘルプ情報を表示");
+        ui_messages.insert((Lang::Ja, UiMsg::OptVersion), "バージョン情報を表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorFailedToRead), "ファイルの読み込みに失敗しました");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresArg), "{0} には引数が必要です");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresFile), "{0} にはファイルパスが必要です");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorUnknownOption), "不明なオプション: {0}");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorUseHelp), "使い方は --help で確認してください");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorInput), "入力エラー");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorParse), "パースエラー");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorLexer), "レキサーエラー");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorRuntime), "エラー");
+
+        Messages { lang, messages, ui_messages }
     }
 
     /// メッセージを取得
@@ -162,6 +251,24 @@ impl Messages {
     /// フォーマット付きメッセージを取得
     pub fn fmt(&self, key: MsgKey, args: &[&str]) -> String {
         let template = self.get(key);
+        let mut result = template.to_string();
+        for (i, arg) in args.iter().enumerate() {
+            result = result.replace(&format!("{{{}}}", i), arg);
+        }
+        result
+    }
+
+    /// UIメッセージを取得
+    pub fn get_ui(&self, key: UiMsg) -> &'static str {
+        self.ui_messages
+            .get(&(self.lang, key))
+            .copied()
+            .unwrap_or("unknown ui message")
+    }
+
+    /// フォーマット付きUIメッセージを取得
+    pub fn fmt_ui(&self, key: UiMsg, args: &[&str]) -> String {
+        let template = self.get_ui(key);
         let mut result = template.to_string();
         for (i, arg) in args.iter().enumerate() {
             result = result.replace(&format!("{{{}}}", i), arg);
@@ -196,6 +303,26 @@ pub fn fmt_msg(key: MsgKey, args: &[&str]) -> String {
         MESSAGES
             .as_ref()
             .map(|m| m.fmt(key, args))
+            .unwrap_or_else(|| "message system not initialized".to_string())
+    }
+}
+
+/// UIメッセージを取得
+pub fn ui_msg(key: UiMsg) -> &'static str {
+    unsafe {
+        MESSAGES
+            .as_ref()
+            .map(|m| m.get_ui(key))
+            .unwrap_or("message system not initialized")
+    }
+}
+
+/// フォーマット付きUIメッセージを取得
+pub fn fmt_ui_msg(key: UiMsg, args: &[&str]) -> String {
+    unsafe {
+        MESSAGES
+            .as_ref()
+            .map(|m| m.fmt_ui(key, args))
             .unwrap_or_else(|| "message system not initialized".to_string())
     }
 }

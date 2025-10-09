@@ -1,5 +1,5 @@
 use qi_lang::eval::Evaluator;
-use qi_lang::i18n;
+use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use std::io::{self, Write};
 
@@ -28,7 +28,7 @@ fn main() {
         "-e" | "-c" => {
             // ワンライナー実行
             if args.len() < 3 {
-                eprintln!("Error: {} requires an argument", args[1]);
+                eprintln!("{}", fmt_ui_msg(UiMsg::ErrorRequiresArg, &[&args[1]]));
                 std::process::exit(1);
             }
             run_code(&args[2]);
@@ -36,14 +36,14 @@ fn main() {
         "-l" | "--load" => {
             // REPLでファイルをロード
             if args.len() < 3 {
-                eprintln!("Error: {} requires a file path", args[1]);
+                eprintln!("{}", fmt_ui_msg(UiMsg::ErrorRequiresFile, &[&args[1]]));
                 std::process::exit(1);
             }
             repl(Some(&args[2]));
         }
         arg if arg.starts_with('-') => {
-            eprintln!("Error: Unknown option: {}", arg);
-            eprintln!("Use --help for usage information");
+            eprintln!("{}", fmt_ui_msg(UiMsg::ErrorUnknownOption, &[arg]));
+            eprintln!("{}", ui_msg(UiMsg::ErrorUseHelp));
             std::process::exit(1);
         }
         _ => {
@@ -54,31 +54,31 @@ fn main() {
 }
 
 fn print_help() {
-    println!("Qi - A Lisp that flows");
+    println!("{}", ui_msg(UiMsg::HelpTitle));
     println!();
-    println!("USAGE:");
+    println!("{}:", ui_msg(UiMsg::HelpUsage));
     println!("    qi [OPTIONS] [FILE]");
     println!();
-    println!("OPTIONS:");
-    println!("    -e, -c <code>       Execute code string and exit");
-    println!("    -l, --load <file>   Load file and start REPL");
-    println!("    -h, --help          Print help information");
-    println!("    -v, --version       Print version information");
+    println!("{}:", ui_msg(UiMsg::HelpOptions));
+    println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
+    println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
+    println!("    -h, --help          {}", ui_msg(UiMsg::OptHelp));
+    println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
     println!();
-    println!("EXAMPLES:");
+    println!("{}:", ui_msg(UiMsg::HelpExamples));
     println!("    qi                       Start REPL");
     println!("    qi script.qi             Run script file");
     println!("    qi -e '(+ 1 2 3)'        Execute code and print result");
     println!("    qi -l utils.qi           Load file and start REPL");
     println!();
-    println!("ENVIRONMENT VARIABLES:");
+    println!("{}:", ui_msg(UiMsg::HelpEnvVars));
     println!("    QI_LANG              Set language (ja, en)");
     println!("    LANG                 System locale (auto-detected)");
 }
 
 fn run_file(path: &str) {
     let content = std::fs::read_to_string(path).unwrap_or_else(|e| {
-        eprintln!("Error: Failed to read file: {}", e);
+        eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
         std::process::exit(1);
     });
 
@@ -104,27 +104,27 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool) {
                             }
                         }
                         Err(e) => {
-                            eprintln!("Error: {}", e);
+                            eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
                             std::process::exit(1);
                         }
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Parse error: {}", e);
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
                 std::process::exit(1);
             }
         },
         Err(e) => {
-            eprintln!("Lexer error: {}", e);
+            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
             std::process::exit(1);
         }
     }
 }
 
 fn repl(preload: Option<&str>) {
-    println!("Qi REPL v{}", VERSION);
-    println!("Press Ctrl+C to exit");
+    println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
+    println!("{}", ui_msg(UiMsg::ReplPressCtrlC));
     println!();
 
     let mut evaluator = Evaluator::new();
@@ -133,12 +133,12 @@ fn repl(preload: Option<&str>) {
     if let Some(path) = preload {
         match std::fs::read_to_string(path) {
             Ok(content) => {
-                println!("Loading {}...", path);
+                println!("{}", fmt_ui_msg(UiMsg::ReplLoading, &[path]));
                 eval_code(&mut evaluator, &content, false);
-                println!("Loaded.\n");
+                println!("{}\n", ui_msg(UiMsg::ReplLoaded));
             }
             Err(e) => {
-                eprintln!("Error: Failed to load file: {}", e);
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
                 std::process::exit(1);
             }
         }
@@ -166,19 +166,19 @@ fn repl(preload: Option<&str>) {
                                 println!("{}", value);
                                 line_number += 1;
                             }
-                            Err(e) => eprintln!("Error: {}", e),
+                            Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e),
                         },
-                        Err(e) => eprintln!("Parse error: {}", e),
+                        Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e),
                     },
-                    Err(e) => eprintln!("Lexer error: {}", e),
+                    Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e),
                 }
             }
             Err(e) => {
-                eprintln!("Input error: {}", e);
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorInput), e);
                 break;
             }
         }
     }
 
-    println!("\nGoodbye!");
+    println!("\n{}", ui_msg(UiMsg::ReplGoodbye));
 }
