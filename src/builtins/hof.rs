@@ -1,12 +1,13 @@
 //! 高階関数
 
 use crate::eval::Evaluator;
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// map - リストの各要素に関数を適用
 pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("mapは2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["map"]));
     }
 
     let func = &args[0];
@@ -21,14 +22,14 @@ pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, St
             }
             Ok(Value::List(results))
         }
-        _ => Err("mapの第2引数はリストまたはベクタが必要です".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["map (2nd arg)"])),
     }
 }
 
 /// filter - リストから条件を満たす要素を抽出
 pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("filterは2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["filter"]));
     }
 
     let pred = &args[0];
@@ -45,14 +46,14 @@ pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
             }
             Ok(Value::List(results))
         }
-        _ => Err("filterの第2引数はリストまたはベクタが必要です".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["filter (2nd arg)"])),
     }
 }
 
 /// reduce - リストを畳み込み
 pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     if args.len() != 2 && args.len() != 3 {
-        return Err(format!("reduceは2または3つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Or3Args, &["reduce"]));
     }
 
     let func = &args[0];
@@ -80,7 +81,7 @@ pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
             }
             Ok(acc)
         }
-        _ => Err("reduceの第2引数はリストまたはベクタが必要です".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["reduce (2nd arg)"])),
     }
 }
 
@@ -88,7 +89,7 @@ pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
 #[allow(dead_code)]
 pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("applyは2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["apply"]));
     }
 
     let func = &args[0];
@@ -96,6 +97,6 @@ pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, 
         Value::List(items) | Value::Vector(items) => {
             evaluator.apply_function(func, items)
         }
-        _ => Err("applyの第2引数はリストまたはベクタが必要です".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["apply (2nd arg)"])),
     }
 }

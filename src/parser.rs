@@ -1,3 +1,4 @@
+use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::{Lexer, Token};
 use crate::value::{Expr, MatchArm, Pattern, UseMode};
 
@@ -31,8 +32,8 @@ impl Parser {
                 self.advance();
                 Ok(())
             }
-            Some(token) => Err(format!("期待: {:?}, 実際: {:?}", expected, token)),
-            None => Err(format!("期待: {:?}, 実際: EOF", expected)),
+            Some(token) => Err(fmt_msg(MsgKey::ExpectedToken, &[&format!("{:?}", expected), &format!("{:?}", token)])),
+            None => Err(fmt_msg(MsgKey::ExpectedToken, &[&format!("{:?}", expected), "EOF"])),
         }
     }
 
@@ -118,8 +119,8 @@ impl Parser {
             Some(Token::LBracket) => self.parse_vector(),
             Some(Token::LBrace) => self.parse_map(),
             Some(Token::Quote) => self.parse_quote(),
-            Some(token) => Err(format!("予期しないトークン: {:?}", token)),
-            None => Err("予期しないEOF".to_string()),
+            Some(token) => Err(fmt_msg(MsgKey::UnexpectedToken, &[&format!("{:?}", token)])),
+            None => Err(msg(MsgKey::UnexpectedEof).to_string()),
         }
     }
 
@@ -448,8 +449,8 @@ impl Parser {
             }
             Some(Token::LBracket) => self.parse_vector_pattern(),
             Some(Token::LBrace) => self.parse_map_pattern(),
-            Some(token) => Err(format!("予期しないパターン: {:?}", token)),
-            None => Err("予期しないEOF".to_string()),
+            Some(token) => Err(fmt_msg(MsgKey::UnexpectedPattern, &[&format!("{:?}", token)])),
+            None => Err(msg(MsgKey::UnexpectedEof).to_string()),
         }
     }
 

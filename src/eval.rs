@@ -236,7 +236,7 @@ impl Evaluator {
             Expr::Export(symbols) => {
                 // 現在のモジュール名を取得
                 let module_name = self.current_module.clone()
-                    .ok_or_else(|| "exportはmodule定義の中でのみ使用できます".to_string())?;
+                    .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
 
                 // エクスポートする値を収集
                 let mut exports = HashMap::new();
@@ -345,7 +345,7 @@ impl Evaluator {
                 return self.eval_with_env(&arm.body, Rc::new(RefCell::new(match_env)));
             }
         }
-        Err("どのパターンにもマッチしませんでした".to_string())
+        Err(msg(MsgKey::NoMatchingPattern).to_string())
     }
 
     fn match_pattern(
@@ -479,7 +479,7 @@ impl Evaluator {
 
                 self.eval_with_env(&f.body, Rc::new(RefCell::new(new_env)))
             }
-            _ => Err(format!("関数ではありません: {:?}", func)),
+            _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func)])),
         }
     }
 
@@ -551,7 +551,7 @@ impl Evaluator {
                         Value::Keyword(k) => k,
                         Value::String(s) => s,
                         Value::Symbol(s) => s,
-                        _ => return Err("マップのキーは文字列またはキーワードが必要です".to_string()),
+                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
                     };
                     let value = self.expr_to_value(v)?;
                     map.insert(key, value);
@@ -568,9 +568,9 @@ impl Evaluator {
             }
             // モジュール関連とtry、deferはquoteできない
             Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) => {
-                Err("module/export/use/try/defer cannot be quoted".to_string())
+                Err(msg(MsgKey::CannotQuoteSpecialForm).to_string())
             }
-            _ => Err(format!("quoteできない式: {:?}", expr)),
+            _ => Err(fmt_msg(MsgKey::CannotQuote, &[&format!("{:?}", expr)])),
         }
     }
 }

@@ -65,6 +65,8 @@ pub enum MsgKey {
     NotAFunction,
     ArgCountMismatch,
     DivisionByZero,
+    ExportOnlyInModule,
+    CannotQuoteSpecialForm,
 
     // 組み込み関数エラー
     IntegerOnly,
@@ -197,6 +199,10 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::NotAFunction), "not a function: {0}");
         messages.insert((Lang::En, MsgKey::ArgCountMismatch), "argument count mismatch: expected {0}, got {1}");
         messages.insert((Lang::En, MsgKey::DivisionByZero), "division by zero");
+        messages.insert((Lang::En, MsgKey::ExportOnlyInModule), "export can only be used inside a module definition");
+        messages.insert((Lang::En, MsgKey::NoMatchingPattern), "no matching pattern found");
+        messages.insert((Lang::En, MsgKey::CannotQuote), "cannot quote expression: {0}");
+        messages.insert((Lang::En, MsgKey::CannotQuoteSpecialForm), "module/export/use/try/defer cannot be quoted");
         messages.insert((Lang::En, MsgKey::IntegerOnly), "{0} accepts integers only");
         messages.insert((Lang::En, MsgKey::CollectionOnly), "{0} accepts collections only");
         messages.insert((Lang::En, MsgKey::StringOrCollectionOnly), "{0} accepts strings or collections only");
@@ -275,6 +281,10 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::NotAFunction), "関数ではありません: {0}");
         messages.insert((Lang::Ja, MsgKey::ArgCountMismatch), "引数の数が一致しません: 期待 {0}, 実際 {1}");
         messages.insert((Lang::Ja, MsgKey::DivisionByZero), "ゼロ除算エラー");
+        messages.insert((Lang::Ja, MsgKey::ExportOnlyInModule), "exportはmodule定義の中でのみ使用できます");
+        messages.insert((Lang::Ja, MsgKey::NoMatchingPattern), "どのパターンにもマッチしませんでした");
+        messages.insert((Lang::Ja, MsgKey::CannotQuote), "quoteできない式: {0}");
+        messages.insert((Lang::Ja, MsgKey::CannotQuoteSpecialForm), "module/export/use/try/deferはquoteできません");
         messages.insert((Lang::Ja, MsgKey::IntegerOnly), "{0}は整数のみ受け付けます");
         messages.insert((Lang::Ja, MsgKey::CollectionOnly), "{0}はコレクションのみ受け付けます");
         messages.insert((Lang::Ja, MsgKey::StringOrCollectionOnly), "{0}は文字列またはコレクションのみ受け付けます");

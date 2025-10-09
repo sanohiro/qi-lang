@@ -1,12 +1,12 @@
 //! マップ操作関数
 
-use crate::i18n::{msg, MsgKey};
+use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
 /// get - マップから値を取得
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("getには2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["get"]));
     }
     match &args[0] {
         Value::Map(m) => {
@@ -24,7 +24,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 /// keys - マップのキーを取得
 pub fn native_keys(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("keysには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["keys"]));
     }
     match &args[0] {
         Value::Map(m) => {
@@ -38,7 +38,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
 /// vals - マップの値を取得
 pub fn native_vals(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("valsには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["vals"]));
     }
     match &args[0] {
         Value::Map(m) => {
