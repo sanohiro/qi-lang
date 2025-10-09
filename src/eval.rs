@@ -169,6 +169,110 @@ impl Evaluator {
             }),
         );
 
+        // リスト操作関数
+        env.set(
+            "first".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "first".to_string(),
+                func: native_first,
+            }),
+        );
+        env.set(
+            "rest".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "rest".to_string(),
+                func: native_rest,
+            }),
+        );
+        env.set(
+            "nth".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "nth".to_string(),
+                func: native_nth,
+            }),
+        );
+        env.set(
+            "count".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "count".to_string(),
+                func: native_count,
+            }),
+        );
+        env.set(
+            "reverse".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "reverse".to_string(),
+                func: native_reverse,
+            }),
+        );
+
+        // 型チェック関数
+        env.set(
+            "list?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "list?".to_string(),
+                func: native_is_list,
+            }),
+        );
+        env.set(
+            "vector?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "vector?".to_string(),
+                func: native_is_vector,
+            }),
+        );
+        env.set(
+            "map?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "map?".to_string(),
+                func: native_is_map,
+            }),
+        );
+        env.set(
+            "string?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "string?".to_string(),
+                func: native_is_string,
+            }),
+        );
+        env.set(
+            "number?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "number?".to_string(),
+                func: native_is_number,
+            }),
+        );
+        env.set(
+            "fn?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "fn?".to_string(),
+                func: native_is_fn,
+            }),
+        );
+
+        // 数学関数
+        env.set(
+            "abs".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "abs".to_string(),
+                func: native_abs,
+            }),
+        );
+        env.set(
+            "min".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "min".to_string(),
+                func: native_min,
+            }),
+        );
+        env.set(
+            "max".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "max".to_string(),
+                func: native_max,
+            }),
+        );
+
         Evaluator {
             global_env: Rc::new(RefCell::new(env)),
             defer_stack: Vec::new(),
@@ -991,6 +1095,157 @@ fn native_not(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Bool(!is_truthy(&args[0])))
 }
 
+// リスト操作関数
+
+/// nth - リストまたはベクタのn番目の要素を取得（0始まり）
+fn native_nth(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["nth", "2"]));
+    }
+    let index = match &args[1] {
+        Value::Integer(n) => *n as usize,
+        _ => return Err("nthの第2引数は整数が必要です".to_string()),
+    };
+    match &args[0] {
+        Value::List(v) | Value::Vector(v) => {
+            Ok(v.get(index).cloned().unwrap_or(Value::Nil))
+        }
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["nth"])),
+    }
+}
+
+/// count - コレクションの要素数を取得
+fn native_count(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["count", "1"]));
+    }
+    match &args[0] {
+        Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
+        Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
+        Value::String(s) => Ok(Value::Integer(s.len() as i64)),
+        _ => Err(fmt_msg(MsgKey::CollectionOnly, &["count"])),
+    }
+}
+
+/// reverse - リストまたはベクタを反転
+fn native_reverse(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["reverse", "1"]));
+    }
+    match &args[0] {
+        Value::List(v) => {
+            let mut reversed = v.clone();
+            reversed.reverse();
+            Ok(Value::List(reversed))
+        }
+        Value::Vector(v) => {
+            let mut reversed = v.clone();
+            reversed.reverse();
+            Ok(Value::Vector(reversed))
+        }
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["reverse"])),
+    }
+}
+
+// 型チェック関数
+
+fn native_is_list(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["list?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::List(_))))
+}
+
+fn native_is_vector(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["vector?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Vector(_))))
+}
+
+fn native_is_map(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["map?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Map(_))))
+}
+
+fn native_is_string(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["string?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::String(_))))
+}
+
+fn native_is_number(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["number?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
+}
+
+fn native_is_fn(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["fn?", "1"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
+}
+
+// 数学関数
+
+fn native_abs(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["abs", "1"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Integer(n.abs())),
+        Value::Float(f) => Ok(Value::Float(f.abs())),
+        _ => Err("absは数値のみ受け付けます".to_string()),
+    }
+}
+
+fn native_min(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["min", "1"]));
+    }
+    let mut min = match &args[0] {
+        Value::Integer(n) => *n,
+        _ => return Err("minは整数のみ受け付けます".to_string()),
+    };
+    for arg in &args[1..] {
+        match arg {
+            Value::Integer(n) => {
+                if *n < min {
+                    min = *n;
+                }
+            }
+            _ => return Err("minは整数のみ受け付けます".to_string()),
+        }
+    }
+    Ok(Value::Integer(min))
+}
+
+fn native_max(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["max", "1"]));
+    }
+    let mut max = match &args[0] {
+        Value::Integer(n) => *n,
+        _ => return Err("maxは整数のみ受け付けます".to_string()),
+    };
+    for arg in &args[1..] {
+        match arg {
+            Value::Integer(n) => {
+                if *n > max {
+                    max = *n;
+                }
+            }
+            _ => return Err("maxは整数のみ受け付けます".to_string()),
+        }
+    }
+    Ok(Value::Integer(max))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1418,5 +1673,81 @@ mod tests {
         .unwrap();
         // doの結果は42（deferの結果ではない）
         assert_eq!(result, Value::Integer(42));
+    }
+
+    // リスト操作関数のテスト
+
+    #[test]
+    fn test_nth() {
+        assert_eq!(eval_str("(nth [10 20 30] 0)").unwrap(), Value::Integer(10));
+        assert_eq!(eval_str("(nth [10 20 30] 1)").unwrap(), Value::Integer(20));
+        assert_eq!(eval_str("(nth [10 20 30] 2)").unwrap(), Value::Integer(30));
+        assert_eq!(eval_str("(nth [10 20 30] 5)").unwrap(), Value::Nil);
+    }
+
+    #[test]
+    fn test_count() {
+        assert_eq!(eval_str("(count [1 2 3])").unwrap(), Value::Integer(3));
+        assert_eq!(eval_str("(count [])").unwrap(), Value::Integer(0));
+        assert_eq!(eval_str("(count '(1 2 3 4))").unwrap(), Value::Integer(4));
+        assert_eq!(eval_str("(count {:a 1 :b 2})").unwrap(), Value::Integer(2));
+        assert_eq!(eval_str("(count \"hello\")").unwrap(), Value::Integer(5));
+    }
+
+    #[test]
+    fn test_reverse() {
+        assert_eq!(
+            eval_str("(reverse [1 2 3])").unwrap(),
+            Value::Vector(vec![Value::Integer(3), Value::Integer(2), Value::Integer(1)])
+        );
+        assert_eq!(
+            eval_str("(reverse '(a b c))").unwrap(),
+            Value::List(vec![
+                Value::Symbol("c".to_string()),
+                Value::Symbol("b".to_string()),
+                Value::Symbol("a".to_string())
+            ])
+        );
+    }
+
+    // 型チェック関数のテスト
+
+    #[test]
+    fn test_type_predicates() {
+        assert_eq!(eval_str("(list? '(1 2 3))").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(list? [1 2 3])").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(vector? [1 2 3])").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(vector? '(1 2 3))").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(map? {:a 1})").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(map? [1 2])").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(string? \"hello\")").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(string? 123)").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(number? 42)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(number? \"42\")").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(fn? (fn [] 1))").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(fn? +)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(fn? 42)").unwrap(), Value::Bool(false));
+    }
+
+    // 数学関数のテスト
+
+    #[test]
+    fn test_abs() {
+        assert_eq!(eval_str("(abs 5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(abs -5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(abs 0)").unwrap(), Value::Integer(0));
+    }
+
+    #[test]
+    fn test_min_max() {
+        assert_eq!(eval_str("(min 3 1 4 1 5)").unwrap(), Value::Integer(1));
+        assert_eq!(eval_str("(max 3 1 4 1 5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(min 10)").unwrap(), Value::Integer(10));
+        assert_eq!(eval_str("(max 10)").unwrap(), Value::Integer(10));
     }
 }
