@@ -160,6 +160,19 @@ pub enum UiMsg {
     OptHelp,
     OptVersion,
 
+    // ヘルプ例
+    ExampleStartRepl,
+    ExampleRunScript,
+    ExampleExecuteCode,
+    ExampleLoadFile,
+
+    // 環境変数説明
+    EnvLangQi,
+    EnvLangSystem,
+
+    // バージョン
+    VersionString,
+
     // エラー
     ErrorFailedToRead,
     ErrorRequiresArg,
@@ -364,6 +377,13 @@ impl Messages {
         ui_messages.insert((Lang::En, UiMsg::OptLoad), "Load file and start REPL");
         ui_messages.insert((Lang::En, UiMsg::OptHelp), "Print help information");
         ui_messages.insert((Lang::En, UiMsg::OptVersion), "Print version information");
+        ui_messages.insert((Lang::En, UiMsg::ExampleStartRepl), "Start REPL");
+        ui_messages.insert((Lang::En, UiMsg::ExampleRunScript), "Run script file");
+        ui_messages.insert((Lang::En, UiMsg::ExampleExecuteCode), "Execute code and print result");
+        ui_messages.insert((Lang::En, UiMsg::ExampleLoadFile), "Load file and start REPL");
+        ui_messages.insert((Lang::En, UiMsg::EnvLangQi), "Set language (ja, en)");
+        ui_messages.insert((Lang::En, UiMsg::EnvLangSystem), "System locale (auto-detected)");
+        ui_messages.insert((Lang::En, UiMsg::VersionString), "Qi version {0}");
         ui_messages.insert((Lang::En, UiMsg::ErrorFailedToRead), "Failed to read file");
         ui_messages.insert((Lang::En, UiMsg::ErrorRequiresArg), "{0} requires an argument");
         ui_messages.insert((Lang::En, UiMsg::ErrorRequiresFile), "{0} requires a file path");
@@ -389,6 +409,13 @@ impl Messages {
         ui_messages.insert((Lang::Ja, UiMsg::OptLoad), "ファイルを読み込んでREPLを起動");
         ui_messages.insert((Lang::Ja, UiMsg::OptHelp), "ヘルプ情報を表示");
         ui_messages.insert((Lang::Ja, UiMsg::OptVersion), "バージョン情報を表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ExampleStartRepl), "REPLを起動");
+        ui_messages.insert((Lang::Ja, UiMsg::ExampleRunScript), "スクリプトファイルを実行");
+        ui_messages.insert((Lang::Ja, UiMsg::ExampleExecuteCode), "コードを実行して結果を表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ExampleLoadFile), "ファイルを読み込んでREPLを起動");
+        ui_messages.insert((Lang::Ja, UiMsg::EnvLangQi), "言語を設定 (ja, en)");
+        ui_messages.insert((Lang::Ja, UiMsg::EnvLangSystem), "システムロケール (自動検出)");
+        ui_messages.insert((Lang::Ja, UiMsg::VersionString), "Qi バージョン {0}");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorFailedToRead), "ファイルの読み込みに失敗しました");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresArg), "{0} には引数が必要です");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresFile), "{0} にはファイルパスが必要です");

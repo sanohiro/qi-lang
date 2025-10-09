@@ -23,7 +23,7 @@ fn main() {
             print_help();
         }
         "-v" | "--version" => {
-            println!("Qi version {}", VERSION);
+            println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
         }
         "-e" | "-c" => {
             // ワンライナー実行
@@ -66,14 +66,14 @@ fn print_help() {
     println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpExamples));
-    println!("    qi                       Start REPL");
-    println!("    qi script.qi             Run script file");
-    println!("    qi -e '(+ 1 2 3)'        Execute code and print result");
-    println!("    qi -l utils.qi           Load file and start REPL");
+    println!("    qi                       {}", ui_msg(UiMsg::ExampleStartRepl));
+    println!("    qi script.qi             {}", ui_msg(UiMsg::ExampleRunScript));
+    println!("    qi -e '(+ 1 2 3)'        {}", ui_msg(UiMsg::ExampleExecuteCode));
+    println!("    qi -l utils.qi           {}", ui_msg(UiMsg::ExampleLoadFile));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpEnvVars));
-    println!("    QI_LANG              Set language (ja, en)");
-    println!("    LANG                 System locale (auto-detected)");
+    println!("    QI_LANG              {}", ui_msg(UiMsg::EnvLangQi));
+    println!("    LANG                 {}", ui_msg(UiMsg::EnvLangSystem));
 }
 
 fn run_file(path: &str) {
