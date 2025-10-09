@@ -1,0 +1,30 @@
+; 新しい組み込み関数のテスト
+
+(print "=== リスト操作 ===")
+(print (str "take 3: " (take 3 [1 2 3 4 5])))
+(print (str "drop 2: " (drop 2 [1 2 3 4 5])))
+(print (str "concat: " (concat [1 2] [3 4])))
+(print (str "flatten: " (flatten [[1 2] [3 4] [5]])))
+(print (str "range 5: " (range 5)))
+
+(print "\n=== 数値操作 ===")
+(print (str "inc 10: " (inc 10)))
+(print (str "dec 10: " (dec 10)))
+(print (str "sum [1 2 3 4 5]: " (sum [1 2 3 4 5])))
+
+(print "\n=== 文字列操作 ===")
+(print (str "split: " (split "a,b,c" ",")))
+(print (str "join: " (join "-" [1 2 3])))
+(print (str "upper: " (upper "hello")))
+(print (str "lower: " (lower "WORLD")))
+(print (str "trim: '" (trim "  hello  ") "'"))
+
+(print "\n=== マップ操作 ===")
+(def m {:name "Alice" :age 30 :city "Tokyo"})
+(print (str "get name: " (get m :name)))
+(print (str "keys: " (keys m)))
+(print (str "vals: " (vals m)))
+(def m2 (assoc m :job "Engineer"))
+(print (str "assoc job: " m2))
+(def m3 (dissoc m2 :age))
+(print (str "dissoc age: " m3))
