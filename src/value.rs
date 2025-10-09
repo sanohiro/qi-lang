@@ -153,6 +153,11 @@ pub enum Expr {
     },
     Try(Box<Expr>),
     Defer(Box<Expr>),
+    Loop {
+        bindings: Vec<(String, Expr)>,
+        body: Box<Expr>,
+    },
+    Recur(Vec<Expr>),
 
     // モジュール
     Module(String),

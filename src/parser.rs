@@ -150,6 +150,8 @@ impl Parser {
                 "match" => return self.parse_match(),
                 "try" => return self.parse_try(),
                 "defer" => return self.parse_defer(),
+                "loop" => return self.parse_loop(),
+                "recur" => return self.parse_recur(),
                 "module" => return self.parse_module(),
                 "export" => return self.parse_export(),
                 "use" => return self.parse_use(),
@@ -407,6 +409,46 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Defer(expr))
+    }
+
+    fn parse_loop(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'loop'をスキップ
+
+        // 束縛のパース [var1 val1 var2 val2 ...]
+        self.expect(Token::LBracket)?;
+        let mut bindings = Vec::new();
+
+        while self.current() != Some(&Token::RBracket) {
+            let name = match self.current() {
+                Some(Token::Symbol(s)) => s.clone(),
+                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["loop"]).to_string()),
+            };
+            self.advance();
+
+            let value = self.parse_expr()?;
+            bindings.push((name, value));
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let body = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Loop { bindings, body })
+    }
+
+    fn parse_recur(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'recur'をスキップ
+
+        let mut args = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            args.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Recur(args))
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {

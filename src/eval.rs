@@ -236,6 +236,20 @@ impl Evaluator {
                 Ok(Value::Nil)
             }
 
+            Expr::Loop { bindings, body } => self.eval_loop(bindings, body, env),
+
+            Expr::Recur(args) => {
+                // 引数を評価
+                let values: Result<Vec<_>, _> = args
+                    .iter()
+                    .map(|e| self.eval_with_env(e, env.clone()))
+                    .collect();
+                let values = values?;
+
+                // Recurは特別なエラーとして扱う（Valueとして返すことができないため）
+                Err(format!("__RECUR__:{}", values.len()))
+            }
+
             // モジュールシステム
             Expr::Module(name) => {
                 self.current_module = Some(name.clone());
@@ -589,8 +603,8 @@ impl Evaluator {
                 Ok(Value::List(items))
             }
             // モジュール関連とtry、deferはquoteできない
-            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) => {
-                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer"]))
+            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) | Expr::Loop { .. } | Expr::Recur(_) => {
+                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer/loop/recur"]))
             }
             _ => Err(fmt_msg(MsgKey::CannotQuote, &[&format!("{:?}", expr)])),
         }
@@ -1307,5 +1321,76 @@ impl Evaluator {
         }
 
         Ok(Value::String(result))
+    }
+
+    /// loopを評価
+    fn eval_loop(
+        &mut self,
+        bindings: &[(String, Expr)],
+        body: &Expr,
+        env: Rc<RefCell<Env>>,
+    ) -> Result<Value, String> {
+        // ループ用の環境を作成
+        let mut loop_env = Env::with_parent(env.clone());
+
+        // 初期値で環境を設定
+        let mut current_values = Vec::new();
+        for (_name, expr) in bindings {
+            let value = self.eval_with_env(expr, env.clone())?;
+            current_values.push(value);
+        }
+
+        // 環境に設定
+        for ((name, _), value) in bindings.iter().zip(current_values.iter()) {
+            loop_env.set(name.clone(), value.clone());
+        }
+
+        let loop_env_rc = Rc::new(RefCell::new(loop_env));
+
+        // ループ本体を繰り返し評価
+        loop {
+            match self.eval_with_env(body, loop_env_rc.clone()) {
+                Ok(value) => return Ok(value),
+                Err(e) if e.starts_with("__RECUR__:") => {
+                    // Recurエラーを検出 - 評価し直す必要がある
+                    // 実際のrecur呼び出しを見つけて引数を評価
+                    if let Some(args) = Self::find_recur(body) {
+                        let new_values: Result<Vec<_>, _> = args
+                            .iter()
+                            .map(|e| self.eval_with_env(e, loop_env_rc.clone()))
+                            .collect();
+                        let new_values = new_values?;
+
+                        // 環境を更新
+                        if bindings.len() != new_values.len() {
+                            return Err(format!(
+                                "recur: 引数の数が一致しません（期待: {}, 実際: {}）",
+                                bindings.len(),
+                                new_values.len()
+                            ));
+                        }
+
+                        for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
+                            loop_env_rc.borrow_mut().set(name.clone(), value.clone());
+                        }
+                    } else {
+                        return Err("recurが見つかりません".to_string());
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    /// Exprからrecurを見つける（簡易版）
+    fn find_recur(expr: &Expr) -> Option<&Vec<Expr>> {
+        match expr {
+            Expr::Recur(args) => Some(args),
+            Expr::If { then, otherwise, .. } => {
+                Self::find_recur(then).or_else(|| otherwise.as_ref().and_then(|e| Self::find_recur(e)))
+            }
+            Expr::Do(exprs) => exprs.iter().find_map(Self::find_recur),
+            _ => None,
+        }
     }
 }

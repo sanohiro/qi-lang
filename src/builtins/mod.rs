@@ -77,6 +77,8 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "concat" => list::native_concat,
         "flatten" => list::native_flatten,
         "range" => list::native_range,
+        "last" => list::native_last,
+        "zip" => list::native_zip,
 
         // 文字列操作
         "str" => string::native_str,
@@ -155,6 +157,8 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "vals" => map::native_vals,
         "assoc" => map::native_assoc,
         "dissoc" => map::native_dissoc,
+        "merge" => map::native_merge,
+        "select-keys" => map::native_select_keys,
 
         // 述語関数
         "empty?" => predicates::native_empty,

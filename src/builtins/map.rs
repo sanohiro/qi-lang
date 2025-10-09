@@ -92,3 +92,46 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["dissoc", "a map"])),
     }
 }
+
+/// merge - 複数のマップをマージ
+pub fn native_merge(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["merge", "1"]));
+    }
+    let mut result = std::collections::HashMap::new();
+    for arg in args {
+        match arg {
+            Value::Map(m) => {
+                for (k, v) in m {
+                    result.insert(k.clone(), v.clone());
+                }
+            }
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["merge", "maps"])),
+        }
+    }
+    Ok(Value::Map(result))
+}
+
+/// select-keys - マップから指定したキーのみ選択
+pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["select-keys"]));
+    }
+    match (&args[0], &args[1]) {
+        (Value::Map(m), Value::List(keys) | Value::Vector(keys)) => {
+            let mut result = std::collections::HashMap::new();
+            for key_val in keys {
+                let key = match key_val {
+                    Value::String(s) => s.clone(),
+                    Value::Keyword(k) => k.clone(),
+                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
+                };
+                if let Some(v) = m.get(&key) {
+                    result.insert(key, v.clone());
+                }
+            }
+            Ok(Value::Map(result))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["select-keys", "map and list/vector"])),
+    }
+}

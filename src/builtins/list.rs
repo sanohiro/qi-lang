@@ -215,3 +215,34 @@ pub fn native_range(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
     }
 }
+
+/// last - リストの最後の要素
+pub fn native_last(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["last"]));
+    }
+    match &args[0] {
+        Value::List(v) | Value::Vector(v) => {
+            Ok(v.last().cloned().unwrap_or(Value::Nil))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["last", "lists or vectors"])),
+    }
+}
+
+/// zip - 2つのリストを組み合わせる
+pub fn native_zip(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["zip"]));
+    }
+    match (&args[0], &args[1]) {
+        (Value::List(a), Value::List(b)) | (Value::Vector(a), Value::Vector(b)) => {
+            let result: Vec<Value> = a
+                .iter()
+                .zip(b.iter())
+                .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()]))
+                .collect();
+            Ok(Value::List(result))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["zip", "lists or vectors"])),
+    }
+}
