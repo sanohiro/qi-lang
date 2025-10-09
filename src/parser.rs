@@ -195,7 +195,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err("defの後にはシンボルが必要です".to_string()),
+            _ => return Err(msg(MsgKey::DefNeedsSymbol).to_string()),
         };
         self.advance();
 
@@ -222,7 +222,7 @@ impl Parser {
                         params.push(vararg.clone());
                         self.advance();
                     } else {
-                        return Err("&の後には変数名が必要です".to_string());
+                        return Err(msg(MsgKey::VarargNeedsName).to_string());
                     }
                     break;
                 } else {
@@ -230,7 +230,7 @@ impl Parser {
                     self.advance();
                 }
             } else {
-                return Err("パラメータリストにはシンボルが必要です".to_string());
+                return Err(msg(MsgKey::FnNeedsParam).to_string());
             }
         }
 
@@ -257,7 +257,7 @@ impl Parser {
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
                 Some(Token::Symbol(s)) => s.clone(),
-                _ => return Err("letの束縛にはシンボルが必要です".to_string()),
+                _ => return Err(msg(MsgKey::LetNeedsSymbol).to_string()),
             };
             self.advance();
 
@@ -474,7 +474,7 @@ impl Parser {
         while self.current() != Some(&Token::RBrace) {
             let key = match self.current() {
                 Some(Token::Keyword(k)) => k.clone(),
-                _ => return Err("マップパターンのキーはキーワードである必要があります".to_string()),
+                _ => return Err(msg(MsgKey::MapKeyNeedsKeyword).to_string()),
             };
             self.advance();
 
@@ -493,7 +493,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(n)) => n.clone(),
-            _ => return Err("module requires a module name".to_string()),
+            _ => return Err(msg(MsgKey::ModuleNeedsName).to_string()),
         };
         self.advance();
 
@@ -513,7 +513,7 @@ impl Parser {
                     symbols.push(s.clone());
                     self.advance();
                 }
-                _ => return Err("export requires symbols".to_string()),
+                _ => return Err(msg(MsgKey::ExportNeedsSymbols).to_string()),
             }
         }
 
@@ -529,7 +529,7 @@ impl Parser {
         // モジュール名
         let module = match self.current() {
             Some(Token::Symbol(n)) => n.clone(),
-            _ => return Err("use requires a module name".to_string()),
+            _ => return Err(msg(MsgKey::UseNeedsModuleName).to_string()),
         };
         self.advance();
 
@@ -546,7 +546,7 @@ impl Parser {
                             symbols.push(s.clone());
                             self.advance();
                         }
-                        _ => return Err("Expected symbol in :only list".to_string()),
+                        _ => return Err(msg(MsgKey::ExpectedSymbolInOnlyList).to_string()),
                     }
                 }
                 self.expect(Token::RBracket)?;
@@ -560,14 +560,14 @@ impl Parser {
                         self.advance();
                         UseMode::As(alias)
                     }
-                    _ => return Err(":as requires an alias name".to_string()),
+                    _ => return Err(msg(MsgKey::AsNeedsAlias).to_string()),
                 }
             }
             Some(Token::Keyword(k)) if k == "all" => {
                 self.advance();
                 UseMode::All
             }
-            _ => return Err("use requires :only, :as, or :all".to_string()),
+            _ => return Err(msg(MsgKey::UseNeedsMode).to_string()),
         };
 
         self.expect(Token::RParen)?;
