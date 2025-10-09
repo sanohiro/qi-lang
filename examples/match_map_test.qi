@@ -1,0 +1,19 @@
+; マップパターンマッチのテスト
+
+; マップパターンマッチ
+(def greet (fn [user]
+  (match user
+    {:name n :age a} -> (print n)
+    _ -> (print "unknown"))))
+
+(greet {:name "Alice" :age 30})
+
+; マップの部分マッチ（:ageがなくてもOK）
+(def get-name (fn [data]
+  (match data
+    {:name n} -> n
+    _ -> "no name")))
+
+(print (get-name {:name "Bob" :age 25}))
+(print (get-name {:name "Carol"}))
+(print (get-name {:age 30}))

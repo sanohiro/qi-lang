@@ -1,0 +1,15 @@
+[package]
+name = "qi-lang"
+version = "0.1.0"
+edition = "2021"
+authors = ["hiro"]
+
+[lib]
+name = "qi_lang"
+path = "src/lib.rs"
+
+[[bin]]
+name = "qi"
+path = "src/main.rs"
+
+[dependencies]

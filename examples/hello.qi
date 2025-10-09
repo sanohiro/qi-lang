@@ -1,0 +1,25 @@
+; Hello World プログラム
+(print "Hello, Qi!")
+
+; 基本的な算術演算
+(print (+ 1 2 3))
+(print (* 2 3 4))
+
+; 変数定義
+(def x 42)
+(print x)
+
+; 関数定義と呼び出し
+(def add (fn [a b] (+ a b)))
+(print (add 10 20))
+
+; let式
+(let [x 10 y 20]
+  (print (+ x y)))
+
+; if式
+(print (if true "yes" "no"))
+(print (if false "yes" "no"))
+
+; ネストした式
+(print (+ (* 2 3) (- 10 5)))
