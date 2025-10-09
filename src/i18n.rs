@@ -5,6 +5,7 @@
 /// 2. LANG 環境変数（システムのロケール設定）
 /// 3. デフォルト: en
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Lang {
@@ -278,51 +279,41 @@ impl Messages {
 }
 
 /// グローバルなメッセージマネージャー
-static mut MESSAGES: Option<Messages> = None;
+static MESSAGES: OnceLock<Messages> = OnceLock::new();
 
 /// メッセージマネージャーを初期化
 pub fn init() {
-    unsafe {
-        MESSAGES = Some(Messages::new(Lang::from_env()));
-    }
+    MESSAGES.get_or_init(|| Messages::new(Lang::from_env()));
 }
 
 /// メッセージを取得
 pub fn msg(key: MsgKey) -> &'static str {
-    unsafe {
-        MESSAGES
-            .as_ref()
-            .map(|m| m.get(key))
-            .unwrap_or("message system not initialized")
-    }
+    MESSAGES
+        .get()
+        .map(|m| m.get(key))
+        .unwrap_or("message system not initialized")
 }
 
 /// フォーマット付きメッセージを取得
 pub fn fmt_msg(key: MsgKey, args: &[&str]) -> String {
-    unsafe {
-        MESSAGES
-            .as_ref()
-            .map(|m| m.fmt(key, args))
-            .unwrap_or_else(|| "message system not initialized".to_string())
-    }
+    MESSAGES
+        .get()
+        .map(|m| m.fmt(key, args))
+        .unwrap_or_else(|| "message system not initialized".to_string())
 }
 
 /// UIメッセージを取得
 pub fn ui_msg(key: UiMsg) -> &'static str {
-    unsafe {
-        MESSAGES
-            .as_ref()
-            .map(|m| m.get_ui(key))
-            .unwrap_or("message system not initialized")
-    }
+    MESSAGES
+        .get()
+        .map(|m| m.get_ui(key))
+        .unwrap_or("message system not initialized")
 }
 
 /// フォーマット付きUIメッセージを取得
 pub fn fmt_ui_msg(key: UiMsg, args: &[&str]) -> String {
-    unsafe {
-        MESSAGES
-            .as_ref()
-            .map(|m| m.fmt_ui(key, args))
-            .unwrap_or_else(|| "message system not initialized".to_string())
-    }
+    MESSAGES
+        .get()
+        .map(|m| m.fmt_ui(key, args))
+        .unwrap_or_else(|| "message system not initialized".to_string())
 }
