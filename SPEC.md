@@ -1,10 +1,12 @@
-# Qi言語仕様（完全版）
+# Qi言語仕様
 
 ## 言語概要
 
 **Qi - A Lisp that flows**
 
 シンプル、高速、簡潔なモダンLisp系言語。パイプライン、パターンマッチング、並行・並列処理に強い。
+
+**実装状況**: 本仕様書には計画中の機能も含まれています。実装済みの機能には ✅ マーク、未実装の機能には 🚧 マークを付記しています。
 
 ### 哲学
 - **Simple**: 特殊形式8つ、記法最小限
@@ -51,16 +53,16 @@ nil false true          ;; 3つの異なる値
 (s/get "hello" 0)       ;; 文字列のget（"h"）
 ```
 
-## 2. 特殊形式（8つ）
+## 2. 特殊形式（8つ）✅
 
-### `def` - グローバル定義
+### ✅ `def` - グローバル定義
 ```lisp
 (def x 42)
 (def greet (fn [name] (str "Hello, " name)))
 (def ops [+ - * /])
 ```
 
-### `fn` - 関数定義
+### ✅ `fn` - 関数定義
 ```lisp
 (fn [x] (* x 2))
 (fn [x y] (+ x y))
@@ -73,7 +75,7 @@ nil false true          ;; 3つの異なる値
 (fn [(x . y)] (list x y))
 ```
 
-### `let` - ローカル束縛
+### ✅ `let` - ローカル束縛
 ```lisp
 (let [x 10 y 20]
   (+ x y))
@@ -88,7 +90,7 @@ nil false true          ;; 3つの異なる値
   (list x y))  ;; (a (b c))
 ```
 
-### `do` - 順次実行
+### ✅ `do` - 順次実行
 ```lisp
 (do
   (log "first")
@@ -96,7 +98,7 @@ nil false true          ;; 3つの異なる値
   42)  ;; 最後の式の値を返す
 ```
 
-### `if` - 条件分岐
+### ✅ `if` - 条件分岐
 ```lisp
 ;; 基本形
 (if test then else)
@@ -114,7 +116,7 @@ nil false true          ;; 3つの異なる値
     "negative or zero")
 ```
 
-### `match` - パターンマッチング
+### ✅ `match` - パターンマッチング
 ```lisp
 ;; 値のマッチ
 (match x
@@ -148,7 +150,7 @@ nil false true          ;; 3つの異なる値
   _ -> "zero")
 ```
 
-### `try` - エラー処理
+### ✅ `try` - エラー処理
 ```lisp
 ;; {:ok result} または {:error e} を返す
 (match (try (risky-operation))
@@ -165,7 +167,7 @@ nil false true          ;; 3つの異なる値
   {:error e} -> [])
 ```
 
-### `defer` - 遅延実行
+### ✅ `defer` - 遅延実行
 ```lisp
 ;; スコープ終了時に実行
 (def process-file (fn [path]
@@ -191,7 +193,7 @@ nil false true          ;; 3つの異なる値
 
 ## 3. 演算子
 
-### `|>` - パイプライン
+### ✅ `|>` - パイプライン
 ```lisp
 ;; 左から右へデータを流す
 (x |> f |> g |> h)
@@ -254,56 +256,82 @@ nil false true          ;; 3つの異なる値
 
 ### リスト操作
 ```lisp
+;; ✅ 実装済み
 map filter reduce       ;; 高階関数
-first rest last         ;; アクセス
+first rest              ;; アクセス
 take drop               ;; 部分取得
 flatten concat          ;; 結合
-len empty?              ;; 情報
-conj                    ;; 追加
+len count empty?        ;; 情報（count は len のエイリアス）
+cons conj               ;; 追加
 range                   ;; (range 10) => (0 1 2 ... 9)
 reverse                 ;; 反転
+nth                     ;; n番目の要素
+
+;; 🚧 未実装
+last                    ;; 最後の要素
 sort sort-by            ;; ソート
 group-by                ;; グループ化
 zip                     ;; リストを組み合わせ
 ```
 
-### 数値・比較
+### 数値・比較（✅ 全て実装済み）
 ```lisp
-+ - * /                 ;; 算術演算
-= < > <= >=             ;; 比較
++ - * / %               ;; 算術演算
+= != < > <= >=          ;; 比較
 inc dec                 ;; インクリメント/デクリメント
 sum                     ;; 合計
 abs                     ;; 絶対値
 min max                 ;; 最小/最大
 ```
 
-### 論理
+### 論理（✅ 全て実装済み）
 ```lisp
 and or not
 ```
 
 ### マップ操作
 ```lisp
+;; ✅ 実装済み
 get keys vals           ;; アクセス
-assoc dissoc merge      ;; 変更
+assoc dissoc            ;; 変更
+
+;; 🚧 未実装
+merge                   ;; マージ
 update                  ;; 更新
 select-keys             ;; キー選択
 ```
 
-### 基本文字列
+### 文字列操作
 ```lisp
-str                     ;; 連結（core）
-len empty?              ;; 長さ、空チェック（core）
+;; ✅ 実装済み（core）
+str                     ;; 連結
+split join              ;; 分割・結合
+upper lower trim        ;; 変換
+len empty?              ;; 長さ、空チェック
+```
+
+### 述語関数（✅ 全て実装済み）
+```lisp
+;; 型判定
+nil? list? vector? map? string? keyword?
+integer? float? number? fn?
+
+;; 状態チェック
+empty?
 ```
 
 ### IO
 ```lisp
-print log               ;; 出力
+;; ✅ 実装済み
+print                   ;; 出力
+
+;; 🚧 未実装
+log                     ;; ログ出力
 slurp spit              ;; ファイル読み書き
 open close read write   ;; ファイル操作
 ```
 
-### 並行・並列
+### 🚧 並行・並列（未実装）
 ```lisp
 chan put take take-n    ;; チャネル
 go                      ;; 並行実行
@@ -311,7 +339,7 @@ pmap                    ;; 並列map
 loop recur              ;; ループ
 ```
 
-### 状態管理
+### 🚧 状態管理（未実装）
 ```lisp
 atom                    ;; アトム作成
 swap!                   ;; アトミック更新
@@ -320,13 +348,15 @@ deref                   ;; 値取得
 reset!                  ;; 値を直接セット
 ```
 
-### エラー処理
+### 🚧 エラー処理（一部未実装）
 ```lisp
+;; ✅ 実装済み: try で {:ok ...} / {:error ...} を返す
+
+;; 🚧 未実装
 error                   ;; 例外を投げる（回復不能）
-;; 通常は {:ok ...} / {:error ...} を返す（回復可能）
 ```
 
-### メタプログラミング
+### 🚧 メタプログラミング（未実装）
 ```lisp
 uvar                    ;; 一意な変数を生成
 variable                ;; 変数かどうかチェック
@@ -337,9 +367,9 @@ eval                    ;; 式を評価
 vmark                   ;; uvarのマーカー
 ```
 
-## 6. ループ構造
+## 6. 🚧 ループ構造（未実装）
 
-### `loop` / `recur`
+### 🚧 `loop` / `recur`
 ```lisp
 ;; 基本形
 (loop [var1 val1 var2 val2 ...]
@@ -498,9 +528,9 @@ vmark                   ;; uvarのマーカー
            (list ,a ,b ,c))))))
 ```
 
-## 9. モジュールシステム
+## 9. モジュールシステム（✅ 基本機能実装済み）
 
-### モジュール定義
+### ✅ モジュール定義
 ```lisp
 ;; http.qi
 (module http)
@@ -513,26 +543,33 @@ vmark                   ;; uvarのマーカー
 
 ### インポート
 ```lisp
-;; パターン1: 特定の関数のみ（推奨）
+;; ✅ パターン1: 特定の関数のみ（推奨・実装済み）
 (use http :only [get post])
 (get url)
 
-;; パターン2: エイリアス
+;; 🚧 パターン2: エイリアス（未実装）
 (use http :as h)
 (h/get url)
 
-;; パターン3: 全てインポート
+;; ✅ パターン3: 全てインポート（実装済み）
 (use http :all)
 (get url)
 
-;; パターン4: リネーム
+;; 🚧 パターン4: リネーム（未実装）
 (use http :only [get :as fetch])
 (fetch url)
 ```
 
+**実装状況メモ**:
+- ✅ `module` / `export` - モジュール定義・エクスポート
+- ✅ `use :only [...]` - 特定関数のインポート
+- ✅ `use :all` - 全てインポート
+- ✅ 循環参照検出
+- 🚧 `use :as` - エイリアス機能（パース済み、評価未実装）
+
 ### 標準モジュール
 
-#### core（自動インポート）
+#### ✅ core（自動インポート）
 ```lisp
 ;; 基本関数全て
 map filter reduce
@@ -541,7 +578,7 @@ uvar variable
 ...
 ```
 
-#### str - 文字列操作
+#### 🚧 str - 文字列操作（未実装）
 ```lisp
 (use str :only [
   ;; 検索
@@ -589,7 +626,7 @@ uvar variable
 (s/split "a,b,c" ",")  ;; ["a" "b" "c"]
 ```
 
-#### csv - CSV/TSV処理
+#### 🚧 csv - CSV/TSV処理（未実装）
 ```lisp
 (use csv :only [
   parse parse-file
@@ -622,7 +659,7 @@ uvar variable
   {:batch-size 1000})
 ```
 
-#### regex - 正規表現
+#### 🚧 regex - 正規表現（未実装）
 ```lisp
 (use regex :only [
   match match-all
@@ -657,7 +694,7 @@ uvar variable
 (regex/test "test@example.com" email-pattern)
 ```
 
-#### その他
+#### 🚧 その他（全て未実装）
 ```lisp
 http      ;; HTTPクライアント
 json      ;; JSONパース
@@ -670,14 +707,14 @@ test      ;; テスト
 
 ## 10. 文字列リテラル
 
-### 基本
+### ✅ 基本（実装済み）
 ```lisp
 "hello"
 "hello\nworld"
 "say \"hello\""
 ```
 
-### 複数行
+### 🚧 複数行（未実装）
 ```lisp
 """
 This is a
@@ -686,7 +723,7 @@ string
 """
 ```
 
-### 補間（f-string）
+### 🚧 補間（f-string）（未実装）
 ```lisp
 f"Hello, {name}! You are {age} years old."
 
@@ -931,15 +968,22 @@ $ qi update
 
 ## まとめ
 
-**名前**: Qi  
-**特殊形式**: `def` `fn` `let` `do` `if` `match` `try` `defer`（8つ）  
-**演算子**: `|>`  
-**ループ**: `loop` `recur`  
-**エラー**: `error`（致命的）、`{:ok/:error}`（通常）  
-**メタ**: `uvar` `variable` `vmark`（マクロ用）  
-**データ**: リスト、マップ、ベクタ、関数  
-**名前空間**: Lisp-1、coreが優先  
-**nil/bool**: 別物、条件式では nil も falsy  
-**並行**: `go`（並行）、`pmap`（並列）、チャネル  
-**文字列**: f-string補間、str/csv/regexモジュール  
+**名前**: Qi
+**特殊形式**: ✅ `def` `fn` `let` `do` `if` `match` `try` `defer`（8つ全て実装済み）
+**演算子**: ✅ `|>` パイプライン（実装済み）
+**ループ**: 🚧 `loop` `recur`（未実装）
+**エラー**: ✅ `{:ok/:error}`（実装済み）、🚧 `error`（未実装）
+**メタ**: 🚧 `uvar` `variable` `vmark`（未実装）
+**データ**: ✅ リスト、マップ、ベクタ、関数（全て実装済み）
+**名前空間**: ✅ Lisp-1、coreが優先（実装済み）
+**nil/bool**: ✅ 別物、条件式では nil も falsy（実装済み）
+**並行**: 🚧 `go`（並行）、`pmap`（並列）、チャネル（未実装）
+**文字列**: ✅ 基本文字列操作（実装済み）、🚧 f-string補間・str/csv/regexモジュール（未実装）
+**モジュール**: ✅ 基本機能実装済み（`module`/`export`/`use :only`/`:all`）、🚧 `:as`エイリアス（未実装）
 **哲学**: Simple, Fast, Concise - エネルギーの流れのようなプログラミング
+
+### 実装状況サマリー
+- ✅ **コア機能（約40%完成）**: 8つの特殊形式、パイプライン、パターンマッチング、モジュールシステム基盤
+- ✅ **組み込み関数（61個）**: 算術、比較、リスト、文字列、マップ、述語、論理、高階関数
+- ✅ **データ構造**: nil、bool、整数、浮動小数点、文字列、シンボル、キーワード、リスト、ベクタ、マップ、関数
+- 🚧 **未実装の重要機能**: loop/recur、並行処理、状態管理、メタプログラミング、標準モジュール群、文字列補間
