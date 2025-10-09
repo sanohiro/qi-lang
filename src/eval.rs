@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 pub struct Evaluator {
     global_env: Rc<RefCell<Env>>,
+    defer_stack: Vec<Vec<Expr>>, // スコープごとのdeferスタック（LIFO）
 }
 
 impl Evaluator {
@@ -170,6 +171,7 @@ impl Evaluator {
 
         Evaluator {
             global_env: Rc::new(RefCell::new(env)),
+            defer_stack: Vec::new(),
         }
     }
 
@@ -265,10 +267,22 @@ impl Evaluator {
             }
 
             Expr::Do(exprs) => {
+                // deferスコープを作成
+                self.defer_stack.push(Vec::new());
+
                 let mut result = Value::Nil;
                 for expr in exprs {
                     result = self.eval_with_env(expr, env.clone())?;
                 }
+
+                // deferを実行（LIFO順）
+                if let Some(defers) = self.defer_stack.pop() {
+                    for defer_expr in defers.iter().rev() {
+                        // deferの評価エラーは無視（元の結果を返す）
+                        let _ = self.eval_with_env(defer_expr, env.clone());
+                    }
+                }
+
                 Ok(result)
             }
 
@@ -278,7 +292,10 @@ impl Evaluator {
             }
 
             Expr::Try(expr) => {
-                match self.eval_with_env(expr, env.clone()) {
+                // Tryもdeferスコープを作成
+                self.defer_stack.push(Vec::new());
+
+                let result = match self.eval_with_env(expr, env.clone()) {
                     Ok(value) => {
                         // {:ok value}
                         let mut map = HashMap::new();
@@ -291,7 +308,27 @@ impl Evaluator {
                         map.insert("error".to_string(), Value::String(e));
                         Ok(Value::Map(map))
                     }
+                };
+
+                // deferを実行（LIFO順、エラーでも必ず実行）
+                if let Some(defers) = self.defer_stack.pop() {
+                    for defer_expr in defers.iter().rev() {
+                        let _ = self.eval_with_env(defer_expr, env.clone());
+                    }
                 }
+
+                result
+            }
+
+            Expr::Defer(expr) => {
+                // defer式をスタックに追加（評価はしない）
+                if let Some(current_scope) = self.defer_stack.last_mut() {
+                    current_scope.push(expr.as_ref().clone());
+                } else {
+                    // スコープがない場合は新しいスコープを作成
+                    self.defer_stack.push(vec![expr.as_ref().clone()]);
+                }
+                Ok(Value::Nil)
             }
 
             // モジュールシステム（暫定実装）
@@ -664,9 +701,9 @@ impl Evaluator {
                 }
                 Ok(Value::List(items))
             }
-            // モジュール関連とtryはquoteできない
-            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) => {
-                Err("module/export/use/try cannot be quoted".to_string())
+            // モジュール関連とtry、deferはquoteできない
+            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) => {
+                Err("module/export/use/try/defer cannot be quoted".to_string())
             }
             _ => Err(format!("quoteできない式: {:?}", expr)),
         }
@@ -1365,5 +1402,21 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result, Value::Integer(-1));
+    }
+
+    #[test]
+    fn test_defer_basic() {
+        // deferはスコープ終了時に実行される
+        // deferがnilを返すことを確認
+        let result = eval_str(
+            r#"
+            (do
+              (defer (+ 1 2))
+              42)
+            "#,
+        )
+        .unwrap();
+        // doの結果は42（deferの結果ではない）
+        assert_eq!(result, Value::Integer(42));
     }
 }

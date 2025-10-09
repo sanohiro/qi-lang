@@ -1,0 +1,40 @@
+; defer式のデモ
+
+; 基本的なdefer
+(print "=== Basic defer ===")
+(do
+  (print "1. Start")
+  (defer (print "4. Cleanup"))
+  (print "2. Work")
+  (print "3. End"))
+; 実行順: 1 -> 2 -> 3 -> 4
+
+; 複数のdefer（LIFO順）
+(print "\n=== Multiple defers (LIFO) ===")
+(do
+  (defer (print "Last (3)"))
+  (defer (print "Middle (2)"))
+  (defer (print "First (1)"))
+  (print "Work"))
+; Work -> First -> Middle -> Last
+
+; tryと組み合わせ（エラー時もdeferは実行される）
+(print "\n=== Defer with error ===")
+(match (try
+  (do
+    (defer (print "Cleanup even on error"))
+    (print "Before error")
+    (/ 1 0)))
+  {:ok result} -> (print (str "Success: " result))
+  {:error e} -> (print (str "Error: " e)))
+
+; ネストされたスコープ
+(print "\n=== Nested scopes ===")
+(do
+  (defer (print "Outer cleanup"))
+  (print "Outer start")
+  (do
+    (defer (print "Inner cleanup"))
+    (print "Inner work"))
+  (print "Outer end"))
+; Outer start -> Inner work -> Inner cleanup -> Outer end -> Outer cleanup

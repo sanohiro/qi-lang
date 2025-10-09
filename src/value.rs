@@ -132,6 +132,7 @@ pub enum Expr {
         arms: Vec<MatchArm>,
     },
     Try(Box<Expr>),
+    Defer(Box<Expr>),
 
     // モジュール
     Module(String),

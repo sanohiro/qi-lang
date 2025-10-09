@@ -143,6 +143,7 @@ impl Parser {
                 "do" => return self.parse_do(),
                 "match" => return self.parse_match(),
                 "try" => return self.parse_try(),
+                "defer" => return self.parse_defer(),
                 "module" => return self.parse_module(),
                 "export" => return self.parse_export(),
                 "use" => return self.parse_use(),
@@ -389,6 +390,17 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Try(expr))
+    }
+
+    /// (defer expr)
+    fn parse_defer(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'defer'をスキップ
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Defer(expr))
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {
@@ -678,6 +690,15 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Try(_) => {}
             _ => panic!("Expected Try"),
+        }
+    }
+
+    #[test]
+    fn test_parse_defer() {
+        let mut parser = Parser::new("(defer (print \"cleanup\"))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Defer(_) => {}
+            _ => panic!("Expected Defer"),
         }
     }
 }
