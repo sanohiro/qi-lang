@@ -462,15 +462,14 @@ impl Evaluator {
 
                 if f.is_variadic {
                     if f.params.len() != 1 {
-                        return Err("可変長引数関数はパラメータが1つである必要があります".to_string());
+                        return Err(msg(MsgKey::VariadicFnOneParam).to_string());
                     }
                     new_env.set(f.params[0].clone(), Value::List(args));
                 } else {
                     if f.params.len() != args.len() {
-                        return Err(format!(
-                            "引数の数が一致しません: 期待 {}, 実際 {}",
-                            f.params.len(),
-                            args.len()
+                        return Err(fmt_msg(
+                            MsgKey::ArgCountMismatch,
+                            &[&f.params.len().to_string(), &args.len().to_string()],
                         ));
                     }
                     for (param, arg) in f.params.iter().zip(args.iter()) {
@@ -516,7 +515,7 @@ impl Evaluator {
     /// quote - 式を評価せずにそのまま返す
     fn eval_quote(&self, args: &[Expr]) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(format!("quoteは1つの引数が必要です: 実際 {}", args.len()));
+            return Err(fmt_msg(MsgKey::Need1Arg, &["quote"]));
         }
         self.expr_to_value(&args[0])
     }
@@ -1149,10 +1148,7 @@ impl Evaluator {
                     if let Some(value) = module.exports.get(name) {
                         env.borrow_mut().set(name.clone(), value.clone());
                     } else {
-                        return Err(format!(
-                            "シンボル{}はモジュール{}にエクスポートされていません",
-                            name, module_name
-                        ));
+                        return Err(fmt_msg(MsgKey::SymbolNotExported, &[name, module_name]));
                     }
                 }
             }
@@ -1164,7 +1160,7 @@ impl Evaluator {
             }
             UseMode::As(_alias) => {
                 // TODO: エイリアス機能は将来実装
-                return Err(":as モードはまだ実装されていません".to_string());
+                return Err(msg(MsgKey::UseAsNotImplemented).to_string());
             }
         }
 

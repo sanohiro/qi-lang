@@ -1,6 +1,6 @@
 //! 算術演算関数
 
-use crate::i18n::{msg, MsgKey};
+use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
 /// + - 加算
@@ -9,7 +9,7 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => sum += n,
-            _ => return Err(format!("+ は整数のみ受け付けます: {:?}", arg)),
+            _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["+", &format!("{:?}", arg)])),
         }
     }
     Ok(Value::Integer(sum))
@@ -18,7 +18,7 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
 /// - - 減算（または符号反転）
 pub fn native_sub(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("- には少なくとも1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["-", "1"]));
     }
 
     match &args[0] {
@@ -30,13 +30,13 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
                 for arg in &args[1..] {
                     match arg {
                         Value::Integer(n) => result -= n,
-                        _ => return Err(format!("- は整数のみ受け付けます: {:?}", arg)),
+                        _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["-", &format!("{:?}", arg)])),
                     }
                 }
                 Ok(Value::Integer(result))
             }
         }
-        _ => Err(format!("- は整数のみ受け付けます: {:?}", args[0])),
+        _ => Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["-", &format!("{:?}", args[0])])),
     }
 }
 
@@ -46,7 +46,7 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => product *= n,
-            _ => return Err(format!("* は整数のみ受け付けます: {:?}", arg)),
+            _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["*", &format!("{:?}", arg)])),
         }
     }
     Ok(Value::Integer(product))
@@ -55,7 +55,7 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
 /// / - 除算
 pub fn native_div(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("/ には2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["/"]));
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => {
@@ -64,14 +64,14 @@ pub fn native_div(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a / b))
         }
-        _ => Err("/ は整数のみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["/"])),
     }
 }
 
 /// % - 剰余
 pub fn native_mod(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("% には2つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["%"]));
     }
 
     match (&args[0], &args[1]) {
@@ -81,30 +81,30 @@ pub fn native_mod(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a % b))
         }
-        _ => Err("% は整数のみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["%"])),
     }
 }
 
 /// abs - 絶対値
 pub fn native_abs(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("absには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["abs"]));
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n.abs())),
         Value::Float(f) => Ok(Value::Float(f.abs())),
-        _ => Err("absは数値のみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::NumberOnly, &["abs"])),
     }
 }
 
 /// min - 最小値
 pub fn native_min(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("minには少なくとも1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["min", "1"]));
     }
     let mut min = match &args[0] {
         Value::Integer(n) => *n,
-        _ => return Err("minは整数のみ受け付けます".to_string()),
+        _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["min"])),
     };
     for arg in &args[1..] {
         match arg {
@@ -113,7 +113,7 @@ pub fn native_min(args: &[Value]) -> Result<Value, String> {
                     min = *n;
                 }
             }
-            _ => return Err("minは整数のみ受け付けます".to_string()),
+            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["min"])),
         }
     }
     Ok(Value::Integer(min))
@@ -122,11 +122,11 @@ pub fn native_min(args: &[Value]) -> Result<Value, String> {
 /// max - 最大値
 pub fn native_max(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("maxには少なくとも1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["max", "1"]));
     }
     let mut max = match &args[0] {
         Value::Integer(n) => *n,
-        _ => return Err("maxは整数のみ受け付けます".to_string()),
+        _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["max"])),
     };
     for arg in &args[1..] {
         match arg {
@@ -135,7 +135,7 @@ pub fn native_max(args: &[Value]) -> Result<Value, String> {
                     max = *n;
                 }
             }
-            _ => return Err("maxは整数のみ受け付けます".to_string()),
+            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["max"])),
         }
     }
     Ok(Value::Integer(max))
@@ -144,7 +144,7 @@ pub fn native_max(args: &[Value]) -> Result<Value, String> {
 /// inc - インクリメント
 pub fn native_inc(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("incには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["inc"]));
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n + 1)),
@@ -155,7 +155,7 @@ pub fn native_inc(args: &[Value]) -> Result<Value, String> {
 /// dec - デクリメント
 pub fn native_dec(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("decには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["dec"]));
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n - 1)),
@@ -166,7 +166,7 @@ pub fn native_dec(args: &[Value]) -> Result<Value, String> {
 /// sum - 合計
 pub fn native_sum(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("sumには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["sum"]));
     }
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -179,6 +179,6 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(sum))
         }
-        _ => Err("sumはリストまたはベクタが必要です".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["sum"])),
     }
 }

@@ -6,20 +6,20 @@ use crate::value::Value;
 /// first - リストの最初の要素
 pub fn native_first(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("first には1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["first"]));
     }
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
             Ok(v.first().cloned().unwrap_or(Value::Nil))
         }
-        _ => Err("first はリストまたはベクタのみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["first"])),
     }
 }
 
 /// rest - リストの残り
 pub fn native_rest(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("rest には1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["rest"]));
     }
     match &args[0] {
         Value::List(v) => {
@@ -36,20 +36,20 @@ pub fn native_rest(args: &[Value]) -> Result<Value, String> {
                 Ok(Value::Vector(v[1..].to_vec()))
             }
         }
-        _ => Err("rest はリストまたはベクタのみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["rest"])),
     }
 }
 
 /// len - 長さを取得
 pub fn native_len(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("len には1つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["len"]));
     }
     match &args[0] {
         Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
         Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
         Value::String(s) => Ok(Value::Integer(s.len() as i64)),
-        _ => Err("len はコレクションまたは文字列のみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::StringOrCollectionOnly, &["len"])),
     }
 }
 
@@ -61,11 +61,11 @@ pub fn native_count(args: &[Value]) -> Result<Value, String> {
 /// nth - n番目の要素を取得
 pub fn native_nth(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("nthには2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["nth"]));
     }
     let index = match &args[1] {
         Value::Integer(n) => *n as usize,
-        _ => return Err("nthの第2引数は整数が必要です".to_string()),
+        _ => return Err(msg(MsgKey::NthSecondArgInteger).to_string()),
     };
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
@@ -78,7 +78,7 @@ pub fn native_nth(args: &[Value]) -> Result<Value, String> {
 /// reverse - リストを反転
 pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("reverseには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["reverse"]));
     }
     match &args[0] {
         Value::List(v) => {
@@ -98,7 +98,7 @@ pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
 /// cons - リストの先頭に要素を追加
 pub fn native_cons(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("consには2つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["cons"]));
     }
     match &args[1] {
         Value::Nil => Ok(Value::List(vec![args[0].clone()])),
@@ -119,7 +119,7 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
 /// conj - コレクションに要素を追加
 pub fn native_conj(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("conjには少なくとも2つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["conj", "2"]));
     }
     match &args[0] {
         Value::List(v) => {
@@ -141,7 +141,7 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
 /// take - リストの最初のn要素を取得
 pub fn native_take(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("takeには2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["take"]));
     }
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
@@ -157,7 +157,7 @@ pub fn native_take(args: &[Value]) -> Result<Value, String> {
 /// drop - リストの最初のn要素をスキップ
 pub fn native_drop(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(format!("dropには2つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need2Args, &["drop"]));
     }
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
@@ -185,7 +185,7 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
 /// flatten - ネストしたリストを平坦化
 pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("flattenには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["flatten"]));
     }
     fn flatten_value(v: &Value, result: &mut Vec<Value>) {
         match v {
@@ -205,7 +205,7 @@ pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
 /// range - 0からn-1までのリストを生成
 pub fn native_range(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(format!("rangeには1つの引数が必要です: 実際 {}", args.len()));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["range"]));
     }
     match &args[0] {
         Value::Integer(n) => {

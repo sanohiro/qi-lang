@@ -104,6 +104,8 @@ pub enum MsgKey {
     // モジュールエラー
     SymbolNotFound,
     ModuleNotFound,
+    SymbolNotExported,
+    UseAsNotImplemented,
 
     // match関連
     NoMatchingPattern,
@@ -112,9 +114,25 @@ pub enum MsgKey {
     NeedAtLeastNArgs,
     NeedExactlyNArgs,
     Need2Or3Args,
+    Need2Args,
+    Need1Arg,
 
     // 型エラー
     CannotQuote,
+    VariadicFnNeedsOneParam,
+
+    // パーサーの追加エラー
+    ModuleNeedsName,
+    ExportNeedsSymbols,
+    UseNeedsModuleName,
+    ExpectedSymbolInOnlyList,
+    AsNeedsAlias,
+    UseNeedsMode,
+
+    // 組み込み関数の汎用エラー
+    IntegerOnlyWithDebug,  // デバッグ情報付き
+    NthSecondArgInteger,
+    VariadicFnOneParam,
 }
 
 /// UIメッセージキー
@@ -216,12 +234,30 @@ impl Messages {
         // モジュールエラー
         messages.insert((Lang::En, MsgKey::SymbolNotFound), "symbol {0} not found (module: {1})");
         messages.insert((Lang::En, MsgKey::ModuleNotFound), "module {0} not found ({0}.qi)");
+        messages.insert((Lang::En, MsgKey::SymbolNotExported), "symbol {0} is not exported from module {1}");
+        messages.insert((Lang::En, MsgKey::UseAsNotImplemented), ":as mode is not implemented yet");
 
         messages.insert((Lang::En, MsgKey::NoMatchingPattern), "no matching pattern");
         messages.insert((Lang::En, MsgKey::NeedAtLeastNArgs), "{0} requires at least {1} argument(s)");
         messages.insert((Lang::En, MsgKey::NeedExactlyNArgs), "{0} requires exactly {1} argument(s)");
         messages.insert((Lang::En, MsgKey::Need2Or3Args), "{0} requires 2 or 3 arguments");
+        messages.insert((Lang::En, MsgKey::Need2Args), "{0} requires 2 arguments");
+        messages.insert((Lang::En, MsgKey::Need1Arg), "{0} requires 1 argument");
         messages.insert((Lang::En, MsgKey::CannotQuote), "cannot quote expression: {0}");
+        messages.insert((Lang::En, MsgKey::VariadicFnNeedsOneParam), "variadic function requires exactly one parameter");
+
+        // パーサーの追加エラー
+        messages.insert((Lang::En, MsgKey::ModuleNeedsName), "module requires a module name");
+        messages.insert((Lang::En, MsgKey::ExportNeedsSymbols), "export requires symbols");
+        messages.insert((Lang::En, MsgKey::UseNeedsModuleName), "use requires a module name");
+        messages.insert((Lang::En, MsgKey::ExpectedSymbolInOnlyList), "expected symbol in :only list");
+        messages.insert((Lang::En, MsgKey::AsNeedsAlias), ":as requires an alias name");
+        messages.insert((Lang::En, MsgKey::UseNeedsMode), "use requires :only, :as, or :all");
+
+        // 組み込み関数の汎用エラー
+        messages.insert((Lang::En, MsgKey::IntegerOnlyWithDebug), "{0} accepts integers only: {1:?}");
+        messages.insert((Lang::En, MsgKey::NthSecondArgInteger), "nth's second argument must be an integer");
+        messages.insert((Lang::En, MsgKey::VariadicFnOneParam), "variadic function requires exactly one parameter");
 
         // 日本語メッセージ
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
@@ -276,12 +312,29 @@ impl Messages {
         // モジュールエラー
         messages.insert((Lang::Ja, MsgKey::SymbolNotFound), "シンボル{0}が見つかりません（モジュール: {1}）");
         messages.insert((Lang::Ja, MsgKey::ModuleNotFound), "モジュール{0}が見つかりません（{0}.qi）");
+        messages.insert((Lang::Ja, MsgKey::SymbolNotExported), "シンボル{0}はモジュール{1}からエクスポートされていません");
+        messages.insert((Lang::Ja, MsgKey::UseAsNotImplemented), ":asモードはまだ実装されていません");
 
         messages.insert((Lang::Ja, MsgKey::NoMatchingPattern), "どのパターンにもマッチしませんでした");
         messages.insert((Lang::Ja, MsgKey::NeedAtLeastNArgs), "{0}には少なくとも{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::NeedExactlyNArgs), "{0}には{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Or3Args), "{0}には2または3個の引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need2Args), "{0}には2つの引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need1Arg), "{0}には1つの引数が必要です");
         messages.insert((Lang::Ja, MsgKey::CannotQuote), "quoteできない式: {0}");
+
+        // パーサーの追加エラー
+        messages.insert((Lang::Ja, MsgKey::ModuleNeedsName), "moduleにはモジュール名が必要です");
+        messages.insert((Lang::Ja, MsgKey::ExportNeedsSymbols), "exportにはシンボルが必要です");
+        messages.insert((Lang::Ja, MsgKey::UseNeedsModuleName), "useにはモジュール名が必要です");
+        messages.insert((Lang::Ja, MsgKey::ExpectedSymbolInOnlyList), ":onlyリストにはシンボルが必要です");
+        messages.insert((Lang::Ja, MsgKey::AsNeedsAlias), ":asにはエイリアス名が必要です");
+        messages.insert((Lang::Ja, MsgKey::UseNeedsMode), "useには:onlyまたは:asが必要です");
+
+        // 組み込み関数の汎用エラー
+        messages.insert((Lang::Ja, MsgKey::IntegerOnlyWithDebug), "{0}は整数のみ受け付けます: {1:?}");
+        messages.insert((Lang::Ja, MsgKey::NthSecondArgInteger), "nthの第2引数は整数が必要です");
+        messages.insert((Lang::Ja, MsgKey::VariadicFnOneParam), "可変長引数関数にはパラメータが1つだけ必要です");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
