@@ -578,53 +578,48 @@ uvar variable
 ...
 ```
 
-#### ✅ str - 文字列操作（基本機能実装済み）
+#### ✅ str - 文字列操作（ほぼ完全実装）
 ```lisp
 (use str :only [
   ;; 検索 ✅
   contains? starts-with? ends-with?
   index-of last-index-of
 
-  ;; 基本変換
-  upper lower                          ;; ✅ 実装済み
-  capitalize                           ;; ✅ 実装済み
-  trim trim-left trim-right            ;; ✅ 実装済み
-  pad-left pad-right pad               ;; ✅ 実装済み（pad-left/rightは左右詰め、padは中央揃え）
-  repeat                               ;; ✅ 実装済み
-  title reverse                        ;; 🚧 未実装
+  ;; 基本変換 ✅
+  upper lower capitalize title
+  trim trim-left trim-right
+  pad-left pad-right pad               ;; pad-left/rightは左右詰め、padは中央揃え
+  repeat reverse
 
-  ;; ケース変換（重要） 🚧 未実装
+  ;; ケース変換（重要） ✅
   snake        ;; "userName" -> "user_name"
   camel        ;; "user_name" -> "userName"
   kebab        ;; "userName" -> "user-name"
   pascal       ;; "user_name" -> "UserName"
   split-camel  ;; "userName" -> ["user", "Name"]
 
-  ;; 分割・結合
-  split join                           ;; ✅ 実装済み
-  lines words                          ;; ✅ 実装済み
-  chars                                ;; 🚧 未実装
+  ;; 分割・結合 ✅
+  split join lines words chars
 
   ;; 置換 ✅
-  replace replace-first
-  splice                               ;; 🚧 未実装（位置ベースの置換）
+  replace replace-first splice
 
   ;; 部分文字列 ✅
   slice take-str drop-str              ;; リストのtake/dropと区別
   sub-before sub-after                 ;; 区切り文字で前後を取得
 
-  ;; 整形・配置
-  align-left align-center align-right  ;; 🚧 未実装
-  truncate trunc-words                 ;; 🚧 未実装
+  ;; 整形・配置 ✅
+  align-left align-center align-right
+  truncate trunc-words
 
   ;; 正規化・クリーンアップ（重要） ✅
   squish                               ;; 連続空白を1つに、前後trim
   expand-tabs                          ;; タブをスペースに変換
 
-  ;; 判定（バリデーション）
-  digit? alpha? alnum?                 ;; ✅ 実装済み
-  space? lower? upper?                 ;; ✅ 実装済み
-  numeric? integer? blank? ascii?      ;; 🚧 未実装
+  ;; 判定（バリデーション） ✅
+  digit? alpha? alnum?
+  space? lower? upper?
+  numeric? integer? blank? ascii?
 
   ;; 行操作 🚧 未実装
   map-lines    ;; 各行に関数を適用
@@ -637,23 +632,24 @@ uvar variable
   ;; エンコード 🚧 未実装
   to-base64 from-base64
 
-  ;; パース 🚧 未実装
+  ;; パース ✅
   parse-int parse-float
 
   ;; Unicode ✅
   chars-count bytes-count  ;; Unicode文字数/バイト数
 
-  ;; 高度な変換 🚧 未実装
-  unaccent     ;; アクセント除去 "café" -> "cafe"
+  ;; 高度な変換
+  slugify      ;; ✅ "Hello World!" -> "hello-world"
+  unaccent     ;; 🚧 未実装 アクセント除去 "café" -> "cafe"
 
   ;; 生成 🚧 未実装
   random       ;; ランダム文字列生成
   hash uuid
 
-  ;; NLP 🚧 未実装
+  ;; NLP ✅
   word-count
 
-  ;; フォーマット 🚧 未実装
+  ;; フォーマット ✅
   indent wrap
 ])
 
@@ -700,6 +696,10 @@ uvar variable
 (s/alpha? "hello")   ;; true
 (s/alnum? "hello123") ;; true
 (s/space? "  \n\t")  ;; true
+(s/numeric? "123.45") ;; true
+(s/integer? "123")   ;; true
+(s/blank? "  \n")    ;; true
+(s/ascii? "hello")   ;; true
 
 ;; 行操作
 (s/map-lines s/trim text)
@@ -717,10 +717,25 @@ uvar variable
 (s/slice "hello world" 0 5)  ;; "hello"
 
 ;; 高度な変換
-(s/unaccent "café résumé")  ;; "cafe resume"
 (s/splice "hello world" 6 11 "universe")  ;; "hello universe"
+(s/title "hello world")                    ;; "Hello World"
+(s/reverse "hello")                        ;; "olleh"
+(s/chars "hello")                          ;; ["h" "e" "l" "l" "o"]
 
-;; 生成
+;; パース
+(s/parse-int "123")    ;; 123
+(s/parse-float "3.14") ;; 3.14
+
+;; フォーマット
+(s/indent "hello\nworld" 2)      ;; "  hello\n  world"
+(s/wrap "hello world from qi" 10) ;; "hello\nworld from\nqi"
+(s/truncate "hello world" 8)     ;; "hello..."
+(s/trunc-words "hello world from qi" 2) ;; "hello world..."
+
+;; NLP
+(s/word-count "hello world")     ;; 2
+
+;; 生成（未実装）
 (s/random 16)          ;; "d7f3k9m2p5q8w1x4"
 (s/random 16 :hex)     ;; "3f8a9c2e1b4d7056"
 (s/random 16 :alnum)   ;; "aB3dE7fG9hJ2kL5m"
