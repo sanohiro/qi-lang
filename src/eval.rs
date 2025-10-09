@@ -8,6 +8,7 @@ use std::rc::Rc;
 /// モジュール情報
 #[derive(Debug, Clone)]
 struct Module {
+    #[allow(dead_code)]
     name: String,
     exports: HashMap<String, Value>,
 }
@@ -18,6 +19,7 @@ pub struct Evaluator {
     modules: HashMap<String, Rc<Module>>, // ロード済みモジュール
     current_module: Option<String>, // 現在評価中のモジュール名
     loading_modules: Vec<String>, // 循環参照検出用
+    #[allow(dead_code)]
     call_stack: Vec<String>, // 関数呼び出しスタック（スタックトレース用）
 }
 

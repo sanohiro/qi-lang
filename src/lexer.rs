@@ -62,6 +62,7 @@ impl Lexer {
         }
     }
 
+    #[allow(dead_code)]
     fn current_span(&self) -> Span {
         Span::new(self.line, self.column, self.pos)
     }
