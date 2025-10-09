@@ -1,5 +1,9 @@
 /// 国際化メッセージ管理
-/// 環境変数 QI_LANG で言語を設定可能（デフォルト: en）
+///
+/// 言語設定の優先順位:
+/// 1. QI_LANG 環境変数（Qi専用の設定）
+/// 2. LANG 環境変数（システムのロケール設定）
+/// 3. デフォルト: en
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -10,11 +14,29 @@ pub enum Lang {
 
 impl Lang {
     /// 環境変数から言語を取得
+    /// 優先順位: QI_LANG > LANG > デフォルト(en)
     pub fn from_env() -> Self {
-        match std::env::var("QI_LANG").as_deref() {
-            Ok("ja") => Lang::Ja,
-            Ok("en") => Lang::En,
-            _ => Lang::En, // デフォルトは英語
+        // QI_LANGが設定されていればそれを優先
+        if let Ok(lang) = std::env::var("QI_LANG") {
+            return Self::parse(&lang);
+        }
+
+        // LANGから言語コードを取得（ja_JP.UTF-8 -> ja）
+        if let Ok(lang) = std::env::var("LANG") {
+            let lang_code = lang.split('_').next().unwrap_or("");
+            return Self::parse(lang_code);
+        }
+
+        // デフォルトは英語
+        Lang::En
+    }
+
+    /// 言語コードをパース
+    fn parse(code: &str) -> Self {
+        match code {
+            "ja" | "ja_JP" => Lang::Ja,
+            "en" | "en_US" | "en_GB" => Lang::En,
+            _ => Lang::En, // 未対応言語は英語にフォールバック
         }
     }
 }

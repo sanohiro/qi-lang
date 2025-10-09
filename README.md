@@ -14,15 +14,19 @@
 
 ## 多言語対応
 
-Qiは英語と日本語のエラーメッセージに対応しています。
+Qiは英語と日本語のエラーメッセージに対応しています。言語は環境変数で自動検出されます。
 
 ```bash
-# 英語（デフォルト）
+# システムのLANG環境変数を使用（macOS/Linuxのデフォルト）
+# LANG=ja_JP.UTF-8 の場合、自動的に日本語になります
 qi script.qi
 
-# 日本語
-QI_LANG=ja qi script.qi
+# Qi専用の言語設定で上書き
+QI_LANG=ja qi script.qi  # 日本語
+QI_LANG=en qi script.qi  # 英語
 ```
+
+**優先順位**: `QI_LANG` > `LANG` > デフォルト(en)
 
 ## Hello World
 
