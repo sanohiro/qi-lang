@@ -313,7 +313,7 @@ impl Evaluator {
                     if let Some(value) = env.borrow().get(symbol) {
                         exports.insert(symbol.clone(), value);
                     } else {
-                        return Err(format!("シンボル{}が見つかりません（モジュール: {}）", symbol, module_name));
+                        return Err(fmt_msg(MsgKey::SymbolNotFound, &[symbol, &module_name]));
                     }
                 }
 
@@ -1113,7 +1113,7 @@ fn native_take(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "take");
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
-        _ => return Err("takeの第1引数は整数が必要です".to_string()),
+        _ => return Err(msg(MsgKey::TakeFirstArgInteger).to_string()),
     };
     match &args[1] {
         Value::List(v) => Ok(Value::List(v.iter().take(n).cloned().collect())),
@@ -1127,7 +1127,7 @@ fn native_drop(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "drop");
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
-        _ => return Err("dropの第1引数は整数が必要です".to_string()),
+        _ => return Err(msg(MsgKey::DropFirstArgInteger).to_string()),
     };
     match &args[1] {
         Value::List(v) => Ok(Value::List(v.iter().skip(n).cloned().collect())),
@@ -1142,7 +1142,7 @@ fn native_concat(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::List(v) | Value::Vector(v) => result.extend(v.clone()),
-            _ => return Err("concatはリストまたはベクタのみ受け付けます".to_string()),
+            _ => return Err(msg(MsgKey::ConcatListOrVectorOnly).to_string()),
         }
     }
     Ok(Value::List(result))
@@ -1174,7 +1174,7 @@ fn native_range(args: &[Value]) -> Result<Value, String> {
             let result: Vec<Value> = (0..*n).map(Value::Integer).collect();
             Ok(Value::List(result))
         }
-        _ => Err("rangeは整数のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::RangeIntegerOnly).to_string()),
     }
 }
 
@@ -1192,7 +1192,7 @@ fn native_inc(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "inc");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n + 1)),
-        _ => Err("incは整数のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::IncIntegerOnly).to_string()),
     }
 }
 
@@ -1201,7 +1201,7 @@ fn native_dec(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "dec");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n - 1)),
-        _ => Err("decは整数のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::DecIntegerOnly).to_string()),
     }
 }
 
@@ -1214,7 +1214,7 @@ fn native_sum(args: &[Value]) -> Result<Value, String> {
             for item in items {
                 match item {
                     Value::Integer(n) => total += n,
-                    _ => return Err("sumは整数のリストのみ受け付けます".to_string()),
+                    _ => return Err(msg(MsgKey::SumIntegerListOnly).to_string()),
                 }
             }
             Ok(Value::Integer(total))
@@ -1236,7 +1236,7 @@ fn native_split(args: &[Value]) -> Result<Value, String> {
                 .collect();
             Ok(Value::Vector(parts))
         }
-        _ => Err("splitは2つの文字列が必要です".to_string()),
+        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
 
@@ -1254,7 +1254,7 @@ fn native_join(args: &[Value]) -> Result<Value, String> {
                 .collect();
             Ok(Value::String(strings?.join(sep)))
         }
-        _ => Err("joinは文字列とリストが必要です".to_string()),
+        _ => Err(msg(MsgKey::JoinStringAndList).to_string()),
     }
 }
 
@@ -1263,7 +1263,7 @@ fn native_upper(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "upper");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_uppercase())),
-        _ => Err("upperは文字列のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::UpperStringOnly).to_string()),
     }
 }
 
@@ -1272,7 +1272,7 @@ fn native_lower(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "lower");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_lowercase())),
-        _ => Err("lowerは文字列のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::LowerStringOnly).to_string()),
     }
 }
 
@@ -1281,7 +1281,7 @@ fn native_trim(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "trim");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.trim().to_string())),
-        _ => Err("trimは文字列のみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::TrimStringOnly).to_string()),
     }
 }
 
@@ -1295,11 +1295,11 @@ fn native_get(args: &[Value]) -> Result<Value, String> {
             let key = match &args[1] {
                 Value::Keyword(k) => k.clone(),
                 Value::String(s) => s.clone(),
-                _ => return Err("getのキーは文字列またはキーワードが必要です".to_string()),
+                _ => return Err(msg(MsgKey::GetKeyMustBeKeyword).to_string()),
             };
             Ok(m.get(&key).cloned().unwrap_or(Value::Nil))
         }
-        _ => Err("getの第1引数はマップが必要です".to_string()),
+        _ => Err(msg(MsgKey::GetFirstArgMap).to_string()),
     }
 }
 
@@ -1311,7 +1311,7 @@ fn native_keys(args: &[Value]) -> Result<Value, String> {
             let keys: Vec<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
             Ok(Value::List(keys))
         }
-        _ => Err("keysはマップのみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::KeysMapOnly).to_string()),
     }
 }
 
@@ -1323,14 +1323,14 @@ fn native_vals(args: &[Value]) -> Result<Value, String> {
             let vals: Vec<Value> = m.values().cloned().collect();
             Ok(Value::List(vals))
         }
-        _ => Err("valsはマップのみ受け付けます".to_string()),
+        _ => Err(msg(MsgKey::ValsMapOnly).to_string()),
     }
 }
 
 /// assoc - マップにキーと値を追加
 fn native_assoc(args: &[Value]) -> Result<Value, String> {
     if args.len() < 3 || args.len() % 2 == 0 {
-        return Err("assocはマップと1つ以上のキー・値のペアが必要です".to_string());
+        return Err(msg(MsgKey::AssocMapAndKeyValues).to_string());
     }
     match &args[0] {
         Value::Map(m) => {
@@ -1339,20 +1339,20 @@ fn native_assoc(args: &[Value]) -> Result<Value, String> {
                 let key = match &args[i] {
                     Value::Keyword(k) => k.clone(),
                     Value::String(s) => s.clone(),
-                    _ => return Err("assocのキーは文字列またはキーワードが必要です".to_string()),
+                    _ => return Err(msg(MsgKey::AssocKeyMustBeKeyword).to_string()),
                 };
                 new_map.insert(key, args[i + 1].clone());
             }
             Ok(Value::Map(new_map))
         }
-        _ => Err("assocの第1引数はマップが必要です".to_string()),
+        _ => Err(msg(MsgKey::AssocFirstArgMap).to_string()),
     }
 }
 
 /// dissoc - マップからキーを削除
 fn native_dissoc(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("dissocはマップと1つ以上のキーが必要です".to_string());
+        return Err(msg(MsgKey::DissocMapAndKeys).to_string());
     }
     match &args[0] {
         Value::Map(m) => {
@@ -1361,13 +1361,13 @@ fn native_dissoc(args: &[Value]) -> Result<Value, String> {
                 let key = match arg {
                     Value::Keyword(k) => k.clone(),
                     Value::String(s) => s.clone(),
-                    _ => return Err("dissocのキーは文字列またはキーワードが必要です".to_string()),
+                    _ => return Err(msg(MsgKey::DissocKeyMustBeKeyword).to_string()),
                 };
                 new_map.remove(&key);
             }
             Ok(Value::Map(new_map))
         }
-        _ => Err("dissocの第1引数はマップが必要です".to_string()),
+        _ => Err(msg(MsgKey::DissocFirstArgMap).to_string()),
     }
 }
 
@@ -1954,7 +1954,7 @@ impl Evaluator {
         }
 
         let content = content.ok_or_else(|| {
-            format!("モジュール{}が見つかりません（{}.qi）", name, name)
+            fmt_msg(MsgKey::ModuleNotFound, &[name])
         })?;
 
         // パースして評価

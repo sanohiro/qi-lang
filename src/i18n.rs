@@ -72,6 +72,38 @@ pub enum MsgKey {
     StringOrCollectionOnly,
     ListOrVectorOnly,
     KeyMustBeKeyword,
+    NumberOnly,
+    StringOnly,
+    MapOnly,
+    ListOrVectorOrStringOnly,
+
+    // 新しい組み込み関数のエラー
+    TakeFirstArgInteger,
+    DropFirstArgInteger,
+    ConcatListOrVectorOnly,
+    RangeIntegerOnly,
+    IncIntegerOnly,
+    DecIntegerOnly,
+    SumIntegerListOnly,
+    SplitTwoStrings,
+    JoinStringAndList,
+    UpperStringOnly,
+    LowerStringOnly,
+    TrimStringOnly,
+    GetKeyMustBeKeyword,
+    GetFirstArgMap,
+    KeysMapOnly,
+    ValsMapOnly,
+    AssocMapAndKeyValues,
+    AssocKeyMustBeKeyword,
+    AssocFirstArgMap,
+    DissocMapAndKeys,
+    DissocKeyMustBeKeyword,
+    DissocFirstArgMap,
+
+    // モジュールエラー
+    SymbolNotFound,
+    ModuleNotFound,
 
     // match関連
     NoMatchingPattern,
@@ -152,6 +184,39 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::StringOrCollectionOnly), "{0} accepts strings or collections only");
         messages.insert((Lang::En, MsgKey::ListOrVectorOnly), "{0} accepts lists or vectors only");
         messages.insert((Lang::En, MsgKey::KeyMustBeKeyword), "map key must be a string or keyword");
+        messages.insert((Lang::En, MsgKey::NumberOnly), "{0} accepts numbers only");
+        messages.insert((Lang::En, MsgKey::StringOnly), "{0} accepts strings only");
+        messages.insert((Lang::En, MsgKey::MapOnly), "{0} accepts maps only");
+        messages.insert((Lang::En, MsgKey::ListOrVectorOrStringOnly), "{0} accepts lists, vectors or strings only");
+
+        // 新しい組み込み関数のエラー
+        messages.insert((Lang::En, MsgKey::TakeFirstArgInteger), "take's first argument must be an integer");
+        messages.insert((Lang::En, MsgKey::DropFirstArgInteger), "drop's first argument must be an integer");
+        messages.insert((Lang::En, MsgKey::ConcatListOrVectorOnly), "concat accepts lists or vectors only");
+        messages.insert((Lang::En, MsgKey::RangeIntegerOnly), "range accepts integers only");
+        messages.insert((Lang::En, MsgKey::IncIntegerOnly), "inc accepts integers only");
+        messages.insert((Lang::En, MsgKey::DecIntegerOnly), "dec accepts integers only");
+        messages.insert((Lang::En, MsgKey::SumIntegerListOnly), "sum accepts lists of integers only");
+        messages.insert((Lang::En, MsgKey::SplitTwoStrings), "split requires two strings");
+        messages.insert((Lang::En, MsgKey::JoinStringAndList), "join requires a string and a list");
+        messages.insert((Lang::En, MsgKey::UpperStringOnly), "upper accepts strings only");
+        messages.insert((Lang::En, MsgKey::LowerStringOnly), "lower accepts strings only");
+        messages.insert((Lang::En, MsgKey::TrimStringOnly), "trim accepts strings only");
+        messages.insert((Lang::En, MsgKey::GetKeyMustBeKeyword), "get's key must be a string or keyword");
+        messages.insert((Lang::En, MsgKey::GetFirstArgMap), "get's first argument must be a map");
+        messages.insert((Lang::En, MsgKey::KeysMapOnly), "keys accepts maps only");
+        messages.insert((Lang::En, MsgKey::ValsMapOnly), "vals accepts maps only");
+        messages.insert((Lang::En, MsgKey::AssocMapAndKeyValues), "assoc requires a map and one or more key-value pairs");
+        messages.insert((Lang::En, MsgKey::AssocKeyMustBeKeyword), "assoc's key must be a string or keyword");
+        messages.insert((Lang::En, MsgKey::AssocFirstArgMap), "assoc's first argument must be a map");
+        messages.insert((Lang::En, MsgKey::DissocMapAndKeys), "dissoc requires a map and one or more keys");
+        messages.insert((Lang::En, MsgKey::DissocKeyMustBeKeyword), "dissoc's key must be a string or keyword");
+        messages.insert((Lang::En, MsgKey::DissocFirstArgMap), "dissoc's first argument must be a map");
+
+        // モジュールエラー
+        messages.insert((Lang::En, MsgKey::SymbolNotFound), "symbol {0} not found (module: {1})");
+        messages.insert((Lang::En, MsgKey::ModuleNotFound), "module {0} not found ({0}.qi)");
+
         messages.insert((Lang::En, MsgKey::NoMatchingPattern), "no matching pattern");
         messages.insert((Lang::En, MsgKey::NeedAtLeastNArgs), "{0} requires at least {1} argument(s)");
         messages.insert((Lang::En, MsgKey::NeedExactlyNArgs), "{0} requires exactly {1} argument(s)");
@@ -179,6 +244,39 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::StringOrCollectionOnly), "{0}は文字列またはコレクションのみ受け付けます");
         messages.insert((Lang::Ja, MsgKey::ListOrVectorOnly), "{0}はリストまたはベクタのみ受け付けます");
         messages.insert((Lang::Ja, MsgKey::KeyMustBeKeyword), "マップのキーは文字列またはキーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::NumberOnly), "{0}は数値のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::StringOnly), "{0}は文字列のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::MapOnly), "{0}はマップのみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::ListOrVectorOrStringOnly), "{0}はリスト、ベクタ、または文字列のみ受け付けます");
+
+        // 新しい組み込み関数のエラー
+        messages.insert((Lang::Ja, MsgKey::TakeFirstArgInteger), "takeの第1引数は整数が必要です");
+        messages.insert((Lang::Ja, MsgKey::DropFirstArgInteger), "dropの第1引数は整数が必要です");
+        messages.insert((Lang::Ja, MsgKey::ConcatListOrVectorOnly), "concatはリストまたはベクタのみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::RangeIntegerOnly), "rangeは整数のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::IncIntegerOnly), "incは整数のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::DecIntegerOnly), "decは整数のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::SumIntegerListOnly), "sumは整数のリストのみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::SplitTwoStrings), "splitは2つの文字列が必要です");
+        messages.insert((Lang::Ja, MsgKey::JoinStringAndList), "joinは文字列とリストが必要です");
+        messages.insert((Lang::Ja, MsgKey::UpperStringOnly), "upperは文字列のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::LowerStringOnly), "lowerは文字列のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::TrimStringOnly), "trimは文字列のみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::GetKeyMustBeKeyword), "getのキーは文字列またはキーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::GetFirstArgMap), "getの第1引数はマップが必要です");
+        messages.insert((Lang::Ja, MsgKey::KeysMapOnly), "keysはマップのみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::ValsMapOnly), "valsはマップのみ受け付けます");
+        messages.insert((Lang::Ja, MsgKey::AssocMapAndKeyValues), "assocはマップと1つ以上のキー・値のペアが必要です");
+        messages.insert((Lang::Ja, MsgKey::AssocKeyMustBeKeyword), "assocのキーは文字列またはキーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::AssocFirstArgMap), "assocの第1引数はマップが必要です");
+        messages.insert((Lang::Ja, MsgKey::DissocMapAndKeys), "dissocはマップと1つ以上のキーが必要です");
+        messages.insert((Lang::Ja, MsgKey::DissocKeyMustBeKeyword), "dissocのキーは文字列またはキーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::DissocFirstArgMap), "dissocの第1引数はマップが必要です");
+
+        // モジュールエラー
+        messages.insert((Lang::Ja, MsgKey::SymbolNotFound), "シンボル{0}が見つかりません（モジュール: {1}）");
+        messages.insert((Lang::Ja, MsgKey::ModuleNotFound), "モジュール{0}が見つかりません（{0}.qi）");
+
         messages.insert((Lang::Ja, MsgKey::NoMatchingPattern), "どのパターンにもマッチしませんでした");
         messages.insert((Lang::Ja, MsgKey::NeedAtLeastNArgs), "{0}には少なくとも{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::NeedExactlyNArgs), "{0}には{1}個の引数が必要です");
