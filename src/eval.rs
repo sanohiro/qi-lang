@@ -1,3 +1,4 @@
+use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{Env, Expr, Function, MatchArm, NativeFunc, Pattern, Value};
 use std::cell::RefCell;
@@ -20,118 +21,48 @@ pub struct Evaluator {
     call_stack: Vec<String>, // 関数呼び出しスタック（スタックトレース用）
 }
 
-/// 組み込み関数を登録するマクロ
-macro_rules! register_native {
-    ($env:expr, $($name:expr => $func:expr),* $(,)?) => {
-        $(
-            $env.set(
-                $name.to_string(),
-                Value::NativeFunc(NativeFunc {
-                    name: $name.to_string(),
-                    func: $func,
-                }),
-            );
-        )*
-    };
-}
-
-/// 引数の数をチェックするマクロ
-macro_rules! check_args {
-    ($args:expr, $expected:expr, $func_name:expr) => {
-        if $args.len() != $expected {
-            return Err(fmt_msg(
-                MsgKey::NeedExactlyNArgs,
-                &[$func_name, &$expected.to_string()],
-            ));
-        }
-    };
-    ($args:expr, $min:expr, $max:expr, $func_name:expr) => {
-        if $args.len() < $min || $args.len() > $max {
-            return Err(format!(
-                "{}には{}〜{}個の引数が必要です",
-                $func_name, $min, $max
-            ));
-        }
-    };
-}
-
 impl Evaluator {
     pub fn new() -> Self {
-        let mut env = Env::new();
+        let env = Env::new();
+        let env_rc = Rc::new(RefCell::new(env));
 
         // 組み込み関数を登録
-        register_native!(env,
-            // 算術演算
-            "+" => native_add,
-            "-" => native_sub,
-            "*" => native_mul,
-            "/" => native_div,
-            "%" => native_mod,
+        builtins::register_all(&env_rc);
 
-            // 比較演算
-            "=" => native_eq,
-            "<" => native_lt,
-            ">" => native_gt,
-            "<=" => native_le,
-            ">=" => native_ge,
-            "!=" => native_ne,
+        // 特殊な関数を登録（printとlist）
+        env_rc.borrow_mut().set(
+            "print".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "print".to_string(),
+                func: native_print,
+            }),
+        );
+        env_rc.borrow_mut().set(
+            "list".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "list".to_string(),
+                func: native_list,
+            }),
+        );
 
-            // リスト操作
-            "list" => native_list,
-            "first" => native_first,
-            "rest" => native_rest,
-            "nth" => native_nth,
-            "count" => native_count,
-            "reverse" => native_reverse,
-            "cons" => native_cons,
-            "conj" => native_conj,
-            "take" => native_take,
-            "drop" => native_drop,
-            "concat" => native_concat,
-            "flatten" => native_flatten,
-            "range" => native_range,
-
-            // 述語関数
-            "empty?" => native_empty,
-            "nil?" => native_nil,
-            "list?" => native_is_list,
-            "vector?" => native_is_vector,
-            "map?" => native_is_map,
-            "string?" => native_is_string,
-            "number?" => native_is_number,
-            "fn?" => native_is_fn,
-
-            // ユーティリティ
-            "len" => native_len,
-            "print" => native_print,
-            "str" => native_str,
-            "not" => native_not,
-
-            // 数学関数
-            "abs" => native_abs,
-            "min" => native_min,
-            "max" => native_max,
-            "inc" => native_inc,
-            "dec" => native_dec,
-            "sum" => native_sum,
-
-            // 文字列操作
-            "split" => native_split,
-            "join" => native_join,
-            "upper" => native_upper,
-            "lower" => native_lower,
-            "trim" => native_trim,
-
-            // マップ操作
-            "get" => native_get,
-            "keys" => native_keys,
-            "vals" => native_vals,
-            "assoc" => native_assoc,
-            "dissoc" => native_dissoc,
+        // 型判定関数（builtins以外のもの）
+        env_rc.borrow_mut().set(
+            "number?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "number?".to_string(),
+                func: native_is_number,
+            }),
+        );
+        env_rc.borrow_mut().set(
+            "fn?".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "fn?".to_string(),
+                func: native_is_fn,
+            }),
         );
 
         Evaluator {
-            global_env: Rc::new(RefCell::new(env)),
+            global_env: env_rc,
             defer_stack: Vec::new(),
             modules: HashMap::new(),
             current_module: None,
@@ -222,7 +153,7 @@ impl Evaluator {
                 otherwise,
             } => {
                 let test_val = self.eval_with_env(test, env.clone())?;
-                if is_truthy(&test_val) {
+                if test_val.is_truthy() {
                     self.eval_with_env(then, env)
                 } else if let Some(otherwise) = otherwise {
                     self.eval_with_env(otherwise, env)
@@ -401,7 +332,7 @@ impl Evaluator {
                         guard_env.set(name.clone(), val.clone());
                     }
                     let guard_val = self.eval_with_env(guard, Rc::new(RefCell::new(guard_env)))?;
-                    if !is_truthy(&guard_val) {
+                    if !guard_val.is_truthy() {
                         continue;
                     }
                 }
@@ -490,87 +421,38 @@ impl Evaluator {
 
     /// map関数の実装: (map f coll)
     fn eval_map(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(format!("mapは2つの引数が必要です: 実際 {}", args.len()));
-        }
-
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
-
-        match coll {
-            Value::List(items) | Value::Vector(items) => {
-                let mut results = Vec::new();
-                for item in items {
-                    let result = self.apply_func(&func, vec![item])?;
-                    results.push(result);
-                }
-                Ok(Value::List(results))
-            }
-            _ => Err("mapの第2引数はリストまたはベクタである必要があります".to_string()),
-        }
+        builtins::map(&[func, coll], self)
     }
 
     /// filter関数の実装: (filter pred coll)
     fn eval_filter(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(format!("filterは2つの引数が必要です: 実際 {}", args.len()));
-        }
-
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
-
-        match coll {
-            Value::List(items) | Value::Vector(items) => {
-                let mut results = Vec::new();
-                for item in items {
-                    let test = self.apply_func(&pred, vec![item.clone()])?;
-                    if is_truthy(&test) {
-                        results.push(item);
-                    }
-                }
-                Ok(Value::List(results))
-            }
-            _ => Err("filterの第2引数はリストまたはベクタである必要があります".to_string()),
-        }
+        builtins::filter(&[pred, coll], self)
     }
 
     /// reduce関数の実装: (reduce f init coll) または (reduce f coll)
     fn eval_reduce(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
-        if args.len() < 2 || args.len() > 3 {
-            return Err(format!("reduceは2または3つの引数が必要です: 実際 {}", args.len()));
-        }
-
         let func = self.eval_with_env(&args[0], env.clone())?;
 
-        let (mut acc, items) = if args.len() == 3 {
+        if args.len() == 3 {
             let init = self.eval_with_env(&args[1], env.clone())?;
             let coll = self.eval_with_env(&args[2], env.clone())?;
-            match coll {
-                Value::List(items) | Value::Vector(items) => (init, items),
-                _ => return Err("reduceの第3引数はリストまたはベクタである必要があります".to_string()),
-            }
+            builtins::reduce(&[func, coll, init], self)
         } else {
             let coll = self.eval_with_env(&args[1], env.clone())?;
-            match coll {
-                Value::List(mut items) | Value::Vector(mut items) => {
-                    if items.is_empty() {
-                        return Err("reduceの引数が2つの場合、コレクションは空であってはいけません".to_string());
-                    }
-                    let init = items.remove(0);
-                    (init, items)
-                }
-                _ => return Err("reduceの第2引数はリストまたはベクタである必要があります".to_string()),
-            }
-        };
-
-        for item in items {
-            acc = self.apply_func(&func, vec![acc, item])?;
+            builtins::reduce(&[func, coll], self)
         }
-
-        Ok(acc)
     }
 
-    /// 関数を適用するヘルパー
+    /// 関数を適用するヘルパー（builtinsモジュールから使用）
+    pub fn apply_function(&mut self, func: &Value, args: &[Value]) -> Result<Value, String> {
+        self.apply_func(func, args.to_vec())
+    }
+
+    /// 関数を適用するヘルパー（内部用）
     fn apply_func(&mut self, func: &Value, args: Vec<Value>) -> Result<Value, String> {
         match func {
             Value::NativeFunc(nf) => (nf.func)(&args),
@@ -610,7 +492,7 @@ impl Evaluator {
         let mut last = Value::Bool(true);
         for arg in args {
             last = self.eval_with_env(arg, env.clone())?;
-            if !is_truthy(&last) {
+            if !last.is_truthy() {
                 return Ok(last);
             }
         }
@@ -624,7 +506,7 @@ impl Evaluator {
         }
         for arg in args {
             let val = self.eval_with_env(arg, env.clone())?;
-            if is_truthy(&val) {
+            if val.is_truthy() {
                 return Ok(val);
             }
         }
@@ -694,192 +576,27 @@ impl Evaluator {
     }
 }
 
-fn is_truthy(val: &Value) -> bool {
-    !matches!(val, Value::Nil | Value::Bool(false))
-}
+// eval.rs内でのみ必要な特別な組み込み関数
+// （print、list、およびbuiltinsモジュールにない型判定関数）
 
-// ネイティブ関数の実装
-
-fn native_add(args: &[Value]) -> Result<Value, String> {
-    let mut sum = 0i64;
-    for arg in args {
-        match arg {
-            Value::Integer(n) => sum += n,
-            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["+"])),
+/// 引数の数をチェックするマクロ
+macro_rules! check_args {
+    ($args:expr, $expected:expr, $func_name:expr) => {
+        if $args.len() != $expected {
+            return Err(fmt_msg(
+                MsgKey::NeedExactlyNArgs,
+                &[$func_name, &$expected.to_string()],
+            ));
         }
-    }
-    Ok(Value::Integer(sum))
+    };
 }
 
-fn native_sub(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("- には少なくとも1つの引数が必要です".to_string());
-    }
-    match args[0] {
-        Value::Integer(first) => {
-            if args.len() == 1 {
-                Ok(Value::Integer(-first))
-            } else {
-                let mut result = first;
-                for arg in &args[1..] {
-                    match arg {
-                        Value::Integer(n) => result -= n,
-                        _ => return Err(format!("- は整数のみ受け付けます: {:?}", arg)),
-                    }
-                }
-                Ok(Value::Integer(result))
-            }
-        }
-        _ => Err(format!("- は整数のみ受け付けます: {:?}", args[0])),
-    }
-}
-
-fn native_mul(args: &[Value]) -> Result<Value, String> {
-    let mut product = 1i64;
-    for arg in args {
-        match arg {
-            Value::Integer(n) => product *= n,
-            _ => return Err(format!("* は整数のみ受け付けます: {:?}", arg)),
-        }
-    }
-    Ok(Value::Integer(product))
-}
-
-fn native_div(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "/");
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => {
-            if *b == 0 {
-                Err(msg(MsgKey::DivisionByZero).to_string())
-            } else {
-                Ok(Value::Integer(a / b))
-            }
-        }
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["/"])),
-    }
-}
-
-fn native_eq(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("= には2つの引数が必要です".to_string());
-    }
-    Ok(Value::Bool(args[0] == args[1]))
-}
-
-fn native_lt(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("< には2つの引数が必要です".to_string());
-    }
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a < b)),
-        _ => Err("< は整数のみ受け付けます".to_string()),
-    }
-}
-
-fn native_gt(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("> には2つの引数が必要です".to_string());
-    }
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a > b)),
-        _ => Err("> は整数のみ受け付けます".to_string()),
-    }
-}
-
-fn native_le(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("<= には2つの引数が必要です".to_string());
-    }
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a <= b)),
-        _ => Err("<= は整数のみ受け付けます".to_string()),
-    }
-}
-
-fn native_ge(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(">= には2つの引数が必要です".to_string());
-    }
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a >= b)),
-        _ => Err(">= は整数のみ受け付けます".to_string()),
-    }
-}
-
-fn native_ne(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("!= には2つの引数が必要です".to_string());
-    }
-    Ok(Value::Bool(args[0] != args[1]))
-}
-
-fn native_mod(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("% には2つの引数が必要です".to_string());
-    }
-    match (&args[0], &args[1]) {
-        (Value::Integer(a), Value::Integer(b)) => {
-            if *b == 0 {
-                Err("ゼロ除算エラー".to_string())
-            } else {
-                Ok(Value::Integer(a % b))
-            }
-        }
-        _ => Err("% は整数のみ受け付けます".to_string()),
-    }
-}
-
+/// list - リストを作成
 fn native_list(args: &[Value]) -> Result<Value, String> {
     Ok(Value::List(args.to_vec()))
 }
 
-fn native_first(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("first には1つの引数が必要です".to_string());
-    }
-    match &args[0] {
-        Value::List(items) | Value::Vector(items) => {
-            Ok(items.first().cloned().unwrap_or(Value::Nil))
-        }
-        _ => Err("first はリストまたはベクタのみ受け付けます".to_string()),
-    }
-}
-
-fn native_rest(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("rest には1つの引数が必要です".to_string());
-    }
-    match &args[0] {
-        Value::List(items) => {
-            if items.is_empty() {
-                Ok(Value::List(vec![]))
-            } else {
-                Ok(Value::List(items[1..].to_vec()))
-            }
-        }
-        Value::Vector(items) => {
-            if items.is_empty() {
-                Ok(Value::Vector(vec![]))
-            } else {
-                Ok(Value::Vector(items[1..].to_vec()))
-            }
-        }
-        _ => Err("rest はリストまたはベクタのみ受け付けます".to_string()),
-    }
-}
-
-fn native_len(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("len には1つの引数が必要です".to_string());
-    }
-    match &args[0] {
-        Value::List(items) | Value::Vector(items) => Ok(Value::Integer(items.len() as i64)),
-        Value::String(s) => Ok(Value::Integer(s.len() as i64)),
-        Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
-        _ => Err("len はコレクションまたは文字列のみ受け付けます".to_string()),
-    }
-}
-
+/// print - 値を出力
 fn native_print(args: &[Value]) -> Result<Value, String> {
     for (i, arg) in args.iter().enumerate() {
         if i > 0 {
@@ -891,484 +608,16 @@ fn native_print(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Nil)
 }
 
-/// cons - リストの先頭に要素を追加
-fn native_cons(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("consには2つの引数が必要です".to_string());
-    }
-    match &args[1] {
-        Value::List(items) => {
-            let mut new_items = vec![args[0].clone()];
-            new_items.extend(items.clone());
-            Ok(Value::List(new_items))
-        }
-        Value::Nil => Ok(Value::List(vec![args[0].clone()])),
-        _ => Err("consの第2引数はリストである必要があります".to_string()),
-    }
-}
-
-/// conj - コレクションに要素を追加
-fn native_conj(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err("conjには少なくとも2つの引数が必要です".to_string());
-    }
-    match &args[0] {
-        Value::List(items) => {
-            let mut new_items = items.clone();
-            for arg in &args[1..] {
-                new_items.insert(0, arg.clone());
-            }
-            Ok(Value::List(new_items))
-        }
-        Value::Vector(items) => {
-            let mut new_items = items.clone();
-            for arg in &args[1..] {
-                new_items.push(arg.clone());
-            }
-            Ok(Value::Vector(new_items))
-        }
-        _ => Err("conjの第1引数はリストまたはベクタである必要があります".to_string()),
-    }
-}
-
-/// empty? - コレクションが空かどうか
-fn native_empty(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("empty?には1つの引数が必要です".to_string());
-    }
-    match &args[0] {
-        Value::List(items) | Value::Vector(items) => Ok(Value::Bool(items.is_empty())),
-        Value::Map(m) => Ok(Value::Bool(m.is_empty())),
-        Value::String(s) => Ok(Value::Bool(s.is_empty())),
-        Value::Nil => Ok(Value::Bool(true)),
-        _ => Err("empty?はコレクションまたは文字列のみ受け付けます".to_string()),
-    }
-}
-
-/// nil? - nilかどうか
-fn native_nil(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("nil?には1つの引数が必要です".to_string());
-    }
-    Ok(Value::Bool(matches!(&args[0], Value::Nil)))
-}
-
-/// str - 文字列結合
-fn native_str(args: &[Value]) -> Result<Value, String> {
-    let mut result = String::new();
-    for arg in args {
-        match arg {
-            Value::String(s) => result.push_str(s),
-            _ => result.push_str(&format!("{}", arg)),
-        }
-    }
-    Ok(Value::String(result))
-}
-
-/// not - 論理否定
-fn native_not(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("notには1つの引数が必要です".to_string());
-    }
-    Ok(Value::Bool(!is_truthy(&args[0])))
-}
-
-// リスト操作関数
-
-/// nth - リストまたはベクタのn番目の要素を取得（0始まり）
-fn native_nth(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "nth");
-    let index = match &args[1] {
-        Value::Integer(n) => *n as usize,
-        _ => return Err("nthの第2引数は整数が必要です".to_string()),
-    };
-    match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
-            Ok(v.get(index).cloned().unwrap_or(Value::Nil))
-        }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["nth"])),
-    }
-}
-
-/// count - コレクションの要素数を取得
-fn native_count(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "count");
-    match &args[0] {
-        Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
-        Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
-        Value::String(s) => Ok(Value::Integer(s.len() as i64)),
-        _ => Err(fmt_msg(MsgKey::CollectionOnly, &["count"])),
-    }
-}
-
-/// reverse - リストまたはベクタを反転
-fn native_reverse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["reverse", "1"]));
-    }
-    match &args[0] {
-        Value::List(v) => {
-            let mut reversed = v.clone();
-            reversed.reverse();
-            Ok(Value::List(reversed))
-        }
-        Value::Vector(v) => {
-            let mut reversed = v.clone();
-            reversed.reverse();
-            Ok(Value::Vector(reversed))
-        }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["reverse"])),
-    }
-}
-
-// 型チェック関数
-
-fn native_is_list(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "list?");
-    Ok(Value::Bool(matches!(args[0], Value::List(_))))
-}
-
-fn native_is_vector(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "vector?");
-    Ok(Value::Bool(matches!(args[0], Value::Vector(_))))
-}
-
-fn native_is_map(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "map?");
-    Ok(Value::Bool(matches!(args[0], Value::Map(_))))
-}
-
-fn native_is_string(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "string?");
-    Ok(Value::Bool(matches!(args[0], Value::String(_))))
-}
-
+/// number? - 数値かどうか判定
 fn native_is_number(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "number?");
     Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
 }
 
+/// fn? - 関数かどうか判定
 fn native_is_fn(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "fn?");
     Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
-}
-
-// 数学関数
-
-fn native_abs(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "abs");
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n.abs())),
-        Value::Float(f) => Ok(Value::Float(f.abs())),
-        _ => Err("absは数値のみ受け付けます".to_string()),
-    }
-}
-
-fn native_min(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["min", "1"]));
-    }
-    let mut min = match &args[0] {
-        Value::Integer(n) => *n,
-        _ => return Err("minは整数のみ受け付けます".to_string()),
-    };
-    for arg in &args[1..] {
-        match arg {
-            Value::Integer(n) => {
-                if *n < min {
-                    min = *n;
-                }
-            }
-            _ => return Err("minは整数のみ受け付けます".to_string()),
-        }
-    }
-    Ok(Value::Integer(min))
-}
-
-fn native_max(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["max", "1"]));
-    }
-    let mut max = match &args[0] {
-        Value::Integer(n) => *n,
-        _ => return Err("maxは整数のみ受け付けます".to_string()),
-    };
-    for arg in &args[1..] {
-        match arg {
-            Value::Integer(n) => {
-                if *n > max {
-                    max = *n;
-                }
-            }
-            _ => return Err("maxは整数のみ受け付けます".to_string()),
-        }
-    }
-    Ok(Value::Integer(max))
-}
-
-// 追加のリスト操作関数
-
-/// take - リストの最初のn要素を取得
-fn native_take(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "take");
-    let n = match &args[0] {
-        Value::Integer(i) => *i as usize,
-        _ => return Err(msg(MsgKey::TakeFirstArgInteger).to_string()),
-    };
-    match &args[1] {
-        Value::List(v) => Ok(Value::List(v.iter().take(n).cloned().collect())),
-        Value::Vector(v) => Ok(Value::Vector(v.iter().take(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["take"])),
-    }
-}
-
-/// drop - リストの最初のn要素をスキップ
-fn native_drop(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "drop");
-    let n = match &args[0] {
-        Value::Integer(i) => *i as usize,
-        _ => return Err(msg(MsgKey::DropFirstArgInteger).to_string()),
-    };
-    match &args[1] {
-        Value::List(v) => Ok(Value::List(v.iter().skip(n).cloned().collect())),
-        Value::Vector(v) => Ok(Value::Vector(v.iter().skip(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["drop"])),
-    }
-}
-
-/// concat - 複数のリストを連結
-fn native_concat(args: &[Value]) -> Result<Value, String> {
-    let mut result = Vec::new();
-    for arg in args {
-        match arg {
-            Value::List(v) | Value::Vector(v) => result.extend(v.clone()),
-            _ => return Err(msg(MsgKey::ConcatListOrVectorOnly).to_string()),
-        }
-    }
-    Ok(Value::List(result))
-}
-
-/// flatten - ネストしたリストを平坦化
-fn native_flatten(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "flatten");
-    fn flatten_value(v: &Value, result: &mut Vec<Value>) {
-        match v {
-            Value::List(items) | Value::Vector(items) => {
-                for item in items {
-                    flatten_value(item, result);
-                }
-            }
-            _ => result.push(v.clone()),
-        }
-    }
-    let mut result = Vec::new();
-    flatten_value(&args[0], &mut result);
-    Ok(Value::List(result))
-}
-
-/// range - 0からn-1までのリストを生成
-fn native_range(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "range");
-    match &args[0] {
-        Value::Integer(n) => {
-            let result: Vec<Value> = (0..*n).map(Value::Integer).collect();
-            Ok(Value::List(result))
-        }
-        _ => Err(msg(MsgKey::RangeIntegerOnly).to_string()),
-    }
-}
-
-/// apply - 関数をリストの要素に適用（引数として展開）
-fn native_apply(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "apply");
-    // applyは評価器のコンテキストが必要なので、eval_applyで実装
-    Err("applyは直接呼び出せません".to_string())
-}
-
-// 数値関数
-
-/// inc - インクリメント
-fn native_inc(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "inc");
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n + 1)),
-        _ => Err(msg(MsgKey::IncIntegerOnly).to_string()),
-    }
-}
-
-/// dec - デクリメント
-fn native_dec(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "dec");
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n - 1)),
-        _ => Err(msg(MsgKey::DecIntegerOnly).to_string()),
-    }
-}
-
-/// sum - リストの合計
-fn native_sum(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "sum");
-    match &args[0] {
-        Value::List(items) | Value::Vector(items) => {
-            let mut total = 0i64;
-            for item in items {
-                match item {
-                    Value::Integer(n) => total += n,
-                    _ => return Err(msg(MsgKey::SumIntegerListOnly).to_string()),
-                }
-            }
-            Ok(Value::Integer(total))
-        }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["sum"])),
-    }
-}
-
-// 文字列操作関数
-
-/// split - 文字列を分割
-fn native_split(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "split");
-    match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(sep)) => {
-            let parts: Vec<Value> = s
-                .split(sep.as_str())
-                .map(|p| Value::String(p.to_string()))
-                .collect();
-            Ok(Value::Vector(parts))
-        }
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
-    }
-}
-
-/// join - リストを文字列に結合
-fn native_join(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "join");
-    match (&args[0], &args[1]) {
-        (Value::String(sep), Value::List(items)) | (Value::String(sep), Value::Vector(items)) => {
-            let strings: Result<Vec<String>, String> = items
-                .iter()
-                .map(|v| match v {
-                    Value::String(s) => Ok(s.clone()),
-                    _ => Ok(format!("{}", v)),
-                })
-                .collect();
-            Ok(Value::String(strings?.join(sep)))
-        }
-        _ => Err(msg(MsgKey::JoinStringAndList).to_string()),
-    }
-}
-
-/// upper - 大文字に変換
-fn native_upper(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "upper");
-    match &args[0] {
-        Value::String(s) => Ok(Value::String(s.to_uppercase())),
-        _ => Err(msg(MsgKey::UpperStringOnly).to_string()),
-    }
-}
-
-/// lower - 小文字に変換
-fn native_lower(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "lower");
-    match &args[0] {
-        Value::String(s) => Ok(Value::String(s.to_lowercase())),
-        _ => Err(msg(MsgKey::LowerStringOnly).to_string()),
-    }
-}
-
-/// trim - 前後の空白を削除
-fn native_trim(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "trim");
-    match &args[0] {
-        Value::String(s) => Ok(Value::String(s.trim().to_string())),
-        _ => Err(msg(MsgKey::TrimStringOnly).to_string()),
-    }
-}
-
-// マップ操作関数
-
-/// get - マップから値を取得
-fn native_get(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "get");
-    match &args[0] {
-        Value::Map(m) => {
-            let key = match &args[1] {
-                Value::Keyword(k) => k.clone(),
-                Value::String(s) => s.clone(),
-                _ => return Err(msg(MsgKey::GetKeyMustBeKeyword).to_string()),
-            };
-            Ok(m.get(&key).cloned().unwrap_or(Value::Nil))
-        }
-        _ => Err(msg(MsgKey::GetFirstArgMap).to_string()),
-    }
-}
-
-/// keys - マップのキー一覧を取得
-fn native_keys(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "keys");
-    match &args[0] {
-        Value::Map(m) => {
-            let keys: Vec<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
-            Ok(Value::List(keys))
-        }
-        _ => Err(msg(MsgKey::KeysMapOnly).to_string()),
-    }
-}
-
-/// vals - マップの値一覧を取得
-fn native_vals(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "vals");
-    match &args[0] {
-        Value::Map(m) => {
-            let vals: Vec<Value> = m.values().cloned().collect();
-            Ok(Value::List(vals))
-        }
-        _ => Err(msg(MsgKey::ValsMapOnly).to_string()),
-    }
-}
-
-/// assoc - マップにキーと値を追加
-fn native_assoc(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 3 || args.len() % 2 == 0 {
-        return Err(msg(MsgKey::AssocMapAndKeyValues).to_string());
-    }
-    match &args[0] {
-        Value::Map(m) => {
-            let mut new_map = m.clone();
-            for i in (1..args.len()).step_by(2) {
-                let key = match &args[i] {
-                    Value::Keyword(k) => k.clone(),
-                    Value::String(s) => s.clone(),
-                    _ => return Err(msg(MsgKey::AssocKeyMustBeKeyword).to_string()),
-                };
-                new_map.insert(key, args[i + 1].clone());
-            }
-            Ok(Value::Map(new_map))
-        }
-        _ => Err(msg(MsgKey::AssocFirstArgMap).to_string()),
-    }
-}
-
-/// dissoc - マップからキーを削除
-fn native_dissoc(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(msg(MsgKey::DissocMapAndKeys).to_string());
-    }
-    match &args[0] {
-        Value::Map(m) => {
-            let mut new_map = m.clone();
-            for arg in &args[1..] {
-                let key = match arg {
-                    Value::Keyword(k) => k.clone(),
-                    Value::String(s) => s.clone(),
-                    _ => return Err(msg(MsgKey::DissocKeyMustBeKeyword).to_string()),
-                };
-                new_map.remove(&key);
-            }
-            Ok(Value::Map(new_map))
-        }
-        _ => Err(msg(MsgKey::DissocFirstArgMap).to_string()),
-    }
 }
 
 #[cfg(test)]
@@ -1376,10 +625,11 @@ mod tests {
     use super::*;
     use crate::parser::Parser;
 
-    fn eval_str(input: &str) -> Result<Value, String> {
-        let mut parser = Parser::new(input)?;
-        let exprs = parser.parse_all()?;
+    fn eval_str(s: &str) -> Result<Value, String> {
+        crate::i18n::init(); // i18nシステムを初期化
         let mut evaluator = Evaluator::new();
+        let mut parser = Parser::new(s)?;
+        let exprs = parser.parse_all()?;
         let mut result = Value::Nil;
         for expr in exprs {
             result = evaluator.eval(&expr)?;

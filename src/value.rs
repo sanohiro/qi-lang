@@ -32,6 +32,13 @@ pub enum Value {
     NativeFunc(NativeFunc),
 }
 
+impl Value {
+    /// 真偽値判定（nilとfalse以外はすべてtruthy）
+    pub fn is_truthy(&self) -> bool {
+        !matches!(self, Value::Nil | Value::Bool(false))
+    }
+}
+
 /// 関数の定義
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
