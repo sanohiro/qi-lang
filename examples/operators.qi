@@ -1,0 +1,83 @@
+; 算術・比較演算子とquoteのデモ
+
+(print "=== 算術演算子 ===")
+
+; % - 剰余演算
+(print "10 % 3 =")
+(print (% 10 3))
+
+(print "\n15 % 4 =")
+(print (% 15 4))
+
+; 偶数判定
+(def even? (fn [x] (= (% x 2) 0)))
+(print "\neven? 4:")
+(print (even? 4))
+(print "even? 5:")
+(print (even? 5))
+
+(print "\n=== 比較演算子 ===")
+
+; <= - 以下
+(print "<= 5 10:")
+(print (<= 5 10))
+(print "<= 10 10:")
+(print (<= 10 10))
+(print "<= 15 10:")
+(print (<= 15 10))
+
+; >= - 以上
+(print "\n>= 10 5:")
+(print (>= 10 5))
+(print ">= 10 10:")
+(print (>= 10 10))
+(print ">= 5 10:")
+(print (>= 5 10))
+
+; != - 不等号
+(print "\n!= 1 2:")
+(print (!= 1 2))
+(print "!= 1 1:")
+(print (!= 1 1))
+(print "!= nil false:")
+(print (!= nil false))
+
+(print "\n=== Quote ===")
+
+; quote - 式を評価せずに返す
+(print "quote x:")
+(print (quote x))
+
+(print "\n'x:")
+(print 'x)
+
+(print "\n'(1 2 3):")
+(print '(1 2 3))
+
+(print "\n'(+ 1 2) (評価されない):")
+(print '(+ 1 2))
+
+(print "\n(+ 1 2) (評価される):")
+(print (+ 1 2))
+
+(print "\n=== 実用例 ===")
+
+; フィルタ：偶数のみ抽出
+(print "偶数のみ抽出: [1 2 3 4 5 6 7 8 9 10]")
+(print ([1 2 3 4 5 6 7 8 9 10] |> (filter even?)))
+
+; フィルタ：範囲内の値
+(def in-range? (fn [x] (and (>= x 3) (<= x 7))))
+(print "\n3以上7以下: [1 2 3 4 5 6 7 8 9 10]")
+(print ([1 2 3 4 5 6 7 8 9 10] |> (filter in-range?)))
+
+; FizzBuzz的な処理
+(def fizzbuzz (fn [n]
+  (match n
+    x when (= (% x 15) 0) -> "FizzBuzz"
+    x when (= (% x 3) 0) -> "Fizz"
+    x when (= (% x 5) 0) -> "Buzz"
+    x -> n)))
+
+(print "\nFizzBuzz:")
+(print (map fizzbuzz [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]))

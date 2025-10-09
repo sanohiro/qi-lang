@@ -333,7 +333,10 @@ impl Parser {
     fn parse_quote(&mut self) -> Result<Expr, String> {
         self.advance(); // 'をスキップ
         let expr = self.parse_expr()?;
-        Ok(Expr::List(vec![Expr::Symbol("quote".to_string()), expr]))
+        Ok(Expr::Call {
+            func: Box::new(Expr::Symbol("quote".to_string())),
+            args: vec![expr],
+        })
     }
 
     fn parse_match(&mut self) -> Result<Expr, String> {

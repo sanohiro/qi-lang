@@ -62,6 +62,34 @@ impl Evaluator {
             }),
         );
         env.set(
+            "<=".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "<=".to_string(),
+                func: native_le,
+            }),
+        );
+        env.set(
+            ">=".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: ">=".to_string(),
+                func: native_ge,
+            }),
+        );
+        env.set(
+            "!=".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "!=".to_string(),
+                func: native_ne,
+            }),
+        );
+        env.set(
+            "%".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "%".to_string(),
+                func: native_mod,
+            }),
+        );
+        env.set(
             "list".to_string(),
             Value::NativeFunc(NativeFunc {
                 name: "list".to_string(),
@@ -249,7 +277,7 @@ impl Evaluator {
             }
 
             Expr::Call { func, args } => {
-                // 高階関数と論理演算子の特別処理
+                // 高階関数と論理演算子、quoteの特別処理
                 if let Expr::Symbol(name) = func.as_ref() {
                     match name.as_str() {
                         "map" => return self.eval_map(args, env),
@@ -257,6 +285,7 @@ impl Evaluator {
                         "reduce" => return self.eval_reduce(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
+                        "quote" => return self.eval_quote(args),
                         _ => {}
                     }
                 }
@@ -547,6 +576,64 @@ impl Evaluator {
         }
         Ok(Value::Nil)
     }
+
+    /// quote - 式を評価せずにそのまま返す
+    fn eval_quote(&self, args: &[Expr]) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err(format!("quoteは1つの引数が必要です: 実際 {}", args.len()));
+        }
+        self.expr_to_value(&args[0])
+    }
+
+    /// ExprをValueに変換（評価せずに）
+    fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
+        match expr {
+            Expr::Nil => Ok(Value::Nil),
+            Expr::Bool(b) => Ok(Value::Bool(*b)),
+            Expr::Integer(n) => Ok(Value::Integer(*n)),
+            Expr::Float(f) => Ok(Value::Float(*f)),
+            Expr::String(s) => Ok(Value::String(s.clone())),
+            Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
+            Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
+            Expr::List(items) => {
+                let values: Result<Vec<_>, _> = items
+                    .iter()
+                    .map(|e| self.expr_to_value(e))
+                    .collect();
+                Ok(Value::List(values?))
+            }
+            Expr::Vector(items) => {
+                let values: Result<Vec<_>, _> = items
+                    .iter()
+                    .map(|e| self.expr_to_value(e))
+                    .collect();
+                Ok(Value::Vector(values?))
+            }
+            Expr::Map(pairs) => {
+                let mut map = HashMap::new();
+                for (k, v) in pairs {
+                    let key = match self.expr_to_value(k)? {
+                        Value::Keyword(k) => k,
+                        Value::String(s) => s,
+                        Value::Symbol(s) => s,
+                        _ => return Err("マップのキーは文字列またはキーワードが必要です".to_string()),
+                    };
+                    let value = self.expr_to_value(v)?;
+                    map.insert(key, value);
+                }
+                Ok(Value::Map(map))
+            }
+            // 特殊形式やCallは評価せずにリストとして返す
+            Expr::Call { func, args } => {
+                let mut items = vec![self.expr_to_value(func)?];
+                for arg in args {
+                    items.push(self.expr_to_value(arg)?);
+                }
+                Ok(Value::List(items))
+            }
+            _ => Err(format!("quoteできない式: {:?}", expr)),
+        }
+    }
 }
 
 fn is_truthy(val: &Value) -> bool {
@@ -640,6 +727,49 @@ fn native_gt(args: &[Value]) -> Result<Value, String> {
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a > b)),
         _ => Err("> は整数のみ受け付けます".to_string()),
+    }
+}
+
+fn native_le(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("<= には2つの引数が必要です".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a <= b)),
+        _ => Err("<= は整数のみ受け付けます".to_string()),
+    }
+}
+
+fn native_ge(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(">= には2つの引数が必要です".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a >= b)),
+        _ => Err(">= は整数のみ受け付けます".to_string()),
+    }
+}
+
+fn native_ne(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("!= には2つの引数が必要です".to_string());
+    }
+    Ok(Value::Bool(args[0] != args[1]))
+}
+
+fn native_mod(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("% には2つの引数が必要です".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Value::Integer(a), Value::Integer(b)) => {
+            if *b == 0 {
+                Err("ゼロ除算エラー".to_string())
+            } else {
+                Ok(Value::Integer(a % b))
+            }
+        }
+        _ => Err("% は整数のみ受け付けます".to_string()),
     }
 }
 
@@ -1081,6 +1211,72 @@ mod tests {
         assert_eq!(
             eval_str("[1 2 3 4 5] |> (filter (fn [x] (> x 2))) |> (map (fn [x] (* x 2)))").unwrap(),
             Value::List(vec![Value::Integer(6), Value::Integer(8), Value::Integer(10)])
+        );
+    }
+
+    #[test]
+    fn test_mod() {
+        // %（剰余）のテスト
+        assert_eq!(eval_str("(% 10 3)").unwrap(), Value::Integer(1));
+        assert_eq!(eval_str("(% 15 4)").unwrap(), Value::Integer(3));
+        assert_eq!(eval_str("(% 8 2)").unwrap(), Value::Integer(0));
+    }
+
+    #[test]
+    fn test_le() {
+        // <=のテスト
+        assert_eq!(eval_str("(<= 5 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(<= 10 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(<= 15 10)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_ge() {
+        // >=のテスト
+        assert_eq!(eval_str("(>= 10 5)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(>= 10 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(>= 5 10)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_ne() {
+        // !=のテスト
+        assert_eq!(eval_str("(!= 1 2)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(!= 1 1)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(!= nil false)").unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_quote() {
+        // quoteのテスト
+        assert_eq!(
+            eval_str("(quote x)").unwrap(),
+            Value::Symbol("x".to_string())
+        );
+        assert_eq!(
+            eval_str("'x").unwrap(),
+            Value::Symbol("x".to_string())
+        );
+        assert_eq!(
+            eval_str("'(1 2 3)").unwrap(),
+            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)])
+        );
+        assert_eq!(
+            eval_str("'(+ 1 2)").unwrap(),
+            Value::List(vec![Value::Symbol("+".to_string()), Value::Integer(1), Value::Integer(2)])
+        );
+    }
+
+    #[test]
+    fn test_even_with_mod() {
+        // %を使った偶数判定
+        assert_eq!(
+            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 4)").unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 5)").unwrap(),
+            Value::Bool(false)
         );
     }
 }
