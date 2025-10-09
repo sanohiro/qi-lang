@@ -584,46 +584,129 @@ uvar variable
   ;; 検索
   contains? starts-with? ends-with?
   index-of last-index-of
-  
-  ;; 変換
+
+  ;; 基本変換
   upper lower capitalize title
   trim trim-left trim-right
-  pad-left pad-right
+  pad-left pad-right pad
   repeat reverse
-  
+
+  ;; ケース変換（重要）
+  snake        ;; "userName" -> "user_name"
+  camel        ;; "user_name" -> "userName"
+  kebab        ;; "userName" -> "user-name"
+  pascal       ;; "user_name" -> "UserName"
+  split-camel  ;; "userName" -> ["user", "Name"]
+
   ;; 分割・結合
   split lines words chars
   join
-  
+
   ;; 置換
   replace replace-first
-  
+  splice       ;; 位置ベースの置換
+
   ;; 部分文字列
-  slice take-str drop-str
-  
-  ;; エンコード
-  to-base64 from-base64
+  slice take drop
+
+  ;; 整形・配置
+  align-left align-center align-right
+  truncate trunc-words
+
+  ;; 正規化・クリーンアップ（重要）
+  squish       ;; 連続空白を1つに、前後trim
+  expand-tabs  ;; タブをスペースに変換
+
+  ;; 判定（バリデーション）
+  numeric? integer? blank?
+  digit?       ;; "123" -> true
+  alpha?       ;; "abc" -> true
+  alnum?       ;; "abc123" -> true
+  space?       ;; "  \n\t" -> true
+  lower?       ;; "abc" -> true
+  upper?       ;; "ABC" -> true
+  ascii?       ;; ASCII判定
+
+  ;; 行操作
+  map-lines    ;; 各行に関数を適用
+
+  ;; URL/Web
+  slugify              ;; "Hello World!" -> "hello-world"
   url-encode url-decode
   html-escape html-unescape
-  
+
+  ;; エンコード
+  to-base64 from-base64
+
   ;; パース
   parse-int parse-float
-  numeric? integer? blank?
-  
-  ;; ハッシュ
+
+  ;; Unicode
+  chars-count bytes-count  ;; Unicode文字数/バイト数
+
+  ;; 高度な変換
+  unaccent     ;; アクセント除去 "café" -> "cafe"
+
+  ;; 生成
+  random       ;; ランダム文字列生成
   hash uuid
-  
+
   ;; NLP
-  word-count slugify
-  
+  word-count
+
   ;; フォーマット
-  indent wrap truncate
+  indent wrap
 ])
 
 ;; 例
 (use str :as s)
+
+;; 基本
 (s/upper "hello")  ;; "HELLO"
 (s/split "a,b,c" ",")  ;; ["a" "b" "c"]
+
+;; ケース変換（重要）
+(s/snake "userName")    ;; "user_name"
+(s/kebab "userName")    ;; "user-name"
+(s/camel "user_name")   ;; "userName"
+(s/pascal "user_name")  ;; "UserName"
+
+;; Slugify（Web開発必須）
+(s/slugify "Hello World! 2024")  ;; "hello-world-2024"
+(s/slugify "Café résumé")        ;; "cafe-resume"
+
+;; 整形
+(s/align-right "Total" 20)       ;; "               Total"
+(s/trunc-words article 10)       ;; 最初の10単語まで
+(s/pad "hi" 10)                  ;; "    hi    " (中央)
+(s/pad "hi" 10 "*")              ;; "****hi****"
+
+;; 正規化（超重要）
+(s/squish "  hello   world  \n")  ;; "hello world"
+(s/expand-tabs "\thello\tworld")  ;; "    hello    world"
+
+;; 判定（バリデーション）
+(s/digit? "12345")   ;; true
+(s/alpha? "hello")   ;; true
+(s/alnum? "hello123") ;; true
+(s/space? "  \n\t")  ;; true
+
+;; 行操作
+(s/map-lines s/trim text)
+(s/map-lines #(str "> " %) quote)  ;; 各行にプレフィックス
+
+;; Unicode
+(s/chars-count "👨‍👩‍👧‍👦")  ;; 1 (視覚的な文字数)
+(s/bytes-count "👨‍👩‍👧‍👦")  ;; 25 (バイト数)
+
+;; 高度な変換
+(s/unaccent "café résumé")  ;; "cafe resume"
+(s/splice "hello world" 6 11 "universe")  ;; "hello universe"
+
+;; 生成
+(s/random 16)          ;; "d7f3k9m2p5q8w1x4"
+(s/random 16 :hex)     ;; "3f8a9c2e1b4d7056"
+(s/random 16 :alnum)   ;; "aB3dE7fG9hJ2kL5m"
 ```
 
 #### 🚧 csv - CSV/TSV処理（未実装）
