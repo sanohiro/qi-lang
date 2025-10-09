@@ -578,20 +578,22 @@ uvar variable
 ...
 ```
 
-#### 🚧 str - 文字列操作（未実装）
+#### ✅ str - 文字列操作（基本機能実装済み）
 ```lisp
 (use str :only [
-  ;; 検索
+  ;; 検索 ✅
   contains? starts-with? ends-with?
   index-of last-index-of
 
   ;; 基本変換
-  upper lower capitalize title
-  trim trim-left trim-right
-  pad-left pad-right pad
-  repeat reverse
+  upper lower                          ;; ✅ 実装済み
+  capitalize                           ;; ✅ 実装済み
+  trim trim-left trim-right            ;; ✅ 実装済み
+  pad-left pad-right pad               ;; ✅ 実装済み（pad-left/rightは左右詰め、padは中央揃え）
+  repeat                               ;; ✅ 実装済み
+  title reverse                        ;; 🚧 未実装
 
-  ;; ケース変換（重要）
+  ;; ケース変換（重要） 🚧 未実装
   snake        ;; "userName" -> "user_name"
   camel        ;; "user_name" -> "userName"
   kebab        ;; "userName" -> "user-name"
@@ -599,62 +601,59 @@ uvar variable
   split-camel  ;; "userName" -> ["user", "Name"]
 
   ;; 分割・結合
-  split lines words chars
-  join
+  split join                           ;; ✅ 実装済み
+  lines words                          ;; ✅ 実装済み
+  chars                                ;; 🚧 未実装
 
-  ;; 置換
+  ;; 置換 ✅
   replace replace-first
-  splice       ;; 位置ベースの置換
+  splice                               ;; 🚧 未実装（位置ベースの置換）
 
-  ;; 部分文字列
-  slice take drop
+  ;; 部分文字列 ✅
+  slice take-str drop-str              ;; リストのtake/dropと区別
+  sub-before sub-after                 ;; 区切り文字で前後を取得
 
   ;; 整形・配置
-  align-left align-center align-right
-  truncate trunc-words
+  align-left align-center align-right  ;; 🚧 未実装
+  truncate trunc-words                 ;; 🚧 未実装
 
-  ;; 正規化・クリーンアップ（重要）
-  squish       ;; 連続空白を1つに、前後trim
-  expand-tabs  ;; タブをスペースに変換
+  ;; 正規化・クリーンアップ（重要） ✅
+  squish                               ;; 連続空白を1つに、前後trim
+  expand-tabs                          ;; タブをスペースに変換
 
   ;; 判定（バリデーション）
-  numeric? integer? blank?
-  digit?       ;; "123" -> true
-  alpha?       ;; "abc" -> true
-  alnum?       ;; "abc123" -> true
-  space?       ;; "  \n\t" -> true
-  lower?       ;; "abc" -> true
-  upper?       ;; "ABC" -> true
-  ascii?       ;; ASCII判定
+  digit? alpha? alnum?                 ;; ✅ 実装済み
+  space? lower? upper?                 ;; ✅ 実装済み
+  numeric? integer? blank? ascii?      ;; 🚧 未実装
 
-  ;; 行操作
+  ;; 行操作 🚧 未実装
   map-lines    ;; 各行に関数を適用
 
-  ;; URL/Web
+  ;; URL/Web 🚧 未実装
   slugify              ;; "Hello World!" -> "hello-world"
   url-encode url-decode
   html-escape html-unescape
 
-  ;; エンコード
+  ;; エンコード 🚧 未実装
   to-base64 from-base64
 
-  ;; パース
+  ;; パース 🚧 未実装
   parse-int parse-float
 
-  ;; Unicode
+  ;; Unicode ✅
   chars-count bytes-count  ;; Unicode文字数/バイト数
 
-  ;; 高度な変換
+  ;; 高度な変換 🚧 未実装
   unaccent     ;; アクセント除去 "café" -> "cafe"
 
-  ;; 生成
+  ;; 生成 🚧 未実装
   random       ;; ランダム文字列生成
   hash uuid
 
-  ;; NLP
+  ;; NLP 🚧 未実装
   word-count
 
-  ;; フォーマット
+  ;; フォーマット 🚧 未実装
   indent wrap
 ])
 
@@ -664,6 +663,15 @@ uvar variable
 ;; 基本
 (s/upper "hello")  ;; "HELLO"
 (s/split "a,b,c" ",")  ;; ["a" "b" "c"]
+(s/repeat "-" 80)  ;; "----------------..." (80個)
+(s/repeat "ab" 3)  ;; "ababab"
+
+;; 検索
+(s/contains? "hello world" "world")  ;; true
+(s/starts-with? "hello" "he")  ;; true
+(s/ends-with? "hello" "lo")  ;; true
+(s/index-of "hello world" "world")  ;; 6
+(s/last-index-of "hello hello" "hello")  ;; 6
 
 ;; ケース変換（重要）
 (s/snake "userName")    ;; "user_name"
@@ -675,11 +683,13 @@ uvar variable
 (s/slugify "Hello World! 2024")  ;; "hello-world-2024"
 (s/slugify "Café résumé")        ;; "cafe-resume"
 
-;; 整形
-(s/align-right "Total" 20)       ;; "               Total"
-(s/trunc-words article 10)       ;; 最初の10単語まで
-(s/pad "hi" 10)                  ;; "    hi    " (中央)
+;; 整形・配置
+(s/pad-left "Total" 20)          ;; "               Total"
+(s/pad-right "Name" 20)          ;; "Name               "
+(s/pad "hi" 10)                  ;; "    hi    " (中央揃え)
 (s/pad "hi" 10 "*")              ;; "****hi****"
+(s/align-right "Total" 20)       ;; pad-leftと同じ
+(s/trunc-words article 10)       ;; 最初の10単語まで
 
 ;; 正規化（超重要）
 (s/squish "  hello   world  \n")  ;; "hello world"
@@ -698,6 +708,13 @@ uvar variable
 ;; Unicode
 (s/chars-count "👨‍👩‍👧‍👦")  ;; 1 (視覚的な文字数)
 (s/bytes-count "👨‍👩‍👧‍👦")  ;; 25 (バイト数)
+
+;; 部分文字列
+(s/take-str "hello" 3)       ;; "hel"
+(s/drop-str "hello" 2)       ;; "llo"
+(s/sub-before "user@example.com" "@")  ;; "user"
+(s/sub-after "user@example.com" "@")   ;; "example.com"
+(s/slice "hello world" 0 5)  ;; "hello"
 
 ;; 高度な変換
 (s/unaccent "café résumé")  ;; "cafe resume"

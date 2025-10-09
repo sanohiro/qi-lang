@@ -82,6 +82,7 @@ pub enum MsgKey {
     NeedAtLeastNArgs,   // {0}には少なくとも{1}個の引数が必要
     NeedExactlyNArgs,   // {0}には{1}個の引数が必要
     Need2Or3Args,       // {0}には2または3個の引数が必要
+    Need1Or2Args,       // {0}には1または2個の引数が必要
     Need2Args,          // {0}には2つの引数が必要
     Need1Arg,           // {0}には1つの引数が必要
 
@@ -194,6 +195,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::NeedAtLeastNArgs), "{0} requires at least {1} argument(s)");
         messages.insert((Lang::En, MsgKey::NeedExactlyNArgs), "{0} requires exactly {1} argument(s)");
         messages.insert((Lang::En, MsgKey::Need2Or3Args), "{0} requires 2 or 3 arguments");
+        messages.insert((Lang::En, MsgKey::Need1Or2Args), "{0} requires 1 or 2 arguments");
         messages.insert((Lang::En, MsgKey::Need2Args), "{0} requires 2 arguments");
         messages.insert((Lang::En, MsgKey::Need1Arg), "{0} requires 1 argument");
 
@@ -246,6 +248,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::NeedAtLeastNArgs), "{0}には少なくとも{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::NeedExactlyNArgs), "{0}には{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Or3Args), "{0}には2または3個の引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need1Or2Args), "{0}には1または2個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Args), "{0}には2つの引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need1Arg), "{0}には1つの引数が必要です");
 
