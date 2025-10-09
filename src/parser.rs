@@ -142,6 +142,7 @@ impl Parser {
                 "if" => return self.parse_if(),
                 "do" => return self.parse_do(),
                 "match" => return self.parse_match(),
+                "try" => return self.parse_try(),
                 "module" => return self.parse_module(),
                 "export" => return self.parse_export(),
                 "use" => return self.parse_use(),
@@ -377,6 +378,17 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Match { expr, arms })
+    }
+
+    /// (try expr)
+    fn parse_try(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'try'をスキップ
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Try(expr))
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {
@@ -657,6 +669,15 @@ mod tests {
                 assert_eq!(mode, UseMode::All);
             }
             _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_try() {
+        let mut parser = Parser::new("(try (/ 1 0))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Try(_) => {}
+            _ => panic!("Expected Try"),
         }
     }
 }

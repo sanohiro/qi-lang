@@ -277,6 +277,23 @@ impl Evaluator {
                 self.eval_match(&value, arms, env)
             }
 
+            Expr::Try(expr) => {
+                match self.eval_with_env(expr, env.clone()) {
+                    Ok(value) => {
+                        // {:ok value}
+                        let mut map = HashMap::new();
+                        map.insert("ok".to_string(), value);
+                        Ok(Value::Map(map))
+                    }
+                    Err(e) => {
+                        // {:error e}
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), Value::String(e));
+                        Ok(Value::Map(map))
+                    }
+                }
+            }
+
             // モジュールシステム（暫定実装）
             Expr::Module(_name) => {
                 // TODO: モジュール定義の実装
@@ -647,9 +664,9 @@ impl Evaluator {
                 }
                 Ok(Value::List(items))
             }
-            // モジュール関連はquoteできない
-            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } => {
-                Err("module/export/use cannot be quoted".to_string())
+            // モジュール関連とtryはquoteできない
+            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) => {
+                Err("module/export/use/try cannot be quoted".to_string())
             }
             _ => Err(format!("quoteできない式: {:?}", expr)),
         }
@@ -1298,5 +1315,55 @@ mod tests {
             eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 5)").unwrap(),
             Value::Bool(false)
         );
+    }
+
+    #[test]
+    fn test_try_success() {
+        // 成功時は {:ok value}
+        let result = eval_str("(try (+ 1 2))").unwrap();
+        match result {
+            Value::Map(m) => {
+                assert_eq!(m.get("ok"), Some(&Value::Integer(3)));
+                assert_eq!(m.get("error"), None);
+            }
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_try_error() {
+        // エラー時は {:error msg}
+        let result = eval_str("(try (/ 1 0))").unwrap();
+        match result {
+            Value::Map(m) => {
+                assert_eq!(m.get("ok"), None);
+                assert!(m.get("error").is_some());
+            }
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_try_with_match() {
+        // tryとmatchの組み合わせ
+        let result = eval_str(
+            r#"
+            (match (try (+ 1 2))
+              {:ok result} -> result
+              {:error e} -> 0)
+            "#,
+        )
+        .unwrap();
+        assert_eq!(result, Value::Integer(3));
+
+        let result = eval_str(
+            r#"
+            (match (try (/ 1 0))
+              {:ok result} -> result
+              {:error e} -> -1)
+            "#,
+        )
+        .unwrap();
+        assert_eq!(result, Value::Integer(-1));
     }
 }
