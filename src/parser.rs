@@ -1,5 +1,5 @@
 use crate::lexer::{Lexer, Token};
-use crate::value::{Expr, MatchArm, Pattern};
+use crate::value::{Expr, MatchArm, Pattern, UseMode};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -142,6 +142,9 @@ impl Parser {
                 "if" => return self.parse_if(),
                 "do" => return self.parse_do(),
                 "match" => return self.parse_match(),
+                "module" => return self.parse_module(),
+                "export" => return self.parse_export(),
+                "use" => return self.parse_use(),
                 _ => {}
             }
         }
@@ -458,6 +461,94 @@ impl Parser {
 
         Ok(Pattern::Map(pairs))
     }
+
+    /// (module name)
+    fn parse_module(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'module'をスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(n)) => n.clone(),
+            _ => return Err("module requires a module name".to_string()),
+        };
+        self.advance();
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Module(name))
+    }
+
+    /// (export sym1 sym2 ...)
+    fn parse_export(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'export'をスキップ
+
+        let mut symbols = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            match self.current() {
+                Some(Token::Symbol(s)) => {
+                    symbols.push(s.clone());
+                    self.advance();
+                }
+                _ => return Err("export requires symbols".to_string()),
+            }
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Export(symbols))
+    }
+
+    /// (use module :only [syms] | :as alias | :all)
+    fn parse_use(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'use'をスキップ
+
+        // モジュール名
+        let module = match self.current() {
+            Some(Token::Symbol(n)) => n.clone(),
+            _ => return Err("use requires a module name".to_string()),
+        };
+        self.advance();
+
+        // モード指定
+        let mode = match self.current() {
+            Some(Token::Keyword(k)) if k == "only" => {
+                self.advance();
+                // [sym1 sym2 ...]
+                self.expect(Token::LBracket)?;
+                let mut symbols = Vec::new();
+                while self.current() != Some(&Token::RBracket) {
+                    match self.current() {
+                        Some(Token::Symbol(s)) => {
+                            symbols.push(s.clone());
+                            self.advance();
+                        }
+                        _ => return Err("Expected symbol in :only list".to_string()),
+                    }
+                }
+                self.expect(Token::RBracket)?;
+                UseMode::Only(symbols)
+            }
+            Some(Token::Keyword(k)) if k == "as" => {
+                self.advance();
+                match self.current() {
+                    Some(Token::Symbol(alias)) => {
+                        let alias = alias.clone();
+                        self.advance();
+                        UseMode::As(alias)
+                    }
+                    _ => return Err(":as requires an alias name".to_string()),
+                }
+            }
+            Some(Token::Keyword(k)) if k == "all" => {
+                self.advance();
+                UseMode::All
+            }
+            _ => return Err("use requires :only, :as, or :all".to_string()),
+        };
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Use { module, mode })
+    }
 }
 
 #[cfg(test)]
@@ -508,6 +599,64 @@ mod tests {
                 assert_eq!(params, vec!["x", "y"]);
             }
             _ => panic!("Expected Fn"),
+        }
+    }
+
+    #[test]
+    fn test_parse_module() {
+        let mut parser = Parser::new("(module http)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Module(name) => {
+                assert_eq!(name, "http");
+            }
+            _ => panic!("Expected Module"),
+        }
+    }
+
+    #[test]
+    fn test_parse_export() {
+        let mut parser = Parser::new("(export get post)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Export(symbols) => {
+                assert_eq!(symbols, vec!["get", "post"]);
+            }
+            _ => panic!("Expected Export"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_only() {
+        let mut parser = Parser::new("(use http :only [get post])").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode } => {
+                assert_eq!(module, "http");
+                assert_eq!(mode, UseMode::Only(vec!["get".to_string(), "post".to_string()]));
+            }
+            _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_as() {
+        let mut parser = Parser::new("(use http :as h)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode } => {
+                assert_eq!(module, "http");
+                assert_eq!(mode, UseMode::As("h".to_string()));
+            }
+            _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_all() {
+        let mut parser = Parser::new("(use http :all)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode } => {
+                assert_eq!(module, "http");
+                assert_eq!(mode, UseMode::All);
+            }
+            _ => panic!("Expected Use"),
         }
     }
 }

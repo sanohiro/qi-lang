@@ -132,11 +132,30 @@ pub enum Expr {
         arms: Vec<MatchArm>,
     },
 
+    // モジュール
+    Module(String),
+    Export(Vec<String>),
+    Use {
+        module: String,
+        mode: UseMode,
+    },
+
     // 関数呼び出し
     Call {
         func: Box<Expr>,
         args: Vec<Expr>,
     },
+}
+
+/// useのインポートモード
+#[derive(Debug, Clone, PartialEq)]
+pub enum UseMode {
+    /// :only [sym1 sym2]
+    Only(Vec<String>),
+    /// :as alias
+    As(String),
+    /// :all
+    All,
 }
 
 /// matchのアーム（パターン -> 結果）

@@ -277,6 +277,22 @@ impl Evaluator {
                 self.eval_match(&value, arms, env)
             }
 
+            // モジュールシステム（暫定実装）
+            Expr::Module(_name) => {
+                // TODO: モジュール定義の実装
+                Ok(Value::Nil)
+            }
+
+            Expr::Export(_symbols) => {
+                // TODO: エクスポートの実装
+                Ok(Value::Nil)
+            }
+
+            Expr::Use { module: _, mode: _ } => {
+                // TODO: インポートの実装
+                Ok(Value::Nil)
+            }
+
             Expr::Call { func, args } => {
                 // 高階関数と論理演算子、quoteの特別処理
                 if let Expr::Symbol(name) = func.as_ref() {
@@ -630,6 +646,10 @@ impl Evaluator {
                     items.push(self.expr_to_value(arg)?);
                 }
                 Ok(Value::List(items))
+            }
+            // モジュール関連はquoteできない
+            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } => {
+                Err("module/export/use cannot be quoted".to_string())
             }
             _ => Err(format!("quoteできない式: {:?}", expr)),
         }
