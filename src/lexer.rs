@@ -1,3 +1,17 @@
+/// ソースコード上の位置
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Span {
+    pub line: usize,
+    pub column: usize,
+    pub offset: usize,
+}
+
+impl Span {
+    pub fn new(line: usize, column: usize, offset: usize) -> Self {
+        Span { line, column, offset }
+    }
+}
+
 /// トークンの種類
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -32,6 +46,8 @@ pub enum Token {
 pub struct Lexer {
     input: Vec<char>,
     pos: usize,
+    line: usize,
+    column: usize,
 }
 
 impl Lexer {
@@ -39,7 +55,13 @@ impl Lexer {
         Lexer {
             input: input.chars().collect(),
             pos: 0,
+            line: 1,
+            column: 1,
         }
+    }
+
+    fn current_span(&self) -> Span {
+        Span::new(self.line, self.column, self.pos)
     }
 
     fn current(&self) -> Option<char> {
@@ -60,6 +82,14 @@ impl Lexer {
     }
 
     fn advance(&mut self) {
+        if let Some(ch) = self.current() {
+            if ch == '\n' {
+                self.line += 1;
+                self.column = 1;
+            } else {
+                self.column += 1;
+            }
+        }
         self.pos += 1;
     }
 

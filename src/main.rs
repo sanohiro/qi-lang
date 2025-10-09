@@ -83,15 +83,15 @@ fn run_file(path: &str) {
     });
 
     let mut evaluator = Evaluator::new();
-    eval_code(&mut evaluator, &content, false);
+    eval_code(&mut evaluator, &content, false, Some(path));
 }
 
 fn run_code(code: &str) {
     let mut evaluator = Evaluator::new();
-    eval_code(&mut evaluator, code, true);
+    eval_code(&mut evaluator, code, true, None);
 }
 
-fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool) {
+fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename: Option<&str>) {
     match Parser::new(code) {
         Ok(mut parser) => match parser.parse_all() {
             Ok(exprs) => {
@@ -104,19 +104,31 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool) {
                             }
                         }
                         Err(e) => {
-                            eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                            if let Some(file) = filename {
+                                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorRuntime), e);
+                            } else {
+                                eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                            }
                             std::process::exit(1);
                         }
                     }
                 }
             }
             Err(e) => {
-                eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                if let Some(file) = filename {
+                    eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorParse), e);
+                } else {
+                    eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                }
                 std::process::exit(1);
             }
         },
         Err(e) => {
-            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
+            if let Some(file) = filename {
+                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorLexer), e);
+            } else {
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
+            }
             std::process::exit(1);
         }
     }
@@ -134,7 +146,7 @@ fn repl(preload: Option<&str>) {
         match std::fs::read_to_string(path) {
             Ok(content) => {
                 println!("{}", fmt_ui_msg(UiMsg::ReplLoading, &[path]));
-                eval_code(&mut evaluator, &content, false);
+                eval_code(&mut evaluator, &content, false, Some(path));
                 println!("{}\n", ui_msg(UiMsg::ReplLoaded));
             }
             Err(e) => {

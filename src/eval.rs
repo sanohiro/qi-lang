@@ -17,6 +17,7 @@ pub struct Evaluator {
     modules: HashMap<String, Rc<Module>>, // ロード済みモジュール
     current_module: Option<String>, // 現在評価中のモジュール名
     loading_modules: Vec<String>, // 循環参照検出用
+    call_stack: Vec<String>, // 関数呼び出しスタック（スタックトレース用）
 }
 
 /// 組み込み関数を登録するマクロ
@@ -113,6 +114,7 @@ impl Evaluator {
             modules: HashMap::new(),
             current_module: None,
             loading_modules: Vec::new(),
+            call_stack: Vec::new(),
         }
     }
 
