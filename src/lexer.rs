@@ -1,3 +1,5 @@
+use crate::i18n::{fmt_msg, msg, MsgKey};
+
 /// ソースコード上の位置
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Span {
@@ -131,7 +133,7 @@ impl Lexer {
                     Some('\\') => result.push('\\'),
                     Some('"') => result.push('"'),
                     Some(c) => result.push(c),
-                    None => return Err("文字列が閉じられていません".to_string()),
+                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
                 }
                 self.advance();
             } else {
@@ -140,7 +142,7 @@ impl Lexer {
             }
         }
 
-        Err("文字列が閉じられていません".to_string())
+        Err(msg(MsgKey::UnclosedString).to_string())
     }
 
     fn read_number(&mut self) -> Token {
@@ -271,7 +273,7 @@ impl Lexer {
                     return Ok(self.read_symbol_or_keyword());
                 }
                 Some(ch) => {
-                    return Err(format!("予期しない文字: {}", ch));
+                    return Err(fmt_msg(MsgKey::UnexpectedChar, &[&ch.to_string()]));
                 }
             }
         }
