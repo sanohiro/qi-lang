@@ -1,8 +1,12 @@
 use qi_lang::eval::Evaluator;
+use qi_lang::i18n;
 use qi_lang::parser::Parser;
 use std::io::{self, Write};
 
 fn main() {
+    // 国際化システムを初期化
+    i18n::init();
+
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 {

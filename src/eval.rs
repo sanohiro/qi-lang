@@ -1,3 +1,4 @@
+use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{Env, Expr, Function, MatchArm, NativeFunc, Pattern, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -188,7 +189,7 @@ impl Evaluator {
             Expr::Symbol(name) => env
                 .borrow()
                 .get(name)
-                .ok_or_else(|| format!("未定義の変数: {}", name)),
+                .ok_or_else(|| fmt_msg(MsgKey::UndefinedVar, &[name])),
 
             Expr::List(items) => {
                 let values: Result<Vec<_>, _> = items
@@ -213,7 +214,7 @@ impl Evaluator {
                         Value::Keyword(k) => k,
                         Value::String(s) => s,
                         Value::Symbol(s) => s,
-                        _ => return Err("マップのキーは文字列またはキーワードが必要です".to_string()),
+                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
                     };
                     let value = self.eval_with_env(v, env.clone())?;
                     map.insert(key, value);
@@ -306,16 +307,15 @@ impl Evaluator {
                         if f.is_variadic {
                             // 可変長引数の処理
                             if f.params.len() != 1 {
-                                return Err("可変長引数関数はパラメータが1つである必要があります".to_string());
+                                return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["variadic fn", "1"]));
                             }
                             new_env.set(f.params[0].clone(), Value::List(arg_vals));
                         } else {
                             // 通常の引数
                             if f.params.len() != arg_vals.len() {
-                                return Err(format!(
-                                    "引数の数が一致しません: 期待 {}, 実際 {}",
-                                    f.params.len(),
-                                    arg_vals.len()
+                                return Err(fmt_msg(
+                                    MsgKey::ArgCountMismatch,
+                                    &[&f.params.len().to_string(), &arg_vals.len().to_string()],
                                 ));
                             }
                             for (param, arg) in f.params.iter().zip(arg_vals.iter()) {
@@ -325,7 +325,7 @@ impl Evaluator {
 
                         self.eval_with_env(&f.body, Rc::new(RefCell::new(new_env)))
                     }
-                    _ => Err(format!("関数ではありません: {:?}", func_val)),
+                    _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func_val)])),
                 }
             }
         }
@@ -647,7 +647,7 @@ fn native_add(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => sum += n,
-            _ => return Err(format!("+ は整数のみ受け付けます: {:?}", arg)),
+            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["+"])),
         }
     }
     Ok(Value::Integer(sum))
@@ -689,17 +689,17 @@ fn native_mul(args: &[Value]) -> Result<Value, String> {
 
 fn native_div(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("/ には2つの引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["/", "2"]));
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => {
             if *b == 0 {
-                Err("ゼロ除算エラー".to_string())
+                Err(msg(MsgKey::DivisionByZero).to_string())
             } else {
                 Ok(Value::Integer(a / b))
             }
         }
-        _ => Err("/ は整数のみ受け付けます".to_string()),
+        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["/"])),
     }
 }
 
