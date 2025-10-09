@@ -9,7 +9,7 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => sum += n,
-            _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["+", &format!("{:?}", arg)])),
+            _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["+", "integers", &format!("{:?}", arg)])),
         }
     }
     Ok(Value::Integer(sum))
@@ -30,13 +30,13 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
                 for arg in &args[1..] {
                     match arg {
                         Value::Integer(n) => result -= n,
-                        _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["-", &format!("{:?}", arg)])),
+                        _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["-", "integers", &format!("{:?}", arg)])),
                     }
                 }
                 Ok(Value::Integer(result))
             }
         }
-        _ => Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["-", &format!("{:?}", args[0])])),
+        _ => Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["-", "integers", &format!("{:?}", args[0])])),
     }
 }
 
@@ -46,7 +46,7 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => product *= n,
-            _ => return Err(fmt_msg(MsgKey::IntegerOnlyWithDebug, &["*", &format!("{:?}", arg)])),
+            _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["*", "integers", &format!("{:?}", arg)])),
         }
     }
     Ok(Value::Integer(product))
@@ -64,7 +64,7 @@ pub fn native_div(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a / b))
         }
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["/"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["/", "integers"])),
     }
 }
 
@@ -81,7 +81,7 @@ pub fn native_mod(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a % b))
         }
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["%"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["%", "integers"])),
     }
 }
 
@@ -93,7 +93,7 @@ pub fn native_abs(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n.abs())),
         Value::Float(f) => Ok(Value::Float(f.abs())),
-        _ => Err(fmt_msg(MsgKey::NumberOnly, &["abs"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["abs", "numbers"])),
     }
 }
 
@@ -104,7 +104,7 @@ pub fn native_min(args: &[Value]) -> Result<Value, String> {
     }
     let mut min = match &args[0] {
         Value::Integer(n) => *n,
-        _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["min"])),
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "integers"])),
     };
     for arg in &args[1..] {
         match arg {
@@ -113,7 +113,7 @@ pub fn native_min(args: &[Value]) -> Result<Value, String> {
                     min = *n;
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["min"])),
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "integers"])),
         }
     }
     Ok(Value::Integer(min))
@@ -126,7 +126,7 @@ pub fn native_max(args: &[Value]) -> Result<Value, String> {
     }
     let mut max = match &args[0] {
         Value::Integer(n) => *n,
-        _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["max"])),
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "integers"])),
     };
     for arg in &args[1..] {
         match arg {
@@ -135,7 +135,7 @@ pub fn native_max(args: &[Value]) -> Result<Value, String> {
                     max = *n;
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::IntegerOnly, &["max"])),
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "integers"])),
         }
     }
     Ok(Value::Integer(max))
@@ -148,7 +148,7 @@ pub fn native_inc(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n + 1)),
-        _ => Err(msg(MsgKey::IncIntegerOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["inc", "integers"])),
     }
 }
 
@@ -159,7 +159,7 @@ pub fn native_dec(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n - 1)),
-        _ => Err(msg(MsgKey::DecIntegerOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["dec", "integers"])),
     }
 }
 
@@ -174,11 +174,11 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
             for item in items {
                 match item {
                     Value::Integer(n) => sum += n,
-                    _ => return Err(msg(MsgKey::SumIntegerListOnly).to_string()),
+                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["sum", "integers"])),
                 }
             }
             Ok(Value::Integer(sum))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["sum"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sum", "lists or vectors"])),
     }
 }

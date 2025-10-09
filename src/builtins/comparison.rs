@@ -26,7 +26,7 @@ pub fn native_lt(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a < b)),
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["<"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<", "integers"])),
     }
 }
 
@@ -37,7 +37,7 @@ pub fn native_gt(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a > b)),
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &[">"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">", "integers"])),
     }
 }
 
@@ -48,7 +48,7 @@ pub fn native_le(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a <= b)),
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &["<="])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<=", "integers"])),
     }
 }
 
@@ -59,6 +59,6 @@ pub fn native_ge(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a >= b)),
-        _ => Err(fmt_msg(MsgKey::IntegerOnly, &[">="])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">=", "integers"])),
     }
 }

@@ -13,7 +13,7 @@ pub fn native_empty(args: &[Value]) -> Result<Value, String> {
         Value::List(v) | Value::Vector(v) => Ok(Value::Bool(v.is_empty())),
         Value::Map(m) => Ok(Value::Bool(m.is_empty())),
         Value::String(s) => Ok(Value::Bool(s.is_empty())),
-        _ => Err(fmt_msg(MsgKey::StringOrCollectionOnly, &["empty?"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["empty?", "strings or collections"])),
     }
 }
 

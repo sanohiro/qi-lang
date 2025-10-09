@@ -195,7 +195,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(msg(MsgKey::DefNeedsSymbol).to_string()),
+            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["def"]).to_string()),
         };
         self.advance();
 
@@ -230,7 +230,7 @@ impl Parser {
                     self.advance();
                 }
             } else {
-                return Err(msg(MsgKey::FnNeedsParam).to_string());
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn"]).to_string());
             }
         }
 
@@ -257,7 +257,7 @@ impl Parser {
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
                 Some(Token::Symbol(s)) => s.clone(),
-                _ => return Err(msg(MsgKey::LetNeedsSymbol).to_string()),
+                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["let"]).to_string()),
             };
             self.advance();
 
@@ -474,7 +474,7 @@ impl Parser {
         while self.current() != Some(&Token::RBrace) {
             let key = match self.current() {
                 Some(Token::Keyword(k)) => k.clone(),
-                _ => return Err(msg(MsgKey::MapKeyNeedsKeyword).to_string()),
+                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
             };
             self.advance();
 

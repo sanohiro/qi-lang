@@ -462,7 +462,7 @@ impl Evaluator {
 
                 if f.is_variadic {
                     if f.params.len() != 1 {
-                        return Err(msg(MsgKey::VariadicFnOneParam).to_string());
+                        return Err(fmt_msg(MsgKey::VariadicFnNeedsOneParam, &[]));
                     }
                     new_env.set(f.params[0].clone(), Value::List(args));
                 } else {
@@ -568,7 +568,7 @@ impl Evaluator {
             }
             // モジュール関連とtry、deferはquoteできない
             Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) => {
-                Err(msg(MsgKey::CannotQuoteSpecialForm).to_string())
+                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer"]))
             }
             _ => Err(fmt_msg(MsgKey::CannotQuote, &[&format!("{:?}", expr)])),
         }

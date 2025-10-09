@@ -22,7 +22,7 @@ pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, St
             }
             Ok(Value::List(results))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["map (2nd arg)"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["map (2nd arg)", "lists or vectors"])),
     }
 }
 
@@ -46,7 +46,7 @@ pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
             }
             Ok(Value::List(results))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["filter (2nd arg)"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["filter (2nd arg)", "lists or vectors"])),
     }
 }
 
@@ -81,7 +81,7 @@ pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
             }
             Ok(acc)
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["reduce (2nd arg)"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["reduce (2nd arg)", "lists or vectors"])),
     }
 }
 
@@ -97,6 +97,6 @@ pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, 
         Value::List(items) | Value::Vector(items) => {
             evaluator.apply_function(func, items)
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["apply (2nd arg)"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["apply (2nd arg)", "lists or vectors"])),
     }
 }

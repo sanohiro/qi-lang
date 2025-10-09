@@ -1,6 +1,6 @@
 //! リスト操作関数
 
-use crate::i18n::{fmt_msg, msg, MsgKey};
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// first - リストの最初の要素
@@ -12,7 +12,7 @@ pub fn native_first(args: &[Value]) -> Result<Value, String> {
         Value::List(v) | Value::Vector(v) => {
             Ok(v.first().cloned().unwrap_or(Value::Nil))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["first"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["first", "lists or vectors"])),
     }
 }
 
@@ -36,7 +36,7 @@ pub fn native_rest(args: &[Value]) -> Result<Value, String> {
                 Ok(Value::Vector(v[1..].to_vec()))
             }
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["rest"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["rest", "lists or vectors"])),
     }
 }
 
@@ -49,7 +49,7 @@ pub fn native_len(args: &[Value]) -> Result<Value, String> {
         Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
         Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
         Value::String(s) => Ok(Value::Integer(s.len() as i64)),
-        _ => Err(fmt_msg(MsgKey::StringOrCollectionOnly, &["len"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["len", "strings or collections"])),
     }
 }
 
@@ -65,13 +65,13 @@ pub fn native_nth(args: &[Value]) -> Result<Value, String> {
     }
     let index = match &args[1] {
         Value::Integer(n) => *n as usize,
-        _ => return Err(msg(MsgKey::NthSecondArgInteger).to_string()),
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["nth", "an integer"])),
     };
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
             Ok(v.get(index).cloned().unwrap_or(Value::Nil))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["nth"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["nth", "lists or vectors"])),
     }
 }
 
@@ -91,7 +91,7 @@ pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
             reversed.reverse();
             Ok(Value::Vector(reversed))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["reverse"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["reverse", "lists or vectors"])),
     }
 }
 
@@ -112,7 +112,7 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
             new_vec.extend(v.clone());
             Ok(Value::List(new_vec))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["cons"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["cons", "lists or vectors"])),
     }
 }
 
@@ -134,7 +134,7 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
             new_vec.extend_from_slice(&args[1..]);
             Ok(Value::Vector(new_vec))
         }
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["conj"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["conj", "lists or vectors"])),
     }
 }
 
@@ -145,12 +145,12 @@ pub fn native_take(args: &[Value]) -> Result<Value, String> {
     }
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
-        _ => return Err(msg(MsgKey::TakeFirstArgInteger).to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["take", "an integer"])),
     };
     match &args[1] {
         Value::List(v) => Ok(Value::List(v.iter().take(n).cloned().collect())),
         Value::Vector(v) => Ok(Value::Vector(v.iter().take(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["take"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["take", "lists or vectors"])),
     }
 }
 
@@ -161,12 +161,12 @@ pub fn native_drop(args: &[Value]) -> Result<Value, String> {
     }
     let n = match &args[0] {
         Value::Integer(i) => *i as usize,
-        _ => return Err(msg(MsgKey::DropFirstArgInteger).to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["drop", "an integer"])),
     };
     match &args[1] {
         Value::List(v) => Ok(Value::List(v.iter().skip(n).cloned().collect())),
         Value::Vector(v) => Ok(Value::Vector(v.iter().skip(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::ListOrVectorOnly, &["drop"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["drop", "lists or vectors"])),
     }
 }
 
@@ -176,7 +176,7 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::List(v) | Value::Vector(v) => result.extend(v.clone()),
-            _ => return Err(msg(MsgKey::ConcatListOrVectorOnly).to_string()),
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
         }
     }
     Ok(Value::List(result))
@@ -212,6 +212,6 @@ pub fn native_range(args: &[Value]) -> Result<Value, String> {
             let items: Vec<Value> = (0..*n).map(Value::Integer).collect();
             Ok(Value::List(items))
         }
-        _ => Err(msg(MsgKey::RangeIntegerOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
     }
 }

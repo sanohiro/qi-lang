@@ -13,11 +13,11 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
             let key = match &args[1] {
                 Value::String(s) => s.clone(),
                 Value::Keyword(k) => k.clone(),
-                _ => return Err(msg(MsgKey::GetKeyMustBeKeyword).to_string()),
+                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
             };
             Ok(m.get(&key).cloned().unwrap_or(Value::Nil))
         }
-        _ => Err(msg(MsgKey::GetFirstArgMap).to_string()),
+        _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["get", "a map"])),
     }
 }
 
@@ -31,7 +31,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
             let keys: Vec<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
             Ok(Value::List(keys))
         }
-        _ => Err(msg(MsgKey::KeysMapOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["keys", "maps"])),
     }
 }
 
@@ -45,7 +45,7 @@ pub fn native_vals(args: &[Value]) -> Result<Value, String> {
             let vals: Vec<Value> = m.values().cloned().collect();
             Ok(Value::List(vals))
         }
-        _ => Err(msg(MsgKey::ValsMapOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["vals", "maps"])),
     }
 }
 
@@ -61,13 +61,13 @@ pub fn native_assoc(args: &[Value]) -> Result<Value, String> {
                 let key = match &args[i] {
                     Value::String(s) => s.clone(),
                     Value::Keyword(k) => k.clone(),
-                    _ => return Err(msg(MsgKey::AssocKeyMustBeKeyword).to_string()),
+                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
                 };
                 new_map.insert(key, args[i + 1].clone());
             }
             Ok(Value::Map(new_map))
         }
-        _ => Err(msg(MsgKey::AssocFirstArgMap).to_string()),
+        _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["assoc", "a map"])),
     }
 }
 
@@ -83,12 +83,12 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
                 let key = match arg {
                     Value::String(s) => s.clone(),
                     Value::Keyword(k) => k.clone(),
-                    _ => return Err(msg(MsgKey::DissocKeyMustBeKeyword).to_string()),
+                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
                 };
                 new_map.remove(&key);
             }
             Ok(Value::Map(new_map))
         }
-        _ => Err(msg(MsgKey::DissocFirstArgMap).to_string()),
+        _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["dissoc", "a map"])),
     }
 }

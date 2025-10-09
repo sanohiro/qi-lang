@@ -59,7 +59,7 @@ pub fn native_upper(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_uppercase())),
-        _ => Err(msg(MsgKey::UpperStringOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["upper", "strings"])),
     }
 }
 
@@ -70,7 +70,7 @@ pub fn native_lower(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_lowercase())),
-        _ => Err(msg(MsgKey::LowerStringOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["lower", "strings"])),
     }
 }
 
@@ -81,6 +81,6 @@ pub fn native_trim(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.trim().to_string())),
-        _ => Err(msg(MsgKey::TrimStringOnly).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["trim", "strings"])),
     }
 }
