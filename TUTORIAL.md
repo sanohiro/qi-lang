@@ -24,10 +24,11 @@
 1. [Phase 1: 基礎理解（完了済み）](#phase-1-基礎理解) - レキサー、パーサー、評価器
 2. [Phase 2: match式の実装（完了済み）](#phase-2-match式の実装) - パターンマッチング
 3. [Phase 3: パイプライン演算子（完了済み）](#phase-3-パイプライン演算子) - 糖衣構文
-4. [Phase 4: より多くの組み込み関数](#phase-4-より多くの組み込み関数)
-5. [Phase 5: マクロシステム](#phase-5-マクロシステム)
-6. [Phase 6: モジュールシステム](#phase-6-モジュールシステム)
-7. [Phase 7: Cranelift統合](#phase-7-cranelift統合)
+4. [Phase 3.5: Rustのマクロでコードを簡潔に（完了済み）](#phase-35-rustのマクロでコードを簡潔に--完了) - リファクタリング
+5. [Phase 4: より多くの組み込み関数](#phase-4-より多くの組み込み関数)
+6. [Phase 5: マクロシステム](#phase-5-マクロシステム)
+7. [Phase 6: モジュールシステム](#phase-6-モジュールシステム)
+8. [Phase 7: Cranelift統合](#phase-7-cranelift統合)
 
 ---
 
@@ -818,6 +819,347 @@ $ cargo run examples/pipe_test.qi
    - パイプラインによる読みやすいデータフロー
    - 関数型プログラミングの促進
    - Lisp構文での中置演算子の実現
+
+---
+
+## Phase 3.5: Rustのマクロでコードを簡潔に ✅ 完了
+
+### 目標
+
+Rustの`macro_rules!`を使って、重複したコードを削減し、保守性を向上させる。
+
+### Rustで学ぶこと
+
+1. **宣言的マクロ（`macro_rules!`）**
+   - パターンマッチングベースのコード生成
+   - コンパイル時のコード展開
+   - 反復処理の自動化
+
+2. **マクロの使い分け**
+   - 関数では実現できないケース
+   - ボイラープレートの削減
+
+3. **メタプログラミング**
+   - コードを書くコード
+   - DRY原則の徹底
+
+### 実装した内容
+
+#### 問題: 重複した関数登録コード
+
+eval.rsでは、各組み込み関数を環境に登録する際、以下のような重複したコードが280行以上ありました：
+
+```rust
+// 各関数につき6行が必要
+env.set(
+    "+".to_string(),
+    Value::NativeFunc(NativeFunc {
+        name: "+".to_string(),
+        func: native_add,
+    }),
+);
+
+env.set(
+    "-".to_string(),
+    Value::NativeFunc(NativeFunc {
+        name: "-".to_string(),
+        func: native_sub,
+    }),
+);
+
+// これが40個以上続く...
+```
+
+**なぜこれが問題か？**
+- 新しい関数を追加するたびに6行書く必要がある
+- タイプミスの可能性
+- 関数名が2箇所に登場（DRY原則違反）
+- コードが長く読みづらい
+
+#### 解決策1: `register_native!` マクロ
+
+関数登録を1行で書けるマクロを作成：
+
+```rust
+/// 組み込み関数を登録するマクロ
+macro_rules! register_native {
+    ($env:expr, $($name:expr => $func:expr),* $(,)?) => {
+        $(
+            $env.set(
+                $name.to_string(),
+                Value::NativeFunc(NativeFunc {
+                    name: $name.to_string(),
+                    func: $func,
+                }),
+            );
+        )*
+    };
+}
+```
+
+**マクロの仕組み**:
+- `$env:expr` - 環境変数を受け取る
+- `$($name:expr => $func:expr),*` - `名前 => 関数` のペアを0個以上受け取る
+- `$(,)?` - 末尾のカンマを許可（オプション）
+- `$(...)*` - パターンを繰り返し展開
+
+**使用例**:
+```rust
+register_native!(env,
+    // 算術演算
+    "+" => native_add,
+    "-" => native_sub,
+    "*" => native_mul,
+    "/" => native_div,
+    "%" => native_mod,
+
+    // 比較演算
+    "=" => native_eq,
+    "<" => native_lt,
+    ">" => native_gt,
+
+    // ... 他の関数も1行ずつ
+);
+```
+
+**効果**:
+- 280行 → 40行に削減（85%減！）
+- 新しい関数は1行追加するだけ
+- カテゴリごとにコメントで整理
+- タイプミスのリスク減少
+
+#### 解決策2: `check_args!` マクロ
+
+各組み込み関数の引数チェックも重複していました：
+
+```rust
+// 各関数で同じパターンが繰り返される
+fn native_nth(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["nth", "2"]));
+    }
+    // 実際の処理...
+}
+
+fn native_count(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["count", "1"]));
+    }
+    // 実際の処理...
+}
+```
+
+**引数チェック用マクロ**:
+```rust
+/// 引数の数をチェックするマクロ
+macro_rules! check_args {
+    // 正確にN個の引数が必要
+    ($args:expr, $expected:expr, $func_name:expr) => {
+        if $args.len() != $expected {
+            return Err(fmt_msg(
+                MsgKey::NeedExactlyNArgs,
+                &[$func_name, &$expected.to_string()],
+            ));
+        }
+    };
+
+    // 最小〜最大個の引数が必要
+    ($args:expr, $min:expr, $max:expr, $func_name:expr) => {
+        if $args.len() < $min || $args.len() > $max {
+            return Err(format!(
+                "{}には{}〜{}個の引数が必要です",
+                $func_name, $min, $max
+            ));
+        }
+    };
+}
+```
+
+**使用例**:
+```rust
+fn native_nth(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 2, "nth");  // たった1行！
+    // 実際の処理...
+}
+
+fn native_count(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 1, "count");  // たった1行！
+    // 実際の処理...
+}
+
+fn native_abs(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 1, "abs");
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Integer(n.abs())),
+        Value::Float(f) => Ok(Value::Float(f.abs())),
+        _ => Err("absは数値のみ受け付けます".to_string()),
+    }
+}
+```
+
+**効果**:
+- 各関数で3行 → 1行に削減
+- エラーメッセージが統一される
+- 可変長引数にも対応（2つ目のパターン）
+
+### Rustのマクロ基礎
+
+#### 宣言的マクロ vs 手続き的マクロ
+
+**宣言的マクロ (`macro_rules!`)**:
+- パターンマッチングでコードを生成
+- 実装が簡単
+- 今回使用したもの
+
+**手続き的マクロ**:
+- Rustコードでマクロを実装
+- より複雑な処理が可能
+- derive, attribute, function-like の3種類
+
+#### パターンマッチングの構文
+
+```rust
+macro_rules! my_macro {
+    // パターン1: 引数なし
+    () => {
+        println!("引数なし");
+    };
+
+    // パターン2: 式1つ
+    ($x:expr) => {
+        println!("値: {}", $x);
+    };
+
+    // パターン3: 繰り返し
+    ($($x:expr),*) => {
+        $(
+            println!("値: {}", $x);
+        )*
+    };
+}
+
+// 使用例
+my_macro!();           // 引数なし
+my_macro!(42);         // 値: 42
+my_macro!(1, 2, 3);    // 値: 1 \n 値: 2 \n 値: 3
+```
+
+**パターンの種類**:
+- `expr` - 式
+- `ident` - 識別子
+- `ty` - 型
+- `pat` - パターン
+- `stmt` - 文
+- `block` - ブロック
+
+**繰り返しの記号**:
+- `*` - 0回以上
+- `+` - 1回以上
+- `?` - 0回または1回
+
+#### 実践例: vec! マクロ
+
+Rustの標準ライブラリの`vec!`マクロを理解しましょう：
+
+```rust
+// 簡易版の実装
+macro_rules! vec {
+    // 空のベクタ
+    () => {
+        Vec::new()
+    };
+
+    // 要素のリスト
+    ($($x:expr),* $(,)?) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+            temp_vec
+        }
+    };
+}
+
+// 使用
+let v1 = vec![];
+let v2 = vec![1, 2, 3];
+let v3 = vec![1, 2, 3,];  // 末尾カンマもOK
+```
+
+### マクロの利点と注意点
+
+**利点**:
+1. **ボイラープレート削減** - 繰り返しコードを大幅に減らせる
+2. **型安全** - コンパイル時にチェックされる
+3. **ゼロコスト抽象化** - ランタイムオーバーヘッドなし
+4. **柔軟性** - 関数では不可能な構文を実現
+
+**注意点**:
+1. **エラーメッセージが分かりにくい** - マクロ展開時のエラーは読みづらい
+2. **デバッグが難しい** - `cargo expand`で展開結果を確認
+3. **使いすぎない** - できるだけ関数を使う
+4. **ドキュメント必須** - マクロの動作を明確に説明
+
+### マクロのデバッグ
+
+**cargo expandで展開結果を見る**:
+```bash
+# cargo-expandをインストール
+cargo install cargo-expand
+
+# マクロの展開結果を表示
+cargo expand
+```
+
+**展開結果の例**:
+```rust
+// 元のコード
+register_native!(env,
+    "+" => native_add,
+    "-" => native_sub,
+);
+
+// 展開後
+env.set(
+    "+".to_string(),
+    Value::NativeFunc(NativeFunc {
+        name: "+".to_string(),
+        func: native_add,
+    }),
+);
+env.set(
+    "-".to_string(),
+    Value::NativeFunc(NativeFunc {
+        name: "-".to_string(),
+        func: native_sub,
+    }),
+);
+```
+
+### 学んだこと
+
+1. **Rustのマクロ**:
+   - `macro_rules!` による宣言的マクロ
+   - パターンマッチングでのコード生成
+   - 繰り返しパターン `$(...)*`
+   - オプショナルパターン `$(...)?`
+
+2. **リファクタリング技法**:
+   - 重複コードの特定
+   - マクロによる共通化
+   - コードの可読性向上
+
+3. **実装の学習**:
+   - ボイラープレートの削減方法
+   - メタプログラミングの活用
+   - 保守性の高いコード設計
+
+### 練習問題
+
+1. **println! マクロの実装**: 独自の出力マクロを作ってみよう
+2. **HashMap初期化マクロ**: `hashmap!{ "key" => value }` のようなマクロを実装
+3. **テスト生成マクロ**: 似たようなテストを一括生成するマクロ
 
 ---
 
