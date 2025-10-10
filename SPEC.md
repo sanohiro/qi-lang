@@ -781,21 +781,22 @@ min max                 ;; 最小/最大
 = != < > <= >=          ;; 比較演算子
 ```
 
-#### 数学関数（🔜 計画中）
+#### 数学関数（✅ 実装済み）
 ```lisp
-;; 🔜 優先度: 高（coreに含める）
+;; ✅ 実装済み（coreに含まれる）
 pow                     ;; べき乗: (pow 2 8) => 256
 sqrt                    ;; 平方根: (sqrt 16) => 4
 round floor ceil        ;; 丸め: (round 3.7) => 4
 clamp                   ;; 範囲制限: (clamp 1 10 15) => 10
+rand                    ;; 0.0以上1.0未満の乱数
+rand-int                ;; 0以上n未満の整数乱数
 
 ;; 🔜 優先度: 中（mathモジュールでもOK）
 sin cos tan             ;; 三角関数
 log exp                 ;; 対数・指数
-random                  ;; 乱数
 ```
 
-**設計方針**: `pow`/`sqrt`/`round`/`clamp`はcoreに。三角関数などは将来`math`モジュールへ。
+**設計方針**: `pow`/`sqrt`/`round`/`clamp`/`rand`はcoreに。三角関数などは将来`math`モジュールへ。
 
 #### 統計（🔜 計画中）
 ```lisp
@@ -819,9 +820,9 @@ merge                   ;; マージ: (merge {:a 1} {:b 2}) => {:a 1 :b 2}
 select-keys             ;; キー選択: (select-keys {:a 1 :b 2 :c 3} [:a :c]) => {:a 1 :c 3}
 ```
 
-#### ネスト操作（🔜 計画中）⭐ **Flow哲学の核心**
+#### ネスト操作（✅ 実装済み）⭐ **Flow哲学の核心**
 ```lisp
-;; 🔜 優先度: 最高（JSON/Web処理で必須）
+;; ✅ 実装済み（JSON/Web処理で必須）
 update                  ;; 値を関数で更新
 update-in               ;; ネスト更新: (update-in m [:user :age] inc)
 get-in                  ;; ネスト取得: (get-in m [:user :name] "default")
@@ -854,9 +855,9 @@ dissoc-in               ;; ネスト削除
 
 ### 関数型プログラミング基礎
 
-#### 基本ツール（🔜 計画中）
+#### 基本ツール（✅ 実装済み）
 ```lisp
-;; 🔜 優先度: 高（関数型の必須ツール）
+;; ✅ 実装済み（関数型の必須ツール）
 identity                ;; 引数をそのまま返す: (identity 42) => 42
 constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) => 42
 comp                    ;; 関数合成: ((comp f g) x) => (f (g x))
@@ -2121,31 +2122,29 @@ $ qi update
 
 Qiの**Flow-oriented**哲学と実用性を考慮した実装優先順位：
 
-#### 🔥 最優先（次期バージョンで実装推奨）
+#### 🔥 フェーズ1完了 - 次はフェーズ2へ
+
+**✅ 完了した機能**:
 
 **1. ネスト操作** - JSON/Web処理の核心
 ```lisp
 update update-in get-in assoc-in dissoc-in
 ```
-理由: Web開発・API処理で必須。Qiの差別化ポイント。
 
 **2. 関数型基礎** - 高階関数を書くための標準ツール
 ```lisp
-identity constantly comp apply
+identity constantly comp apply partial
 ```
-理由: `identity`はfilterで頻出。`comp`はパイプラインの補完。
 
 **3. 集合演算** - データ分析・フィルタリング
 ```lisp
-union intersect difference
+union intersect difference subset?
 ```
-理由: 実装簡単。データ処理で頻出。
 
 **4. 数値基本** - 計算の基礎
 ```lisp
-pow sqrt round floor ceil clamp
+pow sqrt round floor ceil clamp rand rand-int
 ```
-理由: 数値計算の標準。`clamp`は範囲制限で超便利。
 
 #### ⚡ 高優先（コアを充実させる）
 
@@ -2201,6 +2200,10 @@ mean median stddev
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
 - **名前空間**: Lisp-1、coreが優先
+- **ネスト操作**: `update` `update-in` `get-in` `assoc-in` `dissoc-in`
+- **関数型基礎**: `identity` `constantly` `comp` `apply` `partial`
+- **集合演算**: `union` `intersect` `difference` `subset?`
+- **数学関数**: `pow` `sqrt` `round` `floor` `ceil` `clamp` `rand` `rand-int`
 
 **✅ match拡張** ⭐ **Qi独自の差別化機能** - **実装済み**:
 - `:as` 束縛（部分と全体を両方使える）
@@ -2229,14 +2232,16 @@ mean median stddev
 
 **パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
 
-**組み込み関数（79個）**:
+**組み込み関数（100個以上）**:
 - **リスト操作（17）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, distinct, partition, group-by
 - **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
 - **比較（6）**: =, !=, <, >, <=, >=
-- **マップ操作（7）**: get, keys, vals, assoc, dissoc, merge, select-keys
+- **マップ操作（12）**: get, keys, vals, assoc, dissoc, merge, select-keys, update, update-in, get-in, assoc-in, dissoc-in
 - **文字列（6 core + 60+ str）**: str, split, join, upper, lower, trim, map-lines ＋ strモジュールで60以上
 - **述語（9）**: nil?, list?, vector?, map?, string?, keyword?, integer?, float?, empty?
-- **高階関数（5）**: map, filter, reduce, pmap, partition, group-by, map-lines
+- **高階関数（10）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial
+- **集合演算（4）**: union, intersect, difference, subset?
+- **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
@@ -2254,11 +2259,11 @@ mean median stddev
 
 #### 🔜 次期実装予定（優先度順）
 
-**フェーズ1: コア強化**
-1. ネスト操作: update, update-in, get-in, assoc-in, dissoc-in
-2. 関数型基礎: identity, constantly, comp, apply
-3. 集合演算: union, intersect, difference
-4. 数値基本: pow, sqrt, round, floor, ceil, clamp
+**フェーズ1: コア強化（✅ 完了）**
+1. ✅ ネスト操作: update, update-in, get-in, assoc-in, dissoc-in
+2. ✅ 関数型基礎: identity, constantly, comp, apply, partial
+3. ✅ 集合演算: union, intersect, difference
+4. ✅ 数値基本: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 
 **フェーズ2: 分析・集約**
 5. sort-by, frequencies, count-by

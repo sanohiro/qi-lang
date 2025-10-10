@@ -209,6 +209,7 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         // 関数型基礎
         "identity" => hof::native_identity,
         "constantly" => hof::native_constantly,
+        "partial" => hof::native_partial,
 
         // 集合演算
         "union" => set::native_union,
