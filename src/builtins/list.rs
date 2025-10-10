@@ -291,3 +291,131 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["distinct", "lists or vectors"])),
     }
 }
+
+/// take-while - 条件を満たす間要素を取得
+pub fn native_take_while(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("take-while requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            let mut result = Vec::new();
+            for item in items {
+                let test = evaluator.apply_function(pred, std::slice::from_ref(item))?;
+                if !test.is_truthy() {
+                    break;
+                }
+                result.push(item.clone());
+            }
+            Ok(Value::List(result))
+        }
+        _ => Err("take-while: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// drop-while - 条件を満たす間要素をスキップ
+pub fn native_drop_while(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("drop-while requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            let mut dropping = true;
+            let mut result = Vec::new();
+            for item in items {
+                if dropping {
+                    let test = evaluator.apply_function(pred, std::slice::from_ref(item))?;
+                    if test.is_truthy() {
+                        continue;
+                    }
+                    dropping = false;
+                }
+                result.push(item.clone());
+            }
+            Ok(Value::List(result))
+        }
+        _ => Err("drop-while: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// split-at - 指定位置でリストを分割
+pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("split-at requires 2 arguments (index, collection)".to_string());
+    }
+
+    let index = match &args[0] {
+        Value::Integer(n) => *n as usize,
+        _ => return Err("split-at: index must be an integer".to_string()),
+    };
+
+    match &args[1] {
+        Value::List(items) | Value::Vector(items) => {
+            let split_point = index.min(items.len());
+            let left = items[..split_point].to_vec();
+            let right = items[split_point..].to_vec();
+            Ok(Value::Vector(vec![Value::List(left), Value::List(right)]))
+        }
+        _ => Err("split-at: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// interleave - 2つのリストを交互に組み合わせる
+pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("interleave requires 2 arguments".to_string());
+    }
+
+    let list1 = match &args[0] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err("interleave: first argument must be a list or vector".to_string()),
+    };
+
+    let list2 = match &args[1] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err("interleave: second argument must be a list or vector".to_string()),
+    };
+
+    let mut result = Vec::new();
+    let min_len = list1.len().min(list2.len());
+    for i in 0..min_len {
+        result.push(list1[i].clone());
+        result.push(list2[i].clone());
+    }
+
+    Ok(Value::List(result))
+}
+
+/// frequencies - 要素の出現回数をカウント
+pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
+    use std::collections::HashMap;
+
+    if args.len() != 1 {
+        return Err("frequencies requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::List(items) | Value::Vector(items) => {
+            let mut counts: HashMap<String, i64> = HashMap::new();
+            for item in items {
+                let key = format!("{:?}", item);
+                *counts.entry(key).or_insert(0) += 1;
+            }
+
+            let mut result = HashMap::new();
+            for (key, count) in counts {
+                result.insert(key, Value::Integer(count));
+            }
+            Ok(Value::Map(result))
+        }
+        _ => Err("frequencies: argument must be a list or vector".to_string()),
+    }
+}

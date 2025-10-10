@@ -5,6 +5,7 @@ use crate::value::Value;
 use base64::{Engine as _, engine::general_purpose};
 use sha2::{Sha256, Digest};
 use uuid::Uuid;
+use regex::Regex;
 
 /// str - 値を文字列に変換して連結
 pub fn native_str(args: &[Value]) -> Result<Value, String> {
@@ -1184,4 +1185,110 @@ pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::TypeOnly, &["uuid (version)", "v4"])),
     };
     Ok(Value::String(uuid_str))
+}
+
+/// re-find - 正規表現で最初のマッチを検索
+pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("re-find requires 2 arguments (pattern, text)".to_string());
+    }
+
+    let pattern = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("re-find: pattern must be a string".to_string()),
+    };
+
+    let text = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err("re-find: text must be a string".to_string()),
+    };
+
+    let re = Regex::new(pattern)
+        .map_err(|e| format!("re-find: invalid regex: {}", e))?;
+
+    match re.find(text) {
+        Some(m) => Ok(Value::String(m.as_str().to_string())),
+        None => Ok(Value::Nil),
+    }
+}
+
+/// re-matches - 正規表現で全てのマッチを検索
+pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("re-matches requires 2 arguments (pattern, text)".to_string());
+    }
+
+    let pattern = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("re-matches: pattern must be a string".to_string()),
+    };
+
+    let text = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err("re-matches: text must be a string".to_string()),
+    };
+
+    let re = Regex::new(pattern)
+        .map_err(|e| format!("re-matches: invalid regex: {}", e))?;
+
+    let matches: Vec<Value> = re.find_iter(text)
+        .map(|m| Value::String(m.as_str().to_string()))
+        .collect();
+
+    Ok(Value::List(matches))
+}
+
+/// re-replace - 正規表現で置換
+pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("re-replace requires 3 arguments (pattern, replacement, text)".to_string());
+    }
+
+    let pattern = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("re-replace: pattern must be a string".to_string()),
+    };
+
+    let replacement = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err("re-replace: replacement must be a string".to_string()),
+    };
+
+    let text = match &args[2] {
+        Value::String(s) => s,
+        _ => return Err("re-replace: text must be a string".to_string()),
+    };
+
+    let re = Regex::new(pattern)
+        .map_err(|e| format!("re-replace: invalid regex: {}", e))?;
+
+    Ok(Value::String(re.replace_all(text, replacement).to_string()))
+}
+
+/// format - 文字列フォーマット（簡易実装）
+pub fn native_format(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("format requires at least 1 argument (format string)".to_string());
+    }
+
+    let fmt_str = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("format: first argument must be a string".to_string()),
+    };
+
+    let mut result = fmt_str.clone();
+    for (i, arg) in args[1..].iter().enumerate() {
+        let placeholder = format!("{{{}}}", i);
+        let value_str = match arg {
+            Value::String(s) => s.clone(),
+            Value::Integer(n) => n.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Nil => "nil".to_string(),
+            _ => format!("{:?}", arg),
+        };
+        result = result.replace(&placeholder, &value_str);
+    }
+
+    Ok(Value::String(result))
 }

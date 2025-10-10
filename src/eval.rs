@@ -323,6 +323,8 @@ impl Evaluator {
                         "partition" => return self.eval_partition(args, env),
                         "group-by" => return self.eval_group_by(args, env),
                         "map-lines" => return self.eval_map_lines(args, env),
+                        "take-while" => return self.eval_take_while(args, env),
+                        "drop-while" => return self.eval_drop_while(args, env),
                         "update" => return self.eval_update(args, env),
                         "update-in" => return self.eval_update_in(args, env),
                         "comp" => return self.eval_comp(args, env),
@@ -672,6 +674,18 @@ impl Evaluator {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let list = self.eval_with_env(&args[1], env.clone())?;
         builtins::apply(&[func, list], self)
+    }
+
+    fn eval_take_while(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let pred = self.eval_with_env(&args[0], env.clone())?;
+        let coll = self.eval_with_env(&args[1], env.clone())?;
+        builtins::take_while(&[pred, coll], self)
+    }
+
+    fn eval_drop_while(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let pred = self.eval_with_env(&args[0], env.clone())?;
+        let coll = self.eval_with_env(&args[1], env.clone())?;
+        builtins::drop_while(&[pred, coll], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）

@@ -29,6 +29,7 @@ pub mod meta;
 pub mod predicates;
 pub mod set;
 pub mod string;
+pub mod util;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -224,6 +225,37 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "clamp" => math::native_clamp,
         "rand" => math::native_rand,
         "rand-int" => math::native_rand_int,
+
+        // 文字列処理（正規表現）
+        "re-find" => string::native_re_find,
+        "re-matches" => string::native_re_matches,
+        "re-replace" => string::native_re_replace,
+        "format" => string::native_format,
+
+        // リスト処理（高度）
+        "split-at" => list::native_split_at,
+        "interleave" => list::native_interleave,
+        "frequencies" => list::native_frequencies,
+
+        // 日付・時刻
+        "now" => util::native_now,
+        "timestamp" => util::native_timestamp,
+        "sleep" => util::native_sleep,
+
+        // JSON処理
+        "json-parse" => util::native_json_parse,
+        "json-stringify" => util::native_json_stringify,
+        "json-pretty" => util::native_json_pretty,
+
+        // 型変換
+        "to-int" => util::native_to_int,
+        "to-float" => util::native_to_float,
+        "to-string" => util::native_to_string,
+
+        // 型チェック
+        "number?" => util::native_number_p,
+        "function?" => util::native_function_p,
+        "atom?" => util::native_atom_p,
     );
 }
 
@@ -270,6 +302,14 @@ pub fn comp(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> 
 
 pub fn apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_apply_public(args, evaluator)
+}
+
+pub fn take_while(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_take_while(args, evaluator)
+}
+
+pub fn drop_while(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_drop_while(args, evaluator)
 }
 
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
