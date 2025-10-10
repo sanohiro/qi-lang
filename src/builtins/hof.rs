@@ -300,14 +300,14 @@ pub fn native_identity(args: &[Value]) -> Result<Value, String> {
 
 /// constantly - 常に同じ値を返す関数を生成
 pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     if args.len() != 1 {
         return Err("constantly requires 1 argument".to_string());
     }
     let value = args[0].clone();
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
-    Ok(Value::Function(Rc::new(crate::value::Function {
+    Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec!["_".to_string()],
         body: crate::value::Expr::Symbol("__constantly_value__".to_string()),
         env: {
@@ -321,7 +321,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
 
 /// comp - 関数合成（右から左に適用）
 pub fn native_comp(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, String> {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     if args.is_empty() {
         return Err("comp requires at least 1 function".to_string());
@@ -334,7 +334,7 @@ pub fn native_comp(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, 
 
     // 複数の関数の場合は合成された関数を返す
     let funcs = args.to_vec();
-    Ok(Value::Function(Rc::new(crate::value::Function {
+    Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec!["x".to_string()],
         body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
         env: {
@@ -348,7 +348,7 @@ pub fn native_comp(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, 
 
 /// partial - 部分適用
 pub fn native_partial(args: &[Value]) -> Result<Value, String> {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     if args.len() < 2 {
         return Err("partial requires at least 2 arguments (function and at least 1 arg)".to_string());
@@ -357,7 +357,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
     let func = args[0].clone();
     let partial_args: Vec<Value> = args[1..].to_vec();
 
-    Ok(Value::Function(Rc::new(crate::value::Function {
+    Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec!["&rest".to_string()],
         body: crate::value::Expr::Symbol("__partial_placeholder__".to_string()),
         env: {
@@ -417,7 +417,7 @@ pub fn native_count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Valu
 
 /// complement - 述語の否定
 pub fn native_complement(args: &[Value]) -> Result<Value, String> {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     if args.len() != 1 {
         return Err("complement requires 1 argument (function)".to_string());
@@ -427,7 +427,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
 
     // 引数を否定する関数を返す
     // 実装はeval.rsのapply_funcで特殊処理される
-    Ok(Value::Function(Rc::new(crate::value::Function {
+    Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec!["x".to_string()],
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
@@ -441,7 +441,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
 
 /// juxt - 複数関数を並列適用
 pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     if args.is_empty() {
         return Err("juxt requires at least 1 function".to_string());
@@ -450,7 +450,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
     let funcs = args.to_vec();
 
     // 実装はeval.rsのapply_funcで特殊処理される
-    Ok(Value::Function(Rc::new(crate::value::Function {
+    Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec!["x".to_string()],
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {

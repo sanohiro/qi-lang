@@ -33,8 +33,8 @@ pub mod util;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
-use std::cell::RefCell;
-use std::rc::Rc;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// 組み込み関数を登録するマクロ
 macro_rules! register_native {
@@ -52,8 +52,8 @@ macro_rules! register_native {
 }
 
 /// すべての組み込み関数を環境に登録
-pub fn register_all(env: &Rc<RefCell<Env>>) {
-    register_native!(env.borrow_mut(),
+pub fn register_all(env: &Arc<RwLock<Env>>) {
+    register_native!(env.write(),
         // 算術演算
         "+" => arithmetic::native_add,
         "-" => arithmetic::native_sub,

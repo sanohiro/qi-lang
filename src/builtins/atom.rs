@@ -3,8 +3,8 @@
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use std::cell::RefCell;
-use std::rc::Rc;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// atom - アトムを作成
 ///
@@ -23,7 +23,7 @@ pub fn native_atom(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["atom"]));
     }
 
-    Ok(Value::Atom(Rc::new(RefCell::new(args[0].clone()))))
+    Ok(Value::Atom(Arc::new(RwLock::new(args[0].clone()))))
 }
 
 /// deref - アトムから値を取得
@@ -45,7 +45,7 @@ pub fn native_deref(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::Atom(a) => Ok(a.borrow().clone()),
+        Value::Atom(a) => Ok(a.read().clone()),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["deref", "atoms"])),
     }
 }
@@ -73,7 +73,7 @@ pub fn native_reset(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Atom(a) => {
             let new_value = args[1].clone();
-            *a.borrow_mut() = new_value.clone();
+            *a.write() = new_value.clone();
             Ok(new_value)
         }
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["reset!", "an atom"])),
@@ -103,7 +103,7 @@ pub fn native_swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, S
 
     match &args[0] {
         Value::Atom(a) => {
-            let current_value = a.borrow().clone();
+            let current_value = a.read().clone();
             let func = &args[1];
 
             // 関数に現在の値と追加の引数を渡す
@@ -111,7 +111,7 @@ pub fn native_swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, S
             func_args.extend_from_slice(&args[2..]);
 
             let new_value = evaluator.apply_function(func, &func_args)?;
-            *a.borrow_mut() = new_value.clone();
+            *a.write() = new_value.clone();
             Ok(new_value)
         }
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["swap!", "an atom"])),

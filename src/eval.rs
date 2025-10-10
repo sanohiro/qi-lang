@@ -1,9 +1,9 @@
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{Env, Expr, FStringPart, Function, Macro, MatchArm, NativeFunc, Pattern, Value};
-use std::cell::RefCell;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// モジュール情報
 #[derive(Debug, Clone)]
@@ -14,9 +14,9 @@ struct Module {
 }
 
 pub struct Evaluator {
-    global_env: Rc<RefCell<Env>>,
+    global_env: Arc<RwLock<Env>>,
     defer_stack: Vec<Vec<Expr>>, // スコープごとのdeferスタック（LIFO）
-    modules: HashMap<String, Rc<Module>>, // ロード済みモジュール
+    modules: HashMap<String, Arc<Module>>, // ロード済みモジュール
     current_module: Option<String>, // 現在評価中のモジュール名
     loading_modules: Vec<String>, // 循環参照検出用
     #[allow(dead_code)]
@@ -32,20 +32,20 @@ impl Default for Evaluator {
 impl Evaluator {
     pub fn new() -> Self {
         let env = Env::new();
-        let env_rc = Rc::new(RefCell::new(env));
+        let env_rc = Arc::new(RwLock::new(env));
 
         // 組み込み関数を登録
         builtins::register_all(&env_rc);
 
         // 特殊な関数を登録（printとlist）
-        env_rc.borrow_mut().set(
+        env_rc.write().set(
             "print".to_string(),
             Value::NativeFunc(NativeFunc {
                 name: "print".to_string(),
                 func: native_print,
             }),
         );
-        env_rc.borrow_mut().set(
+        env_rc.write().set(
             "list".to_string(),
             Value::NativeFunc(NativeFunc {
                 name: "list".to_string(),
@@ -54,14 +54,14 @@ impl Evaluator {
         );
 
         // 型判定関数（builtins以外のもの）
-        env_rc.borrow_mut().set(
+        env_rc.write().set(
             "number?".to_string(),
             Value::NativeFunc(NativeFunc {
                 name: "number?".to_string(),
                 func: native_is_number,
             }),
         );
-        env_rc.borrow_mut().set(
+        env_rc.write().set(
             "fn?".to_string(),
             Value::NativeFunc(NativeFunc {
                 name: "fn?".to_string(),
@@ -83,7 +83,7 @@ impl Evaluator {
         self.eval_with_env(expr, self.global_env.clone())
     }
 
-    fn eval_with_env(&mut self, expr: &Expr, env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_with_env(&mut self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
         match expr {
             Expr::Nil => Ok(Value::Nil),
             Expr::Bool(b) => Ok(Value::Bool(*b)),
@@ -94,7 +94,7 @@ impl Evaluator {
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
 
             Expr::Symbol(name) => env
-                .borrow()
+                .read()
                 .get(name)
                 .ok_or_else(|| fmt_msg(MsgKey::UndefinedVar, &[name])),
 
@@ -132,7 +132,7 @@ impl Evaluator {
             Expr::Def(name, value) => {
                 let val = self.eval_with_env(value, env.clone())?;
                 // 現在の環境に定義（モジュール内ならmodule_env、通常ならglobal_env）
-                env.borrow_mut().set(name.clone(), val.clone());
+                env.write().set(name.clone(), val.clone());
                 Ok(val)
             }
 
@@ -140,20 +140,20 @@ impl Evaluator {
                 params,
                 body,
                 is_variadic,
-            } => Ok(Value::Function(Rc::new(Function {
+            } => Ok(Value::Function(Arc::new(Function {
                 params: params.clone(),
                 body: (**body).clone(),
-                env: env.borrow().clone(),
+                env: env.read().clone(),
                 is_variadic: *is_variadic,
             }))),
 
             Expr::Let { bindings, body } => {
                 let mut new_env = Env::with_parent(env.clone());
                 for (name, expr) in bindings {
-                    let value = self.eval_with_env(expr, Rc::new(RefCell::new(new_env.clone())))?;
+                    let value = self.eval_with_env(expr, Arc::new(RwLock::new(new_env.clone())))?;
                     new_env.set(name.clone(), value);
                 }
-                self.eval_with_env(body, Rc::new(RefCell::new(new_env)))
+                self.eval_with_env(body, Arc::new(RwLock::new(new_env)))
             }
 
             Expr::If {
@@ -261,11 +261,11 @@ impl Evaluator {
                     name: name.clone(),
                     params: params.clone(),
                     body: (**body).clone(),
-                    env: env.borrow().clone(),
+                    env: env.read().clone(),
                     is_variadic: *is_variadic,
                 };
-                env.borrow_mut()
-                    .set(name.clone(), Value::Macro(Rc::new(mac)));
+                env.write()
+                    .set(name.clone(), Value::Macro(Arc::new(mac)));
                 Ok(Value::Symbol(name.clone()))
             }
 
@@ -291,7 +291,7 @@ impl Evaluator {
                 // エクスポートする値を収集
                 let mut exports = HashMap::new();
                 for symbol in symbols {
-                    if let Some(value) = env.borrow().get(symbol) {
+                    if let Some(value) = env.read().get(symbol) {
                         exports.insert(symbol.clone(), value);
                     } else {
                         return Err(fmt_msg(MsgKey::SymbolNotFound, &[symbol, &module_name]));
@@ -303,7 +303,7 @@ impl Evaluator {
                     name: module_name.clone(),
                     exports,
                 };
-                self.modules.insert(module_name, Rc::new(module));
+                self.modules.insert(module_name, Arc::new(module));
 
                 Ok(Value::Nil)
             }
@@ -387,7 +387,7 @@ impl Evaluator {
         &mut self,
         value: &Value,
         arms: &[MatchArm],
-        env: Rc<RefCell<Env>>,
+        env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         for arm in arms {
             let mut bindings = HashMap::new();
@@ -400,7 +400,7 @@ impl Evaluator {
                     for (name, val) in &bindings {
                         guard_env.set(name.clone(), val.clone());
                     }
-                    let guard_val = self.eval_with_env(guard, Rc::new(RefCell::new(guard_env)))?;
+                    let guard_val = self.eval_with_env(guard, Arc::new(RwLock::new(guard_env)))?;
                     if !guard_val.is_truthy() {
                         continue;
                     }
@@ -412,12 +412,12 @@ impl Evaluator {
                     match_env.set(name.clone(), val.clone());
                 }
 
-                let match_env_rc = Rc::new(RefCell::new(match_env));
+                let match_env_rc = Arc::new(RwLock::new(match_env));
 
                 // 変換を適用して環境を更新
                 for (var, transform_expr, original_val) in transforms {
                     let result = self.apply_transform(&transform_expr, &original_val, match_env_rc.clone())?;
-                    match_env_rc.borrow_mut().set(var, result);
+                    match_env_rc.write().set(var, result);
                 }
 
                 return self.eval_with_env(&arm.body, match_env_rc);
@@ -471,7 +471,7 @@ impl Evaluator {
         }
     }
 
-    fn apply_transform(&mut self, transform: &Expr, value: &Value, env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn apply_transform(&mut self, transform: &Expr, value: &Value, env: Arc<RwLock<Env>>) -> Result<Value, String> {
         // 変換式を評価して値に適用
         // transform が関数の場合: (transform value)
         // transform がシンボルの場合: (symbol value)
@@ -565,21 +565,21 @@ impl Evaluator {
     }
 
     /// map関数の実装: (map f coll)
-    fn eval_map(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_map(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::map(&[func, coll], self)
     }
 
     /// filter関数の実装: (filter pred coll)
-    fn eval_filter(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_filter(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::filter(&[pred, coll], self)
     }
 
     /// reduce関数の実装: (reduce f init coll) または (reduce f coll)
-    fn eval_reduce(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_reduce(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
 
         if args.len() == 3 {
@@ -593,7 +593,7 @@ impl Evaluator {
     }
 
     /// swap!関数の実装: (swap! atom f args...)
-    fn eval_swap(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_swap(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let atom = self.eval_with_env(&args[0], env.clone())?;
         let func = self.eval_with_env(&args[1], env.clone())?;
         let mut swap_args = vec![atom, func];
@@ -604,70 +604,70 @@ impl Evaluator {
     }
 
     /// eval関数の実装: (eval expr)
-    fn eval_eval(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_eval(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let expr = self.eval_with_env(&args[0], env.clone())?;
         builtins::eval(&[expr], self)
     }
 
     /// pmap関数の実装: (pmap f coll)
-    fn eval_pmap(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_pmap(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::pmap(&[func, coll], self)
     }
 
-    fn eval_partition(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_partition(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::partition(&[func, coll], self)
     }
 
-    fn eval_group_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_group_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::group_by(&[func, coll], self)
     }
 
-    fn eval_map_lines(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_map_lines(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let text = self.eval_with_env(&args[1], env.clone())?;
         builtins::map_lines(&[func, text], self)
     }
 
-    fn eval_update(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_update(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let map = self.eval_with_env(&args[0], env.clone())?;
         let key = self.eval_with_env(&args[1], env.clone())?;
         let func = self.eval_with_env(&args[2], env.clone())?;
         builtins::update(&[map, key, func], self)
     }
 
-    fn eval_update_in(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_update_in(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let map = self.eval_with_env(&args[0], env.clone())?;
         let path = self.eval_with_env(&args[1], env.clone())?;
         let func = self.eval_with_env(&args[2], env.clone())?;
         builtins::update_in(&[map, path, func], self)
     }
 
-    fn eval_comp(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_comp(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let funcs: Result<Vec<_>, _> = args.iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect();
         builtins::comp(&funcs?, self)
     }
 
-    fn eval_apply(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_apply(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let list = self.eval_with_env(&args[1], env.clone())?;
         builtins::apply(&[func, list], self)
     }
 
-    fn eval_take_while(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_take_while(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::take_while(&[pred, coll], self)
     }
 
-    fn eval_drop_while(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_drop_while(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::drop_while(&[pred, coll], self)
@@ -700,7 +700,7 @@ impl Evaluator {
                 }
 
                 // 通常の関数処理
-                let parent_env = Rc::new(RefCell::new(f.env.clone()));
+                let parent_env = Arc::new(RwLock::new(f.env.clone()));
                 let mut new_env = Env::with_parent(parent_env);
 
                 if f.is_variadic {
@@ -720,14 +720,14 @@ impl Evaluator {
                     }
                 }
 
-                self.eval_with_env(&f.body, Rc::new(RefCell::new(new_env)))
+                self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
             }
             _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func)])),
         }
     }
 
     /// and論理演算子（短絡評価）
-    fn eval_and(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_and(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {
             return Ok(Value::Bool(true));
         }
@@ -742,7 +742,7 @@ impl Evaluator {
     }
 
     /// or論理演算子（短絡評価）
-    fn eval_or(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_or(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {
             return Ok(Value::Nil);
         }
@@ -764,7 +764,7 @@ impl Evaluator {
     }
 
     /// sort-by - キー関数でソート
-    fn eval_sort_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_sort_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("sort-by requires 2 arguments".to_string());
         }
@@ -776,7 +776,7 @@ impl Evaluator {
     }
 
     /// chunk - 固定サイズでリストを分割
-    fn eval_chunk(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_chunk(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("chunk requires 2 arguments".to_string());
         }
@@ -788,7 +788,7 @@ impl Evaluator {
     }
 
     /// count-by - 述語でカウント
-    fn eval_count_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_count_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("count-by requires 2 arguments".to_string());
         }
@@ -800,7 +800,7 @@ impl Evaluator {
     }
 
     /// max-by - キー関数で最大値を取得
-    fn eval_max_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_max_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("max-by requires 2 arguments".to_string());
         }
@@ -812,7 +812,7 @@ impl Evaluator {
     }
 
     /// min-by - キー関数で最小値を取得
-    fn eval_min_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_min_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("min-by requires 2 arguments".to_string());
         }
@@ -824,7 +824,7 @@ impl Evaluator {
     }
 
     /// sum-by - キー関数で合計
-    fn eval_sum_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_sum_by(&mut self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("sum-by requires 2 arguments".to_string());
         }
@@ -1395,7 +1395,7 @@ impl Evaluator {
         &mut self,
         module_name: &str,
         mode: &crate::value::UseMode,
-        env: Rc<RefCell<Env>>,
+        env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         use crate::value::UseMode;
 
@@ -1408,7 +1408,7 @@ impl Evaluator {
                 // 指定された関数のみインポート
                 for name in names {
                     if let Some(value) = module.exports.get(name) {
-                        env.borrow_mut().set(name.clone(), value.clone());
+                        env.write().set(name.clone(), value.clone());
                     } else {
                         return Err(fmt_msg(MsgKey::SymbolNotExported, &[name, module_name]));
                     }
@@ -1417,7 +1417,7 @@ impl Evaluator {
             UseMode::All => {
                 // 全てインポート
                 for (name, value) in &module.exports {
-                    env.borrow_mut().set(name.clone(), value.clone());
+                    env.write().set(name.clone(), value.clone());
                 }
             }
             UseMode::As(_alias) => {
@@ -1430,7 +1430,7 @@ impl Evaluator {
     }
 
     /// モジュールファイルをロード
-    fn load_module(&mut self, name: &str) -> Result<Rc<Module>, String> {
+    fn load_module(&mut self, name: &str) -> Result<Arc<Module>, String> {
         // 既にロード済みならキャッシュから返す
         if let Some(module) = self.modules.get(name) {
             return Ok(module.clone());
@@ -1470,14 +1470,14 @@ impl Evaluator {
             .map_err(|e| fmt_msg(MsgKey::ModuleParseError, &[name, &e]))?;
 
         // 新しい環境で評価
-        let module_env = Rc::new(RefCell::new(Env::new()));
+        let module_env = Arc::new(RwLock::new(Env::new()));
 
         // グローバル環境から組み込み関数をコピー
-        let bindings: Vec<_> = self.global_env.borrow().bindings()
+        let bindings: Vec<_> = self.global_env.read().bindings()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         for (key, value) in bindings {
-            module_env.borrow_mut().set(key, value);
+            module_env.write().set(key, value);
         }
 
         // 式を順次評価
@@ -1494,7 +1494,7 @@ impl Evaluator {
     }
 
     /// f-stringを評価
-    fn eval_fstring(&mut self, parts: &[FStringPart], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+    fn eval_fstring(&mut self, parts: &[FStringPart], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let mut result = String::new();
 
         for part in parts {
@@ -1538,7 +1538,7 @@ impl Evaluator {
                         Value::Function(_) => "<function>".to_string(),
                         Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
                         Value::Macro(m) => format!("<macro:{}>", m.name),
-                        Value::Atom(a) => format!("<atom:{}>", a.borrow()),
+                        Value::Atom(a) => format!("<atom:{}>", a.read()),
                         Value::Uvar(id) => format!("<uvar:{}>", id),
                     };
                     result.push_str(&s);
@@ -1554,7 +1554,7 @@ impl Evaluator {
         &mut self,
         bindings: &[(String, Expr)],
         body: &Expr,
-        env: Rc<RefCell<Env>>,
+        env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         // ループ用の環境を作成
         let mut loop_env = Env::with_parent(env.clone());
@@ -1571,7 +1571,7 @@ impl Evaluator {
             loop_env.set(name.clone(), value.clone());
         }
 
-        let loop_env_rc = Rc::new(RefCell::new(loop_env));
+        let loop_env_rc = Arc::new(RwLock::new(loop_env));
 
         // ループ本体を繰り返し評価
         loop {
@@ -1597,7 +1597,7 @@ impl Evaluator {
                         }
 
                         for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
-                            loop_env_rc.borrow_mut().set(name.clone(), value.clone());
+                            loop_env_rc.write().set(name.clone(), value.clone());
                         }
                     } else {
                         return Err(msg(MsgKey::RecurNotFound).to_string());
@@ -1621,7 +1621,7 @@ impl Evaluator {
     }
 
     /// quasiquoteを評価
-    fn eval_quasiquote(&mut self, expr: &Expr, env: Rc<RefCell<Env>>, depth: usize) -> Result<Value, String> {
+    fn eval_quasiquote(&mut self, expr: &Expr, env: Arc<RwLock<Env>>, depth: usize) -> Result<Value, String> {
         match expr {
             Expr::Unquote(e) if depth == 0 => {
                 // depth 0のunquoteは評価
@@ -1852,9 +1852,9 @@ impl Evaluator {
     }
 
     /// マクロを展開
-    fn expand_macro(&mut self, mac: &Macro, args: &[Expr], _env: Rc<RefCell<Env>>) -> Result<Expr, String> {
+    fn expand_macro(&mut self, mac: &Macro, args: &[Expr], _env: Arc<RwLock<Env>>) -> Result<Expr, String> {
         // マクロ用の環境を作成
-        let parent_env = Rc::new(RefCell::new(mac.env.clone()));
+        let parent_env = Arc::new(RwLock::new(mac.env.clone()));
         let mut new_env = Env::with_parent(parent_env);
 
         if mac.is_variadic {
@@ -1905,7 +1905,7 @@ impl Evaluator {
         }
 
         // マクロ本体を評価
-        let new_env_rc = Rc::new(RefCell::new(new_env));
+        let new_env_rc = Arc::new(RwLock::new(new_env));
         let result = self.eval_with_env(&mac.body, new_env_rc)?;
 
         // 結果をExprに変換

@@ -1,7 +1,7 @@
-use std::cell::RefCell;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// f-stringの部品（文字列またはコード）
 #[derive(Debug, Clone, PartialEq)]
@@ -11,7 +11,7 @@ pub enum FStringPart {
 }
 
 /// Qi言語の値を表現する型
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Value {
     /// nil値
     Nil,
@@ -34,13 +34,13 @@ pub enum Value {
     /// マップ
     Map(HashMap<String, Value>),
     /// 関数（クロージャ）
-    Function(Rc<Function>),
+    Function(Arc<Function>),
     /// ネイティブ関数（Rustで実装された関数）
     NativeFunc(NativeFunc),
     /// マクロ
-    Macro(Rc<Macro>),
+    Macro(Arc<Macro>),
     /// アトム（可変な参照）
-    Atom(Rc<RefCell<Value>>),
+    Atom(Arc<RwLock<Value>>),
     /// ユニーク変数（マクロの衛生性）
     Uvar(u64),
 }
@@ -53,7 +53,7 @@ impl Value {
 }
 
 /// 関数の定義
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Function {
     pub params: Vec<String>,
     pub body: Expr,
@@ -62,7 +62,7 @@ pub struct Function {
 }
 
 /// マクロの定義
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Macro {
     pub name: String,
     pub params: Vec<String>,
@@ -91,10 +91,10 @@ impl fmt::Debug for NativeFunc {
 }
 
 /// 環境（変数の束縛を保持）
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Env {
     bindings: HashMap<String, Value>,
-    parent: Option<Rc<RefCell<Env>>>,
+    parent: Option<Arc<RwLock<Env>>>,
 }
 
 impl Env {
@@ -105,7 +105,7 @@ impl Env {
         }
     }
 
-    pub fn with_parent(parent: Rc<RefCell<Env>>) -> Self {
+    pub fn with_parent(parent: Arc<RwLock<Env>>) -> Self {
         Env {
             bindings: HashMap::new(),
             parent: Some(parent),
@@ -114,7 +114,7 @@ impl Env {
 
     pub fn get(&self, name: &str) -> Option<Value> {
         self.bindings.get(name).cloned().or_else(|| {
-            self.parent.as_ref().and_then(|p| p.borrow().get(name))
+            self.parent.as_ref().and_then(|p| p.read().get(name))
         })
     }
 
@@ -129,7 +129,7 @@ impl Env {
 }
 
 /// AST（抽象構文木）の式
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     // リテラル
     Nil,
@@ -202,7 +202,7 @@ pub enum Expr {
 }
 
 /// useのインポートモード
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum UseMode {
     /// :only [sym1 sym2]
     Only(Vec<String>),
@@ -213,7 +213,7 @@ pub enum UseMode {
 }
 
 /// matchのアーム（パターン -> 結果）
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct MatchArm {
     pub pattern: Pattern,
     pub guard: Option<Box<Expr>>,
@@ -221,7 +221,7 @@ pub struct MatchArm {
 }
 
 /// パターン
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Pattern {
     /// ワイルドカード（_）
     Wildcard,
@@ -294,7 +294,7 @@ impl fmt::Display for Value {
             Value::Function(_) => write!(f, "#<function>"),
             Value::NativeFunc(nf) => write!(f, "#<native-function:{}>", nf.name),
             Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
-            Value::Atom(a) => write!(f, "#<atom:{}>", a.borrow()),
+            Value::Atom(a) => write!(f, "#<atom:{}>", a.read()),
             Value::Uvar(id) => write!(f, "#<uvar:{}>", id),
         }
     }

@@ -164,7 +164,7 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
         match current {
             Value::Map(m) => {
                 current = m.get(&key).cloned().unwrap_or(Value::Nil);
-                if current == Value::Nil {
+                if matches!(current, Value::Nil) {
                     return Ok(default);
                 }
             }
