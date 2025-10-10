@@ -85,6 +85,15 @@ pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
     }
 }
 
+/// pmap - 並列map（現在はシングルスレッド実装、将来の並列化に備えて）
+///
+/// 注: 現在の実装はmapと同じ動作をします。
+/// 将来、Evaluatorをスレッドセーフにする際に並列化を実装予定。
+pub fn native_pmap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    // 現在はmapと同じ実装
+    native_map(args, evaluator)
+}
+
 /// apply - 関数にリストを引数として適用（未使用だが将来のため残す）
 #[allow(dead_code)]
 pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {

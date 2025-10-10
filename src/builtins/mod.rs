@@ -207,6 +207,10 @@ pub fn reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String
     hof::native_reduce(args, evaluator)
 }
 
+pub fn pmap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_pmap(args, evaluator)
+}
+
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
 pub fn swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     atom::native_swap(args, evaluator)
