@@ -195,8 +195,11 @@ impl Parser {
         // パイプラインのチェック
         if self.current() == Some(&Token::Pipe)
             || self.current() == Some(&Token::PipeRailway)
-            || self.current() == Some(&Token::ParallelPipe) {
+            || self.current() == Some(&Token::ParallelPipe)
+            || self.current() == Some(&Token::AsyncPipe) {
             let mut expr = first_expr;
+            let mut is_async = false;
+
             loop {
                 match self.current() {
                     Some(Token::Pipe) => {
@@ -234,10 +237,44 @@ impl Parser {
                             args: vec![right, expr],
                         };
                     }
+                    Some(Token::AsyncPipe) => {
+                        is_async = true;
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // パイプラインとして処理（通常のPipeと同じ）
+                        expr = match right {
+                            Expr::Call { func, mut args } => {
+                                args.push(expr);
+                                Expr::Call { func, args }
+                            }
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                            },
+                        };
+                    }
                     _ => break,
                 }
             }
             self.expect(Token::RParen)?;
+
+            // ~> が使われていたら、全体を (go (fn [] ...)) でラップ
+            if is_async {
+                // (fn [] expr) を作成
+                let lambda = Expr::Fn {
+                    params: vec![],
+                    body: Box::new(expr),
+                    is_variadic: false,
+                };
+
+                // (go lambda) を作成
+                expr = Expr::Call {
+                    func: Box::new(Expr::Symbol("go".to_string())),
+                    args: vec![lambda],
+                };
+            }
+
             return Ok(expr);
         }
 

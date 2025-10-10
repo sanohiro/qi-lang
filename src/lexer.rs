@@ -48,6 +48,7 @@ pub enum Token {
     Pipe,   // |>
     PipeRailway,  // |>?
     ParallelPipe,  // ||>
+    AsyncPipe,  // ~>
 
     // ファイル終端
     Eof,
@@ -368,6 +369,11 @@ impl Lexer {
                     self.advance(); // =
                     self.advance(); // >
                     return Ok(Token::FatArrow);
+                }
+                Some('~') if self.peek(1) == Some('>') => {
+                    self.advance(); // ~
+                    self.advance(); // >
+                    return Ok(Token::AsyncPipe);
                 }
                 Some('-') if self.peek(1) == Some('>') => {
                     self.advance(); // -
