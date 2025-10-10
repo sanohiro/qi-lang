@@ -1584,15 +1584,217 @@ uvar variable
 (regex/test "test@example.com" email-pattern)
 ```
 
+#### 🔜 math - 数学関数（計画中）
+
+**設計方針**: Flow-orientedに合わせ、パイプラインで使いやすく。
+
+```lisp
+(use math :only [
+  ;; 🔥 最優先（coreに含めても良い）
+  pow sqrt                    ;; べき乗・平方根
+  round floor ceil            ;; 丸め
+  clamp                       ;; 範囲制限
+
+  ;; ⚡ 高優先（数値計算の基本）
+  abs                         ;; 絶対値（coreにもある）
+  sign                        ;; 符号（-1, 0, 1）
+  mod                         ;; 剰余（%との違いは負数の扱い）
+  gcd lcm                     ;; 最大公約数・最小公倍数
+
+  ;; 三角関数
+  sin cos tan
+  asin acos atan atan2
+  sinh cosh tanh
+
+  ;; 指数・対数
+  exp log log10 log2
+
+  ;; 統計（データ分析用）
+  mean median mode
+  stddev variance
+  percentile
+
+  ;; 乱数
+  random                      ;; [0, 1)の乱数
+  random-int                  ;; 整数乱数
+  random-range                ;; 範囲指定乱数
+  random-choice               ;; リストからランダム選択
+  random-shuffle              ;; シャッフル
+
+  ;; その他
+  factorial
+  is-prime?
+
+  ;; 定数
+  pi e tau
+])
+
+;; 使用例 - Flow-oriented設計
+;; 1. パイプラインで使える
+([1 2 3 4 5]
+ |> (map (fn [x] (math/pow x 2)))
+ |> math/mean)  ;; 平方の平均: 11.0
+
+;; 2. 範囲制限（Web APIで頻出）
+(user-input
+ |> parse-int
+ |> (fn [n] (math/clamp n 1 100)))  ;; 1-100に制限
+
+;; 3. 統計処理
+(def analyze (fn [data]
+  {:mean (math/mean data)
+   :median (math/median data)
+   :stddev (math/stddev data)
+   :p95 (math/percentile data 95)}))
+
+(analyze [10 20 30 40 50])
+;; {:mean 30 :median 30 :stddev 14.14 :p95 48}
+
+;; 4. 乱数（テストデータ生成で便利）
+(math/random-int 1 100)  ;; 1-100の整数
+(math/random-choice [:red :green :blue])
+(math/random-shuffle [1 2 3 4 5])
+
+;; 5. 丸め処理（金額計算など）
+(price
+ |> (* 1.08)              ;; 消費税
+ |> math/round)           ;; 小数点以下四捨五入
+
+;; 6. 三角関数（ゲーム・グラフィックス）
+(def rotate-point (fn [x y angle]
+  (let [rad (* angle (/ math/pi 180))]
+    {:x (- (* x (math/cos rad)) (* y (math/sin rad)))
+     :y (+ (* x (math/sin rad)) (* y (math/cos rad)))})))
+```
+
+**実装優先度**:
+- Phase 1: pow, sqrt, round, floor, ceil, clamp
+- Phase 2: random系（実用性高い）
+- Phase 3: mean, median, stddev（データ分析用）
+- Phase 4: 三角関数・対数（必要になったら）
+
+#### 🔜 time/date - 日付・時刻（計画中）
+
+**設計方針**: ISO 8601準拠。Flow-orientedな変換・操作。
+
+```lisp
+(use time :only [
+  ;; 🔥 最優先（現在時刻取得）
+  now                         ;; 現在時刻（Unixタイムスタンプ）
+  now-iso                     ;; 現在時刻（ISO 8601文字列）
+  today                       ;; 今日の日付（YYYY-MM-DD）
+
+  ;; 生成・パース
+  from-unix                   ;; Unixタイムスタンプから
+  from-iso                    ;; ISO文字列から
+  parse                       ;; 文字列をパース（フォーマット指定）
+
+  ;; フォーマット
+  format                      ;; カスタムフォーマット
+  to-iso                      ;; ISO 8601文字列に
+  to-unix                     ;; Unixタイムスタンプに
+
+  ;; 要素アクセス
+  year month day              ;; 年月日
+  hour minute second          ;; 時分秒
+  weekday                     ;; 曜日（0=日曜）
+
+  ;; 演算
+  add-days add-hours add-minutes
+  sub-days sub-hours sub-minutes
+  diff-days diff-hours diff-minutes
+
+  ;; 比較
+  before? after? between?
+
+  ;; ユーティリティ
+  start-of-day end-of-day
+  start-of-month end-of-month
+  is-weekend? is-leap-year?
+
+  ;; タイムゾーン
+  to-utc to-local
+  timezone
+])
+
+;; 使用例 - Flow-oriented設計
+;; 1. 現在時刻の取得
+(time/now)       ;; 1736553600 (Unixタイムスタンプ)
+(time/now-iso)   ;; "2025-01-11T03:00:00Z"
+(time/today)     ;; "2025-01-11"
+
+;; 2. パイプラインで変換
+(time/now
+ |> time/from-unix
+ |> (fn [t] (time/add-days t 7))    ;; 7日後
+ |> time/to-iso)
+;; "2025-01-18T03:00:00Z"
+
+;; 3. パースとフォーマット
+(def format-date (fn [date-str]
+  (date-str
+   |> (fn [s] (time/parse s "%Y-%m-%d"))
+   |> (fn [t] (time/format t "%B %d, %Y")))))
+
+(format-date "2025-01-11")  ;; "January 11, 2025"
+
+;; 4. 実用例：期限チェック
+(def is-expired? (fn [expires-at]
+  (time/before? expires-at (time/now))))
+
+(def session {:created-at (time/now)
+              :expires-at (time/add-hours (time/now) 24)})
+
+(is-expired? (:expires-at session))  ;; false
+
+;; 5. データ集計（パイプライン）
+(logs
+ |> (filter (fn [log]
+      (time/between? (:timestamp log)
+                     (time/today)
+                     (time/now))))
+ |> (map (fn [log] {:date (time/format (:timestamp log) "%Y-%m-%d")
+                    :level (:level log)}))
+ |> (group-by :date))
+
+;; 6. 営業日計算（カスタム関数）
+(def add-business-days (fn [date n]
+  (loop [current date remaining n]
+    (if (<= remaining 0)
+      current
+      (let [next-day (time/add-days current 1)]
+        (if (time/is-weekend? next-day)
+          (recur next-day remaining)
+          (recur next-day (dec remaining))))))))
+
+;; 7. 相対時間表示（SNS的）
+(def relative-time (fn [timestamp]
+  (let [diff (time/diff-minutes timestamp (time/now))]
+    (match diff
+      n when (< n 60) -> f"{n}分前"
+      n when (< n 1440) -> f"{(/ n 60)}時間前"
+      n -> f"{(/ n 1440)}日前"))))
+```
+
+**実装優先度**:
+- Phase 1: now, now-iso, from-unix, to-iso, format（基本的な取得と変換）
+- Phase 2: add-*, diff-*（演算）
+- Phase 3: parse, before?, after?（パースと比較）
+- Phase 4: タイムゾーン対応
+
+**設計メモ**:
+- 内部表現はUnixタイムスタンプ（i64）
+- ISO 8601文字列との相互変換を重視
+- Flow-orientedなので、パイプラインで変換しやすく
+- タイムゾーンはデフォルトUTC、必要に応じてローカルに変換
+
 #### 🚧 その他（全て未実装）
 ```lisp
 http      ;; HTTPクライアント
 json      ;; JSONパース
 db        ;; データベース
-io        ;; ファイルIO
-math      ;; 数学関数
-time      ;; 日付・時刻
-test      ;; テスト
+io        ;; ファイルIO拡張
+test      ;; テストフレームワーク
 ```
 
 ## 10. 文字列リテラル
