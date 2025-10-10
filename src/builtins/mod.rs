@@ -8,7 +8,9 @@
 //! - map: マップ操作（get, keys, vals, assoc, dissoc）
 //! - predicates: 述語関数（empty?, nil?, list?, vector?, map?, string?, integer?, float?, keyword?）
 //! - logic: 論理演算（not）
-//! - hof: 高階関数（map, filter, reduce）
+//! - hof: 高階関数（map, filter, reduce, identity, constantly, comp, partial, apply）
+//! - set: 集合演算（union, intersect, difference, subset?）
+//! - math: 数学関数（pow, sqrt, round, floor, ceil, clamp, rand, rand-int）
 //! - error: エラー処理（error）
 //! - atom: 状態管理（atom, deref, swap!, reset!）
 //! - io: ファイルI/O（read-file, write-file, append-file）
@@ -22,8 +24,10 @@ pub mod io;
 pub mod list;
 pub mod logic;
 pub mod map;
+pub mod math;
 pub mod meta;
 pub mod predicates;
+pub mod set;
 pub mod string;
 
 use crate::eval::Evaluator;
@@ -200,6 +204,26 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "read-file" => io::native_read_file,
         "write-file" => io::native_write_file,
         "append-file" => io::native_append_file,
+
+        // 関数型基礎
+        "identity" => hof::native_identity,
+        "constantly" => hof::native_constantly,
+
+        // 集合演算
+        "union" => set::native_union,
+        "intersect" => set::native_intersect,
+        "difference" => set::native_difference,
+        "subset?" => set::native_subset,
+
+        // 数学関数
+        "pow" => math::native_pow,
+        "sqrt" => math::native_sqrt,
+        "round" => math::native_round,
+        "floor" => math::native_floor,
+        "ceil" => math::native_ceil,
+        "clamp" => math::native_clamp,
+        "rand" => math::native_rand,
+        "rand-int" => math::native_rand_int,
     );
 }
 
@@ -238,6 +262,14 @@ pub fn update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String
 
 pub fn update_in(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_update_in(args, evaluator)
+}
+
+pub fn comp(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_comp(args, evaluator)
+}
+
+pub fn apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_apply_public(args, evaluator)
 }
 
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）

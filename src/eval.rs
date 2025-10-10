@@ -325,6 +325,8 @@ impl Evaluator {
                         "map-lines" => return self.eval_map_lines(args, env),
                         "update" => return self.eval_update(args, env),
                         "update-in" => return self.eval_update_in(args, env),
+                        "comp" => return self.eval_comp(args, env),
+                        "apply" => return self.eval_apply(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
@@ -657,6 +659,19 @@ impl Evaluator {
         let path = self.eval_with_env(&args[1], env.clone())?;
         let func = self.eval_with_env(&args[2], env.clone())?;
         builtins::update_in(&[map, path, func], self)
+    }
+
+    fn eval_comp(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let funcs: Result<Vec<_>, _> = args.iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect();
+        builtins::comp(&funcs?, self)
+    }
+
+    fn eval_apply(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let list = self.eval_with_env(&args[1], env.clone())?;
+        builtins::apply(&[func, list], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
