@@ -32,6 +32,7 @@ pub mod math;
 pub mod meta;
 pub mod predicates;
 pub mod set;
+pub mod stream;
 pub mod string;
 pub mod util;
 
@@ -317,6 +318,21 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "http/head" => http::native_head,
         "http/options" => http::native_options,
         "http/request" => http::native_request,
+
+        // Stream (non-evaluator) - メモリ内遅延評価
+        "stream" => stream::native_stream,
+        "range-stream" => stream::native_range_stream,
+        "repeat" => stream::native_repeat,
+        "cycle" => stream::native_cycle,
+        "stream-take" => stream::native_stream_take,
+        "stream-drop" => stream::native_stream_drop,
+        "realize" => stream::native_realize,
+
+        // I/O Stream
+        "file-stream" => io::native_file_stream,
+        "http/get-stream" => http::native_get_stream,
+        "http/post-stream" => http::native_post_stream,
+        "http/request-stream" => http::native_request_stream,
     );
 }
 
@@ -495,6 +511,19 @@ pub fn scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> 
 
 pub fn parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_parallel_do(args, evaluator)
+}
+
+/// Stream関数（Evaluatorが必要な関数）
+pub fn iterate(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    stream::native_iterate(args, evaluator)
+}
+
+pub fn stream_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    stream::native_stream_map(args, evaluator)
+}
+
+pub fn stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    stream::native_stream_filter(args, evaluator)
 }
 
 /// HTTP関数（Evaluatorが必要な関数）

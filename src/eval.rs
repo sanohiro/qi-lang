@@ -363,6 +363,9 @@ impl Evaluator {
                         "scope-go" => return self.eval_scope_go(args, env),
                         "with-scope" => return self.eval_with_scope(args, env),
                         "parallel-do" => return self.eval_parallel_do(args, env),
+                        "iterate" => return self.eval_iterate(args, env),
+                        "stream-map" => return self.eval_stream_map(args, env),
+                        "stream-filter" => return self.eval_stream_filter(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -1013,6 +1016,33 @@ impl Evaluator {
             .collect();
 
         builtins::parallel_do(&funcs, self)
+    }
+
+    fn eval_iterate(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("iterate requires 2 arguments".to_string());
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let init = self.eval_with_env(&args[1], env.clone())?;
+        builtins::iterate(&[func, init], self)
+    }
+
+    fn eval_stream_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("stream-map requires 2 arguments".to_string());
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let stream = self.eval_with_env(&args[1], env.clone())?;
+        builtins::stream_map(&[func, stream], self)
+    }
+
+    fn eval_stream_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("stream-filter requires 2 arguments".to_string());
+        }
+        let pred = self.eval_with_env(&args[0], env.clone())?;
+        let stream = self.eval_with_env(&args[1], env.clone())?;
+        builtins::stream_filter(&[pred, stream], self)
     }
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -1834,6 +1864,7 @@ impl Evaluator {
                         Value::Atom(a) => format!("<atom:{}>", a.read()),
                         Value::Channel(_) => "<channel>".to_string(),
                         Value::Scope(_) => "<scope>".to_string(),
+                        Value::Stream(_) => "<stream>".to_string(),
                         Value::Uvar(id) => format!("<uvar:{}>", id),
                     };
                     result.push_str(&s);

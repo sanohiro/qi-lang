@@ -46,6 +46,8 @@ pub enum Value {
     Channel(Arc<Channel>),
     /// スコープ（Structured Concurrency用）
     Scope(Arc<Scope>),
+    /// ストリーム（遅延評価）
+    Stream(Arc<RwLock<Stream>>),
     /// ユニーク変数（マクロの衛生性）
     Uvar(u64),
 }
@@ -61,6 +63,17 @@ pub struct Channel {
 #[derive(Debug, Clone)]
 pub struct Scope {
     pub cancelled: Arc<RwLock<bool>>,
+}
+
+/// ストリーム（遅延評価）
+pub struct Stream {
+    pub next_fn: Box<dyn Fn() -> Option<Value> + Send + Sync>,
+}
+
+impl std::fmt::Debug for Stream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Stream {{ next_fn: <closure> }}")
+    }
 }
 
 impl Value {
@@ -315,6 +328,7 @@ impl fmt::Display for Value {
             Value::Atom(a) => write!(f, "#<atom:{}>", a.read()),
             Value::Channel(_) => write!(f, "#<channel>"),
             Value::Scope(_) => write!(f, "#<scope>"),
+            Value::Stream(_) => write!(f, "#<stream>"),
             Value::Uvar(id) => write!(f, "#<uvar:{}>", id),
         }
     }

@@ -68,7 +68,7 @@ Qiは段階的にFlow機能を強化していきます：
 - ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化
 - 🚧 並行処理 - go/chan、パイプライン、async/await
 - 🚧 `~>` 非同期パイプライン - go/chan統合
-- 🚧 `stream` 遅延評価ストリーム - 巨大データ処理
+- ✅ `stream` 遅延評価ストリーム - 巨大データ処理（無限データ構造対応）
 - 再利用可能な「小パイプ」文化の確立
 
 ---
@@ -374,31 +374,222 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ---
 
-### 🚧 `stream` 遅延評価（将来）
+### ✅ `stream` 遅延評価（実装済み）
 
-**巨大データの効率的処理**
+**巨大データの効率的処理 - 遅延評価と無限データ構造**
+
+Streamは値を必要になるまで計算しない遅延評価のデータ構造です。
+無限データ構造や大きなデータセットをメモリ効率的に扱えます。
+
+#### Stream作成
 
 ```lisp
-;; 大きなファイル
-(files "*.log"
-  |> stream
-  |> (filter error-line?)
-  |> (map parse)
-  |> take 100
-  |> print)
+;; コレクションからストリーム作成
+(stream [1 2 3 4 5])
 
-;; 無限ストリーム
-(integers-from 0
-  |> stream
-  |> (filter prime?)
-  |> take 10)
+;; 範囲ストリーム
+(range-stream 0 10)  ;; 0から9まで
 
-;; メモリ効率
-(huge-csv
-  |> stream-lines
-  |> (map parse-csv)
-  |> (filter valid?)
-  |> write-output)
+;; 無限ストリーム：同じ値を繰り返し
+(repeat 42)  ;; 42, 42, 42, ...
+
+;; 無限ストリーム：リストを循環
+(cycle [1 2 3])  ;; 1, 2, 3, 1, 2, 3, ...
+
+;; 無限ストリーム：関数を反復適用
+(iterate (fn [x] (* x 2)) 1)  ;; 1, 2, 4, 8, 16, 32, ...
+```
+
+#### Stream変換
+
+```lisp
+;; map: 各要素に関数を適用
+(def s (range-stream 1 6))
+(def s2 (stream-map (fn [x] (* x 2)) s))
+(realize s2)  ;; (2 4 6 8 10)
+
+;; filter: 条件に合う要素のみ
+(def s (range-stream 1 11))
+(def s2 (stream-filter (fn [x] (= (% x 2) 0)) s))
+(realize s2)  ;; (2 4 6 8 10)
+
+;; take: 最初のn個を取得（無限ストリームを有限化）
+(def s (repeat 42))
+(def s2 (stream-take 5 s))
+(realize s2)  ;; (42 42 42 42 42)
+
+;; drop: 最初のn個をスキップ
+(def s (range-stream 0 10))
+(def s2 (stream-drop 5 s))
+(realize s2)  ;; (5 6 7 8 9)
+```
+
+#### Stream実行
+
+```lisp
+;; realize: ストリームをリストに変換（全要素を計算）
+(realize (stream [1 2 3]))  ;; (1 2 3)
+
+;; ⚠️ 注意: 無限ストリームをrealizeすると無限ループ
+;; (realize (repeat 42))  ;; NG: 永遠に終わらない
+
+;; 正しい使い方: takeで有限化してからrealize
+(realize (stream-take 5 (repeat 42)))  ;; OK
+```
+
+#### パイプラインとの統合
+
+```lisp
+;; 既存の |> パイプライン演算子で使える
+[1 2 3 4 5]
+  |> stream
+  |> (stream-map (fn [x] (* x x)))
+  |> (stream-filter (fn [x] (> x 10)))
+  |> realize
+;; (16 25)
+
+;; 無限ストリームの処理
+1
+  |> (iterate (fn [x] (* x 2)))
+  |> (stream-take 10)
+  |> realize
+;; (1 2 4 8 16 32 64 128 256 512)
+
+;; 複雑な変換チェーン
+(range-stream 1 100)
+  |> (stream-map (fn [x] (* x x)))
+  |> (stream-filter (fn [x] (= (% x 3) 0)))
+  |> (stream-take 5)
+  |> realize
+;; (9 36 81 144 225)
+```
+
+#### 実用例
+
+```lisp
+;; 素数の無限ストリーム（概念）
+(def primes
+  (2
+   |> (iterate inc)
+   |> (stream-filter prime?)))
+
+(realize (stream-take 10 primes))  ;; 最初の10個の素数
+
+;; フィボナッチ数列
+(def fib-stream
+  (iterate
+    (fn [[a b]] [b (+ a b)])
+    [0 1]))
+
+(realize
+  (stream-take 10 fib-stream)
+  |> (map first))  ;; (0 1 1 2 3 5 8 13 21 34)
+
+;; データ処理パイプライン
+(def process-data (fn [data]
+  (data
+   |> stream
+   |> (stream-map parse)
+   |> (stream-filter valid?)
+   |> (stream-take 1000)
+   |> realize)))
+```
+
+#### ✅ I/Oストリーム（実装済み）
+
+**ファイルとHTTPデータの遅延読み込み - テキスト＆バイナリ対応**
+
+##### テキストモード（行ベース）
+
+```lisp
+;; file-stream: ファイルを行ごとに遅延読み込み（io.rs）
+(file-stream "large.log")
+  |> (stream-filter error-line?)
+  |> (stream-map parse)
+  |> (stream-take 100)
+  |> realize
+
+;; http/get-stream: HTTPレスポンスを行ごとに読み込み（http.rs）
+(http/get-stream "https://api.example.com/data")
+  |> (stream-take 10)
+  |> realize
+
+;; http/post-stream: POSTリクエストでストリーミング受信
+(http/post-stream "https://api.example.com/upload" {:data "value"})
+  |> (stream-take 10)
+  |> realize
+
+;; http/request-stream: 詳細設定でストリーミング
+(http/request-stream {
+  :method "GET"
+  :url "https://api.example.com/stream"
+})
+  |> (stream-filter important?)
+  |> realize
+```
+
+##### バイナリモード（バイトチャンク）
+
+```lisp
+;; file-stream :bytes - ファイルを4KBチャンクで読み込み
+(file-stream "image.png" :bytes)
+  |> (stream-take 10)
+  |> realize
+;; => Vector of Integers (bytes) のリスト
+
+;; http/get-stream :bytes - HTTPバイナリダウンロード
+(http/get-stream "https://example.com/file.bin" :bytes)
+  |> (stream-map process-chunk)
+  |> realize
+
+;; バイト処理の例
+(def bytes (first (realize (stream-take 1 (file-stream "data.bin" :bytes)))))
+(def sum (reduce + bytes))  ; バイトの合計
+(println sum)
+
+;; 画像ダウンロード
+(http/get-stream "https://example.com/logo.png" :bytes)
+  |> realize
+  |> flatten
+  |> (write-bytes "logo.png")  ; write-bytes は将来実装
+```
+
+**モード比較**:
+
+| モード | 用途 | 戻り値 | 例 |
+|--------|------|--------|-----|
+| テキスト（デフォルト） | ログ、CSV、JSON | String（行ごと） | `(file-stream "data.txt")` |
+| バイナリ（`:bytes`） | 画像、動画、バイナリ | Vector of Integers（4KBチャンク） | `(file-stream "image.png" :bytes)` |
+
+;; CSVファイルの処理
+(file-stream "data.csv")
+  |> (stream-drop 1)  ; ヘッダースキップ
+  |> (stream-map (fn [line] (split line ",")))
+  |> (stream-filter (fn [cols] (> (len cols) 2)))
+  |> (stream-take 1000)
+  |> realize
+
+;; HTTPからJSONを取得してパース
+(http/get-stream "https://jsonplaceholder.typicode.com/todos/1")
+  |> realize
+  |> (join "\n")
+  |> json/parse  ; json モジュールが実装されたら使える
+```
+
+**実用例: ログファイル解析**
+
+```lisp
+;; 大きなログファイルをメモリ効率的に処理
+(def analyze-logs (fn [file]
+  (file-stream file
+   |> (stream-filter (fn [line] (contains? line "ERROR")))
+   |> (stream-map parse-log-line)
+   |> (stream-take 100)  ; 最初の100エラー
+   |> realize)))
+
+;; 結果を取得
+(def errors (analyze-logs "/var/log/app.log"))
+(println (str "Found " (len errors) " errors"))
 ```
 
 ---
@@ -2713,7 +2904,8 @@ mean median stddev
 - **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `recv!:timeout` `try-recv!` `close!` `select!` `make-scope` `scope-go` `cancel!` `cancelled?` `with-scope`
 - **並行処理 Layer 2**: `pmap` `pfilter` `preduce` `parallel-do` `pipeline` `pipeline-map` `pipeline-filter` `fan-out` `fan-in`
 - **並行処理 Layer 3**: `await` `then` `catch` `all` `race`
-- **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Uvar
+- **遅延評価（Stream）**: `stream` `range-stream` `repeat` `cycle` `iterate` `stream-map` `stream-filter` `stream-take` `stream-drop` `realize` `file-stream` `http/get-stream` `http/post-stream` `http/request-stream`
+- **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Stream, Uvar
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
 - **名前空間**: Lisp-1、coreが優先
@@ -2735,8 +2927,12 @@ mean median stddev
 - `or` パターン（複数パターンで同じ処理）
 - 配列の複数束縛（`[x y]` で同時束縛）
 
+*Stream I/O拡張*:
+- ✅ `file-stream`（io.rs）ファイルストリーミング **実装済み**
+- ✅ `http/get-stream` `http/post-stream` `http/request-stream`（http.rs）HTTPストリーミング **実装済み**
+- 🚧 `tail-stream`（リアルタイムログ監視）**将来実装**
+
 **🚧 将来**:
-- `stream` 遅延評価ストリーム
 - 標準モジュール群（str/csv/regex/http/json）
 
 ### 実装状況サマリー
@@ -2747,7 +2943,7 @@ mean median stddev
 
 **パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
 
-**組み込み関数（136個以上）**:
+**組み込み関数（150個以上）**:
 - **リスト操作（26）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, sort-by, distinct, partition, group-by, frequencies, count-by, chunk, take-while, drop-while, max-by, min-by, sum-by
 - **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
 - **比較（6）**: =, !=, <, >, <=, >=
@@ -2761,12 +2957,13 @@ mean median stddev
 - **並行処理 Layer 1（13）**: go, chan, send!, recv!, recv!:timeout, try-recv!, close!, select!, make-scope, scope-go, cancel!, cancelled?, with-scope
 - **並行処理 Layer 2（9）**: pmap, pfilter, preduce, parallel-do, pipeline, pipeline-map, pipeline-filter, fan-out, fan-in
 - **並行処理 Layer 3（5）**: await, then, catch, all, race
+- **遅延評価 Stream（14）**: stream, range-stream, repeat, cycle, iterate, stream-map, stream-filter, stream-take, stream-drop, realize, file-stream, http/get-stream, http/post-stream, http/request-stream
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
 - **論理（3）**: and, or, not
 - **I/O（7）**: print, println, read-file, read-lines, write-file, append-file, file-exists?
 
-**データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, Uvar
+**データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Stream, Uvar
 
 **先進機能**:
 - f-string補間
@@ -2774,6 +2971,7 @@ mean median stddev
 - マクロの衛生性（uvar）
 - 末尾再帰最適化（loop/recur）
 - defer（エラー時も実行保証）
+- **遅延評価Stream**（無限データ構造、メモリ効率的処理）
 - **3層並行処理アーキテクチャ** ⭐ Qi独自
   - Layer 1: go/chan（Go風基盤）
   - Layer 2: pipeline（構造化並行処理）

@@ -4,10 +4,12 @@
 //! - get/post/put/delete/patch/head/options: 各HTTPメソッド
 //! - request: 詳細なリクエスト設定
 //! - get-async/post-async: 非同期版
+//! - get-stream/post-stream/request-stream: ストリーミング版
 
 use crate::eval::Evaluator;
-use crate::value::Value;
+use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
+use parking_lot::RwLock;
 use reqwest::blocking::Client;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -325,5 +327,178 @@ fn http_request(
                 .collect(),
             ))
         }
+    }
+}
+
+// ========================================
+// ストリーミング版 HTTP関数
+// ========================================
+
+/// HTTP GET（ストリーミング版）- レスポンスボディを行ごとに遅延読み込み
+/// 引数: (http/get-stream "url") - テキストモード（行ごと）
+///      (http/get-stream "url" :bytes) - バイナリモード（バイトチャンクごと）
+pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("http/get-stream: 1個の引数が必要です".to_string());
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => return Err("http/get-stream: URLは文字列である必要があります".to_string()),
+    };
+
+    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
+
+    http_stream("GET", &url, None, is_bytes)
+}
+
+/// HTTP POST（ストリーミング版）- レスポンスボディを行ごとに遅延読み込み
+/// 引数: (http/post-stream "url" body) - テキストモード
+///      (http/post-stream "url" body :bytes) - バイナリモード
+pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 {
+        return Err("http/post-stream: 2個の引数が必要です".to_string());
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => return Err("http/post-stream: URLは文字列である必要があります".to_string()),
+    };
+
+    let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if k == "bytes");
+
+    http_stream("POST", &url, Some(&args[1]), is_bytes)
+}
+
+/// HTTP Request（ストリーミング版）- 詳細な設定でストリーミング受信
+/// 引数: (http/request-stream {:method "GET" :url "..."}) - テキストモード
+///      (http/request-stream {:method "GET" :url "..."} :bytes) - バイナリモード
+pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("http/request-stream: 1個の引数が必要です".to_string());
+    }
+
+    let config = match &args[0] {
+        Value::Map(m) => m,
+        _ => return Err("http/request-stream: 引数はマップである必要があります".to_string()),
+    };
+
+    let method = match config.get("method") {
+        Some(Value::String(s)) => s.as_str(),
+        _ => "GET",
+    };
+
+    let url = match config.get("url") {
+        Some(Value::String(s)) => s.clone(),
+        _ => return Err("http/request-stream: url は必須です".to_string()),
+    };
+
+    let body = config.get("body");
+
+    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
+
+    http_stream(method, &url, body, is_bytes)
+}
+
+/// HTTPストリーミングの共通実装
+fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) -> Result<Value, String> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("http stream: クライアント作成エラー: {}", e))?;
+
+    let mut request = match method {
+        "GET" => client.get(url),
+        "POST" => client.post(url),
+        "PUT" => client.put(url),
+        "DELETE" => client.delete(url),
+        "PATCH" => client.patch(url),
+        _ => return Err(format!("未サポートのHTTPメソッド: {}", method)),
+    };
+
+    // ボディ追加
+    if let Some(b) = body {
+        match b {
+            Value::String(s) => {
+                request = request.body(s.clone());
+            }
+            _ => {
+                // JSON自動変換
+                let json_str = crate::builtins::json::native_stringify(&[b.clone()])?;
+                if let Value::Map(m) = json_str {
+                    if let Some(Value::String(s)) = m.get("ok") {
+                        request = request
+                            .header("Content-Type", "application/json")
+                            .body(s.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // リクエスト送信
+    let response = request
+        .send()
+        .map_err(|e| format!("http stream: リクエスト失敗: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("http stream: HTTP {}", response.status()));
+    }
+
+    if is_bytes {
+        // バイナリモード：バイト列として取得
+        let bytes = response
+            .bytes()
+            .map_err(|e| format!("http stream: バイト読み込み失敗: {}", e))?;
+
+        // 4KBチャンクに分割
+        const CHUNK_SIZE: usize = 4096;
+        let chunks: Vec<Vec<u8>> = bytes
+            .chunks(CHUNK_SIZE)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let index = Arc::new(RwLock::new(0));
+
+        let stream = Stream {
+            next_fn: Box::new(move || {
+                let mut idx = index.write();
+                if *idx < chunks.len() {
+                    let chunk = &chunks[*idx];
+                    *idx += 1;
+                    // バイト配列をIntegerのVectorに変換
+                    let bytes: Vec<Value> = chunk.iter().map(|&b| Value::Integer(b as i64)).collect();
+                    Some(Value::Vector(bytes))
+                } else {
+                    None
+                }
+            }),
+        };
+
+        Ok(Value::Stream(Arc::new(RwLock::new(stream))))
+    } else {
+        // テキストモード：行ごと
+        let body = response
+            .text()
+            .map_err(|e| format!("http stream: ボディ読み込み失敗: {}", e))?;
+
+        // 行ごとに分割してストリームに変換
+        let lines: Vec<String> = body.lines().map(|s| s.to_string()).collect();
+        let index = Arc::new(RwLock::new(0));
+
+        let stream = Stream {
+            next_fn: Box::new(move || {
+                let mut idx = index.write();
+                if *idx < lines.len() {
+                    let line = lines[*idx].clone();
+                    *idx += 1;
+                    Some(Value::String(line))
+                } else {
+                    None
+                }
+            }),
+        };
+
+        Ok(Value::Stream(Arc::new(RwLock::new(stream))))
     }
 }
