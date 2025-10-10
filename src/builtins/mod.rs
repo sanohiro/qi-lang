@@ -11,12 +11,14 @@
 //! - hof: 高階関数（map, filter, reduce）
 //! - error: エラー処理（error）
 //! - atom: 状態管理（atom, deref, swap!, reset!）
+//! - io: ファイルI/O（read-file, write-file, append-file）
 
 pub mod arithmetic;
 pub mod atom;
 pub mod comparison;
 pub mod error;
 pub mod hof;
+pub mod io;
 pub mod list;
 pub mod logic;
 pub mod map;
@@ -84,6 +86,8 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "range" => list::native_range,
         "last" => list::native_last,
         "zip" => list::native_zip,
+        "sort" => list::native_sort,
+        "distinct" => list::native_distinct,
 
         // 文字列操作
         "str" => string::native_str,
@@ -191,6 +195,11 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "uvar" => meta::native_uvar,
         "variable" => meta::native_variable,
         "macro?" => meta::native_macro_q,
+
+        // ファイルI/O
+        "read-file" => io::native_read_file,
+        "write-file" => io::native_write_file,
+        "append-file" => io::native_append_file,
     );
 }
 
@@ -209,6 +218,18 @@ pub fn reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String
 
 pub fn pmap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_pmap(args, evaluator)
+}
+
+pub fn partition(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_partition(args, evaluator)
+}
+
+pub fn group_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_group_by(args, evaluator)
+}
+
+pub fn map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_map_lines(args, evaluator)
 }
 
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）

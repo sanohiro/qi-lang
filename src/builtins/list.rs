@@ -246,3 +246,48 @@ pub fn native_zip(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["zip", "lists or vectors"])),
     }
 }
+
+/// sort - リストをソート
+pub fn native_sort(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["sort"]));
+    }
+    match &args[0] {
+        Value::List(v) | Value::Vector(v) => {
+            let mut sorted = v.clone();
+            sorted.sort_by(|a, b| {
+                match (a, b) {
+                    (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                    (Value::Float(x), Value::Float(y)) => {
+                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    (Value::String(x), Value::String(y)) => x.cmp(y),
+                    _ => std::cmp::Ordering::Equal,
+                }
+            });
+            Ok(Value::List(sorted))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sort", "lists or vectors"])),
+    }
+}
+
+/// distinct - 重複を排除
+pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["distinct"]));
+    }
+    match &args[0] {
+        Value::List(v) | Value::Vector(v) => {
+            let mut result = Vec::new();
+            let mut seen = std::collections::HashSet::new();
+            for item in v {
+                let key = format!("{:?}", item);
+                if seen.insert(key) {
+                    result.push(item.clone());
+                }
+            }
+            Ok(Value::List(result))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["distinct", "lists or vectors"])),
+    }
+}

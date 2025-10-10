@@ -320,6 +320,9 @@ impl Evaluator {
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
                         "pmap" => return self.eval_pmap(args, env),
+                        "partition" => return self.eval_partition(args, env),
+                        "group-by" => return self.eval_group_by(args, env),
+                        "map-lines" => return self.eval_map_lines(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
@@ -620,6 +623,24 @@ impl Evaluator {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::pmap(&[func, coll], self)
+    }
+
+    fn eval_partition(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let coll = self.eval_with_env(&args[1], env.clone())?;
+        builtins::partition(&[func, coll], self)
+    }
+
+    fn eval_group_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let coll = self.eval_with_env(&args[1], env.clone())?;
+        builtins::group_by(&[func, coll], self)
+    }
+
+    fn eval_map_lines(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let text = self.eval_with_env(&args[1], env.clone())?;
+        builtins::map_lines(&[func, text], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
