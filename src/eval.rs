@@ -13,6 +13,7 @@ struct Module {
     exports: HashMap<String, Value>,
 }
 
+#[derive(Clone)]
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
     defer_stack: Arc<RwLock<Vec<Vec<Expr>>>>, // スコープごとのdeferスタック（LIFO）
@@ -338,6 +339,7 @@ impl Evaluator {
                         "sum-by" => return self.eval_sum_by(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
+                        "go" => return self.eval_go(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -834,6 +836,15 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::sum_by(&vals, self)
+    }
+
+    fn eval_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err("go requires 1 argument".to_string());
+        }
+        // 式を評価して値に変換
+        let val = self.eval_with_env(&args[0], env)?;
+        builtins::go(&[val], self)
     }
 
 }
@@ -1543,6 +1554,7 @@ impl Evaluator {
                         Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
                         Value::Macro(m) => format!("<macro:{}>", m.name),
                         Value::Atom(a) => format!("<atom:{}>", a.read()),
+                        Value::Channel(_) => "<channel>".to_string(),
                         Value::Uvar(id) => format!("<uvar:{}>", id),
                     };
                     result.push_str(&s);

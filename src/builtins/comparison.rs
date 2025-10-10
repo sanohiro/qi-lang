@@ -24,6 +24,7 @@ fn values_equal(a: &Value, b: &Value) -> bool {
         (Value::NativeFunc(a), Value::NativeFunc(b)) => a.name == b.name,
         (Value::Macro(a), Value::Macro(b)) => ptr::eq(&**a, &**b),
         (Value::Atom(a), Value::Atom(b)) => ptr::eq(&**a, &**b),
+        (Value::Channel(a), Value::Channel(b)) => ptr::eq(&**a, &**b),
         (Value::Uvar(a), Value::Uvar(b)) => a == b,
         _ => false,
     }

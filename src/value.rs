@@ -1,3 +1,4 @@
+use crossbeam_channel::{Receiver, Sender};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fmt;
@@ -41,8 +42,17 @@ pub enum Value {
     Macro(Arc<Macro>),
     /// アトム（可変な参照）
     Atom(Arc<RwLock<Value>>),
+    /// チャネル（go/chan並行処理用）
+    Channel(Arc<Channel>),
     /// ユニーク変数（マクロの衛生性）
     Uvar(u64),
+}
+
+/// チャネル（送信・受信両方可能）
+#[derive(Debug, Clone)]
+pub struct Channel {
+    pub sender: Sender<Value>,
+    pub receiver: Receiver<Value>,
 }
 
 impl Value {
@@ -295,6 +305,7 @@ impl fmt::Display for Value {
             Value::NativeFunc(nf) => write!(f, "#<native-function:{}>", nf.name),
             Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
             Value::Atom(a) => write!(f, "#<atom:{}>", a.read()),
+            Value::Channel(_) => write!(f, "#<channel>"),
             Value::Uvar(id) => write!(f, "#<uvar:{}>", id),
         }
     }

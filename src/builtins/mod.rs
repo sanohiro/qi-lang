@@ -14,10 +14,12 @@
 //! - error: エラー処理（error）
 //! - atom: 状態管理（atom, deref, swap!, reset!）
 //! - io: ファイルI/O（read-file, write-file, append-file）
+//! - concurrency: 並行処理（chan, send!, recv!, try-recv!, close!, go）
 
 pub mod arithmetic;
 pub mod atom;
 pub mod comparison;
+pub mod concurrency;
 pub mod error;
 pub mod hof;
 pub mod io;
@@ -272,6 +274,13 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "number?" => util::native_number_p,
         "function?" => util::native_function_p,
         "atom?" => util::native_atom_p,
+
+        // 並行処理（チャネル）
+        "chan" => concurrency::native_chan,
+        "send!" => concurrency::native_send,
+        "recv!" => concurrency::native_recv,
+        "try-recv!" => concurrency::native_try_recv,
+        "close!" => concurrency::native_close,
     );
 }
 
@@ -361,4 +370,9 @@ pub fn min_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 
 pub fn sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sum_by(args, evaluator)
+}
+
+/// 並行処理関数（Evaluatorが必要な関数）
+pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_go(args, evaluator)
 }
