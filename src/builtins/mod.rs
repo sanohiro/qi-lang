@@ -20,6 +20,7 @@ pub mod hof;
 pub mod list;
 pub mod logic;
 pub mod map;
+pub mod meta;
 pub mod predicates;
 pub mod string;
 
@@ -185,6 +186,11 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "atom" => atom::native_atom,
         "deref" => atom::native_deref,
         "reset!" => atom::native_reset,
+
+        // メタプログラミング
+        "uvar" => meta::native_uvar,
+        "variable" => meta::native_variable,
+        "macro?" => meta::native_macro_q,
     );
 }
 
@@ -204,4 +210,9 @@ pub fn reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
 pub fn swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     atom::native_swap(args, evaluator)
+}
+
+/// メタプログラミング関数（Evaluatorへの参照が必要なため別扱い）
+pub fn eval(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    meta::native_eval(args, evaluator)
 }

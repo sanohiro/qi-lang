@@ -85,6 +85,7 @@ pub enum MsgKey {
     Need1Or2Args,       // {0}には1または2個の引数が必要
     Need2Args,          // {0}には2つの引数が必要
     Need1Arg,           // {0}には1つの引数が必要
+    Need0Args,          // {0}には引数は不要
 
     // 型エラー（汎用）
     TypeOnly,           // {0}は{1}のみ受け付けます
@@ -225,6 +226,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::Need1Or2Args), "{0} requires 1 or 2 arguments");
         messages.insert((Lang::En, MsgKey::Need2Args), "{0} requires 2 arguments");
         messages.insert((Lang::En, MsgKey::Need1Arg), "{0} requires 1 argument");
+        messages.insert((Lang::En, MsgKey::Need0Args), "{0} requires no arguments");
 
         // 英語メッセージ - 型エラー
         messages.insert((Lang::En, MsgKey::TypeOnly), "{0} accepts {1} only");
@@ -305,6 +307,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::Need1Or2Args), "{0}には1または2個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Args), "{0}には2つの引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need1Arg), "{0}には1つの引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need0Args), "{0}には引数は不要です");
 
         // 日本語メッセージ - 型エラー
         messages.insert((Lang::Ja, MsgKey::TypeOnly), "{0}は{1}のみ受け付けます");

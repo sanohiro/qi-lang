@@ -320,6 +320,7 @@ impl Evaluator {
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
                         "swap!" => return self.eval_swap(args, env),
+                        "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -527,6 +528,12 @@ impl Evaluator {
             swap_args.push(self.eval_with_env(arg, env.clone())?);
         }
         builtins::swap(&swap_args, self)
+    }
+
+    /// eval関数の実装: (eval expr)
+    fn eval_eval(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let expr = self.eval_with_env(&args[0], env.clone())?;
+        builtins::eval(&[expr], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
@@ -1306,6 +1313,7 @@ impl Evaluator {
                         Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
                         Value::Macro(m) => format!("<macro:{}>", m.name),
                         Value::Atom(a) => format!("<atom:{}>", a.borrow()),
+                        Value::Uvar(id) => format!("<uvar:{}>", id),
                     };
                     result.push_str(&s);
                 }

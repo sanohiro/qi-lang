@@ -41,6 +41,8 @@ pub enum Value {
     Macro(Rc<Macro>),
     /// アトム（可変な参照）
     Atom(Rc<RefCell<Value>>),
+    /// ユニーク変数（マクロの衛生性）
+    Uvar(u64),
 }
 
 impl Value {
@@ -289,6 +291,7 @@ impl fmt::Display for Value {
             Value::NativeFunc(nf) => write!(f, "#<native-function:{}>", nf.name),
             Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
             Value::Atom(a) => write!(f, "#<atom:{}>", a.borrow()),
+            Value::Uvar(id) => write!(f, "#<uvar:{}>", id),
         }
     }
 }
