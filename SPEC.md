@@ -6,6 +6,8 @@
 
 シンプル、高速、簡潔なモダンLisp系言語。パイプライン、パターンマッチング、並行・並列処理に強い。
 
+**並列、並行を簡単にできるのはQiのキモ** - スレッドセーフな設計と3層並行処理アーキテクチャ。
+
 **実装状況**: 本仕様書には計画中の機能も含まれています。実装済みの機能には ✅ マーク、未実装の機能には 🚧 マークを付記しています。
 
 ---
@@ -33,6 +35,7 @@ Qiは**Flow-Oriented Programming**（流れ指向プログラミング）を体�
    - データは一方向に流れる（左から右、上から下）
    - 副作用はタップ（`tap>`）で観察
    - 並列処理は流れの分岐・合流として表現
+   - **並行・並列を簡単に** - スレッドセーフな設計で自然な並列化
 
 4. **実用主義**
    - Lisp的純粋性より実用性を優先
@@ -61,9 +64,11 @@ Qiは段階的にFlow機能を強化していきます：
 - `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
 - `or` パターン - 複数パターンで同じ処理
 
-**フェーズ3（🚧 将来）**:
-- `~>` 非同期パイプライン - go/chan統合
-- `stream` 遅延評価ストリーム - 巨大データ処理
+**フェーズ3（🔜 進行中）**:
+- ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化
+- 🚧 並行処理 - go/chan、パイプライン、async/await
+- 🚧 `~>` 非同期パイプライン - go/chan統合
+- 🚧 `stream` 遅延評価ストリーム - 巨大データ処理
 - 再利用可能な「小パイプ」文化の確立
 
 ---
@@ -955,20 +960,106 @@ file-exists?            ;; ファイル存在確認
 ;; ✅ 実装済み（上記の基本I/Oに含まれる）
 ```
 
-### 並行・並列
-```lisp
-;; ✅ 実装済み
-loop recur              ;; ループ（末尾再帰最適化）
-pmap                    ;; 並列map（現在はシングルスレッド実装）
+### 並行・並列処理 - Qiの真髄
 
-;; 🚧 未実装
-chan put take take-n    ;; チャネル
-go                      ;; 並行実行
+**Qiは並行・並列処理を第一級市民として扱う言語です。**
+
+「並列、並行を簡単にできるのはQiのキモ」- これがQiの設計哲学の核心です。
+
+#### 設計哲学
+
+Qiの並行・並列処理は**3層アーキテクチャ**で構成されます：
+
+```
+┌─────────────────────────────────────┐
+│  Layer 3: async/await (高レベル)     │  ← 使いやすさ（I/O、API）
+│  - async, await, then, catch        │
+├─────────────────────────────────────┤
+│  Layer 2: Pipeline (中レベル)        │  ← 関数型らしさ
+│  - pmap, pipeline, fan-out/in       │
+├─────────────────────────────────────┤
+│  Layer 1: go/chan (低レベル基盤)     │  ← パワーと柔軟性
+│  - go, chan, send!, recv!, close!   │
+└─────────────────────────────────────┘
 ```
 
-**実装メモ**:
-- `pmap`: 現在はmapと同じ動作（シングルスレッド）。将来、Evaluatorをスレッドセーフ化した際に並列処理を実装予定。
-- インターフェースは確定しているため、コードはそのまま将来の並列版にも対応。
+**すべてgo/chanの上に構築** - シンプルで一貫性のあるアーキテクチャ。
+
+#### ✅ 実装済み
+
+```lisp
+;; データ並列処理
+pmap                    ;; 並列map（rayon使用、完全並列化済み）
+
+;; 状態管理
+atom deref @ swap! reset!  ;; スレッドセーフなAtom
+```
+
+**実装状態**:
+- ✅ Evaluatorを完全スレッドセーフ化（Arc<RwLock<_>>）
+- ✅ pmapでユーザー定義関数も並列実行可能
+- ✅ Atomはスレッドセーフ（RwLock使用）
+
+#### 🚧 実装予定
+
+**Layer 1: go/chan（基盤）** - Go風の並行処理
+```lisp
+;; チャネル作成
+(chan)                  ;; 無制限バッファ
+(chan 10)               ;; バッファサイズ10
+
+;; 送受信
+(send! ch value)        ;; チャネルに送信
+(recv! ch)              ;; ブロッキング受信
+(try-recv! ch)          ;; 非ブロッキング受信（nilまたは値）
+(close! ch)             ;; チャネルクローズ
+
+;; goroutine風
+(go (println "async!"))
+(go (send! ch (expensive-calc)))
+
+;; futureとしても使える
+(def result (go (expensive-calc)))
+(deref result)          ;; 結果待ち
+```
+
+**Layer 2: Pipeline（構造化並行処理）** - 関数型スタイル
+```lisp
+;; パイプライン処理
+(pipeline n xf ch)      ;; n並列でxf変換をchに適用
+
+;; ファンアウト/ファンイン
+(fan-out ch n)          ;; 1つのチャネルをn個に分岐
+(fan-in chs)            ;; 複数チャネルを1つに合流
+
+;; データパイプライン
+(-> data
+    (pipeline-map 4 transform)     ;; 4並列で変換
+    (pipeline-filter 2 predicate)  ;; 2並列でフィルタ
+    (into []))
+```
+
+**Layer 3: async/await（高レベル）** - モダンな非同期処理
+```lisp
+;; async/await風
+(async
+  (def user (await (fetch-user id)))
+  (def posts (await (fetch-posts user)))
+  posts)
+
+;; Promise チェーン
+(-> (fetch-user id)
+    (then (fn [user] (fetch-posts user)))
+    (then process)
+    (catch handle-error))
+```
+
+#### 実装技術スタック
+
+- **crossbeam-channel**: Go風チャネル実装
+- **rayon**: データ並列（pmap等）
+- **parking_lot**: 高性能RwLock
+- **tokio** (将来): async/await実行時
 
 ### ✅ 状態管理 - Atom（実装済み）
 
@@ -2206,8 +2297,9 @@ mean median stddev
 - **ループ**: `loop` `recur` 末尾再帰最適化
 - **エラー処理**: `try` `error` `defer`
 - **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
-- **状態管理**: `atom` `@` `deref` `swap!` `reset!`
-- **並列処理**: `pmap`（シングルスレッド版）
+- **状態管理**: `atom` `@` `deref` `swap!` `reset!`（スレッドセーフ）
+- **並列処理**: `pmap`（rayon使用、完全並列化済み）
+- **スレッド安全**: Evaluator完全スレッドセーフ化（Arc<RwLock<_>>）
 - **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, Uvar
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
@@ -2230,10 +2322,14 @@ mean median stddev
 - `or` パターン（複数パターンで同じ処理）
 - 配列の複数束縛（`[x y]` で同時束縛）
 
-**🚧 将来**:
+**🔜 次フェーズ（並行処理）**:
+- チャネル/go 並行処理（Layer 1: go/chan基盤）
+- パイプライン並行処理（Layer 2: pipeline, fan-out/in）
+- async/await（Layer 3: 高レベル非同期）
 - `~>` 非同期パイプライン（go/chan統合）
+
+**🚧 将来**:
 - `stream` 遅延評価ストリーム
-- チャネル/go 並行処理
 - 標準モジュール群（str/csv/regex/http/json）
 
 ### 実装状況サマリー
