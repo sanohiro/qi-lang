@@ -1241,11 +1241,11 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 ;; 送受信 ✅
 (send! ch value)        ;; チャネルに送信
 (recv! ch)              ;; ブロッキング受信
-(recv! ch :timeout 1000) ;; タイムアウト付き受信（ミリ秒） 🚧 Phase 5
+(recv! ch :timeout 1000) ;; タイムアウト付き受信（ミリ秒） ✅
 (try-recv! ch)          ;; 非ブロッキング受信（nilまたは値）
 (close! ch)             ;; チャネルクローズ
 
-;; 複数チャネル待ち合わせ 🚧 Phase 5
+;; 複数チャネル待ち合わせ ✅
 (select!
   [[ch1 (fn [v] (handle-ch1 v))]
    [ch2 (fn [v] (handle-ch2 v))]
@@ -1259,7 +1259,7 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 (def result (go (expensive-calc)))
 (deref result)          ;; 結果待ち
 
-;; Structured Concurrency（構造化並行処理） 🚧 Phase 5
+;; Structured Concurrency（構造化並行処理） ✅
 (def ctx (make-scope))  ;; スコープ作成
 (scope-go ctx (fn []    ;; スコープ内でgoroutine起動
   (loop [i 0]
@@ -1271,20 +1271,21 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
         (recur (inc i)))))))
 (cancel! ctx)           ;; スコープ内の全goroutineをキャンセル
 
-;; with-scopeマクロ（便利版） 🚧 Phase 5
-(with-scope [ctx]
+;; with-scope関数（便利版） ✅
+(with-scope (fn [ctx]
   (scope-go ctx task1)
   (scope-go ctx task2)
   ;; スコープ終了時に自動キャンセル
-  )
+  ))
 ```
 
 **Layer 2: Pipeline（構造化並行処理）** - 関数型スタイル ✅
 ```lisp
 ;; 並列コレクション操作 ✅
 pmap                    ;; 並列map（rayon使用）
-pfilter                 ;; 並列filter 🚧 Phase 5
-preduce                 ;; 並列reduce 🚧 Phase 5
+pfilter                 ;; 並列filter ✅
+preduce                 ;; 並列reduce ✅
+parallel-do             ;; 複数式の並列実行 ✅
 
 ;; パイプライン処理 ✅
 (pipeline n xf ch)      ;; n並列でxf変換をchに適用
@@ -1330,21 +1331,22 @@ preduce                 ;; 並列reduce 🚧 Phase 5
 - ✅ `chan`: チャネル作成
 - ✅ `send!`: 送信
 - ✅ `recv!`: ブロッキング受信
-- 🚧 `recv! :timeout`: タイムアウト付き受信 (Phase 5)
+- ✅ `recv! :timeout`: タイムアウト付き受信
 - ✅ `try-recv!`: 非ブロッキング受信
 - ✅ `close!`: チャネルクローズ
 - ✅ `go`: goroutine起動
-- 🚧 `select!`: 複数チャネル待ち合わせ (Phase 5)
-- 🚧 `make-scope`: スコープ作成 (Phase 5)
-- 🚧 `scope-go`: スコープ内goroutine (Phase 5)
-- 🚧 `cancel!`: スコープキャンセル (Phase 5)
-- 🚧 `cancelled?`: キャンセル確認 (Phase 5)
-- 🚧 `with-scope`: スコープマクロ (Phase 5)
+- ✅ `select!`: 複数チャネル待ち合わせ
+- ✅ `make-scope`: スコープ作成
+- ✅ `scope-go`: スコープ内goroutine
+- ✅ `cancel!`: スコープキャンセル
+- ✅ `cancelled?`: キャンセル確認
+- ✅ `with-scope`: スコープ自動管理
 
 **Layer 2 (Pipeline)**:
 - ✅ `pmap`: 並列map
-- 🚧 `pfilter`: 並列filter (Phase 5)
-- 🚧 `preduce`: 並列reduce (Phase 5)
+- ✅ `pfilter`: 並列filter
+- ✅ `preduce`: 並列reduce
+- ✅ `parallel-do`: 複数式の並列実行
 - ✅ `pipeline`: パイプライン処理
 - ✅ `pipeline-map`: パイプラインmap
 - ✅ `pipeline-filter`: パイプラインfilter
@@ -2706,12 +2708,12 @@ mean median stddev
 - **エラー処理**: `try` `error` `defer`
 - **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
 - **状態管理**: `atom` `@` `deref` `swap!` `reset!`（スレッドセーフ）
-- **並列処理**: `pmap`（rayon使用、完全並列化済み）
+- **並列処理**: `pmap` `pfilter` `preduce` `parallel-do`（rayon使用、完全並列化済み）
 - **スレッド安全**: Evaluator完全スレッドセーフ化（Arc<RwLock<_>>）
-- **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `try-recv!` `close!`
-- **並行処理 Layer 2**: `pipeline` `pipeline-map` `pipeline-filter` `fan-out` `fan-in`
+- **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `recv!:timeout` `try-recv!` `close!` `select!` `make-scope` `scope-go` `cancel!` `cancelled?` `with-scope`
+- **並行処理 Layer 2**: `pmap` `pfilter` `preduce` `parallel-do` `pipeline` `pipeline-map` `pipeline-filter` `fan-out` `fan-in`
 - **並行処理 Layer 3**: `await` `then` `catch` `all` `race`
-- **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, Uvar
+- **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Uvar
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
 - **名前空間**: Lisp-1、coreが優先
@@ -2732,12 +2734,6 @@ mean median stddev
 *match拡張（追加予定）*:
 - `or` パターン（複数パターンで同じ処理）
 - 配列の複数束縛（`[x y]` で同時束縛）
-
-**🔜 次フェーズ（並行処理）**:
-- チャネル/go 並行処理（Layer 1: go/chan基盤）
-- パイプライン並行処理（Layer 2: pipeline, fan-out/in）
-- async/await（Layer 3: 高レベル非同期）
-- `~>` 非同期パイプライン（go/chan統合）
 
 **🚧 将来**:
 - `stream` 遅延評価ストリーム
@@ -2762,8 +2758,8 @@ mean median stddev
 - **集合演算（4）**: union, intersect, difference, subset?
 - **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
-- **並行処理 Layer 1（6+7予定）**: go, chan, send!, recv!, try-recv!, close! + 🚧 recv!:timeout, select!, make-scope, scope-go, cancel!, cancelled?, with-scope
-- **並行処理 Layer 2（5+2予定）**: pipeline, pipeline-map, pipeline-filter, fan-out, fan-in + 🚧 pfilter, preduce
+- **並行処理 Layer 1（13）**: go, chan, send!, recv!, recv!:timeout, try-recv!, close!, select!, make-scope, scope-go, cancel!, cancelled?, with-scope
+- **並行処理 Layer 2（9）**: pmap, pfilter, preduce, parallel-do, pipeline, pipeline-map, pipeline-filter, fan-out, fan-in
 - **並行処理 Layer 3（5）**: await, then, catch, all, race
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
@@ -2813,13 +2809,14 @@ mean median stddev
 17. ✅ デバッグ関数（inspect, time）
 18. ✅ コレクション拡張（find, every?, some?, zipmap, update-keys, update-vals等）
 
-**フェーズ5: 並行・並列処理の完成（🚧 実装中）**
-19. 🚧 並列コレクション完成（pfilter, preduce）
-20. 🚧 select!とタイムアウト（recv! :timeout, select!）
-21. 🚧 Structured Concurrency（make-scope, scope-go, cancel!, cancelled?, with-scope）
+**フェーズ5: 並行・並列処理の完成（✅ 完了）**
+19. ✅ 並列コレクション完成（pfilter, preduce）
+20. ✅ select!とタイムアウト（recv! :timeout, select!）
+21. ✅ Structured Concurrency（make-scope, scope-go, cancel!, cancelled?, with-scope）
+22. ✅ parallel-do（複数式の並列実行）
 
 **フェーズ6: 統計・高度な処理**
-22. mean, median, stddev
+23. mean, median, stddev
 
 #### 🚧 将来の計画
 - 標準モジュール群（str完全版/csv/regex/http/json）
