@@ -196,3 +196,96 @@ pub fn native_map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Val
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["map-lines (2nd arg)", "strings"])),
     }
 }
+
+/// update - マップの値を関数で更新
+pub fn native_update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("update requires 3 arguments (map, key, fn)".to_string());
+    }
+
+    let map = &args[0];
+    let key_val = &args[1];
+    let func = &args[2];
+
+    match map {
+        Value::Map(m) => {
+            let key = match key_val {
+                Value::String(s) => s.clone(),
+                Value::Keyword(k) => k.clone(),
+                _ => return Err("update: key must be string or keyword".to_string()),
+            };
+
+            let current_value = m.get(&key).cloned().unwrap_or(Value::Nil);
+            let new_value = evaluator.apply_function(func, &[current_value])?;
+
+            let mut result = m.clone();
+            result.insert(key, new_value);
+            Ok(Value::Map(result))
+        }
+        _ => Err("update: first argument must be a map".to_string()),
+    }
+}
+
+/// update-in - ネストしたマップの値を関数で更新
+pub fn native_update_in(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("update-in requires 3 arguments (map, path, fn)".to_string());
+    }
+
+    let map = &args[0];
+    let path = match &args[1] {
+        Value::List(p) | Value::Vector(p) => p,
+        _ => return Err("update-in: path must be a list or vector".to_string()),
+    };
+    let func = &args[2];
+
+    if path.is_empty() {
+        return Err("update-in: path cannot be empty".to_string());
+    }
+
+    match map {
+        Value::Map(m) => {
+            let mut result = m.clone();
+            update_in_helper(&mut result, path, 0, func, evaluator)?;
+            Ok(Value::Map(result))
+        }
+        _ => Err("update-in: first argument must be a map".to_string()),
+    }
+}
+
+fn update_in_helper(
+    map: &mut std::collections::HashMap<String, Value>,
+    path: &[Value],
+    index: usize,
+    func: &Value,
+    evaluator: &mut Evaluator,
+) -> Result<(), String> {
+    let key = match &path[index] {
+        Value::String(s) => s.clone(),
+        Value::Keyword(k) => k.clone(),
+        _ => return Err("update-in: keys must be strings or keywords".to_string()),
+    };
+
+    if index == path.len() - 1 {
+        // 最後のキー：値を更新
+        let current_value = map.get(&key).cloned().unwrap_or(Value::Nil);
+        let new_value = evaluator.apply_function(func, &[current_value])?;
+        map.insert(key, new_value);
+    } else {
+        // 中間のキー：再帰的に処理
+        let next_val = map.get(&key).cloned().unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+        match next_val {
+            Value::Map(mut inner_map) => {
+                update_in_helper(&mut inner_map, path, index + 1, func, evaluator)?;
+                map.insert(key, Value::Map(inner_map));
+            }
+            _ => {
+                // 既存の値がマップでない場合は上書き
+                let mut new_map = std::collections::HashMap::new();
+                update_in_helper(&mut new_map, path, index + 1, func, evaluator)?;
+                map.insert(key, Value::Map(new_map));
+            }
+        }
+    }
+    Ok(())
+}

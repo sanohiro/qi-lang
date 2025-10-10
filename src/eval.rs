@@ -323,6 +323,8 @@ impl Evaluator {
                         "partition" => return self.eval_partition(args, env),
                         "group-by" => return self.eval_group_by(args, env),
                         "map-lines" => return self.eval_map_lines(args, env),
+                        "update" => return self.eval_update(args, env),
+                        "update-in" => return self.eval_update_in(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
@@ -641,6 +643,20 @@ impl Evaluator {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let text = self.eval_with_env(&args[1], env.clone())?;
         builtins::map_lines(&[func, text], self)
+    }
+
+    fn eval_update(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let map = self.eval_with_env(&args[0], env.clone())?;
+        let key = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[2], env.clone())?;
+        builtins::update(&[map, key, func], self)
+    }
+
+    fn eval_update_in(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let map = self.eval_with_env(&args[0], env.clone())?;
+        let path = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[2], env.clone())?;
+        builtins::update_in(&[map, path, func], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）

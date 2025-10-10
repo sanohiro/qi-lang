@@ -135,3 +135,154 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["select-keys", "map and list/vector"])),
     }
 }
+
+/// get-in - ネストしたマップから値を取得
+pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err("get-in requires 2 or 3 arguments (map, path, default?)".to_string());
+    }
+
+    let map = &args[0];
+    let path = match &args[1] {
+        Value::List(p) | Value::Vector(p) => p,
+        _ => return Err("get-in: path must be a list or vector".to_string()),
+    };
+    let default = if args.len() == 3 {
+        args[2].clone()
+    } else {
+        Value::Nil
+    };
+
+    let mut current = map.clone();
+    for key_val in path {
+        let key = match key_val {
+            Value::String(s) => s.clone(),
+            Value::Keyword(k) => k.clone(),
+            _ => return Err("get-in: keys must be strings or keywords".to_string()),
+        };
+
+        match current {
+            Value::Map(m) => {
+                current = m.get(&key).cloned().unwrap_or(Value::Nil);
+                if current == Value::Nil {
+                    return Ok(default);
+                }
+            }
+            _ => return Ok(default),
+        }
+    }
+
+    Ok(current)
+}
+
+/// assoc-in - ネストしたマップに値を設定
+pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("assoc-in requires 3 arguments (map, path, value)".to_string());
+    }
+
+    let map = &args[0];
+    let path = match &args[1] {
+        Value::List(p) | Value::Vector(p) => p,
+        _ => return Err("assoc-in: path must be a list or vector".to_string()),
+    };
+    let value = &args[2];
+
+    if path.is_empty() {
+        return Err("assoc-in: path cannot be empty".to_string());
+    }
+
+    match map {
+        Value::Map(m) => {
+            let mut result = m.clone();
+            assoc_in_helper(&mut result, path, 0, value)?;
+            Ok(Value::Map(result))
+        }
+        _ => Err("assoc-in: first argument must be a map".to_string()),
+    }
+}
+
+fn assoc_in_helper(
+    map: &mut std::collections::HashMap<String, Value>,
+    path: &[Value],
+    index: usize,
+    value: &Value,
+) -> Result<(), String> {
+    let key = match &path[index] {
+        Value::String(s) => s.clone(),
+        Value::Keyword(k) => k.clone(),
+        _ => return Err("assoc-in: keys must be strings or keywords".to_string()),
+    };
+
+    if index == path.len() - 1 {
+        // 最後のキー：値を設定
+        map.insert(key, value.clone());
+    } else {
+        // 中間のキー：再帰的に処理
+        let next_val = map.get(&key).cloned().unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+        match next_val {
+            Value::Map(mut inner_map) => {
+                assoc_in_helper(&mut inner_map, path, index + 1, value)?;
+                map.insert(key, Value::Map(inner_map));
+            }
+            _ => {
+                // 既存の値がマップでない場合は上書き
+                let mut new_map = std::collections::HashMap::new();
+                assoc_in_helper(&mut new_map, path, index + 1, value)?;
+                map.insert(key, Value::Map(new_map));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// dissoc-in - ネストしたマップからキーを削除
+pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("dissoc-in requires 2 arguments (map, path)".to_string());
+    }
+
+    let map = &args[0];
+    let path = match &args[1] {
+        Value::List(p) | Value::Vector(p) => p,
+        _ => return Err("dissoc-in: path must be a list or vector".to_string()),
+    };
+
+    if path.is_empty() {
+        return Err("dissoc-in: path cannot be empty".to_string());
+    }
+
+    match map {
+        Value::Map(m) => {
+            let mut result = m.clone();
+            dissoc_in_helper(&mut result, path, 0)?;
+            Ok(Value::Map(result))
+        }
+        _ => Err("dissoc-in: first argument must be a map".to_string()),
+    }
+}
+
+fn dissoc_in_helper(
+    map: &mut std::collections::HashMap<String, Value>,
+    path: &[Value],
+    index: usize,
+) -> Result<(), String> {
+    let key = match &path[index] {
+        Value::String(s) => s.clone(),
+        Value::Keyword(k) => k.clone(),
+        _ => return Err("dissoc-in: keys must be strings or keywords".to_string()),
+    };
+
+    if index == path.len() - 1 {
+        // 最後のキー：削除
+        map.remove(&key);
+    } else {
+        // 中間のキー：再帰的に処理
+        if let Some(Value::Map(inner_map)) = map.get_mut(&key) {
+            let mut inner_clone = inner_map.clone();
+            dissoc_in_helper(&mut inner_clone, path, index + 1)?;
+            map.insert(key, Value::Map(inner_clone));
+        }
+    }
+    Ok(())
+}

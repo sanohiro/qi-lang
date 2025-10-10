@@ -165,6 +165,9 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "dissoc" => map::native_dissoc,
         "merge" => map::native_merge,
         "select-keys" => map::native_select_keys,
+        "get-in" => map::native_get_in,
+        "assoc-in" => map::native_assoc_in,
+        "dissoc-in" => map::native_dissoc_in,
 
         // 述語関数
         "empty?" => predicates::native_empty,
@@ -227,6 +230,14 @@ pub fn group_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, Stri
 
 pub fn map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_map_lines(args, evaluator)
+}
+
+pub fn update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_update(args, evaluator)
+}
+
+pub fn update_in(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_update_in(args, evaluator)
 }
 
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
