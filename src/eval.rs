@@ -319,6 +319,7 @@ impl Evaluator {
                         "map" => return self.eval_map(args, env),
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
+                        "swap!" => return self.eval_swap(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -515,6 +516,17 @@ impl Evaluator {
             let coll = self.eval_with_env(&args[1], env.clone())?;
             builtins::reduce(&[func, coll], self)
         }
+    }
+
+    /// swap!関数の実装: (swap! atom f args...)
+    fn eval_swap(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        let atom = self.eval_with_env(&args[0], env.clone())?;
+        let func = self.eval_with_env(&args[1], env.clone())?;
+        let mut swap_args = vec![atom, func];
+        for arg in &args[2..] {
+            swap_args.push(self.eval_with_env(arg, env.clone())?);
+        }
+        builtins::swap(&swap_args, self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
@@ -1293,6 +1305,7 @@ impl Evaluator {
                         Value::Function(_) => "<function>".to_string(),
                         Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
                         Value::Macro(m) => format!("<macro:{}>", m.name),
+                        Value::Atom(a) => format!("<atom:{}>", a.borrow()),
                     };
                     result.push_str(&s);
                 }

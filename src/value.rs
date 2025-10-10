@@ -39,6 +39,8 @@ pub enum Value {
     NativeFunc(NativeFunc),
     /// マクロ
     Macro(Rc<Macro>),
+    /// アトム（可変な参照）
+    Atom(Rc<RefCell<Value>>),
 }
 
 impl Value {
@@ -286,6 +288,7 @@ impl fmt::Display for Value {
             Value::Function(_) => write!(f, "#<function>"),
             Value::NativeFunc(nf) => write!(f, "#<native-function:{}>", nf.name),
             Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
+            Value::Atom(a) => write!(f, "#<atom:{}>", a.borrow()),
         }
     }
 }

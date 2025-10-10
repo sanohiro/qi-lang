@@ -10,8 +10,10 @@
 //! - logic: 論理演算（not）
 //! - hof: 高階関数（map, filter, reduce）
 //! - error: エラー処理（error）
+//! - atom: 状態管理（atom, deref, swap!, reset!）
 
 pub mod arithmetic;
+pub mod atom;
 pub mod comparison;
 pub mod error;
 pub mod hof;
@@ -178,6 +180,11 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
 
         // エラー処理
         "error" => error::native_error,
+
+        // 状態管理
+        "atom" => atom::native_atom,
+        "deref" => atom::native_deref,
+        "reset!" => atom::native_reset,
     );
 }
 
@@ -192,4 +199,9 @@ pub fn filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String
 
 pub fn reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_reduce(args, evaluator)
+}
+
+/// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
+pub fn swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    atom::native_swap(args, evaluator)
 }
