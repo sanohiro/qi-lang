@@ -8,10 +8,85 @@
 
 **実装状況**: 本仕様書には計画中の機能も含まれています。実装済みの機能には ✅ マーク、未実装の機能には 🚧 マークを付記しています。
 
-### 哲学
-- **Simple**: 特殊形式8つ、記法最小限
-- **Fast**: 軽量・高速起動・JITコンパイル
-- **Concise**: 短い関数名、パイプライン、関数型
+---
+
+## 言語哲学 - Flow-Oriented Programming
+
+### 核となる思想
+
+**「データは流れ、プログラムは流れを設計する」**
+
+Qiは**Flow-Oriented Programming**（流れ指向プログラミング）を体現します：
+
+1. **データの流れが第一級市民**
+   - パイプライン演算子 `|>` が言語の中心
+   - `match` は流れを分岐・変換する制御構造（`=> 変換` で流れを継続）
+   - 小さな変換を組み合わせて大きな流れを作る
+   - Unix哲学の「Do One Thing Well」を関数型で実現
+
+2. **Simple, Fast, Concise**
+   - **Simple**: 特殊形式8つ、記法最小限、学習曲線が緩やか
+   - **Fast**: 軽量・高速起動・将来的にJITコンパイル
+   - **Concise**: 短い関数名、パイプライン、関数型で表現力豊か
+
+3. **エネルギーの流れ**
+   - データは一方向に流れる（左から右、上から下）
+   - 副作用はタップ（`tap>`）で観察
+   - 並列処理は流れの分岐・合流として表現
+
+4. **実用主義**
+   - Lisp的純粋性より実用性を優先
+   - モダンな機能（f-string、パターンマッチング）を積極採用
+   - バッテリー同梱（豊富な文字列操作、ユーティリティ）
+
+---
+
+### Flow哲学の進化
+
+Qiは段階的にFlow機能を強化していきます：
+
+**フェーズ1（✅ 現在）**:
+- `|>` 基本パイプライン - 逐次処理
+- `match` 基本パターンマッチング - 構造分解と分岐
+
+**フェーズ2（🔜 近未来）**:
+
+*パイプライン強化*:
+- `||>` 並列パイプライン - 自動的にpmap化
+- `tap>` 副作用タップ - デバッグ・ログ観察
+- `flow` DSL - 分岐・合流を含む複雑な流れ
+
+*match強化* ⭐ **Qi独自の差別化要素**:
+- `:as` 束縛 - 部分と全体を両方使える
+- `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
+- `or` パターン - 複数パターンで同じ処理
+
+**フェーズ3（🚧 将来）**:
+- `~>` 非同期パイプライン - go/chan統合
+- `stream` 遅延評価ストリーム - 巨大データ処理
+- 再利用可能な「小パイプ」文化の確立
+
+---
+
+### 設計原則
+
+1. **読みやすさ > 書きやすさ**
+   - パイプラインは上から下、左から右に読める
+   - データの流れが一目で分かる
+
+2. **合成可能性**
+   - 小さな関数を組み合わせて大きな処理を作る
+   - 各ステップは独立してテスト可能
+
+3. **段階的開示**
+   - 初心者: 基本的な `|>` から始められる
+   - 中級者: `match`、`loop`、マクロを活用
+   - 上級者: メタプログラミング、並列処理を駆使
+
+4. **実行時の効率**
+   - パイプラインは最適化される
+   - 遅延評価で不要な計算を回避
+   - 並列処理で自然にスケール
 
 ### ファイル拡張子
 ```
@@ -53,7 +128,214 @@ nil false true          ;; 3つの異なる値
 (s/get "hello" 0)       ;; 文字列のget（"h"）
 ```
 
-## 2. 特殊形式（8つ）✅
+---
+
+## 2. パイプライン拡張 - Flow DSL
+
+### 🎯 ビジョン: 流れを設計する言語
+
+Qiはパイプライン演算子を段階的に拡張し、**データの流れを直感的に表現**できる言語を目指します。
+
+---
+
+### パイプライン演算子の体系
+
+| 演算子 | 意味 | 状態 | 用途 |
+|--------|------|------|------|
+| `|>` | 逐次パイプ | ✅ 実装済み | 基本的なデータ変換 |
+| `||>` | 並列パイプ | 🔜 近未来 | 自動的にpmap化、リスト処理の並列化 |
+| `tap>` | 副作用タップ | 🔜 近未来 | デバッグ、ログ、モニタリング |
+| `~>` | 非同期パイプ | 🚧 将来 | go/chan統合、非同期IO |
+
+---
+
+### ✅ `|>` 基本パイプライン（実装済み）
+
+**左から右へデータを流す**
+
+```lisp
+;; 基本
+(data |> parse |> transform |> save)
+
+;; ネスト回避
+(data
+ |> (filter valid?)
+ |> (map transform)
+ |> (reduce merge {}))
+
+;; 引数付き関数
+(10 |> (+ 5) |> (* 2))  ;; (+ 10 5) |> (* 2) => 30
+
+;; 実用例: URL構築
+(params
+ |> (map (fn [[k v]] f"{k}={v}"))
+ |> (join "&")
+ |> (str base-url "?" _))
+```
+
+---
+
+### 🔜 `||>` 並列パイプライン（近未来）
+
+**自動的にpmapに展開**
+
+```lisp
+;; 並列処理
+(urls ||> http-get ||> parse-json)
+;; ↓ 展開
+(urls |> (pmap http-get) |> (pmap parse-json))
+
+;; CPU集約的処理
+(images ||> resize ||> compress ||> save)
+
+;; データ分析
+(files
+ ||> load-csv
+ ||> analyze
+ |> merge-results)  ;; 最後は逐次でマージ
+```
+
+**実装方針**:
+- lexer/parserで`||>`を`Token::ParallelPipe`に
+- `(pmap f coll)`に展開
+
+---
+
+### 🔜 `tap>` 副作用タップ（近未来）
+
+**流れを止めずに観察**（Unix `tee`相当）
+
+```lisp
+;; デバッグ
+(data
+ |> clean
+ |> tap> (fn [x] (print f"After clean: {x}"))
+ |> analyze
+ |> tap> (fn [x] (print f"After analyze: {x}"))
+ |> save)
+
+;; ログ
+(requests
+ |> tap> log-request
+ |> process
+ |> tap> log-response)
+
+;; マクロ定義
+(mac tap> [f]
+  `(fn [x] (do (,f x) x)))
+```
+
+---
+
+### 🔜 `flow` マクロ - 構造化された流れ（近未来）
+
+**分岐・合流を含む複雑なパイプライン**
+
+```lisp
+;; 基本的なflow
+(flow data
+  |> parse
+  |> transform
+  |> save)
+
+;; 分岐
+(flow data
+  |> parse
+  |> branch
+       [valid?   |> process |> save]
+       [invalid? |> log-error]
+       [else     |> quarantine])
+
+;; タップとの組み合わせ
+(flow request
+  |> tap> log-request
+  |> validate
+  |> process
+  |> tap> log-response
+  |> format-result)
+
+;; 再利用可能な小パイプ
+(def normalize-text
+  (flow |> trim |> lower |> (replace #"\\s+" " ")))
+
+(texts |> normalize-text |> unique)
+```
+
+---
+
+### 🚧 `~>` 非同期パイプライン（将来）
+
+**並行処理との統合**
+
+```lisp
+;; 非同期HTTP
+(urls ~> http-get-async ~> parse-json ~> process)
+
+;; チャネルとの統合
+(chan ~> (filter valid?) ~> process ~> output-chan)
+
+;; go ブロック
+(go
+  (data ~> transform ~> (send output-chan _)))
+```
+
+---
+
+### 🚧 `stream` 遅延評価（将来）
+
+**巨大データの効率的処理**
+
+```lisp
+;; 大きなファイル
+(files "*.log"
+  |> stream
+  |> (filter error-line?)
+  |> (map parse)
+  |> take 100
+  |> print)
+
+;; 無限ストリーム
+(integers-from 0
+  |> stream
+  |> (filter prime?)
+  |> take 10)
+
+;; メモリ効率
+(huge-csv
+  |> stream-lines
+  |> (map parse-csv)
+  |> (filter valid?)
+  |> write-output)
+```
+
+---
+
+### パイプライン文化
+
+**Unix哲学 × 関数型 × Lisp**
+
+```lisp
+;; 小さなパイプを定義
+(def clean-text
+  (flow |> trim |> lower |> remove-punctuation))
+
+(def extract-emails
+  (flow |> (split "\\s+") |> (filter email?)))
+
+(def dedupe
+  (flow |> sort |> unique))
+
+;; 組み合わせて使う
+(document
+ |> clean-text
+ |> extract-emails
+ |> dedupe
+ |> (join ", "))
+```
+
+---
+
+## 3. 特殊形式（8つ）✅
 
 ### ✅ `def` - グローバル定義
 ```lisp
@@ -116,7 +398,12 @@ nil false true          ;; 3つの異なる値
     "negative or zero")
 ```
 
-### ✅ `match` - パターンマッチング
+### ✅ `match` - パターンマッチング（Flow-Oriented）
+
+Qiのパターンマッチは**データの流れを分岐させる制御構造**です。単なる条件分岐ではなく、データ構造を分解・変換・検証しながら処理を振り分けます。
+
+#### ✅ 基本パターン（実装済み）
+
 ```lisp
 ;; 値のマッチ
 (match x
@@ -149,6 +436,109 @@ nil false true          ;; 3つの異なる値
   n when (< n 0) -> "negative"
   _ -> "zero")
 ```
+
+#### 🔜 拡張パターン（近未来 - Flow強化）
+
+**1. `:as` 束縛 - 部分と全体の両方を使う**
+```lisp
+;; パターンマッチした全体を変数に束縛
+(match data
+  {:user {:name n :age a} :as u} -> (do
+    (log u)           ;; 全体をログ
+    (process n a)))   ;; 部分を処理
+
+;; ネストした構造でも使える
+(match response
+  {:body {:user u :posts ps} :as body} -> (cache body)
+  {:error e :as err} -> (log err))
+```
+
+**2. `=> 変換` - マッチ時にデータを流す** ⭐ **Qi独自の強力な機能**
+```lisp
+;; 束縛と同時に変換関数を適用（パイプライン的）
+(match data
+  {:price p => parse-float} -> (calc-tax p)
+  {:name n => lower} -> (log n)
+  {:created-at t => parse-date} -> (format t))
+
+;; 複数の変換をつなげる
+(match input
+  {:raw r => trim => lower => (split " ")} -> (process-words r))
+
+;; 実用例: APIレスポンス処理
+(match (http-get "/api/user")
+  {:body b => parse-json} -> (extract-user b)
+  {:status s => str} when (= s "404") -> nil
+  _ -> (error "unexpected response"))
+```
+
+**3. `or` パターン - 複数パターンで同じ処理**
+```lisp
+;; 複数の値にマッチ
+(match status
+  (200 or 201 or 204) -> "success"
+  (400 or 401 or 403) -> "client error"
+  (500 or 502 or 503) -> "server error"
+  _ -> "unknown")
+
+;; 複数の構造にマッチ
+(match event
+  ({:type "click"} or {:type "tap"}) -> (handle-interaction)
+  ({:type "scroll"} or {:type "drag"}) -> (handle-movement))
+```
+
+**4. ネスト + ガード - 構造的な条件分岐**
+```lisp
+;; 深いネストでも読みやすい
+(match request
+  {:user {:age a :country c}} when (and (>= a 18) (= c "JP")) -> (allow)
+  {:user {:age a}} when (< a 18) -> (error "age restriction")
+  _ -> (deny))
+
+;; Flow的な読み方: データ構造を分解 → ガードで検証 → 処理
+```
+
+**5. ワイルドカード `_` - 関心のある部分だけ抽出**
+```lisp
+;; 一部のフィールドだけ使う
+(match data
+  {:user {:name _ :age a :city c}} -> (process-location a c)
+  {:error _} -> "error occurred")
+
+;; リストの一部をスキップ
+(match coords
+  [_ y _] -> y  ;; y座標だけ取り出す
+  _ -> 0)
+```
+
+**6. 配列の複数束縛**
+```lisp
+;; 複数要素を同時に束縛
+(match data
+  [{:id id1} {:id id2}] -> (compare id1 id2)
+  [first ...rest] -> (process-batch first rest))
+
+;; パイプラインと組み合わせ
+(match (coords |> (take 2))
+  [x y] -> (distance x y)
+  _ -> 0)
+```
+
+#### 🚧 将来検討
+
+**`and` 条件** - 複雑な論理式（必要性を見極め中）
+```lisp
+(match x
+  (> 0 and < 100) -> "in range"
+  _ -> "out of range")
+```
+
+#### matchの設計哲学
+
+1. **データの流れを分岐させる**: matchは単なるif-elseではなく、データ構造を分解して流れを作る
+2. **変換を埋め込む**: `=> 変換` でmatch内部でパイプラインを実現
+3. **読みやすさ優先**: パターンが上から下に読める、条件が一目で分かる
+4. **段階的開示**: 基本パターンから始めて、必要に応じて拡張機能を使う
 
 ### ✅ `try` - エラー処理
 ```lisp
@@ -1118,23 +1508,40 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 - **述語関数**: `?` で終わる（`empty?`, `valid?`）
 - **破壊的操作**: `!` で終わる（`swap!`, `reset!`）
 
-### コーディングスタイル
-- パイプライン `|>` を積極的に使う
-- 単純な分岐は `if`、パターンマッチは `match`
-- `loop`/`recur` で末尾再帰
-- `defer` でリソース管理
+### コーディングスタイル - Flow First
+
+**データの流れを第一に考える**:
+- パイプライン `|>` / `||>` / `tap>` を積極的に使う
+- 左から右、上から下に読める流れを作る
+- 小さな変換を組み合わせて大きな処理を構成
+
+**適切なツールを選ぶ**:
+- 単純な分岐は `if`、複雑なパターンは `match`
+- `match` で構造を分解し、`:as` で全体を保持、`=> 変換` で流れを継続
+- `loop`/`recur` で末尾再帰最適化
+- `defer` でリソース管理（エラー時も実行される）
 - 回復可能なエラーは `{:ok/:error}`、致命的なエラーは `error`
+
+**モダンな機能を活用**:
 - ✅ f-string `f"..."` で文字列補間（実装済み）
 - マクロでは `uvar` で変数衝突を回避
+- 🔜 `match` の `:as` と `=> 変換` でmatch内に流れを埋め込む（近未来）
+- 🔜 `tap>` でデバッグ・モニタリング（近未来）
+- 🔜 `flow` で複雑な流れを構造化（近未来）
+
+**シンプルに保つ**:
 - 短い変数名OK（スコープが短ければ）
+- 再利用可能な「小パイプ」を定義
+- 一つの関数は一つの責任
 
 ### 避けるべきこと
-- 長い関数名・モジュール名
-- 深いネスト（パイプラインを使う）
-- グローバル変数の乱用
-- core関数との名前衝突
-- マクロで固定の変数名を使う（`uvar`を使う）
-- 過度な最適化（まず動くコードを書く）
+- ❌ 長い関数名・モジュール名
+- ❌ 深いネスト（パイプラインを使う）
+- ❌ グローバル変数の乱用
+- ❌ core関数との名前衝突
+- ❌ マクロで固定の変数名を使う（`uvar`を使う）
+- ❌ 過度な最適化（まず動くコードを書く）
+- ❌ パイプラインを使わない冗長な中間変数
 
 ## 13. コマンドラインツール
 
@@ -1161,19 +1568,46 @@ $ qi update
 
 ## まとめ
 
-**名前**: Qi
-**特殊形式**: ✅ `def` `fn` `let` `do` `if` `match` `try` `defer`（8つ全て実装済み）
-**演算子**: ✅ `|>` パイプライン（実装済み）
-**ループ**: ✅ `loop` `recur`（実装済み）
-**エラー**: ✅ `try` `error` `defer`（全て実装済み）
-**マクロ**: ✅ `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`（全て実装済み）
-**データ**: ✅ リスト、マップ、ベクタ、関数（全て実装済み）
-**名前空間**: ✅ Lisp-1、coreが優先（実装済み）
-**nil/bool**: ✅ 別物、条件式では nil も falsy（実装済み）
-**並列**: ✅ `pmap`（実装済み・シングルスレッド版）、🚧 `go`（並行）、チャネル（未実装）
-**文字列**: ✅ 基本文字列操作・f-string補間（実装済み）、🚧 str/csv/regexモジュール（未実装）
-**モジュール**: ✅ 基本機能実装済み（`module`/`export`/`use :only`/`:all`）、🚧 `:as`エイリアス（未実装）
-**哲学**: Simple, Fast, Concise - エネルギーの流れのようなプログラミング
+**名前**: Qi - A Lisp that flows
+
+**哲学**: Flow-Oriented Programming - データの流れを設計する言語
+
+---
+
+### コア実装状況
+
+**✅ 完全実装**:
+- **特殊形式**: `def` `fn` `let` `do` `if` `match` `try` `defer`（8つ）
+- **パイプライン**: `|>` 逐次パイプ
+- **ループ**: `loop` `recur` 末尾再帰最適化
+- **エラー処理**: `try` `error` `defer`
+- **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
+- **状態管理**: `atom` `deref` `swap!` `reset!`
+- **並列処理**: `pmap`（シングルスレッド版）
+- **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, Uvar
+- **文字列**: f-string補間
+- **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
+- **名前空間**: Lisp-1、coreが優先
+
+**🔜 近未来（Flow強化）**:
+
+*パイプライン拡張*:
+- `||>` 並列パイプライン（pmapに自動展開）
+- `tap>` 副作用タップ（デバッグ・ログ）
+- `flow` DSL（分岐・合流を含む構造化パイプライン）
+
+*match拡張* ⭐ **Qi独自の強力な機能**:
+- `:as` 束縛（部分と全体を両方使える）
+- `=> 変換`（マッチ時にパイプライン的変換）
+- `or` パターン（複数パターンで同じ処理）
+- 配列の複数束縛（`[x y]` で同時束縛）
+
+**🚧 将来**:
+- `~>` 非同期パイプライン（go/chan統合）
+- `stream` 遅延評価ストリーム
+- `@` derefの短縮形
+- チャネル/go 並行処理
+- 標準モジュール群（str/csv/regex/http/json）
 
 ### 実装状況サマリー
 - ✅ **コア機能（約75%完成）**: 8つの特殊形式、パイプライン、パターンマッチング、モジュールシステム基盤、loop/recur、マクロシステム完全実装
