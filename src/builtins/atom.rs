@@ -96,7 +96,7 @@ pub fn native_reset(args: &[Value]) -> Result<Value, String> {
 /// (swap! counter inc)      ;; => 1
 /// (swap! counter + 5)      ;; => 6
 /// ```
-pub fn native_swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_swap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() < 2 {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["swap!", "2"]));
     }

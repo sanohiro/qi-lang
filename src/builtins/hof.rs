@@ -5,7 +5,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// map - リストの各要素に関数を適用
-pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["map"]));
     }
@@ -27,7 +27,7 @@ pub fn native_map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, St
 }
 
 /// filter - リストから条件を満たす要素を抽出
-pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["filter"]));
     }
@@ -51,7 +51,7 @@ pub fn native_filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
 }
 
 /// reduce - リストを畳み込み
-pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 && args.len() != 3 {
         return Err(fmt_msg(MsgKey::Need2Or3Args, &["reduce"]));
     }
@@ -85,18 +85,41 @@ pub fn native_reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
     }
 }
 
-/// pmap - 並列map（現在はシングルスレッド実装、将来の並列化に備えて）
+/// pmap - 並列map
 ///
-/// 注: 現在の実装はmapと同じ動作をします。
-/// 将来、Evaluatorをスレッドセーフにする際に並列化を実装予定。
-pub fn native_pmap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
-    // 現在はmapと同じ実装
-    native_map(args, evaluator)
+/// コレクションの各要素に関数を並列適用します。
+/// 全ての関数型（NativeFunc、ユーザー定義関数）を完全に並列化します。
+pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    use rayon::prelude::*;
+
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["pmap"]));
+    }
+
+    let func = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            // すべての関数を並列処理（Evaluatorが&selfなので複数スレッドで共有可能）
+            let results: Result<Vec<_>, _> = items
+                .par_iter()
+                .map(|item| evaluator.apply_function(func, &[item.clone()]))
+                .collect();
+
+            match collection {
+                Value::List(_) => Ok(Value::List(results?)),
+                Value::Vector(_) => Ok(Value::Vector(results?)),
+                _ => unreachable!(),
+            }
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pmap (2nd arg)", "lists or vectors"])),
+    }
 }
 
 /// apply - 関数にリストを引数として適用（未使用だが将来のため残す）
 #[allow(dead_code)]
-pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["apply"]));
     }
@@ -111,7 +134,7 @@ pub fn native_apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, 
 }
 
 /// partition - 述語でリストを2つに分割
-pub fn native_partition(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["partition"]));
     }
@@ -141,7 +164,7 @@ pub fn native_partition(args: &[Value], evaluator: &mut Evaluator) -> Result<Val
 }
 
 /// group-by - キー関数でリストをグループ化
-pub fn native_group_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use std::collections::HashMap;
 
     if args.len() != 2 {
@@ -171,7 +194,7 @@ pub fn native_group_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Valu
 }
 
 /// map-lines - 文字列の各行に関数を適用
-pub fn native_map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["map-lines"]));
     }
@@ -198,7 +221,7 @@ pub fn native_map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Val
 }
 
 /// update - マップの値を関数で更新
-pub fn native_update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
         return Err("update requires 3 arguments (map, key, fn)".to_string());
     }
@@ -227,7 +250,7 @@ pub fn native_update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value,
 }
 
 /// update-in - ネストしたマップの値を関数で更新
-pub fn native_update_in(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
         return Err("update-in requires 3 arguments (map, path, fn)".to_string());
     }
@@ -258,7 +281,7 @@ fn update_in_helper(
     path: &[Value],
     index: usize,
     func: &Value,
-    evaluator: &mut Evaluator,
+    evaluator: &Evaluator,
 ) -> Result<(), String> {
     let key = match &path[index] {
         Value::String(s) => s.clone(),
@@ -320,7 +343,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
 }
 
 /// comp - 関数合成（右から左に適用）
-pub fn native_comp(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.is_empty() {
@@ -371,7 +394,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
 }
 
 /// apply - リストを引数として関数適用（既存のものを公開用に再実装）
-pub fn native_apply_public(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_apply_public(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("apply requires 2 arguments (function and list)".to_string());
     }
@@ -386,7 +409,7 @@ pub fn native_apply_public(args: &[Value], evaluator: &mut Evaluator) -> Result<
 }
 
 /// count-by - 述語でカウント
-pub fn native_count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use std::collections::HashMap;
 
     if args.len() != 2 {

@@ -276,89 +276,89 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 }
 
 /// 高階関数を登録（Evaluatorへの参照が必要なため別扱い）
-pub fn map(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_map(args, evaluator)
 }
 
-pub fn filter(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_filter(args, evaluator)
 }
 
-pub fn reduce(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_reduce(args, evaluator)
 }
 
-pub fn pmap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_pmap(args, evaluator)
 }
 
-pub fn partition(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_partition(args, evaluator)
 }
 
-pub fn group_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_group_by(args, evaluator)
 }
 
-pub fn map_lines(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_map_lines(args, evaluator)
 }
 
-pub fn update(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_update(args, evaluator)
 }
 
-pub fn update_in(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_update_in(args, evaluator)
 }
 
-pub fn comp(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn comp(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_comp(args, evaluator)
 }
 
-pub fn apply(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_apply_public(args, evaluator)
 }
 
-pub fn take_while(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn take_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_take_while(args, evaluator)
 }
 
-pub fn drop_while(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn drop_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_drop_while(args, evaluator)
 }
 
 /// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
-pub fn swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn swap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     atom::native_swap(args, evaluator)
 }
 
 /// メタプログラミング関数（Evaluatorへの参照が必要なため別扱い）
-pub fn eval(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     meta::native_eval(args, evaluator)
 }
 
 /// リスト処理（Evaluatorが必要な関数）
-pub fn sort_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn sort_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sort_by(args, evaluator)
 }
 
-pub fn chunk(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn chunk(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     list::native_chunk(args)
 }
 
-pub fn count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_count_by(args, evaluator)
 }
 
-pub fn max_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn max_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_max_by(args, evaluator)
 }
 
-pub fn min_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn min_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_min_by(args, evaluator)
 }
 
-pub fn sum_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sum_by(args, evaluator)
 }

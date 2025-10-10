@@ -293,7 +293,7 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
 }
 
 /// take-while - 条件を満たす間要素を取得
-pub fn native_take_while(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_take_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("take-while requires 2 arguments (predicate, collection)".to_string());
     }
@@ -318,7 +318,7 @@ pub fn native_take_while(args: &[Value], evaluator: &mut crate::eval::Evaluator)
 }
 
 /// drop-while - 条件を満たす間要素をスキップ
-pub fn native_drop_while(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_drop_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("drop-while requires 2 arguments (predicate, collection)".to_string());
     }
@@ -421,7 +421,7 @@ pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
 }
 
 /// sort-by - キー関数でソート
-pub fn native_sort_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_sort_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("sort-by requires 2 arguments (key-fn, collection)".to_string());
     }
@@ -488,7 +488,7 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
 }
 
 /// max-by - キー関数で最大値を取得
-pub fn native_max_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_max_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("max-by requires 2 arguments (key-fn, collection)".to_string());
     }
@@ -530,7 +530,7 @@ pub fn native_max_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> 
 }
 
 /// min-by - キー関数で最小値を取得
-pub fn native_min_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_min_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("min-by requires 2 arguments (key-fn, collection)".to_string());
     }
@@ -572,7 +572,7 @@ pub fn native_min_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> 
 }
 
 /// sum-by - キー関数で合計
-pub fn native_sum_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_sum_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("sum-by requires 2 arguments (key-fn, collection)".to_string());
     }

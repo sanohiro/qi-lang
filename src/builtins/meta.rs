@@ -91,7 +91,7 @@ pub fn native_macro_q(args: &[Value]) -> Result<Value, String> {
 /// (eval "(+ 1 2)")     ;; => 3
 /// (eval '(+ 1 2))      ;; => 3
 /// ```
-pub fn native_eval(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["eval"]));
     }
