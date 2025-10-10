@@ -637,20 +637,63 @@ impl Parser {
         self.expect(Token::LBrace)?;
 
         let mut pairs = Vec::new();
+        let mut as_var = None;
+
         while self.current() != Some(&Token::RBrace) {
+            // :as チェック
+            if let Some(Token::Keyword(k)) = self.current() {
+                if k == "as" {
+                    self.advance(); // :as
+                    // 次は変数名
+                    match self.current() {
+                        Some(Token::Symbol(var)) => {
+                            as_var = Some(var.clone());
+                            self.advance();
+                            break;
+                        }
+                        _ => return Err(":as requires a variable name".to_string()),
+                    }
+                }
+            }
+
             let key = match self.current() {
                 Some(Token::Keyword(k)) => k.clone(),
                 _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
             };
             self.advance();
 
-            let pattern = self.parse_pattern()?;
+            // 変数名またはパターン
+            let pattern = if let Some(Token::Symbol(var)) = self.current() {
+                let var_name = var.clone();
+                self.advance();
+
+                // => チェック
+                if self.current() == Some(&Token::FatArrow) {
+                    // {:key var => transform} の形式
+                    self.advance(); // =>
+                    let transform = self.parse_primary()?;
+                    Pattern::Transform(var_name, Box::new(transform))
+                } else {
+                    // 通常の変数パターン
+                    Pattern::Var(var_name)
+                }
+            } else {
+                self.parse_pattern()?
+            };
+
             pairs.push((key, pattern));
         }
 
         self.expect(Token::RBrace)?;
 
-        Ok(Pattern::Map(pairs))
+        let map_pattern = Pattern::Map(pairs);
+
+        // :as があれば As パターンでラップ
+        if let Some(var) = as_var {
+            Ok(Pattern::As(Box::new(map_pattern), var))
+        } else {
+            Ok(map_pattern)
+        }
     }
 
     /// (module name)

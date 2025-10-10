@@ -397,7 +397,9 @@ impl Evaluator {
     ) -> Result<Value, String> {
         for arm in arms {
             let mut bindings = HashMap::new();
-            if self.match_pattern(&arm.pattern, value, &mut bindings)? {
+            let mut transforms = Vec::new();
+
+            if self.match_pattern_with_transforms(&arm.pattern, value, &mut bindings, &mut transforms)? {
                 // ガード条件のチェック
                 if let Some(guard) = &arm.guard {
                     let mut guard_env = Env::with_parent(env.clone());
@@ -410,15 +412,77 @@ impl Evaluator {
                     }
                 }
 
-                // マッチ成功：バインディングを環境に追加して本体を評価
+                // 変換を適用
                 let mut match_env = Env::with_parent(env.clone());
                 for (name, val) in bindings {
-                    match_env.set(name, val);
+                    match_env.set(name.clone(), val.clone());
                 }
-                return self.eval_with_env(&arm.body, Rc::new(RefCell::new(match_env)));
+
+                let match_env_rc = Rc::new(RefCell::new(match_env));
+
+                // 変換を適用して環境を更新
+                for (var, transform_expr, original_val) in transforms {
+                    let result = self.apply_transform(&transform_expr, &original_val, match_env_rc.clone())?;
+                    match_env_rc.borrow_mut().set(var, result);
+                }
+
+                return self.eval_with_env(&arm.body, match_env_rc);
             }
         }
         Err(msg(MsgKey::NoMatchingPattern).to_string())
+    }
+
+    fn match_pattern_with_transforms(
+        &self,
+        pattern: &Pattern,
+        value: &Value,
+        bindings: &mut HashMap<String, Value>,
+        transforms: &mut Vec<(String, Expr, Value)>,
+    ) -> Result<bool, String> {
+        match pattern {
+            Pattern::Transform(var, transform) => {
+                // 変換情報を記録
+                transforms.push((var.clone(), (**transform).clone(), value.clone()));
+                bindings.insert(var.clone(), value.clone());
+                Ok(true)
+            }
+            Pattern::Map(pattern_pairs) => {
+                if let Value::Map(map) = value {
+                    for (key, pat) in pattern_pairs {
+                        if let Some(val) = map.get(key) {
+                            if !self.match_pattern_with_transforms(pat, val, bindings, transforms)? {
+                                return Ok(false);
+                            }
+                        } else {
+                            return Ok(false);
+                        }
+                    }
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            Pattern::As(inner_pattern, var) => {
+                if self.match_pattern_with_transforms(inner_pattern, value, bindings, transforms)? {
+                    bindings.insert(var.clone(), value.clone());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            _ => {
+                // 他のパターンは従来のmatch_patternを使用
+                self.match_pattern(pattern, value, bindings)
+            }
+        }
+    }
+
+    fn apply_transform(&mut self, transform: &Expr, value: &Value, env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        // 変換式を評価して値に適用
+        // transform が関数の場合: (transform value)
+        // transform がシンボルの場合: (symbol value)
+        let transform_val = self.eval_with_env(transform, env.clone())?;
+        self.apply_function(&transform_val, &[value.clone()])
     }
 
     fn match_pattern(
@@ -488,6 +552,20 @@ impl Evaluator {
                 } else {
                     Ok(false)
                 }
+            }
+            Pattern::As(inner_pattern, var) => {
+                // 内側のパターンをマッチ
+                if self.match_pattern(inner_pattern, value, bindings)? {
+                    // マッチ成功したら、値全体も変数に束縛
+                    bindings.insert(var.clone(), value.clone());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            Pattern::Transform(_, _) => {
+                // Transformは match_pattern_with_transforms で処理される
+                unreachable!("Transform pattern should be handled in match_pattern_with_transforms")
             }
         }
     }

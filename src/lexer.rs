@@ -44,6 +44,7 @@ pub enum Token {
     UnquoteSplice,  // ,@
     At,     // @
     Arrow,  // ->
+    FatArrow, // =>
     Pipe,   // |>
     ParallelPipe,  // ||>
 
@@ -355,6 +356,11 @@ impl Lexer {
                 }
                 Some(ch) if ch.is_numeric() => {
                     return Ok(self.read_number());
+                }
+                Some('=') if self.peek(1) == Some('>') => {
+                    self.advance(); // =
+                    self.advance(); // >
+                    return Ok(Token::FatArrow);
                 }
                 Some('-') if self.peek(1) == Some('>') => {
                     self.advance(); // -

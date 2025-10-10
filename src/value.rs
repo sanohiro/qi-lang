@@ -245,6 +245,10 @@ pub enum Pattern {
     Vector(Vec<Pattern>),
     /// マップパターン {:key val}
     Map(Vec<(String, Pattern)>),
+    /// As束縛 pattern :as var
+    As(Box<Pattern>, String),
+    /// 変換 var => expr (束縛後に変換を適用)
+    Transform(String, Box<Expr>),
 }
 
 impl fmt::Display for Value {
