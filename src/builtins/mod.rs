@@ -205,6 +205,9 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "read-file" => io::native_read_file,
         "write-file" => io::native_write_file,
         "append-file" => io::native_append_file,
+        "println" => io::native_println,
+        "read-lines" => io::native_read_lines,
+        "file-exists?" => io::native_file_exists,
 
         // 関数型基礎
         "identity" => hof::native_identity,
@@ -321,4 +324,17 @@ pub fn swap(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> 
 /// メタプログラミング関数（Evaluatorへの参照が必要なため別扱い）
 pub fn eval(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     meta::native_eval(args, evaluator)
+}
+
+/// リスト処理（Evaluatorが必要な関数）
+pub fn sort_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_sort_by(args, evaluator)
+}
+
+pub fn chunk(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_chunk(args)
+}
+
+pub fn count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    hof::native_count_by(args, evaluator)
 }

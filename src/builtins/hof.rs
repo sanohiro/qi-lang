@@ -384,3 +384,33 @@ pub fn native_apply_public(args: &[Value], evaluator: &mut Evaluator) -> Result<
         _ => Err("apply: second argument must be a list or vector".to_string()),
     }
 }
+
+/// count-by - 述語でカウント
+pub fn native_count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    use std::collections::HashMap;
+
+    if args.len() != 2 {
+        return Err("count-by requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            let mut counts: HashMap<String, i64> = HashMap::new();
+            for item in items {
+                let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
+                let key = if result.is_truthy() { "true" } else { "false" };
+                *counts.entry(key.to_string()).or_insert(0) += 1;
+            }
+
+            let mut result = HashMap::new();
+            for (key, count) in counts {
+                result.insert(key, Value::Integer(count));
+            }
+            Ok(Value::Map(result))
+        }
+        _ => Err("count-by: second argument must be a list or vector".to_string()),
+    }
+}

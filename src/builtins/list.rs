@@ -419,3 +419,70 @@ pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
         _ => Err("frequencies: argument must be a list or vector".to_string()),
     }
 }
+
+/// sort-by - キー関数でソート
+pub fn native_sort_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("sort-by requires 2 arguments (key-fn, collection)".to_string());
+    }
+
+    let key_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            // 各要素のキーを計算
+            let mut keyed: Vec<(Value, Value)> = Vec::new();
+            for item in items {
+                let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
+                keyed.push((key, item.clone()));
+            }
+
+            // キーでソート
+            keyed.sort_by(|a, b| {
+                match (&a.0, &b.0) {
+                    (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                    (Value::Float(x), Value::Float(y)) => {
+                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    (Value::String(x), Value::String(y)) => x.cmp(y),
+                    (Value::Integer(x), Value::Float(y)) => {
+                        (*x as f64).partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    (Value::Float(x), Value::Integer(y)) => {
+                        x.partial_cmp(&(*y as f64)).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    _ => std::cmp::Ordering::Equal,
+                }
+            });
+
+            let result: Vec<Value> = keyed.into_iter().map(|(_, v)| v).collect();
+            Ok(Value::List(result))
+        }
+        _ => Err("sort-by: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// chunk - 固定サイズでリストを分割
+pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("chunk requires 2 arguments (size, collection)".to_string());
+    }
+
+    let size = match &args[0] {
+        Value::Integer(n) if *n > 0 => *n as usize,
+        Value::Integer(_) => return Err("chunk: size must be positive".to_string()),
+        _ => return Err("chunk: size must be an integer".to_string()),
+    };
+
+    match &args[1] {
+        Value::List(items) | Value::Vector(items) => {
+            let mut result = Vec::new();
+            for chunk in items.chunks(size) {
+                result.push(Value::List(chunk.to_vec()));
+            }
+            Ok(Value::List(result))
+        }
+        _ => Err("chunk: second argument must be a list or vector".to_string()),
+    }
+}

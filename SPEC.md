@@ -709,9 +709,12 @@ pmap                    ;; 並列map（現在はシングルスレッド実装�
 #### ソート・集約（✅ 実装済み）
 ```lisp
 sort                    ;; ソート（整数・浮動小数点・文字列対応）
+sort-by                 ;; キー指定ソート: (sort-by :age users)
 distinct                ;; 重複排除
 partition               ;; 述語で2分割: (partition even? [1 2 3 4]) => [(2 4) (1 3)]
 group-by                ;; キー関数でグループ化
+frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
+count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
 ```
 
 **使用例**:
@@ -730,9 +733,9 @@ group-by                ;; キー関数でグループ化
 ;; {0: (3 6 9), 1: (1 4 7), 2: (2 5 8)}
 ```
 
-#### 集約・分析（🔜 計画中）
+#### 集約・分析
 ```lisp
-;; 🔜 優先度: 高
+;; ✅ 実装済み
 sort-by                 ;; キー指定ソート: (sort-by :age users)
 frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
 count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
@@ -757,12 +760,14 @@ subset? superset?       ;; 集合判定
 
 **Flow哲学との関係**: 集合演算はデータフィルタリングで頻出。パイプラインと相性が良い。
 
-#### チャンク・分割（🔜 計画中）
+#### チャンク・分割（✅ 実装済み）
 ```lisp
-;; 🔜 優先度: 中
+;; ✅ 実装済み
 chunk                   ;; 固定サイズで分割: (chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
-partition-all           ;; partitionの全要素版
 take-while drop-while   ;; 述語が真の間取得/削除
+
+;; 🔜 優先度: 中
+partition-all           ;; partitionの全要素版
 ```
 
 ### 数値・比較
@@ -913,9 +918,12 @@ empty?
 #### 基本I/O（✅ 実装済み）
 ```lisp
 print                   ;; 標準出力
+println                 ;; 改行付き出力
 read-file               ;; ファイル読み込み
+read-lines              ;; 行ごとに読み込み（メモリ効率）
 write-file              ;; ファイル書き込み（上書き）
 append-file             ;; ファイル追記
+file-exists?            ;; ファイル存在確認
 ```
 
 **使用例**:
@@ -935,12 +943,9 @@ append-file             ;; ファイル追記
  |> (fn [data] (filter valid? data)))
 ```
 
-#### 拡張I/O（🔜 計画中）
+#### 拡張I/O（全て実装済み）
 ```lisp
-;; 🔜 優先度: 中
-println                 ;; 改行付き出力
-read-lines              ;; 行ごとに読み込み（メモリ効率）
-file-exists?            ;; ファイル存在確認
+;; ✅ 実装済み（上記の基本I/Oに含まれる）
 ```
 
 ### 並行・並列
@@ -2232,21 +2237,21 @@ mean median stddev
 
 **パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
 
-**組み込み関数（100個以上）**:
-- **リスト操作（17）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, distinct, partition, group-by
+**組み込み関数（110個以上）**:
+- **リスト操作（23）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, sort-by, distinct, partition, group-by, frequencies, count-by, chunk, take-while, drop-while
 - **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
 - **比較（6）**: =, !=, <, >, <=, >=
 - **マップ操作（12）**: get, keys, vals, assoc, dissoc, merge, select-keys, update, update-in, get-in, assoc-in, dissoc-in
 - **文字列（6 core + 60+ str）**: str, split, join, upper, lower, trim, map-lines ＋ strモジュールで60以上
 - **述語（9）**: nil?, list?, vector?, map?, string?, keyword?, integer?, float?, empty?
-- **高階関数（10）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial
+- **高階関数（11）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial, count-by
 - **集合演算（4）**: union, intersect, difference, subset?
 - **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
 - **論理（3）**: and, or, not
-- **I/O（4）**: print, read-file, write-file, append-file
+- **I/O（7）**: print, println, read-file, read-lines, write-file, append-file, file-exists?
 
 **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, Uvar
 
@@ -2265,10 +2270,10 @@ mean median stddev
 3. ✅ 集合演算: union, intersect, difference
 4. ✅ 数値基本: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 
-**フェーズ2: 分析・集約**
-5. sort-by, frequencies, count-by
-6. chunk, take-while, drop-while
-7. println, read-lines, file-exists?
+**フェーズ2: 分析・集約（✅ 完了）**
+5. ✅ sort-by, frequencies, count-by
+6. ✅ chunk, take-while, drop-while
+7. ✅ println, read-lines, file-exists?
 
 **フェーズ3: 高度機能**
 8. max-by, min-by, sum-by

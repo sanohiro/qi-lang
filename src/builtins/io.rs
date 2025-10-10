@@ -60,3 +60,57 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
         _ => Err("append-file: requires two strings (path, content)".to_string()),
     }
 }
+
+/// println - 改行付きで出力
+pub fn native_println(args: &[Value]) -> Result<Value, String> {
+    let output = if args.is_empty() {
+        String::new()
+    } else {
+        args.iter()
+            .map(|v| match v {
+                Value::String(s) => s.clone(),
+                _ => format!("{:?}", v),
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    println!("{}", output);
+    Ok(Value::Nil)
+}
+
+/// read-lines - ファイルを行ごとに読み込み
+pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("read-lines requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            match fs::read_to_string(path) {
+                Ok(content) => {
+                    let lines: Vec<Value> = content
+                        .lines()
+                        .map(|line| Value::String(line.to_string()))
+                        .collect();
+                    Ok(Value::List(lines))
+                }
+                Err(e) => Err(format!("read-lines: failed to read {}: {}", path, e)),
+            }
+        }
+        _ => Err("read-lines: argument must be a string (path)".to_string()),
+    }
+}
+
+/// file-exists? - ファイルの存在を確認
+pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("file-exists? requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            Ok(Value::Bool(std::path::Path::new(path).exists()))
+        }
+        _ => Err("file-exists?: argument must be a string (path)".to_string()),
+    }
+}

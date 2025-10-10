@@ -329,6 +329,9 @@ impl Evaluator {
                         "update-in" => return self.eval_update_in(args, env),
                         "comp" => return self.eval_comp(args, env),
                         "apply" => return self.eval_apply(args, env),
+                        "sort-by" => return self.eval_sort_by(args, env),
+                        "chunk" => return self.eval_chunk(args, env),
+                        "count-by" => return self.eval_count_by(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
@@ -759,6 +762,42 @@ impl Evaluator {
             return Err(fmt_msg(MsgKey::Need1Arg, &["quote"]));
         }
         self.expr_to_value(&args[0])
+    }
+
+    /// sort-by - キー関数でソート
+    fn eval_sort_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("sort-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::sort_by(&vals, self)
+    }
+
+    /// chunk - 固定サイズでリストを分割
+    fn eval_chunk(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("chunk requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::chunk(&vals, self)
+    }
+
+    /// count-by - 述語でカウント
+    fn eval_count_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("count-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::count_by(&vals, self)
     }
 
 }
