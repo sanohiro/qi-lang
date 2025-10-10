@@ -9,9 +9,11 @@
 //! - predicates: 述語関数（empty?, nil?, list?, vector?, map?, string?, integer?, float?, keyword?）
 //! - logic: 論理演算（not）
 //! - hof: 高階関数（map, filter, reduce）
+//! - error: エラー処理（error）
 
 pub mod arithmetic;
 pub mod comparison;
+pub mod error;
 pub mod hof;
 pub mod list;
 pub mod logic;
@@ -173,6 +175,9 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
 
         // 論理演算
         "not" => logic::native_not,
+
+        // エラー処理
+        "error" => error::native_error,
     );
 }
 
