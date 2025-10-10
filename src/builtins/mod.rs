@@ -6,7 +6,7 @@
 //! - list: リスト操作（first, rest, nth, cons, conj, take, drop, concat, flatten, range）
 //! - string: 文字列操作（str, split, join, upper, lower, trim）
 //! - map: マップ操作（get, keys, vals, assoc, dissoc）
-//! - predicates: 述語関数（empty?, nil?, list?, vector?, map?, string?, integer?, float?, keyword?）
+//! - predicates: 述語関数（empty?, nil?, list?, vector?, map?, string?, integer?, float?, keyword?, even?, odd?, positive?, negative?, zero?, some?, true?, false?, coll?, sequential?）
 //! - logic: 論理演算（not）
 //! - hof: 高階関数（map, filter, reduce, identity, constantly, comp, partial, apply）
 //! - set: 集合演算（union, intersect, difference, subset?）
@@ -184,6 +184,16 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "integer?" => predicates::native_integer_q,
         "float?" => predicates::native_float_q,
         "keyword?" => predicates::native_keyword_q,
+        "even?" => predicates::native_even_q,
+        "odd?" => predicates::native_odd_q,
+        "positive?" => predicates::native_positive_q,
+        "negative?" => predicates::native_negative_q,
+        "zero?" => predicates::native_zero_q,
+        "some?" => predicates::native_some_q,
+        "true?" => predicates::native_true_q,
+        "false?" => predicates::native_false_q,
+        "coll?" => predicates::native_coll_q,
+        "sequential?" => predicates::native_sequential_q,
 
         // 論理演算
         "not" => logic::native_not,
@@ -213,6 +223,8 @@ pub fn register_all(env: &Rc<RefCell<Env>>) {
         "identity" => hof::native_identity,
         "constantly" => hof::native_constantly,
         "partial" => hof::native_partial,
+        "complement" => hof::native_complement,
+        "juxt" => hof::native_juxt,
 
         // 集合演算
         "union" => set::native_union,
@@ -337,4 +349,16 @@ pub fn chunk(args: &[Value], _evaluator: &mut Evaluator) -> Result<Value, String
 
 pub fn count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
     hof::native_count_by(args, evaluator)
+}
+
+pub fn max_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_max_by(args, evaluator)
+}
+
+pub fn min_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_min_by(args, evaluator)
+}
+
+pub fn sum_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Value, String> {
+    list::native_sum_by(args, evaluator)
 }

@@ -486,3 +486,134 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
         _ => Err("chunk: second argument must be a list or vector".to_string()),
     }
 }
+
+/// max-by - キー関数で最大値を取得
+pub fn native_max_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("max-by requires 2 arguments (key-fn, collection)".to_string());
+    }
+
+    let key_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            if items.is_empty() {
+                return Ok(Value::Nil);
+            }
+
+            let mut max_item = &items[0];
+            let mut max_key = evaluator.apply_function(key_fn, std::slice::from_ref(max_item))?;
+
+            for item in &items[1..] {
+                let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
+
+                let is_greater = match (&key, &max_key) {
+                    (Value::Integer(k), Value::Integer(m)) => k > m,
+                    (Value::Float(k), Value::Float(m)) => k > m,
+                    (Value::Integer(k), Value::Float(m)) => (*k as f64) > *m,
+                    (Value::Float(k), Value::Integer(m)) => *k > (*m as f64),
+                    (Value::String(k), Value::String(m)) => k > m,
+                    _ => false,
+                };
+
+                if is_greater {
+                    max_item = item;
+                    max_key = key;
+                }
+            }
+
+            Ok(max_item.clone())
+        }
+        _ => Err("max-by: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// min-by - キー関数で最小値を取得
+pub fn native_min_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("min-by requires 2 arguments (key-fn, collection)".to_string());
+    }
+
+    let key_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            if items.is_empty() {
+                return Ok(Value::Nil);
+            }
+
+            let mut min_item = &items[0];
+            let mut min_key = evaluator.apply_function(key_fn, std::slice::from_ref(min_item))?;
+
+            for item in &items[1..] {
+                let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
+
+                let is_less = match (&key, &min_key) {
+                    (Value::Integer(k), Value::Integer(m)) => k < m,
+                    (Value::Float(k), Value::Float(m)) => k < m,
+                    (Value::Integer(k), Value::Float(m)) => (*k as f64) < *m,
+                    (Value::Float(k), Value::Integer(m)) => *k < (*m as f64),
+                    (Value::String(k), Value::String(m)) => k < m,
+                    _ => false,
+                };
+
+                if is_less {
+                    min_item = item;
+                    min_key = key;
+                }
+            }
+
+            Ok(min_item.clone())
+        }
+        _ => Err("min-by: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// sum-by - キー関数で合計
+pub fn native_sum_by(args: &[Value], evaluator: &mut crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("sum-by requires 2 arguments (key-fn, collection)".to_string());
+    }
+
+    let key_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            let mut int_sum: i64 = 0;
+            let mut float_sum: f64 = 0.0;
+            let mut has_float = false;
+
+            for item in items {
+                let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
+
+                match key {
+                    Value::Integer(n) => {
+                        if has_float {
+                            float_sum += n as f64;
+                        } else {
+                            int_sum += n;
+                        }
+                    }
+                    Value::Float(f) => {
+                        if !has_float {
+                            float_sum = int_sum as f64;
+                            has_float = true;
+                        }
+                        float_sum += f;
+                    }
+                    _ => return Err("sum-by: key function must return numbers".to_string()),
+                }
+            }
+
+            if has_float {
+                Ok(Value::Float(float_sum))
+            } else {
+                Ok(Value::Integer(int_sum))
+            }
+        }
+        _ => Err("sum-by: second argument must be a list or vector".to_string()),
+    }
+}

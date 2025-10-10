@@ -414,3 +414,50 @@ pub fn native_count_by(args: &[Value], evaluator: &mut Evaluator) -> Result<Valu
         _ => Err("count-by: second argument must be a list or vector".to_string()),
     }
 }
+
+/// complement - 述語の否定
+pub fn native_complement(args: &[Value]) -> Result<Value, String> {
+    use std::rc::Rc;
+
+    if args.len() != 1 {
+        return Err("complement requires 1 argument (function)".to_string());
+    }
+
+    let func = args[0].clone();
+
+    // 引数を否定する関数を返す
+    // 実装はeval.rsのapply_funcで特殊処理される
+    Ok(Value::Function(Rc::new(crate::value::Function {
+        params: vec!["x".to_string()],
+        body: crate::value::Expr::Symbol("x".to_string()),
+        env: {
+            let mut env = crate::value::Env::new();
+            env.set("__complement_func__".to_string(), func);
+            env
+        },
+        is_variadic: false,
+    })))
+}
+
+/// juxt - 複数関数を並列適用
+pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
+    use std::rc::Rc;
+
+    if args.is_empty() {
+        return Err("juxt requires at least 1 function".to_string());
+    }
+
+    let funcs = args.to_vec();
+
+    // 実装はeval.rsのapply_funcで特殊処理される
+    Ok(Value::Function(Rc::new(crate::value::Function {
+        params: vec!["x".to_string()],
+        body: crate::value::Expr::Symbol("x".to_string()),
+        env: {
+            let mut env = crate::value::Env::new();
+            env.set("__juxt_funcs__".to_string(), Value::List(funcs));
+            env
+        },
+        is_variadic: false,
+    })))
+}

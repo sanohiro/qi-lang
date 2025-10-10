@@ -733,14 +733,12 @@ count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => 
 ;; {0: (3 6 9), 1: (1 4 7), 2: (2 5 8)}
 ```
 
-#### 集約・分析
+#### 集約・分析（✅ 全て実装済み）
 ```lisp
 ;; ✅ 実装済み
 sort-by                 ;; キー指定ソート: (sort-by :age users)
 frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
 count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
-
-;; 🔜 優先度: 中
 max-by min-by           ;; 条件に基づく最大/最小
 sum-by                  ;; キー関数で合計
 ```
@@ -860,7 +858,7 @@ dissoc-in               ;; ネスト削除
 
 ### 関数型プログラミング基礎
 
-#### 基本ツール（✅ 実装済み）
+#### 基本ツール（✅ 全て実装済み）
 ```lisp
 ;; ✅ 実装済み（関数型の必須ツール）
 identity                ;; 引数をそのまま返す: (identity 42) => 42
@@ -868,8 +866,6 @@ constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) =
 comp                    ;; 関数合成: ((comp f g) x) => (f (g x))
 partial                 ;; 部分適用: (def add5 (partial + 5))
 apply                   ;; リストを引数として適用: (apply + [1 2 3]) => 6
-
-;; 🔜 優先度: 中
 complement              ;; 述語の否定: ((complement even?) 3) => true
 juxt                    ;; 複数関数を並列適用: ((juxt inc dec) 5) => [6 4]
 ```
@@ -908,9 +904,20 @@ SPEC.mdの「標準ライブラリ > str」セクション参照。60以上の�
 ;; 型判定
 nil? list? vector? map? string? keyword?
 integer? float? number? fn?
+coll?           ;; コレクション型か（list/vector/map）
+sequential?     ;; シーケンシャル型か（list/vector）
 
 ;; 状態チェック
 empty?
+some?           ;; nilでないか
+
+;; 論理値判定
+true?           ;; 厳密にtrueか
+false?          ;; 厳密にfalseか
+
+;; 数値判定
+even? odd?
+positive? negative? zero?
 ```
 
 ### IO・ファイル操作
@@ -2237,14 +2244,14 @@ mean median stddev
 
 **パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
 
-**組み込み関数（110個以上）**:
-- **リスト操作（23）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, sort-by, distinct, partition, group-by, frequencies, count-by, chunk, take-while, drop-while
+**組み込み関数（115個以上）**:
+- **リスト操作（26）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, sort-by, distinct, partition, group-by, frequencies, count-by, chunk, take-while, drop-while, max-by, min-by, sum-by
 - **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
 - **比較（6）**: =, !=, <, >, <=, >=
 - **マップ操作（12）**: get, keys, vals, assoc, dissoc, merge, select-keys, update, update-in, get-in, assoc-in, dissoc-in
 - **文字列（6 core + 60+ str）**: str, split, join, upper, lower, trim, map-lines ＋ strモジュールで60以上
 - **述語（9）**: nil?, list?, vector?, map?, string?, keyword?, integer?, float?, empty?
-- **高階関数（11）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial, count-by
+- **高階関数（13）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial, count-by, complement, juxt
 - **集合演算（4）**: union, intersect, difference, subset?
 - **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
@@ -2275,9 +2282,11 @@ mean median stddev
 6. ✅ chunk, take-while, drop-while
 7. ✅ println, read-lines, file-exists?
 
-**フェーズ3: 高度機能**
-8. max-by, min-by, sum-by
-9. partial, complement, juxt
+**フェーズ3: 高度機能（✅ 完了）**
+8. ✅ max-by, min-by, sum-by
+9. ✅ complement, juxt（partialはフェーズ1で完了）
+
+**フェーズ4: 統計・高度な処理**
 10. mean, median, stddev
 
 #### 🚧 将来の計画

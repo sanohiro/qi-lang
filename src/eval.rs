@@ -332,6 +332,9 @@ impl Evaluator {
                         "sort-by" => return self.eval_sort_by(args, env),
                         "chunk" => return self.eval_chunk(args, env),
                         "count-by" => return self.eval_count_by(args, env),
+                        "max-by" => return self.eval_max_by(args, env),
+                        "min-by" => return self.eval_min_by(args, env),
+                        "sum-by" => return self.eval_sum_by(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "and" => return self.eval_and(args, env),
@@ -357,30 +360,9 @@ impl Evaluator {
 
                 match func_val {
                     Value::NativeFunc(nf) => (nf.func)(&arg_vals),
-                    Value::Function(f) => {
-                        let parent_env = Rc::new(RefCell::new(f.env.clone()));
-                        let mut new_env = Env::with_parent(parent_env);
-
-                        if f.is_variadic {
-                            // 可変長引数の処理
-                            if f.params.len() != 1 {
-                                return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["variadic fn", "1"]));
-                            }
-                            new_env.set(f.params[0].clone(), Value::List(arg_vals));
-                        } else {
-                            // 通常の引数
-                            if f.params.len() != arg_vals.len() {
-                                return Err(fmt_msg(
-                                    MsgKey::ArgCountMismatch,
-                                    &[&f.params.len().to_string(), &arg_vals.len().to_string()],
-                                ));
-                            }
-                            for (param, arg) in f.params.iter().zip(arg_vals.iter()) {
-                                new_env.set(param.clone(), arg.clone());
-                            }
-                        }
-
-                        self.eval_with_env(&f.body, Rc::new(RefCell::new(new_env)))
+                    Value::Function(_) => {
+                        // apply_funcを使って関数を適用（complementやjuxtの特殊処理を含む）
+                        self.apply_func(&func_val, arg_vals)
                     }
                     Value::Keyword(key) => {
                         // キーワードを関数として使う: (:name map) => (get map :name)
@@ -701,6 +683,23 @@ impl Evaluator {
         match func {
             Value::NativeFunc(nf) => (nf.func)(&args),
             Value::Function(f) => {
+                // complement特殊処理 - 実行前にチェック
+                if let Some(complement_func) = f.env.get("__complement_func__") {
+                    let result = self.apply_func(&complement_func, args)?;
+                    return Ok(Value::Bool(!result.is_truthy()));
+                }
+
+                // juxt特殊処理 - 実行前にチェック
+                if let Some(Value::List(juxt_funcs)) = f.env.get("__juxt_funcs__") {
+                    let mut results = Vec::new();
+                    for jfunc in &juxt_funcs {
+                        let result = self.apply_func(jfunc, args.clone())?;
+                        results.push(result);
+                    }
+                    return Ok(Value::Vector(results));
+                }
+
+                // 通常の関数処理
                 let parent_env = Rc::new(RefCell::new(f.env.clone()));
                 let mut new_env = Env::with_parent(parent_env);
 
@@ -798,6 +797,42 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::count_by(&vals, self)
+    }
+
+    /// max-by - キー関数で最大値を取得
+    fn eval_max_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("max-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::max_by(&vals, self)
+    }
+
+    /// min-by - キー関数で最小値を取得
+    fn eval_min_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("min-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::min_by(&vals, self)
+    }
+
+    /// sum-by - キー関数で合計
+    fn eval_sum_by(&mut self, args: &[Expr], env: Rc<RefCell<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("sum-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::sum_by(&vals, self)
     }
 
 }

@@ -80,3 +80,107 @@ pub fn native_keyword_q(args: &[Value]) -> Result<Value, String> {
     }
     Ok(Value::Bool(matches!(args[0], Value::Keyword(_))))
 }
+
+/// even? - 偶数かどうか判定
+pub fn native_even_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["even?"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Bool(n % 2 == 0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["even?", "integers"])),
+    }
+}
+
+/// odd? - 奇数かどうか判定
+pub fn native_odd_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["odd?"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Bool(n % 2 != 0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["odd?", "integers"])),
+    }
+}
+
+/// positive? - 正の数かどうか判定
+pub fn native_positive_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["positive?"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Bool(*n > 0)),
+        Value::Float(f) => Ok(Value::Bool(*f > 0.0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["positive?", "numbers"])),
+    }
+}
+
+/// negative? - 負の数かどうか判定
+pub fn native_negative_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["negative?"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Bool(*n < 0)),
+        Value::Float(f) => Ok(Value::Bool(*f < 0.0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["negative?", "numbers"])),
+    }
+}
+
+/// zero? - ゼロかどうか判定
+pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["zero?"]));
+    }
+    match &args[0] {
+        Value::Integer(n) => Ok(Value::Bool(*n == 0)),
+        Value::Float(f) => Ok(Value::Bool(*f == 0.0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["zero?", "numbers"])),
+    }
+}
+
+/// some? - nilでないかどうか判定
+pub fn native_some_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["some?"]));
+    }
+    Ok(Value::Bool(!matches!(args[0], Value::Nil)))
+}
+
+/// true? - 厳密にtrueかどうか判定
+pub fn native_true_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["true?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bool(true))))
+}
+
+/// false? - 厳密にfalseかどうか判定
+pub fn native_false_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["false?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bool(false))))
+}
+
+/// coll? - コレクション型かどうか判定
+pub fn native_coll_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["coll?"]));
+    }
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::List(_) | Value::Vector(_) | Value::Map(_)
+    )))
+}
+
+/// sequential? - シーケンシャル型かどうか判定
+pub fn native_sequential_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["sequential?"]));
+    }
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::List(_) | Value::Vector(_)
+    )))
+}
