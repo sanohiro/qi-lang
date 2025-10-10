@@ -74,6 +74,16 @@ impl Parser {
                         },
                     };
                 }
+                Some(Token::PipeRailway) => {
+                    self.advance();
+                    let right = self.parse_primary()?;
+
+                    // x |>? f を (_railway-pipe f x) に変換
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                        args: vec![right, expr],
+                    };
+                }
                 Some(Token::ParallelPipe) => {
                     self.advance();
                     let right = self.parse_primary()?;
@@ -183,7 +193,9 @@ impl Parser {
         let first_expr = self.parse_primary()?;  // パイプラインを含まない
 
         // パイプラインのチェック
-        if self.current() == Some(&Token::Pipe) || self.current() == Some(&Token::ParallelPipe) {
+        if self.current() == Some(&Token::Pipe)
+            || self.current() == Some(&Token::PipeRailway)
+            || self.current() == Some(&Token::ParallelPipe) {
             let mut expr = first_expr;
             loop {
                 match self.current() {
@@ -200,6 +212,16 @@ impl Parser {
                                 func: Box::new(right),
                                 args: vec![expr],
                             },
+                        };
+                    }
+                    Some(Token::PipeRailway) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // x |>? f を (_railway-pipe f x) に変換
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                            args: vec![right, expr],
                         };
                     }
                     Some(Token::ParallelPipe) => {

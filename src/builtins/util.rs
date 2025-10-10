@@ -230,3 +230,33 @@ pub fn native_atom_p(args: &[Value]) -> Result<Value, String> {
     let is_atom = matches!(args[0], Value::Atom(_));
     Ok(Value::Bool(is_atom))
 }
+
+/// _railway-pipe - Railway Oriented Programming用の内部関数
+///
+/// {:ok value}なら関数に渡し、{:error e}ならそのまま返す
+pub fn native_railway_pipe(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("_railway-pipe: 2個の引数が必要です".to_string());
+    }
+
+    let func = &args[0];
+    let result = &args[1];
+
+    // resultが{:ok value}または{:error ...}の形式かチェック
+    match result {
+        Value::Map(m) => {
+            // {:ok value}の場合は値を取り出して関数に渡す
+            if let Some(ok_val) = m.get("ok") {
+                evaluator.apply_function(func, &[ok_val.clone()])
+            }
+            // {:error e}の場合はそのまま返す(ショートサーキット)
+            else if m.contains_key("error") {
+                Ok(result.clone())
+            }
+            else {
+                Err("|>? requires {:ok/:error} map".to_string())
+            }
+        }
+        _ => Err("|>? requires {:ok/:error} map".to_string()),
+    }
+}

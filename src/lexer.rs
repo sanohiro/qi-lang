@@ -46,6 +46,7 @@ pub enum Token {
     Arrow,  // ->
     FatArrow, // =>
     Pipe,   // |>
+    PipeRailway,  // |>?
     ParallelPipe,  // ||>
 
     // ファイル終端
@@ -348,6 +349,12 @@ impl Lexer {
                     self.advance(); // |
                     self.advance(); // >
                     return Ok(Token::ParallelPipe);
+                }
+                Some('|') if self.peek(1) == Some('>') && self.peek(2) == Some('?') => {
+                    self.advance(); // |
+                    self.advance(); // >
+                    self.advance(); // ?
+                    return Ok(Token::PipeRailway);
                 }
                 Some('|') if self.peek(1) == Some('>') => {
                     self.advance(); // |

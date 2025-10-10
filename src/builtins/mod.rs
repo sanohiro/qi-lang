@@ -429,3 +429,8 @@ pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_post_async(args, evaluator)
 }
+
+/// Railway Pipeline用の内部関数
+pub fn railway_pipe(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    util::native_railway_pipe(args, evaluator)
+}
