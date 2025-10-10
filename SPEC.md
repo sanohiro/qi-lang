@@ -1234,35 +1234,66 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 
 **Layer 1: go/chan（基盤）** - Go風の並行処理 ✅
 ```lisp
-;; チャネル作成
+;; チャネル作成 ✅
 (chan)                  ;; 無制限バッファ
 (chan 10)               ;; バッファサイズ10
 
-;; 送受信
+;; 送受信 ✅
 (send! ch value)        ;; チャネルに送信
 (recv! ch)              ;; ブロッキング受信
+(recv! ch :timeout 1000) ;; タイムアウト付き受信（ミリ秒） 🚧 Phase 5
 (try-recv! ch)          ;; 非ブロッキング受信（nilまたは値）
 (close! ch)             ;; チャネルクローズ
 
-;; goroutine風
+;; 複数チャネル待ち合わせ 🚧 Phase 5
+(select!
+  [[ch1 (fn [v] (handle-ch1 v))]
+   [ch2 (fn [v] (handle-ch2 v))]
+   [:timeout 1000 (fn [] (handle-timeout))]])
+
+;; goroutine風 ✅
 (go (println "async!"))
 (go (send! ch (expensive-calc)))
 
-;; futureとしても使える
+;; futureとしても使える ✅
 (def result (go (expensive-calc)))
 (deref result)          ;; 結果待ち
+
+;; Structured Concurrency（構造化並行処理） 🚧 Phase 5
+(def ctx (make-scope))  ;; スコープ作成
+(scope-go ctx (fn []    ;; スコープ内でgoroutine起動
+  (loop [i 0]
+    (if (cancelled? ctx)
+      (println "cancelled")
+      (do
+        (println i)
+        (sleep 100)
+        (recur (inc i)))))))
+(cancel! ctx)           ;; スコープ内の全goroutineをキャンセル
+
+;; with-scopeマクロ（便利版） 🚧 Phase 5
+(with-scope [ctx]
+  (scope-go ctx task1)
+  (scope-go ctx task2)
+  ;; スコープ終了時に自動キャンセル
+  )
 ```
 
 **Layer 2: Pipeline（構造化並行処理）** - 関数型スタイル ✅
 ```lisp
-;; パイプライン処理
+;; 並列コレクション操作 ✅
+pmap                    ;; 並列map（rayon使用）
+pfilter                 ;; 並列filter 🚧 Phase 5
+preduce                 ;; 並列reduce 🚧 Phase 5
+
+;; パイプライン処理 ✅
 (pipeline n xf ch)      ;; n並列でxf変換をchに適用
 
-;; ファンアウト/ファンイン
+;; ファンアウト/ファンイン ✅
 (fan-out ch n)          ;; 1つのチャネルをn個に分岐
 (fan-in chs)            ;; 複数チャネルを1つに合流
 
-;; データパイプライン
+;; データパイプライン ✅
 (-> data
     (pipeline-map 4 transform)     ;; 4並列で変換
     (pipeline-filter 2 predicate)  ;; 2並列でフィルタ
@@ -1293,17 +1324,44 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 (catch promise (fn [e] (println "Error:" e)))
 ```
 
-**実装済み関数一覧**:
-- `await`: Promiseを待機
-- `then`: Promiseチェーン
-- `catch`: エラーハンドリング
-- `all`: 複数Promiseを並列実行
-- `race`: 最速のPromiseを返す
+**実装済み・実装予定の関数一覧**:
+
+**Layer 1 (go/chan)**:
+- ✅ `chan`: チャネル作成
+- ✅ `send!`: 送信
+- ✅ `recv!`: ブロッキング受信
+- 🚧 `recv! :timeout`: タイムアウト付き受信 (Phase 5)
+- ✅ `try-recv!`: 非ブロッキング受信
+- ✅ `close!`: チャネルクローズ
+- ✅ `go`: goroutine起動
+- 🚧 `select!`: 複数チャネル待ち合わせ (Phase 5)
+- 🚧 `make-scope`: スコープ作成 (Phase 5)
+- 🚧 `scope-go`: スコープ内goroutine (Phase 5)
+- 🚧 `cancel!`: スコープキャンセル (Phase 5)
+- 🚧 `cancelled?`: キャンセル確認 (Phase 5)
+- 🚧 `with-scope`: スコープマクロ (Phase 5)
+
+**Layer 2 (Pipeline)**:
+- ✅ `pmap`: 並列map
+- 🚧 `pfilter`: 並列filter (Phase 5)
+- 🚧 `preduce`: 並列reduce (Phase 5)
+- ✅ `pipeline`: パイプライン処理
+- ✅ `pipeline-map`: パイプラインmap
+- ✅ `pipeline-filter`: パイプラインfilter
+- ✅ `fan-out`: ファンアウト
+- ✅ `fan-in`: ファンイン
+
+**Layer 3 (async/await)**:
+- ✅ `await`: Promiseを待機
+- ✅ `then`: Promiseチェーン
+- ✅ `catch`: エラーハンドリング
+- ✅ `all`: 複数Promiseを並列実行
+- ✅ `race`: 最速のPromiseを返す
 
 #### 実装技術スタック
 
-- **crossbeam-channel**: Go風チャネル実装
-- **rayon**: データ並列（pmap等）
+- **crossbeam-channel**: Go風チャネル実装（select!マクロも提供）
+- **rayon**: データ並列（pmap, pfilter, preduce等）
 - **parking_lot**: 高性能RwLock
 - **tokio** (将来): async/await実行時
 
@@ -1514,6 +1572,110 @@ eval                    ;; 式を評価
 ```
 
 ## 7. エラー処理戦略
+
+### エラー処理の3層構造
+
+Qiは用途に応じて3つのエラー処理方法を提供します：
+
+1. **Result型 (`{:ok/:error}`)** - 回復可能なエラー、Railway Pipeline
+2. **try/catchブロック** - 例外のキャッチとリカバリ
+3. **defer** - リソース解放の保証（`finally`の代替）
+
+---
+
+### 1. Result型 - Railway Pipeline ✅ **推奨パターン**
+
+**用途**: API、ファイルIO、パース等の失敗が予想される処理
+
+```lisp
+;; Result型を返す関数
+(def divide (fn [x y]
+  (if (= y 0)
+    {:error "division by zero"}
+    {:ok (/ x y)})))
+
+;; Railway Pipelineで処理
+(user-input
+ |> validate
+ |>? parse-number
+ |>? (fn [n] (divide 100 n))
+ |>? format-result)
+;; エラーは自動的に伝播
+
+;; またはmatchで処理
+(match (divide 10 2)
+  {:ok result} -> result
+  {:error e} -> (log e))
+```
+
+**設計哲学**: エラーをデータとして扱い、パイプラインの中で流す。
+
+---
+
+### 2. try/catch - 例外処理 ✅
+
+**用途**: 予期しないエラーのキャッチ、サードパーティコードの呼び出し
+
+```lisp
+;; try-catchブロック
+(match (try (risky-operation))
+  {:ok result} -> result
+  {:error e} -> (handle-error e))
+
+;; ネスト可能
+(match (try
+         (def data (parse-data input))
+         (process data))
+  {:ok result} -> result
+  {:error e} -> {:error (str "Failed: " e)})
+```
+
+**注意**: Qiには`finally`がありません。代わりに`defer`を使います（下記参照）。
+
+---
+
+### 3. defer - リソース解放の保証 ✅ **finallyの代替**
+
+**用途**: ファイル、接続、ロックなどのリソース管理
+
+```lisp
+;; deferで確実にクリーンアップ
+(def process-file (fn [path]
+  (def f (open-file path))
+  (defer (close-file f))  ;; 関数終了時に必ず実行
+  (def data (read-file f))
+  (transform data)))
+
+;; 複数のdeferはスタック的に実行（後入れ先出し）
+(def complex-operation (fn []
+  (def conn (open-connection))
+  (defer (close-connection conn))
+  (def lock (acquire-lock))
+  (defer (release-lock lock))
+  (def file (open-file "data.txt"))
+  (defer (close-file file))
+  ;; 処理...
+  ;; 終了時: close-file → release-lock → close-connection
+  ))
+
+;; エラー時もdeferは実行される
+(def safe-process (fn []
+  (def res (allocate-resource))
+  (defer (free-resource res))
+  (if (error-condition?)
+    (error "something went wrong")  ;; deferは実行される
+    (process res))))
+```
+
+**設計哲学**:
+- `finally`よりシンプル - 関数のどこにでも書ける
+- 強力 - 複数のdeferを組み合わせられる
+- Go言語のdeferと同じ設計
+- Lisp的 - 特殊な構文を増やさない
+
+**なぜfinallyがないのか**: `defer`の方が柔軟で、複数のリソース管理が直感的。try-catch-finallyのネストより読みやすい。
+
+---
 
 ### 回復可能 - {:ok/:error}
 ```lisp
@@ -2600,8 +2762,8 @@ mean median stddev
 - **集合演算（4）**: union, intersect, difference, subset?
 - **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
-- **並行処理 Layer 1（6）**: go, chan, send!, recv!, try-recv!, close!
-- **並行処理 Layer 2（5）**: pipeline, pipeline-map, pipeline-filter, fan-out, fan-in
+- **並行処理 Layer 1（6+7予定）**: go, chan, send!, recv!, try-recv!, close! + 🚧 recv!:timeout, select!, make-scope, scope-go, cancel!, cancelled?, with-scope
+- **並行処理 Layer 2（5+2予定）**: pipeline, pipeline-map, pipeline-filter, fan-out, fan-in + 🚧 pfilter, preduce
 - **並行処理 Layer 3（5）**: await, then, catch, all, race
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
@@ -2645,8 +2807,19 @@ mean median stddev
 13. ✅ Layer 2: pipeline実装
 14. ✅ Layer 3: async/await実装
 
-**フェーズ5: 統計・高度な処理**
-15. mean, median, stddev
+**フェーズ4.5: Web開発機能（✅ 完了）**
+15. ✅ Railway Pipeline (`|>?`)
+16. ✅ JSON/HTTP完全実装
+17. ✅ デバッグ関数（inspect, time）
+18. ✅ コレクション拡張（find, every?, some?, zipmap, update-keys, update-vals等）
+
+**フェーズ5: 並行・並列処理の完成（🚧 実装中）**
+19. 🚧 並列コレクション完成（pfilter, preduce）
+20. 🚧 select!とタイムアウト（recv! :timeout, select!）
+21. 🚧 Structured Concurrency（make-scope, scope-go, cancel!, cancelled?, with-scope）
+
+**フェーズ6: 統計・高度な処理**
+22. mean, median, stddev
 
 #### 🚧 将来の計画
 - 標準モジュール群（str完全版/csv/regex/http/json）
@@ -2666,3 +2839,101 @@ mean median stddev
 - Flow哲学との親和性
 - Web/JSON処理での実用性
 - 実装コストと効果のバランス
+
+---
+
+## 将来の改善計画
+
+### 名前衝突の警告システム 🚧 **Phase 5以降**
+
+#### 問題
+```lisp
+;; ユーザーが組み込み関数と同じ名前を定義
+(def map {"key" "value"})  ;; 組み込みのmapが使えなくなる
+
+(map inc [1 2 3])  ;; エラー！mapは関数じゃない
+```
+
+#### 解決策: 警告を出す（推奨）
+
+**実装方針**:
+```lisp
+;; defで組み込み関数名を再定義しようとすると警告
+(def map {...})
+;; Warning: 'map' shadows built-in function
+
+;; filter, reduce, など全ての組み込み関数が対象
+(def filter {...})
+;; Warning: 'filter' shadows built-in function
+```
+
+**設計**:
+1. **警告のみ（エラーにしない）**
+   - ユーザーの自由を尊重（Lisp的）
+   - でも間違いには気づける（初心者に優しい）
+
+2. **チェック対象**
+   - コア関数（map, filter, reduce, etc.）
+   - 特殊形式（def, fn, let, etc.）は**対象外**（再定義不可能）
+
+3. **実装場所**
+   - `eval.rs`の`def`評価時にチェック
+   - 組み込み関数のリストと照合
+   - 警告メッセージを出力（実行は継続）
+
+**実装例**:
+```rust
+// eval.rs
+fn eval_def(&self, name: &str, value: Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
+    // 組み込み関数名チェック
+    if is_builtin_function(name) {
+        eprintln!("Warning: '{}' shadows built-in function", name);
+    }
+
+    // 定義は続行
+    let val = self.eval_with_env(&value, env.clone())?;
+    env.write().define(name.to_string(), val.clone());
+    Ok(val)
+}
+```
+
+**他の言語の例**:
+- **Clojure**: 警告を出す
+- **Scheme/Racket**: 実装による（警告 or エラー）
+- **Common Lisp**: 警告を出す（パッケージシステムで回避可）
+
+**優先度**: 中（緊急ではないが、実用上重要）
+
+**なぜ今やらないのか**:
+- 新機能の追加が優先
+- 後からでも追加可能
+- 既存コードへの影響なし
+
+---
+
+### 名前空間システム 🚧 **Phase 6以降（低優先度）**
+
+現在のQiはグローバル名前空間のみ。大規模開発では名前衝突が問題になる可能性。
+
+**検討事項**:
+```lisp
+;; 案1: Clojure風
+(ns myapp.core)
+(def map {...})  ;; myapp.core/map
+
+(myapp.core/map ...)  ;; 自分のmap
+(core/map ...)        ;; 組み込みmap
+
+;; 案2: モジュールシステム拡張
+(module myapp
+  (def map {...}))
+
+(myapp/map ...)
+```
+
+**決定**: Phase 1では**やらない**
+- 設計思想（シンプル）に反する
+- 小〜中規模プロジェクトでは不要
+- 必要になったら検討
+
+---

@@ -44,6 +44,8 @@ pub enum Value {
     Atom(Arc<RwLock<Value>>),
     /// チャネル（go/chan並行処理用）
     Channel(Arc<Channel>),
+    /// スコープ（Structured Concurrency用）
+    Scope(Arc<Scope>),
     /// ユニーク変数（マクロの衛生性）
     Uvar(u64),
 }
@@ -53,6 +55,12 @@ pub enum Value {
 pub struct Channel {
     pub sender: Sender<Value>,
     pub receiver: Receiver<Value>,
+}
+
+/// スコープ（Structured Concurrency用）
+#[derive(Debug, Clone)]
+pub struct Scope {
+    pub cancelled: Arc<RwLock<bool>>,
 }
 
 impl Value {
@@ -306,6 +314,7 @@ impl fmt::Display for Value {
             Value::Macro(m) => write!(f, "#<macro:{}>", m.name),
             Value::Atom(a) => write!(f, "#<atom:{}>", a.read()),
             Value::Channel(_) => write!(f, "#<channel>"),
+            Value::Scope(_) => write!(f, "#<scope>"),
             Value::Uvar(id) => write!(f, "#<uvar:{}>", id),
         }
     }

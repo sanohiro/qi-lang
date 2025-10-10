@@ -324,6 +324,8 @@ impl Evaluator {
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
                         "pmap" => return self.eval_pmap(args, env),
+                        "pfilter" => return self.eval_pfilter(args, env),
+                        "preduce" => return self.eval_preduce(args, env),
                         "partition" => return self.eval_partition(args, env),
                         "group-by" => return self.eval_group_by(args, env),
                         "map-lines" => return self.eval_map_lines(args, env),
@@ -357,6 +359,9 @@ impl Evaluator {
                         "pipeline-filter" => return self.eval_pipeline_filter(args, env),
                         "then" => return self.eval_then(args, env),
                         "catch" => return self.eval_catch(args, env),
+                        "select!" => return self.eval_select(args, env),
+                        "scope-go" => return self.eval_scope_go(args, env),
+                        "with-scope" => return self.eval_with_scope(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -634,6 +639,27 @@ impl Evaluator {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::pmap(&[func, coll], self)
+    }
+
+    /// pfilter関数の実装: (pfilter pred coll)
+    fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("pfilter requires 2 arguments".to_string());
+        }
+        let pred = self.eval_with_env(&args[0], env.clone())?;
+        let coll = self.eval_with_env(&args[1], env.clone())?;
+        builtins::pfilter(&[pred, coll], self)
+    }
+
+    /// preduce関数の実装: (preduce f init coll)
+    fn eval_preduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 3 {
+            return Err("preduce requires 3 arguments".to_string());
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let init = self.eval_with_env(&args[1], env.clone())?;
+        let coll = self.eval_with_env(&args[2], env.clone())?;
+        builtins::preduce(&[func, init, coll], self)
     }
 
     fn eval_partition(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -939,6 +965,31 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::catch(&vals, self)
+    }
+
+    fn eval_select(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err("select! requires 1 argument".to_string());
+        }
+        let val = self.eval_with_env(&args[0], env.clone())?;
+        builtins::select(&[val], self)
+    }
+
+    fn eval_scope_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("scope-go requires 2 arguments".to_string());
+        }
+        let scope = self.eval_with_env(&args[0], env.clone())?;
+        let func = self.eval_with_env(&args[1], env.clone())?;
+        builtins::scope_go(&[scope, func], self)
+    }
+
+    fn eval_with_scope(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err("with-scope requires 1 argument".to_string());
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        builtins::with_scope(&[func], self)
     }
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -1759,6 +1810,7 @@ impl Evaluator {
                         Value::Macro(m) => format!("<macro:{}>", m.name),
                         Value::Atom(a) => format!("<atom:{}>", a.read()),
                         Value::Channel(_) => "<channel>".to_string(),
+                        Value::Scope(_) => "<scope>".to_string(),
                         Value::Uvar(id) => format!("<uvar:{}>", id),
                     };
                     result.push_str(&s);

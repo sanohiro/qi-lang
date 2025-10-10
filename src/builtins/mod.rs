@@ -298,6 +298,11 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "fan-out" => concurrency::native_fan_out,
         "fan-in" => concurrency::native_fan_in,
 
+        // Structured Concurrency
+        "make-scope" => concurrency::native_make_scope,
+        "cancel!" => concurrency::native_cancel,
+        "cancelled?" => concurrency::native_cancelled_q,
+
         // async/await
         "await" => concurrency::native_await,
         "all" => concurrency::native_all,
@@ -330,6 +335,14 @@ pub fn reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 
 pub fn pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_pmap(args, evaluator)
+}
+
+pub fn pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_pfilter(args, evaluator)
+}
+
+pub fn preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_preduce(args, evaluator)
 }
 
 pub fn partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -466,6 +479,18 @@ pub fn then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 
 pub fn catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_catch(args, evaluator)
+}
+
+pub fn select(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_select(args, evaluator)
+}
+
+pub fn with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_with_scope(args, evaluator)
+}
+
+pub fn scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_scope_go(args, evaluator)
 }
 
 /// HTTP関数（Evaluatorが必要な関数）

@@ -117,6 +117,80 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     }
 }
 
+/// pfilter - 並列filter
+///
+/// コレクションから条件を満たす要素を並列抽出します。
+pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    use rayon::prelude::*;
+
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["pfilter"]));
+    }
+
+    let pred = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            // 並列でフィルタリング
+            let results: Result<Vec<_>, _> = items
+                .par_iter()
+                .filter_map(|item| {
+                    match evaluator.apply_function(pred, &[item.clone()]) {
+                        Ok(result) if result.is_truthy() => Some(Ok(item.clone())),
+                        Ok(_) => None,
+                        Err(e) => Some(Err(e)),
+                    }
+                })
+                .collect();
+
+            match collection {
+                Value::List(_) => Ok(Value::List(results?)),
+                Value::Vector(_) => Ok(Value::Vector(results?)),
+                _ => unreachable!(),
+            }
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pfilter (2nd arg)", "lists or vectors"])),
+    }
+}
+
+/// preduce - 並列reduce
+///
+/// コレクションを並列畳み込みします。
+/// 結合法則を満たす演算（+, *, max等）でのみ正しい結果が得られます。
+pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    use rayon::prelude::*;
+
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["preduce", "3"]));
+    }
+
+    let func = &args[0];
+    let init = args[1].clone();
+    let collection = &args[2];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            if items.is_empty() {
+                return Ok(init);
+            }
+
+            // 並列reduce
+            items
+                .par_iter()
+                .try_fold(
+                    || init.clone(),
+                    |acc, item| evaluator.apply_function(func, &[acc, item.clone()])
+                )
+                .try_reduce(
+                    || init.clone(),
+                    |a, b| evaluator.apply_function(func, &[a, b])
+                )
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["preduce (3rd arg)", "lists or vectors"])),
+    }
+}
+
 /// apply - 関数にリストを引数として適用（未使用だが将来のため残す）
 #[allow(dead_code)]
 pub fn native_apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {

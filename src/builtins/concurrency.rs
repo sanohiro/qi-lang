@@ -2,8 +2,9 @@
 
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::{Channel, Value};
+use crate::value::{Channel, Scope, Value};
 use crossbeam_channel::{bounded, unbounded};
+use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// chan - チャネルを作成
@@ -76,25 +77,48 @@ pub fn native_send(args: &[Value]) -> Result<Value, String> {
 ///
 /// 引数:
 /// - channel: チャネル
+/// - :timeout ms (optional): タイムアウト（ミリ秒）
 ///
 /// 戻り値:
-/// - 受信した値（チャネルがクローズされていればnil）
+/// - 受信した値（チャネルがクローズまたはタイムアウトならnil）
 ///
 /// 例:
 /// ```lisp
 /// (def ch (chan))
-/// (recv! ch)  ;; ブロックして待つ
+/// (recv! ch)                    ;; ブロックして待つ
+/// (recv! ch :timeout 1000)      ;; 最大1秒待つ
 /// ```
 pub fn native_recv(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["recv!"]));
+    if args.is_empty() || args.len() > 3 {
+        return Err("recv! requires 1 or 3 arguments: (recv! ch) or (recv! ch :timeout ms)".to_string());
     }
 
     match &args[0] {
-        Value::Channel(ch) => ch
-            .receiver
-            .recv()
-            .map_err(|_| "recv!: channel is closed".to_string()),
+        Value::Channel(ch) => {
+            // タイムアウト指定があるか確認
+            if args.len() == 3 {
+                // :timeout キーワードを確認
+                match &args[1] {
+                    Value::Keyword(k) if k == "timeout" => {
+                        // タイムアウト値（ミリ秒）を取得
+                        match &args[2] {
+                            Value::Integer(ms) if *ms >= 0 => {
+                                let timeout = std::time::Duration::from_millis(*ms as u64);
+                                Ok(ch.receiver.recv_timeout(timeout).unwrap_or(Value::Nil))
+                            }
+                            Value::Integer(_) => Err("recv!: timeout must be non-negative".to_string()),
+                            _ => Err("recv!: timeout must be an integer (milliseconds)".to_string()),
+                        }
+                    }
+                    _ => Err("recv!: expected :timeout keyword".to_string()),
+                }
+            } else {
+                // タイムアウトなし（通常のブロッキング受信）
+                ch.receiver
+                    .recv()
+                    .map_err(|_| "recv!: channel is closed".to_string())
+            }
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["recv!", "channels"])),
     }
 }
@@ -815,3 +839,290 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 
     Ok(Value::List(results))
 }
+
+/// select! - 複数チャネル待ち合わせ
+///
+/// 引数:
+/// - cases: [[ch1 handler1] [ch2 handler2] [:timeout ms handler]]
+///
+/// 戻り値:
+/// - 選択されたハンドラーの実行結果
+///
+/// 例:
+/// ```lisp
+/// (select!
+///   [[ch1 (fn [v] (println "ch1:" v))]
+///    [ch2 (fn [v] (println "ch2:" v))]
+///    [:timeout 1000 (fn [] (println "timeout"))]])
+/// ```
+pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("select! requires 1 argument: a list of cases".to_string());
+    }
+
+    let cases = match &args[0] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err("select! requires a list of cases".to_string()),
+    };
+
+    if cases.is_empty() {
+        return Err("select! requires at least one case".to_string());
+    }
+
+    // ケースをパース
+    let mut channels = Vec::new();
+    let mut handlers = Vec::new();
+    let mut timeout_ms: Option<i64> = None;
+    let mut timeout_handler: Option<Value> = None;
+
+    for case in cases {
+        match case {
+            Value::List(parts) | Value::Vector(parts) => {
+                // タイムアウトケースは3要素、通常のケースは2要素
+                match &parts[0] {
+                    Value::Keyword(k) if k == "timeout" => {
+                        // タイムアウトケース: [:timeout ms handler]
+                        if parts.len() != 3 {
+                            return Err("select! :timeout case must have 3 elements: [:timeout ms handler]".to_string());
+                        }
+                        if timeout_handler.is_some() {
+                            return Err("select! can only have one :timeout case".to_string());
+                        }
+                        match &parts[1] {
+                            Value::Integer(ms) if *ms >= 0 => {
+                                timeout_ms = Some(*ms);
+                                timeout_handler = Some(parts[2].clone());
+                            }
+                            Value::Integer(_) => return Err("select! timeout must be non-negative".to_string()),
+                            _ => return Err("select! timeout must be an integer (milliseconds)".to_string()),
+                        }
+                    }
+                    Value::Channel(ch) => {
+                        // 通常のチャネルケース: [channel handler]
+                        if parts.len() != 2 {
+                            return Err("select! channel case must have 2 elements: [channel handler]".to_string());
+                        }
+                        channels.push(ch.clone());
+                        handlers.push(parts[1].clone());
+                    }
+                    _ => return Err("select! case must start with a channel or :timeout".to_string()),
+                }
+            }
+            _ => return Err("select! case must be a list [channel handler] or [:timeout ms handler]".to_string()),
+        }
+    }
+
+    // crossbeam-channelのselect!を使用
+    use crossbeam_channel::Select;
+
+    let mut sel = Select::new();
+    for ch in &channels {
+        sel.recv(&ch.receiver);
+    }
+
+    // タイムアウトがある場合
+    let timeout_receiver = if let Some(ms) = timeout_ms {
+        let (tx, rx) = bounded(1);
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+            let _ = tx.send(());
+        });
+        Some(rx)
+    } else {
+        None
+    };
+
+    if let Some(ref rx) = timeout_receiver {
+        sel.recv(rx);
+    }
+
+    // 選択を実行
+    let oper = sel.select();
+    let index = oper.index();
+
+    // どのケースが選択されたかを判定
+    if let Some(ref rx) = timeout_receiver {
+        if index == channels.len() {
+            // タイムアウトケースが選択された
+            let _ = oper.recv(rx); // 操作を完了させる
+            if let Some(handler) = timeout_handler {
+                return evaluator.apply_function(&handler, &[]);
+            }
+            return Ok(Value::Nil);
+        }
+    }
+
+    // 通常のチャネルケースが選択された
+    if index < channels.len() {
+        let value = oper.recv(&channels[index].receiver).map_err(|_| "select!: channel closed".to_string())?;
+        return evaluator.apply_function(&handlers[index], &[value]);
+    }
+
+    Err("select!: unexpected error".to_string())
+}
+
+
+/// make-scope - スコープを作成
+///
+/// Structured Concurrency用のスコープを作成します。
+/// スコープ内で起動したgoroutineは、スコープがキャンセルされると全て停止できます。
+///
+/// 戻り値:
+/// - スコープオブジェクト
+///
+/// 例:
+/// ```lisp
+/// (def ctx (make-scope))
+/// (scope-go ctx task1)
+/// (cancel! ctx)  ;; 全てキャンセル
+/// ```
+pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
+    if !args.is_empty() {
+        return Err("make-scope requires no arguments".to_string());
+    }
+
+    let scope = Scope {
+        cancelled: Arc::new(RwLock::new(false)),
+    };
+
+    Ok(Value::Scope(Arc::new(scope)))
+}
+
+/// scope-go - スコープ内でgoroutineを起動
+///
+/// 引数:
+/// - scope: スコープ
+/// - func: 実行する関数
+///
+/// 戻り値:
+/// - チャネル（結果を受信可能）
+///
+/// 例:
+/// ```lisp
+/// (def ctx (make-scope))
+/// (scope-go ctx (fn [] (println "running")))
+/// ```
+pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("scope-go requires 2 arguments: scope and function".to_string());
+    }
+
+    let scope = match &args[0] {
+        Value::Scope(s) => s.clone(),
+        _ => return Err("scope-go: first argument must be a scope".to_string()),
+    };
+
+    let func = args[1].clone();
+
+    // チャネルを作成して結果を返す
+    let (sender, receiver) = unbounded();
+    let ch = Value::Channel(Arc::new(Channel {
+        sender: sender.clone(),
+        receiver: receiver.clone(),
+    }));
+
+    let evaluator_clone = evaluator.clone();
+
+    // 新しいスレッドで実行
+    std::thread::spawn(move || {
+        let result = evaluator_clone.apply_function(&func, &[]);
+        let _ = sender.send(result.unwrap_or(Value::Nil));
+    });
+
+    Ok(ch)
+}
+
+/// cancel! - スコープをキャンセル
+///
+/// 引数:
+/// - scope: キャンセルするスコープ
+///
+/// 戻り値:
+/// - nil
+///
+/// 例:
+/// ```lisp
+/// (def ctx (make-scope))
+/// (cancel! ctx)
+/// ```
+pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("cancel! requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Scope(s) => {
+            *s.cancelled.write() = true;
+            Ok(Value::Nil)
+        }
+        _ => Err("cancel!: argument must be a scope".to_string()),
+    }
+}
+
+/// cancelled? - スコープがキャンセルされているかチェック
+///
+/// 引数:
+/// - scope: チェックするスコープ
+///
+/// 戻り値:
+/// - true/false
+///
+/// 例:
+/// ```lisp
+/// (def ctx (make-scope))
+/// (cancelled? ctx)  ;; => false
+/// (cancel! ctx)
+/// (cancelled? ctx)  ;; => true
+/// ```
+pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("cancelled? requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Scope(s) => {
+            let is_cancelled = *s.cancelled.read();
+            Ok(Value::Bool(is_cancelled))
+        }
+        _ => Err("cancelled?: argument must be a scope".to_string()),
+    }
+}
+
+/// with-scope - スコープを作成して関数を実行し、自動的にキャンセル
+///
+/// 引数:
+/// - func: スコープを引数として受け取る関数
+///
+/// 戻り値:
+/// - 関数の戻り値
+///
+/// 例:
+/// ```lisp
+/// (with-scope (fn [ctx]
+///   (scope-go ctx (fn [] (println "task 1")))
+///   (scope-go ctx (fn [] (println "task 2")))
+///   (sleep 100)))
+/// ;; 関数終了時に自動的にキャンセルされる
+/// ```
+pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("with-scope requires 1 argument: function".to_string());
+    }
+
+    let func = &args[0];
+
+    // スコープを作成
+    let scope = Arc::new(Scope {
+        cancelled: Arc::new(RwLock::new(false)),
+    });
+    let scope_val = Value::Scope(scope.clone());
+
+    // 関数を実行
+    let result = evaluator.apply_function(func, &[scope_val]);
+
+    // 実行後に自動的にキャンセル
+    *scope.cancelled.write() = true;
+
+    result
+}
+
