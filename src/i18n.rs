@@ -100,6 +100,32 @@ pub enum MsgKey {
     AssocMapAndKeyValues,
     DissocMapAndKeys,
     VariadicFnNeedsOneParam,
+
+    // f-string エラー
+    FStringUnclosedBrace,
+    FStringUnclosed,
+    FStringCannotBeQuoted,
+
+    // マクロエラー
+    MacVarargNeedsSymbol,
+    VariadicMacroNeedsParams,
+
+    // quasiquote エラー
+    UnquoteOutsideQuasiquote,
+    UnquoteSpliceOutsideQuasiquote,
+    UnquoteSpliceNeedsListOrVector,
+
+    // loop/recur エラー
+    RecurNotFound,
+
+    // 内部変換エラー
+    ValueCannotBeConverted,
+
+    // モジュールロード詳細エラー
+    CircularDependency,
+    ModuleParserInitError,
+    ModuleParseError,
+    ModuleMustExport,
 }
 
 /// UIメッセージキー
@@ -215,6 +241,32 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::DissocMapAndKeys), "dissoc requires a map and one or more keys");
         messages.insert((Lang::En, MsgKey::VariadicFnNeedsOneParam), "variadic function requires exactly one parameter");
 
+        // 英語メッセージ - f-string
+        messages.insert((Lang::En, MsgKey::FStringUnclosedBrace), "f-string: unclosed {");
+        messages.insert((Lang::En, MsgKey::FStringUnclosed), "f-string: unclosed string");
+        messages.insert((Lang::En, MsgKey::FStringCannotBeQuoted), "f-string cannot be quoted");
+
+        // 英語メッセージ - マクロ
+        messages.insert((Lang::En, MsgKey::MacVarargNeedsSymbol), "mac: '&' requires a symbol");
+        messages.insert((Lang::En, MsgKey::VariadicMacroNeedsParams), "variadic macro requires parameters");
+
+        // 英語メッセージ - quasiquote
+        messages.insert((Lang::En, MsgKey::UnquoteOutsideQuasiquote), "unquote: can only be used inside quasiquote");
+        messages.insert((Lang::En, MsgKey::UnquoteSpliceOutsideQuasiquote), "unquote-splice: can only be used inside quasiquote");
+        messages.insert((Lang::En, MsgKey::UnquoteSpliceNeedsListOrVector), "unquote-splice: requires a list or vector");
+
+        // 英語メッセージ - loop/recur
+        messages.insert((Lang::En, MsgKey::RecurNotFound), "recur not found");
+
+        // 英語メッセージ - 内部変換
+        messages.insert((Lang::En, MsgKey::ValueCannotBeConverted), "value cannot be converted");
+
+        // 英語メッセージ - モジュールロード詳細
+        messages.insert((Lang::En, MsgKey::CircularDependency), "circular dependency detected: {0}");
+        messages.insert((Lang::En, MsgKey::ModuleParserInitError), "module {0} parser initialization error: {1}");
+        messages.insert((Lang::En, MsgKey::ModuleParseError), "module {0} parse error: {1}");
+        messages.insert((Lang::En, MsgKey::ModuleMustExport), "module {0} must contain export");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -268,6 +320,32 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::AssocMapAndKeyValues), "assocはマップと1つ以上のキー・値のペアが必要です");
         messages.insert((Lang::Ja, MsgKey::DissocMapAndKeys), "dissocはマップと1つ以上のキーが必要です");
         messages.insert((Lang::Ja, MsgKey::VariadicFnNeedsOneParam), "可変長引数関数にはパラメータが1つだけ必要です");
+
+        // 日本語メッセージ - f-string
+        messages.insert((Lang::Ja, MsgKey::FStringUnclosedBrace), "f-string: 閉じられていない { があります");
+        messages.insert((Lang::Ja, MsgKey::FStringUnclosed), "f-string: 閉じられていない文字列です");
+        messages.insert((Lang::Ja, MsgKey::FStringCannotBeQuoted), "f-string はquoteできません");
+
+        // 日本語メッセージ - マクロ
+        messages.insert((Lang::Ja, MsgKey::MacVarargNeedsSymbol), "mac: &の後にシンボルが必要です");
+        messages.insert((Lang::Ja, MsgKey::VariadicMacroNeedsParams), "可変長マクロはパラメータが必要です");
+
+        // 日本語メッセージ - quasiquote
+        messages.insert((Lang::Ja, MsgKey::UnquoteOutsideQuasiquote), "unquote: quasiquote外では使用できません");
+        messages.insert((Lang::Ja, MsgKey::UnquoteSpliceOutsideQuasiquote), "unquote-splice: quasiquote外では使用できません");
+        messages.insert((Lang::Ja, MsgKey::UnquoteSpliceNeedsListOrVector), "unquote-splice: リストまたはベクタが必要です");
+
+        // 日本語メッセージ - loop/recur
+        messages.insert((Lang::Ja, MsgKey::RecurNotFound), "recurが見つかりません");
+
+        // 日本語メッセージ - 内部変換
+        messages.insert((Lang::Ja, MsgKey::ValueCannotBeConverted), "この値は変換できません");
+
+        // 日本語メッセージ - モジュールロード詳細
+        messages.insert((Lang::Ja, MsgKey::CircularDependency), "循環参照を検出しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ModuleParserInitError), "モジュール{0}のパーサー初期化エラー: {1}");
+        messages.insert((Lang::Ja, MsgKey::ModuleParseError), "モジュール{0}のパースエラー: {1}");
+        messages.insert((Lang::Ja, MsgKey::ModuleMustExport), "モジュール{0}はexportを含む必要があります");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

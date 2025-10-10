@@ -1545,55 +1545,113 @@ f"Name: {(:name user)}, Age: {(:age user)}"
 
 ---
 
-## Phase 5: マクロシステム
+## Phase 5: マクロシステム ✅ 完了
 
 ### 目標
 
-コンパイル時にコードを変換するマクロシステムを実装する。
+コンパイル時にコードを変換するマクロシステムを実装し、言語を拡張可能にする。
+
+### Qi言語でのマクロ
+
+マクロは、**評価前にコードを変換する**強力な機能です。通常の関数は引数を**評価してから**処理しますが、マクロは引数を**評価せずに受け取り**、新しいコードを生成します。
+
+**基本的な使い方**:
 
 ```lisp
 ;; whenマクロの定義
-(mac when (test & body)
-  `(if ,test (do ,@body)))
+(mac when [test & body]
+  `(if ,test (do ,@body) nil))
 
 ;; 使用例
-(when (> x 10)
-  (print "big")
-  (print "number"))
+(when true
+  (print "hello")
+  (print "world"))
 
-;; 展開後:
-;; (if (> x 10) (do (print "big") (print "number")))
+;; マクロ展開後のコード（実際に評価されるコード）:
+;; (if true (do (print "hello") (print "world")) nil)
 ```
+
+**マクロが必要な理由**:
+
+1. **短絡評価**: `or`, `and`などは全ての引数を評価すると正しく動作しない
+2. **制御構造**: `unless`, `when`などの新しい制御構造を追加
+3. **DSL構築**: 独自の構文を作成できる
+
+**関数との違い**:
+
+```lisp
+;; 関数版（間違い）- 引数が先に評価される
+(def my-when (fn [test & body]
+  (if test (do body) nil)))
+
+(my-when false (print "これは実行される！"))  ; printが先に評価される
+
+;; マクロ版（正しい）- 引数は評価されない
+(mac my-when [test & body]
+  `(if ,test (do ,@body) nil))
+
+(my-when false (print "これは実行されない"))  ; マクロ展開後に条件判定
+```
+
+### 実装した機能
+
+- ✅ `mac` - マクロ定義（通常引数・可変長引数対応）
+- ✅ `` ` `` (quasiquote) - テンプレートの作成
+- ✅ `,` (unquote) - テンプレート内で式を評価
+- ✅ `,@` (unquote-splice) - リストを展開して挿入
+- ✅ マクロ展開 - Call時に自動展開
+- ✅ 特殊形式のquasiquote対応 - if, do, let等
 
 ### 学習内容
 
 #### Rustで学ぶこと
 
-1. **マクロの概念**
-2. **quasiquote/unquote の実装**
+1. **複雑なAST変換**
+   - ExprとValueの相互変換
+   - パターンマッチによる再帰的処理
+
+2. **環境の階層管理**
+   - マクロ専用の環境作成
+   - バインディングの分離
+
+3. **型変換の連鎖**
+   - `Expr → Value → Expr` の変換フロー
+   - データとコードの区別
 
 #### 言語実装で学ぶこと
 
 1. **マクロ展開の仕組み**
-2. **衛生的マクロ（hygienic macros）**
-3. **uvar による変数衝突回避**
+   - 評価前のコード変換
+   - quasiquote/unquoteによるテンプレート処理
 
-### ステップ1: quasiquote/unquoteの実装
+2. **コードとデータの同一性**
+   - Lispの「コードはデータ、データはコード」
+   - ホモアイコニシティ（homoiconicity）
 
-まず、ASTに新しいノードを追加:
+3. **可変長引数の扱い**
+   - 固定引数 + 可変引数の組み合わせ
+   - unquote-spliceによるリスト展開
+
+### ステップ1: データ構造の定義
+
+まず、マクロ関連のデータ構造をASTに追加します。
+
+**`src/value.rs` にマクロの定義を追加**:
+
+#### トークンの追加 (src/lexer.rs)
+
+マクロのためのトークンを追加:
 
 ```rust
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {
+pub enum Token {
     // ... 既存 ...
-    Quote(Box<Expr>),
-    Quasiquote(Box<Expr>),
-    Unquote(Box<Expr>),
-    UnquoteSplice(Box<Expr>),
+    Backquote,       // `
+    Unquote,         // ,
+    UnquoteSplice,   // ,@
 }
 ```
 
-レキサーにバッククォートとカンマを追加:
+レキサーにバッククォートとカンマの処理を追加:
 
 ```rust
 Some('`') => {
@@ -1601,8 +1659,8 @@ Some('`') => {
     return Ok(Token::Backquote);
 }
 Some(',') if self.peek(1) == Some('@') => {
-    self.advance();
-    self.advance();
+    self.advance(); // ,
+    self.advance(); // @
     return Ok(Token::UnquoteSplice);
 }
 Some(',') => {
@@ -1611,10 +1669,37 @@ Some(',') => {
 }
 ```
 
-### ステップ2: マクロの定義
+また、可変長引数のために `&` をシンボルに使えるようにする:
 
 ```rust
-// value.rs
+if ch.is_alphanumeric() || "+-*/%<>=!?_-&".contains(ch) {
+    // シンボルとして認識
+}
+```
+
+#### AST ノードの追加 (src/value.rs)
+
+`Expr`に新しいノードを追加:
+
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    // ... 既存 ...
+    Mac {
+        name: String,
+        params: Vec<String>,
+        is_variadic: bool,  // 可変長引数か
+        body: Box<Expr>,
+    },
+    Quasiquote(Box<Expr>),
+    Unquote(Box<Expr>),
+    UnquoteSplice(Box<Expr>),
+}
+```
+
+マクロを表す値も追加:
+
+```rust
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     // ... 既存 ...
@@ -1623,137 +1708,431 @@ pub enum Value {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Macro {
+    pub name: String,
     pub params: Vec<String>,
     pub body: Expr,
     pub env: Env,
-}
-
-// expr.rs
-pub enum Expr {
-    // ... 既存 ...
-    Mac {
-        name: String,
-        params: Vec<String>,
-        body: Box<Expr>,
-    },
+    pub is_variadic: bool,
 }
 ```
 
-### ステップ3: マクロ展開器
+**Rustポイント**: `Rc<Macro>` は参照カウント付きスマートポインタ。複数の場所から同じマクロを参照できる。
+
+### ステップ2: パーサーの実装
+
+#### macの構文解析 (src/parser.rs)
+
+`(mac when [test & body] ...)`の形式をパースする:
 
 ```rust
-struct MacroExpander {
-    macros: HashMap<String, Rc<Macro>>,
-}
+fn parse_mac(&mut self) -> Result<Expr, String> {
+    self.advance(); // 'mac'をスキップ
 
-impl MacroExpander {
-    fn expand(&mut self, expr: &Expr) -> Result<Expr, String> {
-        match expr {
-            Expr::Call { func, args } => {
-                if let Expr::Symbol(name) = func.as_ref() {
-                    // マクロかチェック
-                    if let Some(mac) = self.macros.get(name) {
-                        // マクロを展開
-                        return self.expand_macro(mac, args);
+    // マクロ名
+    let name = match self.current() {
+        Some(Token::Symbol(s)) => s.clone(),
+        _ => return Err("macにはシンボルが必要です".to_string()),
+    };
+    self.advance();
+
+    // パラメータリスト [test & body]
+    self.expect(Token::LBracket)?;
+    let mut params = Vec::new();
+    let mut is_variadic = false;
+
+    while self.current() != Some(&Token::RBracket) {
+        match self.current() {
+            Some(Token::Symbol(s)) if s == "&" => {
+                is_variadic = true;
+                self.advance();
+                // &の後のシンボルが可変引数名
+                match self.current() {
+                    Some(Token::Symbol(s)) => {
+                        params.push(s.clone());
+                        self.advance();
                     }
+                    _ => return Err("&の後にシンボルが必要です".to_string()),
                 }
-
-                // 通常の式として再帰的に展開
-                let func = Box::new(self.expand(func)?);
-                let args = args.iter()
-                    .map(|a| self.expand(a))
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(Expr::Call { func, args })
             }
-
-            // 他の式も再帰的に展開
-            _ => {
-                // ... 実装 ...
+            Some(Token::Symbol(s)) => {
+                params.push(s.clone());
+                self.advance();
             }
+            _ => return Err("パラメータにはシンボルが必要です".to_string()),
         }
     }
+    self.expect(Token::RBracket)?;
 
-    fn expand_macro(&mut self, mac: &Macro, args: &[Expr]) -> Result<Expr, String> {
-        // 1. マクロのパラメータに引数をバインド
-        let mut env = mac.env.clone();
+    // 本体
+    let body = Box::new(self.parse_expr()?);
+    self.expect(Token::RParen)?;
+
+    Ok(Expr::Mac {
+        name,
+        params,
+        is_variadic,
+        body,
+    })
+}
+```
+
+**Rustポイント**: `Vec<String>` でパラメータを保存。`is_variadic` フラグで可変長引数を管理。
+
+#### quasiquoteの構文解析
+
+バッククォート `` ` `` を見つけたら Quasiquote ノードを作成:
+
+```rust
+fn parse_quasiquote(&mut self) -> Result<Expr, String> {
+    self.advance(); // `をスキップ
+    Ok(Expr::Quasiquote(Box::new(self.parse_expr()?)))
+}
+
+fn parse_unquote(&mut self) -> Result<Expr, String> {
+    self.advance(); // ,をスキップ
+    Ok(Expr::Unquote(Box::new(self.parse_expr()?)))
+}
+
+fn parse_unquote_splice(&mut self) -> Result<Expr, String> {
+    self.advance(); // ,@をスキップ
+    Ok(Expr::UnquoteSplice(Box::new(self.parse_expr()?)))
+}
+```
+
+### ステップ3: 評価器の実装
+
+#### macの評価 (src/eval.rs)
+
+`Expr::Mac` を評価して `Value::Macro` を環境に登録:
+
+```rust
+Expr::Mac { name, params, is_variadic, body } => {
+    let mac = Macro {
+        name: name.clone(),
+        params: params.clone(),
+        body: (**body).clone(),
+        env: env.borrow().clone(),
+        is_variadic: *is_variadic,
+    };
+    env.borrow_mut().set(name.clone(), Value::Macro(Rc::new(mac)));
+    Ok(Value::Symbol(name.clone()))
+}
+```
+
+#### マクロ展開
+
+関数呼び出しの際、マクロかチェックして展開:
+
+```rust
+Expr::Call { func, args } => {
+    let func_val = self.eval_with_env(func, env.clone())?;
+
+    // マクロの場合は展開してから評価
+    if let Value::Macro(mac) = &func_val {
+        let expanded = self.expand_macro(&mac, args, env.clone())?;
+        return self.eval_with_env(&expanded, env);
+    }
+
+    // 通常の関数呼び出し
+    // ...
+}
+```
+
+#### expand_macro の実装
+
+マクロ展開の核心部分:
+
+```rust
+fn expand_macro(
+    &mut self,
+    mac: &Macro,
+    args: &[Expr],
+    _env: Rc<RefCell<Env>>
+) -> Result<Expr, String> {
+    // マクロ用の環境を作成
+    let parent_env = Rc::new(RefCell::new(mac.env.clone()));
+    let mut new_env = Env::with_parent(parent_env);
+
+    if mac.is_variadic {
+        // 可変長引数: [test & body] の場合
+        let fixed_count = mac.params.len() - 1;
+
+        // 固定引数を設定
+        for i in 0..fixed_count {
+            let arg_val = self.expr_to_value(&args[i])?;
+            new_env.set(mac.params[i].clone(), arg_val);
+        }
+
+        // 残りを可変引数として設定
+        let rest: Vec<Value> = args[fixed_count..]
+            .iter()
+            .map(|e| self.expr_to_value(e))
+            .collect::<Result<Vec<_>, _>>()?;
+        new_env.set(mac.params[fixed_count].clone(), Value::List(rest));
+    } else {
+        // 通常の引数
         for (param, arg) in mac.params.iter().zip(args.iter()) {
-            env.set(param.clone(), /* Exprを保存 */);
+            let arg_val = self.expr_to_value(arg)?;
+            new_env.set(param.clone(), arg_val);
         }
-
-        // 2. マクロの本体を評価（これがquasiquoteの処理）
-        let expanded = self.eval_quasiquote(&mac.body, &env)?;
-
-        // 3. 展開結果を再度展開（ネストしたマクロに対応）
-        self.expand(&expanded)
     }
 
-    fn eval_quasiquote(&self, expr: &Expr, env: &Env) -> Result<Expr, String> {
-        match expr {
-            Expr::Unquote(e) => {
-                // ,expr は env から値を取得
-                self.eval_expr(e, env)
-            }
-            Expr::List(items) => {
-                let mut result = Vec::new();
-                for item in items {
-                    match item {
-                        Expr::UnquoteSplice(e) => {
-                            // ,@expr はリストを展開して挿入
-                            let list = self.eval_expr(e, env)?;
-                            if let Expr::List(items) = list {
-                                result.extend(items);
+    // マクロ本体を評価（quasiquoteを処理）
+    let new_env_rc = Rc::new(RefCell::new(new_env));
+    let result = self.eval_with_env(&mac.body, new_env_rc)?;
+
+    // 結果をExprに変換
+    self.value_to_expr(&result)
+}
+```
+
+**重要な点**:
+- マクロは引数を**評価せずに**受け取る (`args: &[Expr]`)
+- `expr_to_value` でExprをValueに変換してマクロ環境に保存
+- マクロ本体はquasiquoteで記述されているので、評価すると展開される
+- `value_to_expr` で結果を再びExprに変換して、それを評価
+
+#### quasiquoteの評価
+
+テンプレートを展開する:
+
+```rust
+fn eval_quasiquote(
+    &mut self,
+    expr: &Expr,
+    env: Rc<RefCell<Env>>,
+    depth: usize
+) -> Result<Value, String> {
+    match expr {
+        Expr::Unquote(e) if depth == 0 => {
+            // ,expr を評価
+            self.eval_with_env(e, env)
+        }
+        Expr::Quasiquote(e) => {
+            // ネストしたquasiquote
+            self.eval_quasiquote(e, env, depth + 1)
+        }
+        Expr::List(items) => {
+            let mut result = Vec::new();
+            for item in items {
+                if let Expr::UnquoteSplice(e) = item {
+                    if depth == 0 {
+                        // ,@expr を評価してリストを展開
+                        let val = self.eval_with_env(e, env.clone())?;
+                        match val {
+                            Value::List(v) | Value::Vector(v) => {
+                                result.extend(v);
                             }
+                            _ => return Err("unquote-splice: リストが必要です".to_string()),
                         }
-                        _ => {
-                            result.push(self.eval_quasiquote(item, env)?);
-                        }
+                    } else {
+                        let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                        result.push(val);
                     }
+                } else {
+                    let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                    result.push(val);
                 }
-                Ok(Expr::List(result))
             }
-            _ => Ok(expr.clone()),
+            Ok(Value::List(result))
         }
+        Expr::Call { func, args } => {
+            // (+ ,x 1) のようなCallも処理
+            let mut result = vec![self.eval_quasiquote(func, env.clone(), depth)?];
+            for arg in args {
+                if let Expr::UnquoteSplice(e) = arg {
+                    if depth == 0 {
+                        let val = self.eval_with_env(e, env.clone())?;
+                        match val {
+                            Value::List(v) | Value::Vector(v) => {
+                                result.extend(v);
+                            }
+                            _ => return Err("unquote-splice: リストが必要です".to_string()),
+                        }
+                    } else {
+                        let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                        result.push(val);
+                    }
+                } else {
+                    let val = self.eval_quasiquote(arg, env.clone(), depth)?;
+                    result.push(val);
+                }
+            }
+            Ok(Value::List(result))
+        }
+        // if, do などの特殊形式も処理
+        Expr::If { test, then, else_ } => {
+            let test_val = self.eval_quasiquote(test, env.clone(), depth)?;
+            let then_val = self.eval_quasiquote(then, env.clone(), depth)?;
+            let else_val = self.eval_quasiquote(else_, env.clone(), depth)?;
+            Ok(Value::List(vec![
+                Value::Symbol("if".to_string()),
+                test_val,
+                then_val,
+                else_val,
+            ]))
+        }
+        Expr::Do(exprs) => {
+            let mut result = vec![Value::Symbol("do".to_string())];
+            for e in exprs {
+                if let Expr::UnquoteSplice(inner) = e {
+                    if depth == 0 {
+                        let val = self.eval_with_env(inner, env.clone())?;
+                        match val {
+                            Value::List(v) | Value::Vector(v) => {
+                                result.extend(v);
+                            }
+                            _ => return Err("unquote-splice: リストが必要です".to_string()),
+                        }
+                    } else {
+                        let val = self.eval_quasiquote(inner, env.clone(), depth - 1)?;
+                        result.push(val);
+                    }
+                } else {
+                    let val = self.eval_quasiquote(e, env.clone(), depth)?;
+                    result.push(val);
+                }
+            }
+            Ok(Value::List(result))
+        }
+        // その他はそのまま
+        _ => Ok(self.expr_to_value(expr)?),
     }
 }
 ```
 
-### ステップ4: uvarの実装
+**Rustポイント**:
+- `depth` でネストしたquasiquoteを追跡
+- `match` でExprの各種類を処理
+- `Vec::extend` でリストの展開
 
-変数名の衝突を避けるため、ユニークな変数を生成:
+#### ExprとValueの相互変換
+
+マクロシステムでは、コード（Expr）とデータ（Value）を相互変換する必要がある:
 
 ```rust
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static UVAR_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-pub fn uvar() -> String {
-    let id = UVAR_COUNTER.fetch_add(1, Ordering::SeqCst);
-    format!("#:uvar-{}", id)
+fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
+    match expr {
+        Expr::Integer(n) => Ok(Value::Integer(*n)),
+        Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
+        Expr::List(items) => {
+            let values: Result<Vec<_>, _> = items.iter()
+                .map(|e| self.expr_to_value(e))
+                .collect();
+            Ok(Value::List(values?))
+        }
+        // ... 他の型も同様 ...
+    }
 }
 
-// 使用例
-fn native_uvar(_args: &[Value]) -> Result<Value, String> {
-    Ok(Value::Symbol(uvar()))
+fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
+    match val {
+        Value::Integer(n) => Ok(Expr::Integer(*n)),
+        Value::Symbol(s) => Ok(Expr::Symbol(s.clone())),
+        Value::List(items) => {
+            let exprs: Result<Vec<_>, _> = items.iter()
+                .map(|v| self.value_to_expr(v))
+                .collect();
+            let exprs = exprs?;
+
+            // 先頭がシンボルの場合はCallに変換（重要！）
+            if let Some(Expr::Symbol(_)) = exprs.first() {
+                if exprs.len() == 1 {
+                    Ok(Expr::List(exprs))
+                } else {
+                    // (+ 1 2) のような形をCallに変換
+                    Ok(Expr::Call {
+                        func: Box::new(exprs[0].clone()),
+                        args: exprs[1..].to_vec(),
+                    })
+                }
+            } else {
+                Ok(Expr::List(exprs))
+            }
+        }
+        // ... 他の型も同様 ...
+    }
 }
 ```
 
-**Rustポイント**: `AtomicUsize` はスレッドセーフなカウンター。
+**重要**: マクロが生成したリスト `(+ 1 2)` を `Expr::Call` に変換することで、評価可能なコードになる。
 
-```rust
-use std::sync::atomic::{AtomicUsize, Ordering};
+### ステップ4: テストと実例
 
-static COUNTER: AtomicUsize = AtomicUsize::new(0);
+実際に動作確認:
 
-fn get_id() -> usize {
-    COUNTER.fetch_add(1, Ordering::SeqCst)
-}
+```lisp
+;; whenマクロの定義
+(mac when [test & body]
+  `(if ,test (do ,@body) nil))
+
+;; 使用例
+(when true
+  (print "hello")
+  (print "world"))
 ```
+
+これは以下のように展開される:
+
+```lisp
+(if true (do (print "hello") (print "world")) nil)
+```
+
+**展開の流れ**:
+
+1. `when` が評価される → `Value::Macro` が見つかる
+2. `expand_macro` が呼ばれる
+   - `test` に `Expr::Symbol("true")` がバインド
+   - `body` に `[Expr::Call(print, "hello"), Expr::Call(print, "world")]` がバインド
+3. マクロ本体 `` `(if ,test (do ,@body) nil)`` が評価される
+   - `,test` → `true` に展開
+   - `,@body` → `(print "hello") (print "world")` に展開
+4. 結果: `(if true (do (print "hello") (print "world")) nil)`
+5. この展開結果が評価される
+
+### トラブルシューティング
+
+実装中によくあるエラー:
+
+#### 1. "unquote: quasiquote外では使用できません"
+
+**原因**: `Expr::Call` の処理を忘れている
+
+**解決**: `eval_quasiquote` で `Expr::Call` も処理する
+
+#### 2. "未定義の変数: if"
+
+**原因**: `Expr::If` などの特殊形式を `expr_to_value` で変換できない
+
+**解決**: `eval_quasiquote` で特殊形式を明示的に処理する
+
+#### 3. `(#<native-function:+> 5 1)` と表示される
+
+**原因**: `value_to_expr` が `Value::List` を `Expr::List` に変換している
+
+**解決**: 先頭がシンボルのリストは `Expr::Call` に変換する
+
+### 学んだこと
+
+#### Rustについて
+
+- `Rc<T>` による共有所有権
+- `match` によるパターンマッチング
+- `Vec::extend` によるリスト結合
+- 再帰的なデータ構造の処理
+
+#### 言語実装について
+
+- マクロは構文木を操作する関数
+- quasiquoteはコード生成のテンプレート
+- ExprとValueの相互変換が必要
+- 特殊形式の処理には注意が必要
 
 ### 練習問題
 
-1. **whenマクロの実装**: `(mac when (test & body) ...)`
-2. **orマクロの実装**: 短絡評価を実現
-3. **aifマクロの実装**: anaphoric if（itが使える）
+1. **orマクロ**: 短絡評価を実現する `(mac or [a b] ...)`
+2. **andマクロ**: 同様に短絡評価する `(mac and [a b] ...)`
+3. **unlessマクロ**: `when` の逆 `(mac unless [test & body] ...)`
 
 ---
 

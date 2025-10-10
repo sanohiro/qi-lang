@@ -193,7 +193,7 @@ impl Lexer {
                     }
                 }
                 if depth != 0 {
-                    return Err("f-string: 閉じられていない { があります".to_string());
+                    return Err(msg(MsgKey::FStringUnclosedBrace).to_string());
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
@@ -216,7 +216,7 @@ impl Lexer {
             }
         }
 
-        Err("f-string: 閉じられていない文字列です".to_string())
+        Err(msg(MsgKey::FStringUnclosed).to_string())
     }
 
     fn read_number(&mut self) -> Token {

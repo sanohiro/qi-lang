@@ -482,7 +482,7 @@ impl Parser {
                             params.push(s.clone());
                             self.advance();
                         }
-                        _ => return Err("mac: &の後にシンボルが必要です".to_string()),
+                        _ => return Err(msg(MsgKey::MacVarargNeedsSymbol).to_string()),
                     }
                 }
                 Some(Token::Symbol(s)) => {

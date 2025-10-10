@@ -271,10 +271,10 @@ impl Evaluator {
 
             Expr::Quasiquote(expr) => self.eval_quasiquote(expr, env, 0),
 
-            Expr::Unquote(_) => Err("unquote: quasiquote外では使用できません".to_string()),
+            Expr::Unquote(_) => Err(msg(MsgKey::UnquoteOutsideQuasiquote).to_string()),
 
             Expr::UnquoteSplice(_) => {
-                Err("unquote-splice: quasiquote外では使用できません".to_string())
+                Err(msg(MsgKey::UnquoteSpliceOutsideQuasiquote).to_string())
             }
 
             // モジュールシステム
@@ -1193,10 +1193,7 @@ impl Evaluator {
 
         // 循環参照チェック
         if self.loading_modules.contains(&name.to_string()) {
-            return Err(format!(
-                "循環参照を検出しました: {}",
-                self.loading_modules.join(" -> ")
-            ));
+            return Err(fmt_msg(MsgKey::CircularDependency, &[&self.loading_modules.join(" -> ")]));
         }
 
         // ロード中のモジュールリストに追加
@@ -1222,10 +1219,10 @@ impl Evaluator {
 
         // パースして評価
         let mut parser = crate::parser::Parser::new(&content)
-            .map_err(|e| format!("モジュール{}のパーサー初期化エラー: {}", name, e))?;
+            .map_err(|e| fmt_msg(MsgKey::ModuleParserInitError, &[name, &e]))?;
 
         let exprs = parser.parse_all()
-            .map_err(|e| format!("モジュール{}のパースエラー: {}", name, e))?;
+            .map_err(|e| fmt_msg(MsgKey::ModuleParseError, &[name, &e]))?;
 
         // 新しい環境で評価
         let module_env = Rc::new(RefCell::new(Env::new()));
@@ -1248,7 +1245,7 @@ impl Evaluator {
 
         // モジュールが登録されているか確認
         self.modules.get(name).cloned()
-            .ok_or_else(|| format!("モジュール{}はexportを含む必要があります", name))
+            .ok_or_else(|| fmt_msg(MsgKey::ModuleMustExport, &[name]))
     }
 
     /// f-stringを評価
@@ -1356,7 +1353,7 @@ impl Evaluator {
                             loop_env_rc.borrow_mut().set(name.clone(), value.clone());
                         }
                     } else {
-                        return Err("recurが見つかりません".to_string());
+                        return Err(msg(MsgKey::RecurNotFound).to_string());
                     }
                 }
                 Err(e) => return Err(e),
@@ -1403,7 +1400,7 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
                             }
                         } else {
                             let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
@@ -1436,7 +1433,7 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
                             }
                         } else {
                             let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
@@ -1470,7 +1467,7 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err("unquote-splice: リストまたはベクタが必要です".to_string()),
+                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
                             }
                         } else {
                             result.push(self.eval_quasiquote(us, env.clone(), depth - 1)?);
@@ -1602,7 +1599,7 @@ impl Evaluator {
                 Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer/loop/recur/match/mac"]))
             }
             Expr::FString(_) => {
-                Err("f-string はquoteできません".to_string())
+                Err(msg(MsgKey::FStringCannotBeQuoted).to_string())
             }
         }
     }
@@ -1616,7 +1613,7 @@ impl Evaluator {
         if mac.is_variadic {
             // 可変長引数の処理：最後のパラメータが可変引数
             if mac.params.is_empty() {
-                return Err(format!("mac {}: 可変長マクロはパラメータが必要です", mac.name));
+                return Err(msg(MsgKey::VariadicMacroNeedsParams).to_string());
             }
 
             let fixed_count = mac.params.len() - 1;
@@ -1734,7 +1731,7 @@ impl Evaluator {
                 let exprs: Result<Vec<_>, _> = items.iter().map(|v| self.value_to_expr(v)).collect();
                 Ok(Expr::Vector(exprs?))
             }
-            _ => Err("value_to_expr: この値は変換できません".to_string()),
+            _ => Err(msg(MsgKey::ValueCannotBeConverted).to_string()),
         }
     }
 }
