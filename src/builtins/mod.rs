@@ -22,7 +22,9 @@ pub mod comparison;
 pub mod concurrency;
 pub mod error;
 pub mod hof;
+pub mod http;
 pub mod io;
+pub mod json;
 pub mod list;
 pub mod logic;
 pub mod map;
@@ -265,6 +267,11 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "json-stringify" => util::native_json_stringify,
         "json-pretty" => util::native_json_pretty,
 
+        // JSONモジュール（新形式）
+        "json/parse" => json::native_parse,
+        "json/stringify" => json::native_stringify,
+        "json/pretty" => json::native_pretty,
+
         // 型変換
         "to-int" => util::native_to_int,
         "to-float" => util::native_to_float,
@@ -288,6 +295,16 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "await" => concurrency::native_await,
         "all" => concurrency::native_all,
         "race" => concurrency::native_race,
+
+        // HTTP
+        "http/get" => http::native_get,
+        "http/post" => http::native_post,
+        "http/put" => http::native_put,
+        "http/delete" => http::native_delete,
+        "http/patch" => http::native_patch,
+        "http/head" => http::native_head,
+        "http/options" => http::native_options,
+        "http/request" => http::native_request,
     );
 }
 
@@ -402,4 +419,13 @@ pub fn then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 
 pub fn catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_catch(args, evaluator)
+}
+
+/// HTTP関数（Evaluatorが必要な関数）
+pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    http::native_get_async(args, evaluator)
+}
+
+pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    http::native_post_async(args, evaluator)
 }
