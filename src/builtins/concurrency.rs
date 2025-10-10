@@ -152,6 +152,243 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
     }
 }
 
+// ============================================================================
+// Layer 3: async/await - 高レベル非同期処理
+// ============================================================================
+
+/// await - Promiseを待機（チャネルから受信）
+///
+/// 引数:
+/// - promise: Promise（チャネル）
+///
+/// 戻り値:
+/// - Promiseの結果
+///
+/// 例:
+/// ```lisp
+/// (def p (go (fn [] (+ 1 2))))
+/// (await p)  ;; => 3
+/// ```
+pub fn native_await(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("await requires 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Channel(ch) => ch
+            .receiver
+            .recv()
+            .map_err(|_| "await: promise is closed".to_string()),
+        _ => Err("await: argument must be a promise (channel)".to_string()),
+    }
+}
+
+/// then - Promiseチェーン
+///
+/// 引数:
+/// - promise: Promise（チャネル）
+/// - f: 結果に適用する関数
+///
+/// 戻り値:
+/// - 新しいPromise
+///
+/// 例:
+/// ```lisp
+/// (def p (go (fn [] 10)))
+/// (def p2 (then p (fn [x] (* x 2))))
+/// (await p2)  ;; => 20
+/// ```
+pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("then requires 2 arguments (promise, fn)".to_string());
+    }
+
+    let promise = match &args[0] {
+        Value::Channel(ch) => ch.clone(),
+        _ => return Err("then: first argument must be a promise (channel)".to_string()),
+    };
+
+    let f = args[1].clone();
+    let eval = evaluator.clone();
+
+    // 新しいPromiseを作成
+    let (sender, receiver) = bounded(1);
+    let result_channel = Arc::new(Channel {
+        sender: sender.clone(),
+        receiver,
+    });
+
+    // 別スレッドで処理
+    std::thread::spawn(move || {
+        // 元のPromiseから受信
+        if let Ok(value) = promise.receiver.recv() {
+            // 関数を適用
+            let result = eval.apply_function(&f, &[value]);
+            let _ = sender.send(result.unwrap_or_else(|e| Value::String(e)));
+        }
+    });
+
+    Ok(Value::Channel(result_channel))
+}
+
+/// catch - エラーハンドリング
+///
+/// 引数:
+/// - promise: Promise（チャネル）
+/// - handler: エラーハンドラ関数
+///
+/// 戻り値:
+/// - 新しいPromise
+///
+/// 例:
+/// ```lisp
+/// (def p (go (fn [] (error "oops"))))
+/// (def p2 (catch p (fn [e] (println "Error:" e))))
+/// ```
+pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("catch requires 2 arguments (promise, handler)".to_string());
+    }
+
+    let promise = match &args[0] {
+        Value::Channel(ch) => ch.clone(),
+        _ => return Err("catch: first argument must be a promise (channel)".to_string()),
+    };
+
+    let handler = args[1].clone();
+    let eval = evaluator.clone();
+
+    // 新しいPromiseを作成
+    let (sender, receiver) = bounded(1);
+    let result_channel = Arc::new(Channel {
+        sender: sender.clone(),
+        receiver,
+    });
+
+    // 別スレッドで処理
+    std::thread::spawn(move || {
+        // 元のPromiseから受信
+        match promise.receiver.recv() {
+            Ok(value) => {
+                // 成功した場合はそのまま転送
+                let _ = sender.send(value);
+            }
+            Err(_) => {
+                // エラーの場合はハンドラを呼び出す
+                let result = eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
+                let _ = sender.send(result.unwrap_or(Value::Nil));
+            }
+        }
+    });
+
+    Ok(Value::Channel(result_channel))
+}
+
+/// all - 複数のPromiseを並列実行して全て待機
+///
+/// 引数:
+/// - promises: Promiseのリスト/ベクタ
+///
+/// 戻り値:
+/// - 全ての結果を含むリストを返すPromise
+///
+/// 例:
+/// ```lisp
+/// (def promises [(go (fn [] 1)) (go (fn [] 2)) (go (fn [] 3))])
+/// (def result (await (all promises)))  ;; => [1 2 3]
+/// ```
+pub fn native_all(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("all requires 1 argument (list of promises)".to_string());
+    }
+
+    let promises = match &args[0] {
+        Value::List(ps) | Value::Vector(ps) => ps,
+        _ => return Err("all: argument must be a list or vector of promises".to_string()),
+    };
+
+    // 新しいPromiseを作成
+    let (sender, receiver) = bounded(1);
+    let result_channel = Arc::new(Channel {
+        sender: sender.clone(),
+        receiver,
+    });
+
+    let promises = promises.clone();
+    std::thread::spawn(move || {
+        let mut results = Vec::new();
+        for promise in promises {
+            if let Value::Channel(ch) = promise {
+                match ch.receiver.recv() {
+                    Ok(value) => results.push(value),
+                    Err(_) => {
+                        let _ = sender.send(Value::String("promise failed".to_string()));
+                        return;
+                    }
+                }
+            } else {
+                let _ = sender.send(Value::String("not a promise".to_string()));
+                return;
+            }
+        }
+        let _ = sender.send(Value::List(results));
+    });
+
+    Ok(Value::Channel(result_channel))
+}
+
+/// race - 複数のPromiseで最初に完了したものを返す
+///
+/// 引数:
+/// - promises: Promiseのリスト/ベクタ
+///
+/// 戻り値:
+/// - 最初に完了したPromiseの結果を返すPromise
+///
+/// 例:
+/// ```lisp
+/// (def promises [(go (fn [] (sleep 100) 1)) (go (fn [] 2))])
+/// (def result (await (race promises)))  ;; => 2 (最速)
+/// ```
+pub fn native_race(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("race requires 1 argument (list of promises)".to_string());
+    }
+
+    let promises = match &args[0] {
+        Value::List(ps) | Value::Vector(ps) => ps,
+        _ => return Err("race: argument must be a list or vector of promises".to_string()),
+    };
+
+    // 新しいPromiseを作成
+    let (sender, receiver) = bounded(1);
+    let result_channel = Arc::new(Channel {
+        sender: sender.clone(),
+        receiver,
+    });
+
+    // すべてのpromiseから受信を試みる（最初に完了したものを返す）
+    for promise in promises {
+        if let Value::Channel(ch) = promise {
+            let sender = sender.clone();
+            let receiver = ch.receiver.clone();
+            std::thread::spawn(move || {
+                if let Ok(value) = receiver.recv() {
+                    let _ = sender.send(value);
+                }
+            });
+        } else {
+            return Err("race: all elements must be promises (channels)".to_string());
+        }
+    }
+
+    Ok(Value::Channel(result_channel))
+}
+
+// ============================================================================
+// Layer 1: go/chan - 基盤
+// ============================================================================
+
 /// go - goroutine風の非同期実行
 ///
 /// 引数:

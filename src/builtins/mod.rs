@@ -283,6 +283,11 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "close!" => concurrency::native_close,
         "fan-out" => concurrency::native_fan_out,
         "fan-in" => concurrency::native_fan_in,
+
+        // async/await
+        "await" => concurrency::native_await,
+        "all" => concurrency::native_all,
+        "race" => concurrency::native_race,
     );
 }
 
@@ -389,4 +394,12 @@ pub fn pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
 
 pub fn pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_pipeline_filter(args, evaluator)
+}
+
+pub fn then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_then(args, evaluator)
+}
+
+pub fn catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_catch(args, evaluator)
 }

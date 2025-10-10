@@ -343,6 +343,8 @@ impl Evaluator {
                         "pipeline" => return self.eval_pipeline(args, env),
                         "pipeline-map" => return self.eval_pipeline_map(args, env),
                         "pipeline-filter" => return self.eval_pipeline_filter(args, env),
+                        "then" => return self.eval_then(args, env),
+                        "catch" => return self.eval_catch(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -881,6 +883,28 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::pipeline_filter(&vals, self)
+    }
+
+    fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("then requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::then(&vals, self)
+    }
+
+    fn eval_catch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("catch requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::catch(&vals, self)
     }
 
 }
