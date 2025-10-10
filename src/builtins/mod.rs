@@ -281,6 +281,8 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "recv!" => concurrency::native_recv,
         "try-recv!" => concurrency::native_try_recv,
         "close!" => concurrency::native_close,
+        "fan-out" => concurrency::native_fan_out,
+        "fan-in" => concurrency::native_fan_in,
     );
 }
 
@@ -375,4 +377,16 @@ pub fn sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 /// 並行処理関数（Evaluatorが必要な関数）
 pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_go(args, evaluator)
+}
+
+pub fn pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_pipeline(args, evaluator)
+}
+
+pub fn pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_pipeline_map(args, evaluator)
+}
+
+pub fn pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_pipeline_filter(args, evaluator)
 }

@@ -340,6 +340,9 @@ impl Evaluator {
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "go" => return self.eval_go(args, env),
+                        "pipeline" => return self.eval_pipeline(args, env),
+                        "pipeline-map" => return self.eval_pipeline_map(args, env),
+                        "pipeline-filter" => return self.eval_pipeline_filter(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -845,6 +848,39 @@ impl Evaluator {
         // 式を評価して値に変換
         let val = self.eval_with_env(&args[0], env)?;
         builtins::go(&[val], self)
+    }
+
+    fn eval_pipeline(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 3 {
+            return Err("pipeline requires 3 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::pipeline(&vals, self)
+    }
+
+    fn eval_pipeline_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 3 {
+            return Err("pipeline-map requires 3 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::pipeline_map(&vals, self)
+    }
+
+    fn eval_pipeline_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 3 {
+            return Err("pipeline-filter requires 3 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::pipeline_filter(&vals, self)
     }
 
 }

@@ -199,3 +199,382 @@ pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
 
     Ok(Value::Channel(result_channel))
 }
+
+/// fan-out - チャネルを複数に分岐
+///
+/// 引数:
+/// - channel: 入力チャネル
+/// - n: 分岐数
+///
+/// 戻り値:
+/// - 分岐したチャネルのリスト
+///
+/// 例:
+/// ```lisp
+/// (def in-ch (chan))
+/// (def out-chs (fan-out in-ch 3))  ;; 3つに分岐
+/// ```
+pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["fan-out"]));
+    }
+
+    let in_channel = match &args[0] {
+        Value::Channel(ch) => ch.clone(),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["fan-out", "a channel"])),
+    };
+
+    let n = match &args[1] {
+        Value::Integer(n) if *n > 0 => *n as usize,
+        Value::Integer(_) => return Err("fan-out: n must be positive".to_string()),
+        _ => return Err("fan-out: n must be an integer".to_string()),
+    };
+
+    // 出力チャネルを作成
+    let mut out_channels = Vec::new();
+    for _ in 0..n {
+        let (sender, receiver) = unbounded();
+        out_channels.push(Value::Channel(Arc::new(Channel { sender, receiver })));
+    }
+
+    // 入力から出力へ分配するgoroutineを起動
+    let out_senders: Vec<_> = out_channels
+        .iter()
+        .filter_map(|ch| {
+            if let Value::Channel(c) = ch {
+                Some(c.sender.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let in_receiver = in_channel.receiver.clone();
+    std::thread::spawn(move || {
+        while let Ok(value) = in_receiver.recv() {
+            // すべての出力チャネルに送信
+            for sender in &out_senders {
+                let _ = sender.send(value.clone());
+            }
+        }
+    });
+
+    Ok(Value::List(out_channels))
+}
+
+/// fan-in - 複数チャネルを1つに集約
+///
+/// 引数:
+/// - channels: チャネルのリスト/ベクタ
+///
+/// 戻り値:
+/// - 統合されたチャネル
+///
+/// 例:
+/// ```lisp
+/// (def chs [(chan) (chan) (chan)])
+/// (def merged (fan-in chs))
+/// ```
+pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["fan-in"]));
+    }
+
+    let channels = match &args[0] {
+        Value::List(chs) | Value::Vector(chs) => chs,
+        _ => return Err("fan-in: argument must be a list or vector of channels".to_string()),
+    };
+
+    // 出力チャネルを作成
+    let (out_sender, out_receiver) = unbounded();
+    let result_channel = Arc::new(Channel {
+        sender: out_sender.clone(),
+        receiver: out_receiver,
+    });
+
+    // 各入力チャネルから受信して出力に送信
+    for ch in channels {
+        if let Value::Channel(c) = ch {
+            let sender = out_sender.clone();
+            let receiver = c.receiver.clone();
+            std::thread::spawn(move || {
+                while let Ok(value) = receiver.recv() {
+                    if sender.send(value).is_err() {
+                        break;
+                    }
+                }
+            });
+        } else {
+            return Err("fan-in: all elements must be channels".to_string());
+        }
+    }
+
+    Ok(Value::Channel(result_channel))
+}
+
+/// pipeline - 汎用パイプライン処理
+///
+/// 引数:
+/// - n: 並列度
+/// - xf: 変換関数
+/// - in-ch: 入力チャネル
+///
+/// 戻り値:
+/// - 出力チャネル
+///
+/// 例:
+/// ```lisp
+/// (def in-ch (chan))
+/// (def out-ch (pipeline 4 (fn [x] (* x x)) in-ch))
+/// ```
+pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("pipeline requires 3 arguments (n, xf, in-ch)".to_string());
+    }
+
+    let n = match &args[0] {
+        Value::Integer(n) if *n > 0 => *n as usize,
+        Value::Integer(_) => return Err("pipeline: n must be positive".to_string()),
+        _ => return Err("pipeline: n must be an integer".to_string()),
+    };
+
+    let xf = args[1].clone();
+
+    let in_channel = match &args[2] {
+        Value::Channel(ch) => ch.clone(),
+        _ => return Err("pipeline: third argument must be a channel".to_string()),
+    };
+
+    // 出力チャネルを作成
+    let (out_sender, out_receiver) = unbounded();
+    let result_channel = Arc::new(Channel {
+        sender: out_sender.clone(),
+        receiver: out_receiver,
+    });
+
+    // n個のワーカーを起動
+    for _ in 0..n {
+        let in_receiver = in_channel.receiver.clone();
+        let out_sender = out_sender.clone();
+        let xf = xf.clone();
+        let eval = evaluator.clone();
+
+        std::thread::spawn(move || {
+            while let Ok(value) = in_receiver.recv() {
+                // 変換関数を適用
+                match eval.apply_function(&xf, &[value]) {
+                    Ok(result) => {
+                        if out_sender.send(result).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+    }
+
+    Ok(Value::Channel(result_channel))
+}
+
+/// pipeline-map - コレクションにパイプライン処理でmapを適用
+///
+/// 引数:
+/// - n: 並列度
+/// - f: 変換関数
+/// - coll: コレクション
+///
+/// 戻り値:
+/// - 変換後のリスト
+///
+/// 例:
+/// ```lisp
+/// (pipeline-map 4 (fn [x] (* x x)) [1 2 3 4 5])
+/// ```
+pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("pipeline-map requires 3 arguments (n, f, coll)".to_string());
+    }
+
+    let n = match &args[0] {
+        Value::Integer(n) if *n > 0 => *n as usize,
+        Value::Integer(_) => return Err("pipeline-map: n must be positive".to_string()),
+        _ => return Err("pipeline-map: n must be an integer".to_string()),
+    };
+
+    let f = args[1].clone();
+
+    let items = match &args[2] {
+        Value::List(items) | Value::Vector(items) => items.clone(),
+        _ => return Err("pipeline-map: third argument must be a list or vector".to_string()),
+    };
+
+    // 入出力チャネルを作成
+    let (in_sender, in_receiver) = unbounded();
+    let (out_sender, out_receiver) = unbounded();
+
+    let in_channel = Arc::new(Channel {
+        sender: in_sender.clone(),
+        receiver: in_receiver,
+    });
+
+    // ワーカーを起動
+    for _ in 0..n {
+        let in_receiver = in_channel.receiver.clone();
+        let out_sender = out_sender.clone();
+        let f = f.clone();
+        let eval = evaluator.clone();
+
+        std::thread::spawn(move || {
+            while let Ok(msg) = in_receiver.recv() {
+                // [idx, value] の形式
+                if let Value::Vector(vec) = msg {
+                    if vec.len() == 2 {
+                        if let Value::Integer(idx) = vec[0] {
+                            match eval.apply_function(&f, &[vec[1].clone()]) {
+                                Ok(result) => {
+                                    if out_sender
+                                        .send(Value::Vector(vec![Value::Integer(idx), result]))
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 入力を送信
+    for (i, item) in items.iter().enumerate() {
+        let _ = in_sender.send(Value::Vector(vec![Value::Integer(i as i64), item.clone()]));
+    }
+    drop(in_sender);
+
+    // 結果を収集（順序を保持）
+    let mut results = vec![Value::Nil; items.len()];
+    for _ in 0..items.len() {
+        if let Ok(Value::Vector(vec)) = out_receiver.recv() {
+            if vec.len() == 2 {
+                if let Value::Integer(idx) = vec[0] {
+                    results[idx as usize] = vec[1].clone();
+                }
+            }
+        }
+    }
+
+    Ok(Value::List(results))
+}
+
+/// pipeline-filter - コレクションにパイプライン処理でfilterを適用
+///
+/// 引数:
+/// - n: 並列度
+/// - pred: 述語関数
+/// - coll: コレクション
+///
+/// 戻り値:
+/// - フィルタ後のリスト
+///
+/// 例:
+/// ```lisp
+/// (pipeline-filter 4 even? [1 2 3 4 5 6])
+/// ```
+pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err("pipeline-filter requires 3 arguments (n, pred, coll)".to_string());
+    }
+
+    let n = match &args[0] {
+        Value::Integer(n) if *n > 0 => *n as usize,
+        Value::Integer(_) => return Err("pipeline-filter: n must be positive".to_string()),
+        _ => return Err("pipeline-filter: n must be an integer".to_string()),
+    };
+
+    let pred = args[1].clone();
+
+    let items = match &args[2] {
+        Value::List(items) | Value::Vector(items) => items.clone(),
+        _ => return Err("pipeline-filter: third argument must be a list or vector".to_string()),
+    };
+
+    // 入出力チャネルを作成
+    let (in_sender, in_receiver) = unbounded();
+    let (out_sender, out_receiver) = unbounded();
+
+    let in_channel = Arc::new(Channel {
+        sender: in_sender.clone(),
+        receiver: in_receiver,
+    });
+
+    // ワーカーを起動
+    for _ in 0..n {
+        let in_receiver = in_channel.receiver.clone();
+        let out_sender = out_sender.clone();
+        let pred = pred.clone();
+        let eval = evaluator.clone();
+
+        std::thread::spawn(move || {
+            while let Ok(msg) = in_receiver.recv() {
+                // [idx, value] の形式
+                if let Value::Vector(vec) = msg {
+                    if vec.len() == 2 {
+                        if let Value::Integer(idx) = vec[0] {
+                            match eval.apply_function(&pred, &[vec[1].clone()]) {
+                                Ok(result) if result.is_truthy() => {
+                                    // マッチした場合は送信
+                                    if out_sender
+                                        .send(Value::Vector(vec![Value::Integer(idx), vec[1].clone()]))
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                                Ok(_) => {
+                                    // マッチしなかった場合はnilを送信
+                                    if out_sender
+                                        .send(Value::Vector(vec![Value::Integer(idx), Value::Nil]))
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 入力を送信
+    for (i, item) in items.iter().enumerate() {
+        let _ = in_sender.send(Value::Vector(vec![Value::Integer(i as i64), item.clone()]));
+    }
+    drop(in_sender);
+
+    // 結果を収集（順序を保持、nilは除外）
+    let mut indexed_results = Vec::new();
+    for _ in 0..items.len() {
+        if let Ok(Value::Vector(vec)) = out_receiver.recv() {
+            if vec.len() == 2 {
+                if let Value::Integer(idx) = vec[0] {
+                    if !matches!(vec[1], Value::Nil) {
+                        indexed_results.push((idx as usize, vec[1].clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    // インデックス順にソート
+    indexed_results.sort_by_key(|(idx, _)| *idx);
+    let results: Vec<Value> = indexed_results.into_iter().map(|(_, v)| v).collect();
+
+    Ok(Value::List(results))
+}
