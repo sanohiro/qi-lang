@@ -617,3 +617,124 @@ pub fn native_sum_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
         _ => Err("sum-by: second argument must be a list or vector".to_string()),
     }
 }
+
+/// find - 条件を満たす最初の要素を返す
+pub fn native_find(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("find requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            for item in items {
+                let result = evaluator.apply_function(pred_fn, std::slice::from_ref(item))?;
+                if result.is_truthy() {
+                    return Ok(item.clone());
+                }
+            }
+            Ok(Value::Nil)
+        }
+        _ => Err("find: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// find-index - 条件を満たす最初の要素のインデックスを返す
+pub fn native_find_index(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("find-index requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            for (idx, item) in items.iter().enumerate() {
+                let result = evaluator.apply_function(pred_fn, std::slice::from_ref(item))?;
+                if result.is_truthy() {
+                    return Ok(Value::Integer(idx as i64));
+                }
+            }
+            Ok(Value::Nil)
+        }
+        _ => Err("find-index: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// every? - すべての要素が条件を満たすか
+pub fn native_every(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("every? requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            for item in items {
+                let result = evaluator.apply_function(pred_fn, std::slice::from_ref(item))?;
+                if !result.is_truthy() {
+                    return Ok(Value::Bool(false));
+                }
+            }
+            Ok(Value::Bool(true))
+        }
+        _ => Err("every?: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// some? - いずれかの要素が条件を満たすか
+pub fn native_some(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("some? requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            for item in items {
+                let result = evaluator.apply_function(pred_fn, std::slice::from_ref(item))?;
+                if result.is_truthy() {
+                    return Ok(Value::Bool(true));
+                }
+            }
+            Ok(Value::Bool(false))
+        }
+        _ => Err("some?: second argument must be a list or vector".to_string()),
+    }
+}
+
+/// zipmap - 2つのコレクションからマップを作成
+pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("zipmap requires 2 arguments (keys, vals)".to_string());
+    }
+
+    let keys = match &args[0] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("zipmap: first argument must be a list or vector".to_string()),
+    };
+
+    let vals = match &args[1] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("zipmap: second argument must be a list or vector".to_string()),
+    };
+
+    let mut result = std::collections::HashMap::new();
+    for (key, val) in keys.iter().zip(vals.iter()) {
+        let key_str = match key {
+            Value::String(s) => s.clone(),
+            Value::Keyword(k) => k.clone(),
+            _ => format!("{:?}", key),
+        };
+        result.insert(key_str, val.clone());
+    }
+
+    Ok(Value::Map(result))
+}

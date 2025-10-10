@@ -286,3 +286,53 @@ fn dissoc_in_helper(
     }
     Ok(())
 }
+
+/// update-keys - マップのすべてのキーに関数を適用
+pub fn native_update_keys(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("update-keys requires 2 arguments (key-fn, map)".to_string());
+    }
+
+    let key_fn = &args[0];
+    let map_val = &args[1];
+
+    match map_val {
+        Value::Map(m) => {
+            let mut result = std::collections::HashMap::new();
+            for (k, v) in m {
+                let key_val = Value::String(k.clone());
+                let new_key_val = evaluator.apply_function(key_fn, &[key_val])?;
+                let new_key = match new_key_val {
+                    Value::String(s) => s,
+                    Value::Keyword(k) => k,
+                    _ => format!("{:?}", new_key_val),
+                };
+                result.insert(new_key, v.clone());
+            }
+            Ok(Value::Map(result))
+        }
+        _ => Err("update-keys: second argument must be a map".to_string()),
+    }
+}
+
+/// update-vals - マップのすべての値に関数を適用
+pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("update-vals requires 2 arguments (val-fn, map)".to_string());
+    }
+
+    let val_fn = &args[0];
+    let map_val = &args[1];
+
+    match map_val {
+        Value::Map(m) => {
+            let mut result = std::collections::HashMap::new();
+            for (k, v) in m {
+                let new_val = evaluator.apply_function(val_fn, &[v.clone()])?;
+                result.insert(k.clone(), new_val);
+            }
+            Ok(Value::Map(result))
+        }
+        _ => Err("update-vals: second argument must be a map".to_string()),
+    }
+}

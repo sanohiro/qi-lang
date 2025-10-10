@@ -177,6 +177,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "get-in" => map::native_get_in,
         "assoc-in" => map::native_assoc_in,
         "dissoc-in" => map::native_dissoc_in,
+        "zipmap" => list::native_zipmap,
 
         // 述語関数
         "empty?" => predicates::native_empty,
@@ -282,6 +283,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "function?" => util::native_function_p,
         "atom?" => util::native_atom_p,
 
+        // デバッグ
+        "inspect" => util::native_inspect,
+
         // 並行処理（チャネル）
         "chan" => concurrency::native_chan,
         "send!" => concurrency::native_send,
@@ -355,6 +359,30 @@ pub fn apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
 
 pub fn take_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_take_while(args, evaluator)
+}
+
+pub fn find(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_find(args, evaluator)
+}
+
+pub fn find_index(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_find_index(args, evaluator)
+}
+
+pub fn every(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_every(args, evaluator)
+}
+
+pub fn some(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_some(args, evaluator)
+}
+
+pub fn update_keys(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_update_keys(args, evaluator)
+}
+
+pub fn update_vals(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_update_vals(args, evaluator)
 }
 
 pub fn drop_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -433,4 +461,9 @@ pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// Railway Pipeline用の内部関数
 pub fn railway_pipe(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     util::native_railway_pipe(args, evaluator)
+}
+
+/// time関数用ラッパー
+pub fn time(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    util::native_time(args, evaluator)
 }

@@ -260,3 +260,69 @@ pub fn native_railway_pipe(args: &[Value], evaluator: &crate::eval::Evaluator) -
         _ => Err("|>? requires {:ok/:error} map".to_string()),
     }
 }
+
+/// inspect - 値を整形して表示（デバッグ用）
+pub fn native_inspect(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("inspect: 1個の引数が必要です".to_string());
+    }
+
+    println!("{}", pretty_print(&args[0], 0));
+    Ok(args[0].clone())
+}
+
+/// 値を整形して表示するヘルパー関数
+fn pretty_print(value: &Value, indent: usize) -> String {
+    let indent_str = "  ".repeat(indent);
+    match value {
+        Value::Map(m) => {
+            if m.is_empty() {
+                return "{}".to_string();
+            }
+            let mut lines = vec!["{".to_string()];
+            for (k, v) in m {
+                lines.push(format!("{}  \"{}\": {}", indent_str, k, pretty_print(v, indent + 1)));
+            }
+            lines.push(format!("{}}}", indent_str));
+            lines.join("\n")
+        }
+        Value::Vector(v) => {
+            if v.is_empty() {
+                return "[]".to_string();
+            }
+            let mut lines = vec!["[".to_string()];
+            for item in v {
+                lines.push(format!("{}  {}", indent_str, pretty_print(item, indent + 1)));
+            }
+            lines.push(format!("{}]", indent_str));
+            lines.join("\n")
+        }
+        Value::List(l) => {
+            if l.is_empty() {
+                return "()".to_string();
+            }
+            let mut lines = vec!["(".to_string()];
+            for item in l {
+                lines.push(format!("{}  {}", indent_str, pretty_print(item, indent + 1)));
+            }
+            lines.push(format!("{})", indent_str));
+            lines.join("\n")
+        }
+        Value::String(s) => format!("\"{}\"", s),
+        _ => value.to_string()
+    }
+}
+
+/// time - 関数実行時間を計測
+pub fn native_time(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("time: 1個の引数が必要です".to_string());
+    }
+
+    let start = std::time::Instant::now();
+    let result = evaluator.apply_function(&args[0], &[])?;
+    let elapsed = start.elapsed();
+
+    println!("Elapsed: {:.3}s", elapsed.as_secs_f64());
+    Ok(result)
+}

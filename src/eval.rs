@@ -319,6 +319,7 @@ impl Evaluator {
                 if let Expr::Symbol(name) = func.as_ref() {
                     match name.as_str() {
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
+                        "time" => return self.eval_time(args, env),
                         "map" => return self.eval_map(args, env),
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
@@ -328,6 +329,12 @@ impl Evaluator {
                         "map-lines" => return self.eval_map_lines(args, env),
                         "take-while" => return self.eval_take_while(args, env),
                         "drop-while" => return self.eval_drop_while(args, env),
+                        "find" => return self.eval_find(args, env),
+                        "find-index" => return self.eval_find_index(args, env),
+                        "every?" => return self.eval_every(args, env),
+                        "some?" => return self.eval_some(args, env),
+                        "update-keys" => return self.eval_update_keys(args, env),
+                        "update-vals" => return self.eval_update_vals(args, env),
                         "update" => return self.eval_update(args, env),
                         "update-in" => return self.eval_update_in(args, env),
                         "comp" => return self.eval_comp(args, env),
@@ -897,6 +904,17 @@ impl Evaluator {
         builtins::railway_pipe(&vals, self)
     }
 
+    fn eval_time(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.is_empty() {
+            return Err("time: 1個の引数が必要です".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::time(&vals, self)
+    }
+
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
             return Err("then requires 2 arguments".to_string());
@@ -917,6 +935,72 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::catch(&vals, self)
+    }
+
+    fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("find requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::find(&vals, self)
+    }
+
+    fn eval_find_index(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("find-index requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::find_index(&vals, self)
+    }
+
+    fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("every? requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::every(&vals, self)
+    }
+
+    fn eval_some(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("some? requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::some(&vals, self)
+    }
+
+    fn eval_update_keys(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("update-keys requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::update_keys(&vals, self)
+    }
+
+    fn eval_update_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("update-vals requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::update_vals(&vals, self)
     }
 
 }

@@ -159,7 +159,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
 }
 
 /// HTTP GETリクエスト (非同期)
-pub fn native_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     if args.is_empty() {
         return Err("http/get-async: 1個の引数が必要です".to_string());
     }
@@ -184,7 +184,7 @@ pub fn native_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 }
 
 /// HTTP POSTリクエスト (非同期)
-pub fn native_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+pub fn native_post_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() < 2 {
         return Err("http/post-async: 2個の引数が必要です".to_string());
     }
