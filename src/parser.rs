@@ -53,24 +53,39 @@ impl Parser {
         let mut expr = self.parse_primary()?;
 
         // パイプライン演算子を処理
-        while self.current() == Some(&Token::Pipe) {
-            self.advance();
-            let right = self.parse_primary()?;
+        loop {
+            match self.current() {
+                Some(Token::Pipe) => {
+                    self.advance();
+                    let right = self.parse_primary()?;
 
-            // x |> f を (f x) に変換
-            // x |> (f a b) を (f a b x) に変換
-            expr = match right {
-                // 右辺が関数呼び出しの場合、最後の引数に追加
-                Expr::Call { func, mut args } => {
-                    args.push(expr);
-                    Expr::Call { func, args }
+                    // x |> f を (f x) に変換
+                    // x |> (f a b) を (f a b x) に変換
+                    expr = match right {
+                        // 右辺が関数呼び出しの場合、最後の引数に追加
+                        Expr::Call { func, mut args } => {
+                            args.push(expr);
+                            Expr::Call { func, args }
+                        }
+                        // それ以外は通常の呼び出し
+                        _ => Expr::Call {
+                            func: Box::new(right),
+                            args: vec![expr],
+                        },
+                    };
                 }
-                // それ以外は通常の呼び出し
-                _ => Expr::Call {
-                    func: Box::new(right),
-                    args: vec![expr],
-                },
-            };
+                Some(Token::ParallelPipe) => {
+                    self.advance();
+                    let right = self.parse_primary()?;
+
+                    // x ||> f を (pmap f x) に変換
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol("pmap".to_string())),
+                        args: vec![right, expr],
+                    };
+                }
+                _ => break,
+            }
         }
 
         Ok(expr)
@@ -168,22 +183,37 @@ impl Parser {
         let first_expr = self.parse_primary()?;  // パイプラインを含まない
 
         // パイプラインのチェック
-        if self.current() == Some(&Token::Pipe) {
+        if self.current() == Some(&Token::Pipe) || self.current() == Some(&Token::ParallelPipe) {
             let mut expr = first_expr;
-            while self.current() == Some(&Token::Pipe) {
-                self.advance();
-                let right = self.parse_primary()?;
+            loop {
+                match self.current() {
+                    Some(Token::Pipe) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
 
-                expr = match right {
-                    Expr::Call { func, mut args } => {
-                        args.push(expr);
-                        Expr::Call { func, args }
+                        expr = match right {
+                            Expr::Call { func, mut args } => {
+                                args.push(expr);
+                                Expr::Call { func, args }
+                            }
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                            },
+                        };
                     }
-                    _ => Expr::Call {
-                        func: Box::new(right),
-                        args: vec![expr],
-                    },
-                };
+                    Some(Token::ParallelPipe) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // x ||> f を (pmap f x) に変換
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol("pmap".to_string())),
+                            args: vec![right, expr],
+                        };
+                    }
+                    _ => break,
+                }
             }
             self.expect(Token::RParen)?;
             return Ok(expr);

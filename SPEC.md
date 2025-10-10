@@ -143,8 +143,8 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 | 演算子 | 意味 | 状態 | 用途 |
 |--------|------|------|------|
 | `|>` | 逐次パイプ | ✅ 実装済み | 基本的なデータ変換 |
-| `||>` | 並列パイプ | 🔜 近未来 | 自動的にpmap化、リスト処理の並列化 |
-| `tap>` | 副作用タップ | 🔜 近未来 | デバッグ、ログ、モニタリング |
+| `||>` | 並列パイプ | ✅ 実装済み | 自動的にpmap化、リスト処理の並列化 |
+| `tap>` | 副作用タップ | ✅ 実装済み | デバッグ、ログ、モニタリング（関数として） |
 | `~>` | 非同期パイプ | 🚧 将来 | go/chan統合、非同期IO |
 
 ---
@@ -175,7 +175,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ---
 
-### 🔜 `||>` 並列パイプライン（近未来）
+### ✅ `||>` 並列パイプライン（実装済み）
 
 **自動的にpmapに展開**
 
@@ -185,6 +185,9 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 ;; ↓ 展開
 (urls |> (pmap http-get) |> (pmap parse-json))
 
+;; 基本的な使い方
+([1 2 3 4 5] ||> inc)  ;; (2 3 4 5 6)
+
 ;; CPU集約的処理
 (images ||> resize ||> compress ||> save)
 
@@ -193,37 +196,59 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
  ||> load-csv
  ||> analyze
  |> merge-results)  ;; 最後は逐次でマージ
+
+;; 複雑なパイプライン
+(data
+ ||> (fn [x] (* x 2))
+ |> (filter (fn [n] (> n 50)))
+ |> sum)
 ```
 
-**実装方針**:
-- lexer/parserで`||>`を`Token::ParallelPipe`に
-- `(pmap f coll)`に展開
+**実装**:
+- lexer: `||>`を`Token::ParallelPipe`として認識
+- parser: `x ||> f` → `(pmap f x)`に展開
+- 現在はシングルスレッド版pmapを使用
+- 将来的にEvaluatorをスレッドセーフ化すれば真の並列化が可能
 
 ---
 
-### 🔜 `tap>` 副作用タップ（近未来）
+### ✅ `tap>` 副作用タップ（実装済み）
 
 **流れを止めずに観察**（Unix `tee`相当）
 
 ```lisp
+;; tap>は関数として実装
+(def tap> (fn [f]
+  (fn [x]
+    (do
+      (f x)
+      x))))
+
 ;; デバッグ
 (data
  |> clean
- |> tap> (fn [x] (print f"After clean: {x}"))
+ |> ((tap> (fn [x] (print f"After clean: {x}"))))
  |> analyze
- |> tap> (fn [x] (print f"After analyze: {x}"))
+ |> ((tap> (fn [x] (print f"After analyze: {x}"))))
  |> save)
 
 ;; ログ
 (requests
- |> tap> log-request
+ |> ((tap> log-request))
  |> process
- |> tap> log-response)
+ |> ((tap> log-response)))
 
-;; マクロ定義
-(mac tap> [f]
-  `(fn [x] (do (,f x) x)))
+;; 簡潔な使い方
+([1 2 3]
+ |> (map inc)
+ |> ((tap> print))
+ |> sum)
 ```
+
+**実装**:
+- 高階関数として実装
+- `(tap> f)`は`(fn [x] (do (f x) x))`を返す
+- パイプライン内で`((tap> f))`として使用
 
 ---
 
@@ -1705,7 +1730,8 @@ $ qi update
 
 **✅ 完全実装**:
 - **特殊形式**: `def` `fn` `let` `do` `if` `match` `try` `defer`（8つ）
-- **パイプライン**: `|>` 逐次パイプ
+- **パイプライン**: `|>` 逐次パイプ、`||>` 並列パイプ
+- **Flow制御**: `tap>` 副作用タップ（関数として）
 - **ループ**: `loop` `recur` 末尾再帰最適化
 - **エラー処理**: `try` `error` `defer`
 - **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
@@ -1719,8 +1745,6 @@ $ qi update
 **🔜 近未来（Flow強化）**:
 
 *パイプライン拡張*:
-- `||>` 並列パイプライン（pmapに自動展開）
-- `tap>` 副作用タップ（デバッグ・ログ）
 - `flow` DSL（分岐・合流を含む構造化パイプライン）
 
 *match拡張* ⭐ **Qi独自の強力な機能**:

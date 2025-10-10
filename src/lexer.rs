@@ -45,6 +45,7 @@ pub enum Token {
     At,     // @
     Arrow,  // ->
     Pipe,   // |>
+    ParallelPipe,  // ||>
 
     // ファイル終端
     Eof,
@@ -340,6 +341,12 @@ impl Lexer {
                 Some('"') => {
                     let s = self.read_string()?;
                     return Ok(Token::String(s));
+                }
+                Some('|') if self.peek(1) == Some('|') && self.peek(2) == Some('>') => {
+                    self.advance(); // |
+                    self.advance(); // |
+                    self.advance(); // >
+                    return Ok(Token::ParallelPipe);
                 }
                 Some('|') if self.peek(1) == Some('>') => {
                     self.advance(); // |
