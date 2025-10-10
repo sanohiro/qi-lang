@@ -741,16 +741,143 @@ go                      ;; 並行実行
 - `pmap`: 現在はmapと同じ動作（シングルスレッド）。将来、Evaluatorをスレッドセーフ化した際に並列処理を実装予定。
 - インターフェースは確定しているため、コードはそのまま将来の並列版にも対応。
 
-### ✅ 状態管理（実装済み）
+### ✅ 状態管理 - Atom（実装済み）
+
+Qiの状態管理は**Atom**（アトム）を使います。Atomは参照透過性を保ちながら、必要な場所だけで状態を持つための仕組みです。
+
+#### 基本操作
+
 ```lisp
 ;; ✅ 実装済み
 atom                    ;; アトム作成
-swap!                   ;; アトミック更新
 deref                   ;; 値取得
+@                       ;; derefの短縮形（@counter => (deref counter)）
+swap!                   ;; 関数で更新（アトミック）
 reset!                  ;; 値を直接セット
+```
 
-;; 🚧 未実装
-@                       ;; derefの短縮形
+#### アトムの作成と参照
+
+```lisp
+;; カウンター
+(def counter (atom 0))
+
+;; 値を取得
+(deref counter)  ;; 0
+
+;; 値を更新
+(reset! counter 10)
+(deref counter)  ;; 10
+
+;; 関数で更新（現在の値を使う）
+(swap! counter inc)
+(deref counter)  ;; 11
+
+(swap! counter + 5)
+(deref counter)  ;; 16
+```
+
+#### 実用例1: カウンター
+
+```lisp
+;; リクエストカウンター
+(def request-count (atom 0))
+
+(def handle-request (fn [req]
+  (do
+    (swap! request-count inc)
+    (process req))))
+
+;; 現在のカウント確認
+(deref request-count)  ;; 処理したリクエスト数
+```
+
+#### 実用例2: 状態を持つキャッシュ
+
+```lisp
+;; キャッシュ
+(def cache (atom {}))
+
+(def get-or-fetch (fn [key fetch-fn]
+  (let [cached (get (deref cache) key)]
+    (if cached
+      cached
+      (let [value (fetch-fn)]
+        (do
+          (swap! cache assoc key value)
+          value))))))
+
+;; 使用例
+(get-or-fetch :user-123 (fn [] (fetch-from-db :user-123)))
+```
+
+#### 実用例3: 接続管理（deferと組み合わせ）
+
+```lisp
+;; アクティブな接続を管理
+(def clients (atom #{}))
+
+(def handle-connection (fn [conn]
+  (do
+    (swap! clients conj conn)
+    (defer (swap! clients dissoc conn))  ;; 確実にクリーンアップ
+    (process-connection conn))))
+
+;; アクティブ接続数
+(len (deref clients))
+```
+
+#### 実用例4: 複雑な状態更新
+
+```lisp
+;; アプリケーション状態
+(def app-state (atom {
+  :users {}
+  :posts []
+  :status "running"
+}))
+
+;; ユーザー追加
+(def add-user (fn [user]
+  (swap! app-state (fn [state]
+    (assoc state :users
+      (assoc (get state :users) (get user :id) user))))))
+
+;; 投稿追加
+(def add-post (fn [post]
+  (swap! app-state (fn [state]
+    (assoc state :posts (conj (get state :posts) post))))))
+
+;; 状態確認
+(deref app-state)
+```
+
+#### Atomの設計哲学
+
+1. **局所的な状態**: グローバル変数の代わりに、必要な場所だけでAtomを使う
+2. **swap!の原子性**: 更新が確実に適用される（競合状態を回避）
+3. **関数型との共存**: 純粋関数とAtomを組み合わせる
+4. **deferと相性が良い**: リソース管理で威力を発揮
+
+#### ✅ @ 構文（実装済み）
+
+```lisp
+;; derefの短縮形
+(deref counter)  ;; 従来
+@counter         ;; 短縮形
+
+;; どちらも同じ意味
+(print (deref state))
+(print @state)
+
+;; パイプラインで便利
+(def cache (atom {:user-123 {:name "Alice"}}))
+(get @cache :user-123)  ;; {:name "Alice"}
+
+;; 関数の引数としても使える
+(def users (atom [{:name "Alice"} {:name "Bob"}]))
+(first @users)  ;; {:name "Alice"}
+(map (fn [u] (get u :name)) @users)  ;; ("Alice" "Bob")
 ```
 
 ### ✅ エラー処理（全て実装済み）
@@ -1582,7 +1709,7 @@ $ qi update
 - **ループ**: `loop` `recur` 末尾再帰最適化
 - **エラー処理**: `try` `error` `defer`
 - **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
-- **状態管理**: `atom` `deref` `swap!` `reset!`
+- **状態管理**: `atom` `@` `deref` `swap!` `reset!`
 - **並列処理**: `pmap`（シングルスレッド版）
 - **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, Uvar
 - **文字列**: f-string補間
@@ -1605,7 +1732,6 @@ $ qi update
 **🚧 将来**:
 - `~>` 非同期パイプライン（go/chan統合）
 - `stream` 遅延評価ストリーム
-- `@` derefの短縮形
 - チャネル/go 並行処理
 - 標準モジュール群（str/csv/regex/http/json）
 
@@ -1616,13 +1742,12 @@ $ qi update
 - ✅ **メタプログラミング**: マクロシステム完全実装（mac、quasiquote、unquote、unquote-splice、uvar、variable、macro?、eval）
 - ✅ **文字列**: f-string補間
 - ✅ **エラー処理**: try/error/defer完全実装（エラー時もdeferが実行される）
-- ✅ **状態管理**: atom/deref/swap!/reset!完全実装
+- ✅ **状態管理**: atom/@/deref/swap!/reset!完全実装（@構文も含む）
 - ✅ **並列処理**: pmap実装（現在はシングルスレッド、将来並列化予定）
-- 🚧 **未実装の重要機能**: @（derefの短縮形）、チャネル/go、標準モジュール群（str/csv/regex/http等）
+- 🚧 **未実装の重要機能**: チャネル/go、標準モジュール群（str/csv/regex/http等）
 
 ### 今後のTODO
 1. **並列処理の強化**: Evaluatorのスレッドセーフ化、pmapの真の並列実装
 2. **チャネルとgo**: 並行処理の実装
 3. **標準モジュール**: str/csv/regex/http/jsonモジュールの実装
-4. **@構文**: derefの短縮形
 5. **パフォーマンス**: JITコンパイル、最適化

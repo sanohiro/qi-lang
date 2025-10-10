@@ -127,6 +127,7 @@ impl Parser {
             Some(Token::Backquote) => self.parse_quasiquote(),
             Some(Token::Unquote) => self.parse_unquote(),
             Some(Token::UnquoteSplice) => self.parse_unquote_splice(),
+            Some(Token::At) => self.parse_at(),
             Some(token) => Err(fmt_msg(MsgKey::UnexpectedToken, &[&format!("{:?}", token)])),
             None => Err(msg(MsgKey::UnexpectedEof).to_string()),
         }
@@ -527,6 +528,16 @@ impl Parser {
         self.advance(); // ,@をスキップ
         let expr = Box::new(self.parse_expr()?);
         Ok(Expr::UnquoteSplice(expr))
+    }
+
+    /// @構文: @expr => (deref expr)
+    fn parse_at(&mut self) -> Result<Expr, String> {
+        self.advance(); // @をスキップ
+        let expr = self.parse_primary()?;
+        Ok(Expr::Call {
+            func: Box::new(Expr::Symbol("deref".to_string())),
+            args: vec![expr],
+        })
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {

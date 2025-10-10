@@ -42,6 +42,7 @@ pub enum Token {
     Backquote,  // `
     Unquote,    // ,
     UnquoteSplice,  // ,@
+    At,     // @
     Arrow,  // ->
     Pipe,   // |>
 
@@ -331,6 +332,10 @@ impl Lexer {
                 Some(',') => {
                     self.advance();
                     return Ok(Token::Unquote);
+                }
+                Some('@') => {
+                    self.advance();
+                    return Ok(Token::At);
                 }
                 Some('"') => {
                     let s = self.read_string()?;
