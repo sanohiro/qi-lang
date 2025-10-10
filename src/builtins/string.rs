@@ -773,21 +773,6 @@ pub fn native_split_camel(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// align-left - pad-leftのエイリアス
-pub fn native_align_left(args: &[Value]) -> Result<Value, String> {
-    native_pad_left(args)
-}
-
-/// align-right - pad-rightのエイリアス
-pub fn native_align_right(args: &[Value]) -> Result<Value, String> {
-    native_pad_right(args)
-}
-
-/// align-center - padのエイリアス
-pub fn native_align_center(args: &[Value]) -> Result<Value, String> {
-    native_pad(args)
-}
-
 /// truncate - 指定長で切り詰め
 pub fn native_truncate(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
@@ -1124,29 +1109,29 @@ pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// html-escape - HTMLエスケープ
-pub fn native_html_escape(args: &[Value]) -> Result<Value, String> {
+/// html-encode - HTMLエンコード
+pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["html-escape"]));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["html-encode"]));
     }
     match &args[0] {
         Value::String(s) => {
             Ok(Value::String(html_escape::encode_text(s).to_string()))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-escape", "strings"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-encode", "strings"])),
     }
 }
 
-/// html-unescape - HTMLアンエスケープ
-pub fn native_html_unescape(args: &[Value]) -> Result<Value, String> {
+/// html-decode - HTMLデコード
+pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["html-unescape"]));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["html-decode"]));
     }
     match &args[0] {
         Value::String(s) => {
             Ok(Value::String(html_escape::decode_html_entities(s).to_string()))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-unescape", "strings"])),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-decode", "strings"])),
     }
 }
 

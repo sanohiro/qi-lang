@@ -1370,7 +1370,6 @@ uvar variable
   sub-before sub-after                 ;; 区切り文字で前後を取得
 
   ;; 整形・配置 ✅
-  align-left align-center align-right
   truncate trunc-words
 
   ;; 正規化・クリーンアップ（重要） ✅
@@ -1385,7 +1384,7 @@ uvar variable
   ;; URL/Web ✅
   slugify              ;; "Hello World!" -> "hello-world"
   url-encode url-decode
-  html-escape html-unescape
+  html-encode html-decode              ;; HTMLエンコード/デコード（旧: html-escape/unescape）
 
   ;; エンコード ✅
   to-base64 from-base64
@@ -1445,7 +1444,6 @@ uvar variable
 (s/pad-right "Name" 20)          ;; "Name               "
 (s/pad "hi" 10)                  ;; "    hi    " (中央揃え)
 (s/pad "hi" 10 "*")              ;; "****hi****"
-(s/align-right "Total" 20)       ;; pad-leftと同じ
 (s/trunc-words article 10)       ;; 最初の10単語まで
 
 ;; 正規化（超重要）
@@ -1501,8 +1499,8 @@ uvar variable
 (s/from-base64 "aGVsbG8=")       ;; "hello"
 (s/url-encode "hello world")     ;; "hello%20world"
 (s/url-decode "hello%20world")   ;; "hello world"
-(s/html-escape "<div>test</div>") ;; "&lt;div&gt;test&lt;/div&gt;"
-(s/html-unescape "&lt;div&gt;test&lt;/div&gt;") ;; "<div>test</div>"
+(s/html-encode "<div>test</div>") ;; "&lt;div&gt;test&lt;/div&gt;"
+(s/html-decode "&lt;div&gt;test&lt;/div&gt;") ;; "<div>test</div>"
 
 ;; ✅ ハッシュ/UUID（実装済み）
 (s/hash "hello")                 ;; "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
@@ -1618,12 +1616,12 @@ uvar variable
   random                      ;; [0, 1)の乱数
   random-int                  ;; 整数乱数
   random-range                ;; 範囲指定乱数
-  random-choice               ;; リストからランダム選択
-  random-shuffle              ;; シャッフル
+  choice                      ;; リストからランダム選択
+  shuffle                     ;; シャッフル
 
   ;; その他
   factorial
-  is-prime?
+  prime?
 
   ;; 定数
   pi e tau
@@ -1652,8 +1650,8 @@ uvar variable
 
 ;; 4. 乱数（テストデータ生成で便利）
 (math/random-int 1 100)  ;; 1-100の整数
-(math/random-choice [:red :green :blue])
-(math/random-shuffle [1 2 3 4 5])
+(math/choice [:red :green :blue])
+(math/shuffle [1 2 3 4 5])
 
 ;; 5. 丸め処理（金額計算など）
 (price
@@ -1710,7 +1708,7 @@ uvar variable
   ;; ユーティリティ
   start-of-day end-of-day
   start-of-month end-of-month
-  is-weekend? is-leap-year?
+  weekend? leap-year?
 
   ;; タイムゾーン
   to-utc to-local
@@ -1763,7 +1761,7 @@ uvar variable
     (if (<= remaining 0)
       current
       (let [next-day (time/add-days current 1)]
-        (if (time/is-weekend? next-day)
+        (if (time/weekend? next-day)
           (recur next-day remaining)
           (recur next-day (dec remaining))))))))
 
