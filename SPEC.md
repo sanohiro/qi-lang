@@ -677,33 +677,131 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 
 ## 5. コア関数
 
+Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流れと変換を重視した設計になっています。
+
 ### リスト操作
+
+#### 基本操作（✅ 実装済み）
 ```lisp
-;; ✅ 実装済み
-map filter reduce       ;; 高階関数
-first rest last         ;; アクセス
+;; アクセス
+first rest last         ;; 最初、残り、最後
+nth                     ;; n番目の要素取得
 take drop               ;; 部分取得
-flatten concat          ;; 結合
-len count empty?        ;; 情報（count は len のエイリアス）
-cons conj               ;; 追加
+len count empty?        ;; 長さ、空チェック（count は len のエイリアス）
+
+;; 追加・結合
+cons conj               ;; 要素追加
+concat                  ;; リスト連結
+flatten                 ;; 平坦化（全階層）
+
+;; 生成・変換
 range                   ;; (range 10) => (0 1 2 ... 9)
 reverse                 ;; 反転
-nth                     ;; n番目の要素
-zip                     ;; リストを組み合わせ: (zip [1 2] [:a :b]) => ([1 :a] [2 :b])
-
-;; 🚧 未実装
-sort sort-by            ;; ソート
-group-by                ;; グループ化
+zip                     ;; 組み合わせ: (zip [1 2] [:a :b]) => ([1 :a] [2 :b])
 ```
 
-### 数値・比較（✅ 全て実装済み）
+#### 高階関数（✅ 実装済み）
 ```lisp
-+ - * / %               ;; 算術演算
-= != < > <= >=          ;; 比較
+map filter reduce       ;; 基本の高階関数
+pmap                    ;; 並列map（現在はシングルスレッド実装）
+```
+
+#### ソート・集約（✅ 実装済み）
+```lisp
+sort                    ;; ソート（整数・浮動小数点・文字列対応）
+distinct                ;; 重複排除
+partition               ;; 述語で2分割: (partition even? [1 2 3 4]) => [(2 4) (1 3)]
+group-by                ;; キー関数でグループ化
+```
+
+**使用例**:
+```lisp
+;; ソート
+(sort [3 1 4 1 5])  ;; (1 1 3 4 5)
+(sort ["zebra" "apple" "banana"])  ;; ("apple" "banana" "zebra")
+
+;; 重複排除してソート
+([5 2 8 2 9 1 3 8 4]
+ |> distinct
+ |> sort)  ;; (1 2 3 4 5 8 9)
+
+;; グループ化
+(group-by (fn [n] (% n 3)) [1 2 3 4 5 6 7 8 9])
+;; {0: (3 6 9), 1: (1 4 7), 2: (2 5 8)}
+```
+
+#### 集約・分析（🔜 計画中）
+```lisp
+;; 🔜 優先度: 高
+sort-by                 ;; キー指定ソート: (sort-by :age users)
+frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
+count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
+
+;; 🔜 優先度: 中
+max-by min-by           ;; 条件に基づく最大/最小
+sum-by                  ;; キー関数で合計
+```
+
+**設計メモ**: `frequencies`と`count-by`はデータ分析でよく使う。`group-by`と組み合わせると強力。
+
+#### 集合演算（🔜 計画中）
+```lisp
+;; 🔜 優先度: 高
+union                   ;; 和集合: (union [1 2] [2 3]) => [1 2 3]
+intersect               ;; 積集合: (intersect [1 2 3] [2 3 4]) => [2 3]
+difference              ;; 差集合: (difference [1 2 3] [2]) => [1 3]
+
+;; 🔜 優先度: 低
+subset? superset?       ;; 集合判定
+```
+
+**Flow哲学との関係**: 集合演算はデータフィルタリングで頻出。パイプラインと相性が良い。
+
+#### チャンク・分割（🔜 計画中）
+```lisp
+;; 🔜 優先度: 中
+chunk                   ;; 固定サイズで分割: (chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
+partition-all           ;; partitionの全要素版
+take-while drop-while   ;; 述語が真の間取得/削除
+```
+
+### 数値・比較
+
+#### 算術演算（✅ 実装済み）
+```lisp
++ - * / %               ;; 基本演算
 inc dec                 ;; インクリメント/デクリメント
 sum                     ;; 合計
 abs                     ;; 絶対値
 min max                 ;; 最小/最大
+```
+
+#### 比較（✅ 実装済み）
+```lisp
+= != < > <= >=          ;; 比較演算子
+```
+
+#### 数学関数（🔜 計画中）
+```lisp
+;; 🔜 優先度: 高（coreに含める）
+pow                     ;; べき乗: (pow 2 8) => 256
+sqrt                    ;; 平方根: (sqrt 16) => 4
+round floor ceil        ;; 丸め: (round 3.7) => 4
+clamp                   ;; 範囲制限: (clamp 1 10 15) => 10
+
+;; 🔜 優先度: 中（mathモジュールでもOK）
+sin cos tan             ;; 三角関数
+log exp                 ;; 対数・指数
+random                  ;; 乱数
+```
+
+**設計方針**: `pow`/`sqrt`/`round`/`clamp`はcoreに。三角関数などは将来`math`モジュールへ。
+
+#### 統計（🔜 計画中）
+```lisp
+;; 🔜 優先度: 中
+mean median mode        ;; 平均、中央値、最頻値
+stddev variance         ;; 標準偏差、分散
 ```
 
 ### 論理（✅ 全て実装済み）
@@ -712,25 +810,92 @@ and or not
 ```
 
 ### マップ操作
+
+#### 基本操作（✅ 実装済み）
 ```lisp
-;; ✅ 実装済み
 get keys vals           ;; アクセス
-assoc dissoc            ;; 変更
+assoc dissoc            ;; キーの追加・削除
 merge                   ;; マージ: (merge {:a 1} {:b 2}) => {:a 1 :b 2}
 select-keys             ;; キー選択: (select-keys {:a 1 :b 2 :c 3} [:a :c]) => {:a 1 :c 3}
-
-;; 🚧 未実装
-update                  ;; 更新
 ```
 
-### 文字列操作
+#### ネスト操作（🔜 計画中）⭐ **Flow哲学の核心**
 ```lisp
-;; ✅ 実装済み（core）
+;; 🔜 優先度: 最高（JSON/Web処理で必須）
+update                  ;; 値を関数で更新
+update-in               ;; ネスト更新: (update-in m [:user :age] inc)
+get-in                  ;; ネスト取得: (get-in m [:user :name] "default")
+assoc-in                ;; ネスト追加
+dissoc-in               ;; ネスト削除
+```
+
+**使用例**:
+```lisp
+;; update: 値を関数で変換
+(def user {:name "Alice" :age 30})
+(update user :age inc)  ;; {:name "Alice" :age 31}
+
+;; update-in: ネスト構造の更新（Web/JSON処理で超頻出）
+(def state {:user {:profile {:visits 10}}})
+(update-in state [:user :profile :visits] inc)
+;; {:user {:profile {:visits 11}}}
+
+;; get-in: ネストアクセス（デフォルト値付き）
+(get-in {:user {:name "Bob"}} [:user :name] "guest")  ;; "Bob"
+(get-in {} [:user :name] "guest")  ;; "guest"
+
+;; パイプラインで威力発揮
+(state
+ |> (fn [s] (update-in s [:user :profile :visits] inc))
+ |> (fn [s] (assoc-in s [:user :last-seen] (now))))
+```
+
+**設計メモ**: ネスト操作はQiの強み。JSONやWeb APIレスポンスの処理が直感的になる。
+
+### 関数型プログラミング基礎
+
+#### 基本ツール（🔜 計画中）
+```lisp
+;; 🔜 優先度: 高（関数型の必須ツール）
+identity                ;; 引数をそのまま返す: (identity 42) => 42
+constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) => 42
+comp                    ;; 関数合成: ((comp f g) x) => (f (g x))
+partial                 ;; 部分適用: (def add5 (partial + 5))
+apply                   ;; リストを引数として適用: (apply + [1 2 3]) => 6
+
+;; 🔜 優先度: 中
+complement              ;; 述語の否定: ((complement even?) 3) => true
+juxt                    ;; 複数関数を並列適用: ((juxt inc dec) 5) => [6 4]
+```
+
+**使用例**:
+```lisp
+;; identity: フィルタや変換のデフォルト
+(filter identity [1 false nil 2 3])  ;; (1 2 3)
+
+;; comp: パイプラインの代替（右から左）
+(def process (comp upper trim))
+(process "  hello  ")  ;; "HELLO"
+
+;; constantly: デフォルト値生成
+(def get-or-default (fn [m k] (get m k (constantly "N/A"))))
+```
+
+**設計メモ**: `identity`/`comp`/`apply`は関数型の基礎。パイプライン（`|>`）と`comp`は補完関係。
+
+### 文字列操作
+
+#### Core関数（✅ 実装済み）
+```lisp
 str                     ;; 連結
 split join              ;; 分割・結合
 upper lower trim        ;; 変換
 len empty?              ;; 長さ、空チェック
+map-lines               ;; 各行に関数適用
 ```
+
+#### 拡張機能（🔜 strモジュールで提供予定）
+SPEC.mdの「標準ライブラリ > str」セクション参照。60以上の文字列関数を提供予定。
 
 ### 述語関数（✅ 全て実装済み）
 ```lisp
@@ -742,15 +907,39 @@ integer? float? number? fn?
 empty?
 ```
 
-### IO
-```lisp
-;; ✅ 実装済み
-print                   ;; 出力
+### IO・ファイル操作
 
-;; 🚧 未実装
-log                     ;; ログ出力
-slurp spit              ;; ファイル読み書き
-open close read write   ;; ファイル操作
+#### 基本I/O（✅ 実装済み）
+```lisp
+print                   ;; 標準出力
+read-file               ;; ファイル読み込み
+write-file              ;; ファイル書き込み（上書き）
+append-file             ;; ファイル追記
+```
+
+**使用例**:
+```lisp
+;; ファイル読み書き
+(write-file "/tmp/test.txt" "Hello, Qi!")
+(def content (read-file "/tmp/test.txt"))
+(print content)  ;; "Hello, Qi!"
+
+;; 追記
+(append-file "/tmp/test.txt" "\nSecond line")
+
+;; パイプラインで処理
+(read-file "data.csv"
+ |> split "\n"
+ |> (fn [lines] (map parse-line lines))
+ |> (fn [data] (filter valid? data)))
+```
+
+#### 拡張I/O（🔜 計画中）
+```lisp
+;; 🔜 優先度: 中
+println                 ;; 改行付き出力
+read-lines              ;; 行ごとに読み込み（メモリ効率）
+file-exists?            ;; ファイル存在確認
 ```
 
 ### 並行・並列
@@ -1728,6 +1917,75 @@ $ qi update
 
 ---
 
+### コア関数の実装優先度
+
+Qiの**Flow-oriented**哲学と実用性を考慮した実装優先順位：
+
+#### 🔥 最優先（次期バージョンで実装推奨）
+
+**1. ネスト操作** - JSON/Web処理の核心
+```lisp
+update update-in get-in assoc-in dissoc-in
+```
+理由: Web開発・API処理で必須。Qiの差別化ポイント。
+
+**2. 関数型基礎** - 高階関数を書くための標準ツール
+```lisp
+identity constantly comp apply
+```
+理由: `identity`はfilterで頻出。`comp`はパイプラインの補完。
+
+**3. 集合演算** - データ分析・フィルタリング
+```lisp
+union intersect difference
+```
+理由: 実装簡単。データ処理で頻出。
+
+**4. 数値基本** - 計算の基礎
+```lisp
+pow sqrt round floor ceil clamp
+```
+理由: 数値計算の標準。`clamp`は範囲制限で超便利。
+
+#### ⚡ 高優先（コアを充実させる）
+
+**5. ソート・集約拡張**
+```lisp
+sort-by frequencies count-by
+```
+理由: データ分析で頻出。`group-by`との相性良い。
+
+**6. リスト分割**
+```lisp
+chunk take-while drop-while
+```
+理由: バッチ処理・ストリーム処理で便利。
+
+**7. I/O拡張**
+```lisp
+println read-lines file-exists?
+```
+理由: ユーザビリティ向上。
+
+#### 🎯 中優先（必要になったら）
+
+**8. 集約関数**
+```lisp
+max-by min-by sum-by
+```
+
+**9. 高階関数拡張**
+```lisp
+partial complement juxt
+```
+
+**10. 統計**
+```lisp
+mean median stddev
+```
+
+---
+
 ### コア実装状況
 
 **✅ 完全実装**:
@@ -1764,18 +2022,70 @@ $ qi update
 - 標準モジュール群（str/csv/regex/http/json）
 
 ### 実装状況サマリー
-- ✅ **コア機能（約75%完成）**: 8つの特殊形式、パイプライン、パターンマッチング、モジュールシステム基盤、loop/recur、マクロシステム完全実装
-- ✅ **組み込み関数（71個）**: 算術、比較、リスト、文字列、マップ、述語、論理、高階関数、エラー処理、状態管理、メタプログラミング、並列処理
-- ✅ **データ構造**: nil、bool、整数、浮動小数点、文字列、シンボル、キーワード、リスト、ベクタ、マップ、関数、アトム、Uvar
-- ✅ **メタプログラミング**: マクロシステム完全実装（mac、quasiquote、unquote、unquote-splice、uvar、variable、macro?、eval）
-- ✅ **文字列**: f-string補間
-- ✅ **エラー処理**: try/error/defer完全実装（エラー時もdeferが実行される）
-- ✅ **状態管理**: atom/@/deref/swap!/reset!完全実装（@構文も含む）
-- ✅ **並列処理**: pmap実装（現在はシングルスレッド、将来並列化予定）
-- 🚧 **未実装の重要機能**: チャネル/go、標準モジュール群（str/csv/regex/http等）
 
-### 今後のTODO
-1. **並列処理の強化**: Evaluatorのスレッドセーフ化、pmapの真の並列実装
-2. **チャネルとgo**: 並行処理の実装
-3. **標準モジュール**: str/csv/regex/http/jsonモジュールの実装
-5. **パフォーマンス**: JITコンパイル、最適化
+#### ✅ 実装済み（v0.1.0）
+
+**特殊形式（8つ）**: `def` `fn` `let` `do` `if` `match` `try` `defer`
+
+**パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
+
+**組み込み関数（79個）**:
+- **リスト操作（17）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, distinct, partition, group-by
+- **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
+- **比較（6）**: =, !=, <, >, <=, >=
+- **マップ操作（7）**: get, keys, vals, assoc, dissoc, merge, select-keys
+- **文字列（6 core + 60+ str）**: str, split, join, upper, lower, trim, map-lines ＋ strモジュールで60以上
+- **述語（9）**: nil?, list?, vector?, map?, string?, keyword?, integer?, float?, empty?
+- **高階関数（5）**: map, filter, reduce, pmap, partition, group-by, map-lines
+- **状態管理（5）**: atom, @, deref, swap!, reset!
+- **エラー処理（2）**: try, error
+- **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
+- **論理（3）**: and, or, not
+- **I/O（4）**: print, read-file, write-file, append-file
+
+**データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, Uvar
+
+**先進機能**:
+- f-string補間
+- match拡張（:as束縛、=> 変換） ⭐ Qi独自
+- マクロの衛生性（uvar）
+- 末尾再帰最適化（loop/recur）
+- defer（エラー時も実行保証）
+
+#### 🔜 次期実装予定（優先度順）
+
+**フェーズ1: コア強化**
+1. ネスト操作: update, update-in, get-in, assoc-in, dissoc-in
+2. 関数型基礎: identity, constantly, comp, apply
+3. 集合演算: union, intersect, difference
+4. 数値基本: pow, sqrt, round, floor, ceil, clamp
+
+**フェーズ2: 分析・集約**
+5. sort-by, frequencies, count-by
+6. chunk, take-while, drop-while
+7. println, read-lines, file-exists?
+
+**フェーズ3: 高度機能**
+8. max-by, min-by, sum-by
+9. partial, complement, juxt
+10. mean, median, stddev
+
+#### 🚧 将来の計画
+- 真の並列処理（pmapの並列化）
+- チャネル/go（並行処理）
+- 標準モジュール群（str完全版/csv/regex/http/json）
+- 非同期パイプライン（~>）
+- 遅延ストリーム（stream）
+- flow DSL（構造化パイプライン）
+
+### 実装の方針
+
+**Qiの強み = Flow + Match + Nest**
+1. パイプライン（|>, ||>, tap>）でデータの流れを表現
+2. match拡張（:as, =>）で複雑な構造を扱う
+3. ネスト操作（*-in系）でJSON/Webを直感的に
+
+**実装優先度の基準**:
+- Flow哲学との親和性
+- Web/JSON処理での実用性
+- 実装コストと効果のバランス
