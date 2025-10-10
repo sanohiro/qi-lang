@@ -335,6 +335,10 @@ impl Evaluator {
                         "some?" => return self.eval_some(args, env),
                         "update-keys" => return self.eval_update_keys(args, env),
                         "update-vals" => return self.eval_update_vals(args, env),
+                        "partition-by" => return self.eval_partition_by(args, env),
+                        "keep" => return self.eval_keep(args, env),
+                        "drop-last" => return self.eval_drop_last(args, env),
+                        "split-at" => return self.eval_split_at(args, env),
                         "update" => return self.eval_update(args, env),
                         "update-in" => return self.eval_update_in(args, env),
                         "comp" => return self.eval_comp(args, env),
@@ -1001,6 +1005,50 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::update_vals(&vals, self)
+    }
+
+    fn eval_partition_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("partition-by requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::partition_by(&vals, self)
+    }
+
+    fn eval_keep(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("keep requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::keep(&vals, self)
+    }
+
+    fn eval_drop_last(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("drop-last requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::drop_last(&vals, self)
+    }
+
+    fn eval_split_at(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("split-at requires 2 arguments".to_string());
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::split_at(&vals, self)
     }
 
 }

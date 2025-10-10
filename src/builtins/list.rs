@@ -738,3 +738,179 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Map(result))
 }
+
+/// partition-by - 連続する値を述語関数でグループ化
+pub fn native_partition_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("partition-by requires 2 arguments (predicate, collection)".to_string());
+    }
+
+    let pred_fn = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            if items.is_empty() {
+                return Ok(Value::List(Vec::new()));
+            }
+
+            let mut result: Vec<Value> = Vec::new();
+            let mut current_group: Vec<Value> = Vec::new();
+            let mut last_pred_result: Option<Value> = None;
+
+            for item in items {
+                let pred_result = evaluator.apply_function(pred_fn, std::slice::from_ref(item))?;
+
+                if let Some(ref last) = last_pred_result {
+                    // 述語の結果が変わったら新しいグループを開始
+                    if !values_equal(last, &pred_result) {
+                        if !current_group.is_empty() {
+                            result.push(Value::List(current_group.clone()));
+                            current_group.clear();
+                        }
+                    }
+                }
+
+                current_group.push(item.clone());
+                last_pred_result = Some(pred_result);
+            }
+
+            // 最後のグループを追加
+            if !current_group.is_empty() {
+                result.push(Value::List(current_group));
+            }
+
+            Ok(Value::List(result))
+        }
+        _ => Err("partition-by: second argument must be a list or vector".to_string()),
+    }
+}
+
+// 値の等価性チェック用ヘルパー
+fn values_equal(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => x == y,
+        (Value::Float(x), Value::Float(y)) => x == y,
+        (Value::String(x), Value::String(y)) => x == y,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Nil, Value::Nil) => true,
+        _ => false,
+    }
+}
+
+/// take-nth - n番目ごとの要素を取得
+pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("take-nth requires 2 arguments (n, collection)".to_string());
+    }
+
+    let n = match &args[0] {
+        Value::Integer(i) => {
+            if *i <= 0 {
+                return Err("take-nth: n must be positive".to_string());
+            }
+            *i as usize
+        }
+        _ => return Err("take-nth: first argument must be an integer".to_string()),
+    };
+
+    let collection = match &args[1] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("take-nth: second argument must be a list or vector".to_string()),
+    };
+
+    let result: Vec<Value> = collection
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| i % n == 0)
+        .map(|(_, v)| v.clone())
+        .collect();
+
+    Ok(Value::List(result))
+}
+
+/// keep - nilを除外してmap
+pub fn native_keep(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("keep requires 2 arguments (function, collection)".to_string());
+    }
+
+    let func = &args[0];
+    let collection = match &args[1] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("keep: second argument must be a list or vector".to_string()),
+    };
+
+    let mut result: Vec<Value> = Vec::new();
+    for item in collection {
+        let val = evaluator.apply_function(func, std::slice::from_ref(item))?;
+        if !matches!(val, Value::Nil) {
+            result.push(val);
+        }
+    }
+
+    Ok(Value::List(result))
+}
+
+/// dedupe - 連続する重複を除去
+pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("dedupe requires 1 argument".to_string());
+    }
+
+    let collection = match &args[0] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("dedupe: argument must be a list or vector".to_string()),
+    };
+
+    if collection.is_empty() {
+        return Ok(Value::List(Vec::new()));
+    }
+
+    let mut result: Vec<Value> = Vec::new();
+    let mut last: Option<&Value> = None;
+
+    for item in collection {
+        if let Some(prev) = last {
+            if !values_equal(prev, item) {
+                result.push(item.clone());
+            }
+        } else {
+            result.push(item.clone());
+        }
+        last = Some(item);
+    }
+
+    Ok(Value::List(result))
+}
+
+/// drop-last - 最後のn要素を削除
+pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("drop-last requires 2 arguments (n, collection)".to_string());
+    }
+
+    let n = match &args[0] {
+        Value::Integer(i) => {
+            if *i < 0 {
+                return Err("drop-last: n must be non-negative".to_string());
+            }
+            *i as usize
+        }
+        _ => return Err("drop-last: first argument must be an integer".to_string()),
+    };
+
+    let collection = match &args[1] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err("drop-last: second argument must be a list or vector".to_string()),
+    };
+
+    let take_count = if collection.len() > n {
+        collection.len() - n
+    } else {
+        0
+    };
+
+    let result: Vec<Value> = collection.iter().take(take_count).cloned().collect();
+    Ok(Value::List(result))
+}

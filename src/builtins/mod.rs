@@ -97,6 +97,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "zip" => list::native_zip,
         "sort" => list::native_sort,
         "distinct" => list::native_distinct,
+        "interleave" => list::native_interleave,
+        "take-nth" => list::native_take_nth,
+        "dedupe" => list::native_dedupe,
 
         // 文字列操作
         "str" => string::native_str,
@@ -383,6 +386,22 @@ pub fn update_keys(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 
 pub fn update_vals(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     map::native_update_vals(args, evaluator)
+}
+
+pub fn partition_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_partition_by(args, evaluator)
+}
+
+pub fn keep(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_keep(args, evaluator)
+}
+
+pub fn drop_last(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_drop_last(args)
+}
+
+pub fn split_at(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_split_at(args)
 }
 
 pub fn drop_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
