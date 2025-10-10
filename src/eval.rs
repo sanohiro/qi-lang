@@ -362,6 +362,7 @@ impl Evaluator {
                         "select!" => return self.eval_select(args, env),
                         "scope-go" => return self.eval_scope_go(args, env),
                         "with-scope" => return self.eval_with_scope(args, env),
+                        "parallel-do" => return self.eval_parallel_do(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -990,6 +991,28 @@ impl Evaluator {
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         builtins::with_scope(&[func], self)
+    }
+
+    fn eval_parallel_do(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.is_empty() {
+            return Ok(Value::Vector(vec![]));
+        }
+
+        // 各式を遅延評価のために関数でラップ
+        let funcs: Vec<Value> = args
+            .iter()
+            .map(|expr| {
+                // 0引数の関数として作成: (fn [] expr)
+                Value::Function(Arc::new(crate::value::Function {
+                    params: vec![],
+                    body: expr.clone(),
+                    env: (*env.read()).clone(),
+                    is_variadic: false,
+                }))
+            })
+            .collect();
+
+        builtins::parallel_do(&funcs, self)
     }
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {

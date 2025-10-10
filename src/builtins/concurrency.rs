@@ -1126,3 +1126,61 @@ pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value,
     result
 }
 
+/// parallel-do - 複数の式を並列実行
+///
+/// 引数:
+/// - exprs: 並列実行する式のリスト（可変長）
+///
+/// 戻り値:
+/// - 全ての結果をベクタで返す
+///
+/// 例:
+/// ```lisp
+/// (parallel-do
+///   (http/get "url1")
+///   (http/get "url2")
+///   (http/get "url3"))
+/// ;; => [result1 result2 result3]
+/// ```
+pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.is_empty() {
+        return Ok(Value::Vector(vec![]));
+    }
+
+    // 各式を関数としてラップされていることを期待
+    // （eval.rsで事前に評価される前の式を受け取る）
+    // 実際にはValueとして評価済みのものが来るので、
+    // 関数を受け取る形式にする
+
+    // 結果を格納するチャネルのベクタ
+    let channels: Vec<_> = args
+        .iter()
+        .map(|func| {
+            let (sender, receiver) = unbounded();
+            let ch = Arc::new(Channel {
+                sender: sender.clone(),
+                receiver: receiver.clone(),
+            });
+
+            let func_clone = func.clone();
+            let evaluator_clone = evaluator.clone();
+
+            // 各タスクを並列実行
+            std::thread::spawn(move || {
+                let result = evaluator_clone.apply_function(&func_clone, &[]);
+                let _ = sender.send(result.unwrap_or(Value::Nil));
+            });
+
+            ch
+        })
+        .collect();
+
+    // 全ての結果を収集
+    let results: Result<Vec<_>, _> = channels
+        .iter()
+        .map(|ch| ch.receiver.recv().map_err(|_| "parallel-do: channel closed".to_string()))
+        .collect();
+
+    Ok(Value::Vector(results?))
+}
+

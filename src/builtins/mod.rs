@@ -493,6 +493,10 @@ pub fn scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> 
     concurrency::native_scope_go(args, evaluator)
 }
 
+pub fn parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_parallel_do(args, evaluator)
+}
+
 /// HTTP関数（Evaluatorが必要な関数）
 pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_get_async(args, evaluator)
