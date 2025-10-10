@@ -148,6 +148,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 | 演算子 | 意味 | 状態 | 用途 |
 |--------|------|------|------|
 | `|>` | 逐次パイプ | ✅ 実装済み | 基本的なデータ変換 |
+| `\|>?` | Railway パイプ | ✅ 実装済み | エラーハンドリング、Result型の連鎖 |
 | `||>` | 並列パイプ | ✅ 実装済み | 自動的にpmap化、リスト処理の並列化 |
 | `tap>` | 副作用タップ | ✅ 実装済み | デバッグ、ログ、モニタリング（関数として） |
 | `~>` | 非同期パイプ | 🚧 将来 | go/chan統合、非同期IO |
@@ -214,6 +215,68 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 - parser: `x ||> f` → `(pmap f x)`に展開
 - 現在はシングルスレッド版pmapを使用
 - 将来的にEvaluatorをスレッドセーフ化すれば真の並列化が可能
+
+---
+
+### ✅ `|>?` Railway Pipeline（実装済み）⭐ **Phase 4.5の主要機能**
+
+**エラーハンドリングを流れの中に組み込む** - Railway Oriented Programming
+
+```lisp
+;; Result型: {:ok value} または {:error message}
+;; |>? は {:ok value} なら次の関数に値を渡し、{:error e} ならショートサーキット
+
+;; 基本的な使い方
+({:ok 10}
+ |>? (fn [x] {:ok (* x 2)})
+ |>? (fn [x] {:ok (+ x 5)}))
+;; => {:ok 25}
+
+;; エラー時はショートサーキット
+({:ok 10}
+ |>? (fn [x] {:error "Something went wrong"})
+ |>? (fn [x] {:ok (* x 2)}))  ;; この関数は実行されない
+;; => {:error "Something went wrong"}
+
+;; JSONパース + データ変換
+("{\"name\":\"Alice\",\"age\":30}"
+ |> json/parse                    ;; => {:ok {...}}
+ |>? (fn [data] {:ok (get data "name")})
+ |>? (fn [name] {:ok (upper name)}))
+;; => {:ok "ALICE"}
+
+;; HTTPリクエスト + エラーハンドリング
+("https://api.example.com/users/123"
+ |> http/get                      ;; => {:ok {:status 200 :body "..."}}
+ |>? (fn [resp] (get resp "body"))
+ |>? json/parse
+ |>? (fn [data] {:ok (get data "user")}))
+;; エラー時は自動的に伝播
+
+;; 複雑な処理チェーン
+(user-id
+ |> (str "https://api.example.com/users/" _)
+ |> http/get
+ |>? (fn [resp]
+       (if (= (get resp "status") 200)
+         {:ok (get resp "body")}
+         {:error "Failed to fetch"}))
+ |>? json/parse
+ |>? validate-user
+ |>? save-to-db)
+```
+
+**使い分け**:
+- `|>`: 通常のデータ変換（エラーなし）
+- `|>?`: エラーが起こりうる処理（API、ファイルIO、パース）
+
+**実装**:
+- lexer: `|>?`を`Token::PipeRailway`として認識
+- parser: `x |>? f` → `(_railway-pipe f x)`に展開
+- `_railway-pipe`: Result型マップを検査し、`:ok`なら関数適用、`:error`ならそのまま返す
+
+**設計哲学**:
+エラーハンドリングを流れの一部として表現。try-catchのネストを避け、データフローが明確になる。JSONやHTTPなどのWeb開発機能と完璧に統合。
 
 ---
 
@@ -711,6 +774,30 @@ map filter reduce       ;; 基本の高階関数
 pmap                    ;; 並列map（現在はシングルスレッド実装）
 ```
 
+#### コレクション検索・述語（✅ 実装済み）
+```lisp
+;; ✅ Phase 4.5で実装
+find                    ;; 条件を満たす最初の要素: (find (fn [x] (> x 5)) [1 7 3]) => 7
+find-index              ;; 条件を満たす最初のインデックス: (find-index (fn [x] (> x 5)) [1 7 3]) => 1
+every?                  ;; 全要素が条件を満たすか: (every? (fn [x] (> x 0)) [1 2 3]) => true
+some?                   ;; いずれかが条件を満たすか: (some? (fn [x] (> x 5)) [1 7 3]) => true
+```
+
+**使用例**:
+```lisp
+;; ユーザーを探す
+(def users [{:name "Alice" :age 30} {:name "Bob" :age 25}])
+(find (fn [u] (= (get u :name) "Bob")) users)  ;; {:name "Bob" :age 25}
+
+;; 全員成人か確認
+(every? (fn [u] (>= (get u :age) 20)) users)  ;; true
+
+;; データパイプラインでの活用
+(users
+ |> (filter (fn [u] (>= (get u :age) 25)))
+ |> (find (fn [u] (= (get u :name) "Alice"))))
+```
+
 #### ソート・集約（✅ 実装済み）
 ```lisp
 sort                    ;; ソート（整数・浮動小数点・文字列対応）
@@ -838,7 +925,30 @@ assoc-in                ;; ネスト追加
 dissoc-in               ;; ネスト削除
 ```
 
+#### マップ一括変換（✅ 実装済み）
+```lisp
+;; ✅ Phase 4.5で実装
+update-keys             ;; 全キーに関数適用: (update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
+update-vals             ;; 全値に関数適用: (update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
+zipmap                  ;; キーと値のリストからマップ生成: (zipmap [:a :b] [1 2]) => {:a 1 :b 2}
+```
+
 **使用例**:
+```lisp
+;; すべてのキーを大文字に
+(update-keys upper {:name "Alice" :age 30})  ;; {"NAME" "Alice" "AGE" 30}
+
+;; すべての値を2倍に
+(def prices {:apple 100 :banana 50})
+(update-vals (fn [p] (* p 2)) prices)  ;; {:apple 200 :banana 100}
+
+;; データ変換パイプライン
+(prices
+ |> (update-vals (fn [p] (* p 1.1)))  ;; 10%値上げ
+ |> (update-vals round))              ;; 丸める
+```
+
+**ネスト操作の使用例**:
 ```lisp
 ;; update: 値を関数で変換
 (def user {:name "Alice" :age 30})
@@ -859,7 +969,7 @@ dissoc-in               ;; ネスト削除
  |> (fn [s] (assoc-in s [:user :last-seen] (now))))
 ```
 
-**設計メモ**: ネスト操作はQiの強み。JSONやWeb APIレスポンスの処理が直感的になる。
+**設計メモ**: ネスト操作はQiの強み。JSONやWeb APIレスポンスの処理が直感的になる。一括変換関数と組み合わせることでデータ変換が簡潔に書ける。
 
 ### 関数型プログラミング基礎
 
@@ -959,6 +1069,133 @@ file-exists?            ;; ファイル存在確認
 ```lisp
 ;; ✅ 実装済み（上記の基本I/Oに含まれる）
 ```
+
+### Web開発・ユーティリティ ⭐ **Phase 4.5新機能**
+
+#### JSON処理（✅ 実装済み）
+```lisp
+;; ✅ Phase 4.5で実装
+json/parse              ;; JSON文字列をパース: "{\"a\":1}" => {:ok {:a 1}}
+json/stringify          ;; 値をJSON化（コンパクト）
+json/pretty             ;; 値を整形JSON化
+```
+
+**使用例**:
+```lisp
+;; JSONパース
+(def json-str "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"dev\",\"lisp\"]}")
+(json/parse json-str)
+;; => {:ok {"name" "Alice" "age" 30 "tags" ["dev" "lisp"]}}
+
+;; JSON生成
+(def data {"name" "Bob" "age" 25})
+(json/stringify data)  ;; => {:ok "{\"name\":\"Bob\",\"age\":25}"}
+(json/pretty data)     ;; => {:ok "{\n  \"name\": \"Bob\",\n  ..."}
+
+;; データパイプライン
+(data
+ |> (assoc _ "active" true)
+ |> json/pretty
+ |>? (fn [json] {:ok (write-file "output.json" json)}))
+```
+
+#### HTTP クライアント（✅ 実装済み）
+```lisp
+;; ✅ Phase 4.5で完全実装
+http/get                ;; HTTP GET: (http/get "https://...") => {:ok {:status 200 :body "..."}}
+http/post               ;; HTTP POST: (http/post "url" {:key "value"})
+http/put                ;; HTTP PUT
+http/delete             ;; HTTP DELETE
+http/patch              ;; HTTP PATCH
+http/head               ;; HTTP HEAD
+http/options            ;; HTTP OPTIONS
+http/request            ;; 詳細設定: (http/request {:method "GET" :url "..." :headers {...}})
+
+;; 非同期版
+http/get-async          ;; 非同期GET: Channelを返す
+http/post-async         ;; 非同期POST: Channelを返す
+```
+
+**使用例**:
+```lisp
+;; 基本的なGET
+(http/get "https://httpbin.org/get")
+;; => {:ok {:status 200 :headers {...} :body "..."}}
+
+;; POSTでJSON送信
+(def user {:name "Alice" :email "alice@example.com"})
+(http/post "https://api.example.com/users" user)
+
+;; カスタムヘッダ付きリクエスト
+(http/request {
+  :method "POST"
+  :url "https://api.example.com/data"
+  :headers {"Authorization" "Bearer token123"}
+  :body {:data "value"}
+  :timeout 5000
+})
+
+;; Railway Pipelineと組み合わせ
+("https://api.github.com/users/octocat"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})
+ |>? json/parse
+ |>? (fn [data] {:ok (get data "name")}))
+;; => {:ok "The Octocat"}
+
+;; 非同期リクエスト
+(def ch (http/get-async "https://api.example.com/data"))
+(def resp (recv! ch))  ;; ブロッキング受信
+```
+
+**エラーハンドリング**:
+```lisp
+;; エラー時は {:error {...}} を返す
+(http/get "https://invalid-domain-12345.com")
+;; => {:error {:type "connection" :message "..."}}
+
+;; Railway Pipelineで自動的にエラー伝播
+("https://invalid.com/api"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})  ;; 実行されない
+ |>? json/parse)                          ;; 実行されない
+;; => {:error {...}}
+```
+
+#### デバッグ・計測（✅ 実装済み）
+```lisp
+;; ✅ Phase 4.5で実装
+inspect                 ;; 値を整形表示してそのまま返す（パイプライン用）
+time                    ;; 関数実行時間を計測
+```
+
+**使用例**:
+```lisp
+;; inspect: データフローを観察
+(def data {"name" "Alice" "scores" [95 87 92]})
+(data
+ |> (assoc _ "average" 91.3)
+ |> inspect              ;; 整形表示してそのまま返す
+ |> (update-vals inc))
+
+;; time: パフォーマンス計測
+(time (fn []
+  (reduce + (range 1000000))))
+;; Elapsed: 0.234s
+;; => 499999500000
+
+;; パイプライン内で使用
+(urls
+ ||> http/get
+ |> (fn [responses] (time (fn [] (process responses))))
+ |> save-results)
+```
+
+**設計哲学**:
+- JSONとHTTPは常にResult型 `{:ok value}` / `{:error e}` を返す
+- Railway Pipeline `|>?` と完璧に統合
+- デバッグ関数はパイプライン内で使いやすい設計
+- 非同期版はChannelを返し、Layer 1 (go/chan) と統合
 
 ### 並行・並列処理 - Qiの真髄
 

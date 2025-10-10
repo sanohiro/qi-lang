@@ -5,12 +5,14 @@
 ## 特徴
 
 - **シンプル**: 特殊形式8つのみ（`def` `fn` `let` `do` `if` `match` `try` `defer`）
-- **パイプライン**: `|>` 演算子でデータフローを直感的に記述
+- **パイプライン**: `|>` `|>?` `||>` でデータフローを直感的に記述
+  - **Railway Pipeline (`|>?`)**: エラーハンドリングを流れに組み込む ⭐ NEW
 - **パターンマッチング**: 強力な `match` 式
+- **Web開発**: JSON/HTTP完全対応、Railway Pipelineでエラーハンドリング ⭐ NEW
+- **並行・並列**: 3層アーキテクチャ（go/chan、パイプライン、async/await）で簡単に並列化
+- **デバッグ**: `inspect`、`time`でパイプライン内のデータを観察 ⭐ NEW
 - **多言語対応**: 英語・日本語のエラーメッセージ（環境変数 `QI_LANG` で設定）
-- **並行・並列**: `go`、`pmap`、チャネルによる並行処理
 - **安全なマクロ**: `uvar` による変数衝突回避
-- **実用的なモジュール**: str、csv、regex、http など
 
 ## 多言語対応
 
@@ -40,15 +42,26 @@ QI_LANG=en qi script.qi  # 英語
 
 ## パイプライン例
 
+### 基本パイプライン
 ```lisp
-(use str :as s)
-
 (data
  |> parse-json
  |> (filter active?)
  |> (map :email)
- |> (s/join ", ")
+ |> (join ", ")
  |> log)
+```
+
+### Railway Pipeline - エラーハンドリング ⭐ NEW
+```lisp
+;; Web APIからデータ取得 → 変換 → 保存
+("https://api.example.com/users/123"
+ |> http/get              ;; {:ok {...}} または {:error ...}
+ |>? (fn [resp] {:ok (get resp "body")})
+ |>? json/parse
+ |>? validate-user
+ |>? save-to-db)
+;; エラーが起きたら自動的にショートサーキット！
 ```
 
 ## 使い方
@@ -73,38 +86,77 @@ qi --help
 ## ドキュメント
 
 - [完全な言語仕様](SPEC.md) - 詳細な文法、組み込み関数、モジュールシステム
+- [実用例](examples/web-api/) - Web API、JSON処理、Railway Pipelineの実例 ⭐ NEW
 
-## 例
+## 実装例
 
-### CSV処理
+### Web API クライアント ⭐ NEW
 
 ```lisp
-(use csv)
+;; GitHub APIからユーザー情報を取得
+(def fetch-user (fn [username]
+  (str "https://api.github.com/users/" username)
+  |> http/get
+  |>? (fn [resp] {:ok (get resp "body")})
+  |>? json/parse
+  |>? (fn [user] {:ok (get user "name")})))
 
-("data.csv"
- |> csv/parse-file
- |> (filter valid?)
- |> (map process)
- |> (csv/write-file "output.csv"))
+(fetch-user "octocat")  ;; => {:ok "The Octocat"}
 ```
 
-### エラー処理
+### JSON データ変換 ⭐ NEW
 
 ```lisp
-(match (try (risky-operation))
-  {:ok result} -> result
-  {:error e} -> (log e))
+;; JSONパース → フィルタ → 変換 → JSON生成
+(json-string
+ |> json/parse
+ |>? (fn [data] {:ok (get data "users")})
+ |>? (fn [users] {:ok (filter (fn [u] (= (get u "city") "Tokyo")) users)})
+ |>? (fn [users] {:ok (map (fn [u] (update u "age" inc)) users)})
+ |>? json/pretty)
+```
+
+### コレクション操作 ⭐ NEW
+
+```lisp
+;; データ検索と変換
+(def users [{:name "Alice" :age 30} {:name "Bob" :age 25}])
+
+;; 条件に合う最初のユーザー
+(find (fn [u] (>= (get u :age) 25)) users)
+
+;; 全員が成人か？
+(every? (fn [u] (>= (get u :age) 20)) users)  ;; => true
+
+;; マップのキーを全て大文字に
+(update-keys upper {:name "Alice" :city "Tokyo"})
+;; => {"NAME" "Alice" "CITY" "Tokyo"}
+```
+
+### デバッグ・計測 ⭐ NEW
+
+```lisp
+;; データフローを観察
+(data
+ |> transform
+ |> inspect              ;; 整形表示してそのまま返す
+ |> validate)
+
+;; パフォーマンス計測
+(time (fn [] (reduce + (range 1000000))))
+;; Elapsed: 0.234s
 ```
 
 ### 並行処理
 
 ```lisp
-(def urls ["http://a.com" "http://b.com" "http://c.com"])
+;; 複数URLを並列取得
+(def urls ["https://api.example.com/1" "https://api.example.com/2"])
 
 (urls
- |> (pmap http-get)
- |> (map parse)
- |> flatten)
+ ||> http/get            ;; 並列リクエスト
+ |> (map extract-data)
+ |> merge-results)
 ```
 
 ## 開発状況
