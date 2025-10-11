@@ -4328,3 +4328,106 @@ std/
 詳細は [DOC_SYSTEM.md](DOC_SYSTEM.md) を参照してください。
 
 ---
+
+## REPL（Read-Eval-Print Loop）
+
+QiのREPLは強力な対話的開発環境を提供します。
+
+### ✅ 基本機能
+
+**起動**:
+```bash
+qi              # REPL起動
+qi -l file.qi   # ファイルをロードしてREPL起動
+```
+
+**特徴**:
+- **履歴**: 上下キーで過去のコマンド履歴（`~/.qi_history`に保存）
+- **行編集**: Emacs風キーバインド（Ctrl+A/E/W等）
+- **複数行入力**: 括弧が閉じるまで自動継続
+- **タブ補完**: 関数名・変数名・REPLコマンドを補完
+
+### ✅ REPLコマンド
+
+すべてのコマンドは `:` で始まります：
+
+```lisp
+:help           ; コマンド一覧表示
+:vars           ; 定義済み変数一覧
+:funcs          ; ユーザー定義関数一覧
+:builtins       ; ビルトイン関数（プレースホルダー）
+:clear          ; 環境をクリア
+:load <file>    ; ファイル読み込み
+:reload         ; 最後のファイルを再読み込み
+:quit           ; 終了
+```
+
+### 使用例
+
+```lisp
+qi:1> (defn double [x] (* x 2))
+#<function>
+
+qi:2> (double 21)
+42
+
+qi:3> :vars
+No variables defined
+
+qi:4> :funcs
+User-defined functions:
+  double
+
+qi:5> :load utils.qi
+Loading: utils.qi
+Loaded!
+
+qi:6> (double
+     ...  21)
+42
+
+qi:7> :quit
+```
+
+### 複数行入力
+
+括弧が閉じていない場合、自動的に複数行モードになります：
+
+```lisp
+qi:1> (defn sum [& nums]
+     ...   (reduce + 0 nums))
+#<function>
+
+qi:2> (sum 1 2 3 4 5)
+15
+```
+
+### タブ補完
+
+関数名、変数名、REPLコマンドを補完できます：
+
+```lisp
+qi:1> :h<TAB>
+:help
+
+qi:2> dou<TAB>
+double
+
+qi:3> (defn triple [x] (* x 3))
+#<function>
+
+qi:4> tri<TAB>
+triple
+```
+
+### キーボードショートカット
+
+- **Ctrl+C**: 入力キャンセル（REPL継続）
+- **Ctrl+D**: 終了
+- **↑/↓**: 履歴移動
+- **Ctrl+A**: 行頭
+- **Ctrl+E**: 行末
+- **Ctrl+W**: 単語削除
+- **TAB**: 補完
+
+---
