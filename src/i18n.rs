@@ -173,6 +173,11 @@ pub enum MsgKey {
     RedefineBuiltin,     // warning: redefining builtin function: {0} ({1})
     RedefineFunction,    // warning: redefining function: {0}
     RedefineVariable,    // warning: redefining variable: {0}
+
+    // CSV エラー
+    FileReadError,       // {0}: file read error: {1}
+    CsvCannotSerialize,  // csv/stringify: cannot serialize {0}
+    CsvRecordMustBeList, // csv/stringify: each record must be a list
 }
 
 /// UIメッセージキー
@@ -361,6 +366,11 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::RedefineFunction), "warning: redefining function '{0}'");
         messages.insert((Lang::En, MsgKey::RedefineVariable), "warning: redefining variable '{0}'");
 
+        // 英語メッセージ - CSV
+        messages.insert((Lang::En, MsgKey::FileReadError), "{0}: file read error: {1}");
+        messages.insert((Lang::En, MsgKey::CsvCannotSerialize), "csv/stringify: cannot serialize {0}");
+        messages.insert((Lang::En, MsgKey::CsvRecordMustBeList), "csv/stringify: each record must be a list");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -487,6 +497,11 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::RedefineBuiltin), "警告: ビルトイン関数を再定義しています: '{0}' ({1})");
         messages.insert((Lang::Ja, MsgKey::RedefineFunction), "警告: 関数を再定義しています: '{0}'");
         messages.insert((Lang::Ja, MsgKey::RedefineVariable), "警告: 変数を再定義しています: '{0}'");
+
+        // 日本語メッセージ - CSV
+        messages.insert((Lang::Ja, MsgKey::FileReadError), "{0}: ファイル読み込みエラー: {1}");
+        messages.insert((Lang::Ja, MsgKey::CsvCannotSerialize), "csv/stringify: シリアライズできません: {0}");
+        messages.insert((Lang::Ja, MsgKey::CsvRecordMustBeList), "csv/stringify: 各レコードはリストである必要があります");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

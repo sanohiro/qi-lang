@@ -60,6 +60,7 @@ pub mod string;
 pub mod time;
 pub mod concurrency;
 pub mod util;
+pub mod csv;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -285,6 +286,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "stats/variance" => stats::native_variance,
         "stats/stddev" => stats::native_stddev,
         "stats/percentile" => stats::native_percentile,
+
+        // ========================================
+        // 専門モジュール: csv（4個）
+        // ========================================
+        "csv/parse" => csv::native_csv_parse,
+        "csv/stringify" => csv::native_csv_stringify,
+        "csv/read-file" => csv::native_csv_read_file,
+        "csv/read-stream" => csv::native_csv_read_stream,
 
         // ========================================
         // 専門モジュール: io（5個）
