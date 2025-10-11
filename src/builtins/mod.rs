@@ -73,6 +73,8 @@ pub mod zip;
 pub mod args;
 pub mod temp;
 pub mod test;
+pub mod profile;
+pub mod ds;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -406,13 +408,41 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "io/temp-dir-keep" => temp::native_temp_dir_keep,
 
         // ========================================
-        // 専門モジュール: test（4個）
+        // 専門モジュール: test（5個）
         // ========================================
         "test/assert-eq" => test::native_assert_eq,
         "test/assert" => test::native_assert,
         "test/assert-not" => test::native_assert_not,
         "test/run-all" => test::native_run_all,
         "test/clear" => test::native_test_clear,
+
+        // ========================================
+        // 専門モジュール: profile（4個）
+        // ========================================
+        "profile/start" => profile::native_profile_start,
+        "profile/stop" => profile::native_profile_stop,
+        "profile/clear" => profile::native_profile_clear,
+        "profile/report" => profile::native_profile_report,
+
+        // ========================================
+        // 専門モジュール: queue（6個）
+        // ========================================
+        "queue/new" => ds::native_queue_new,
+        "queue/enqueue" => ds::native_queue_enqueue,
+        "queue/dequeue" => ds::native_queue_dequeue,
+        "queue/peek" => ds::native_queue_peek,
+        "queue/empty?" => ds::native_queue_empty,
+        "queue/size" => ds::native_queue_size,
+
+        // ========================================
+        // 専門モジュール: stack（6個）
+        // ========================================
+        "stack/new" => ds::native_stack_new,
+        "stack/push" => ds::native_stack_push,
+        "stack/pop" => ds::native_stack_pop,
+        "stack/peek" => ds::native_stack_peek,
+        "stack/empty?" => ds::native_stack_empty,
+        "stack/size" => ds::native_stack_size,
 
         // ========================================
         // 専門モジュール: dbg（2個）

@@ -860,6 +860,21 @@ impl Evaluator {
         self.apply_func(func, args.to_vec())
     }
 
+    /// 関数名を取得（プロファイリング用）
+    fn get_function_name(&self, func: &Value) -> Option<String> {
+        if let Value::Function(f) = func {
+            // グローバル環境から関数を検索
+            for (name, value) in self.global_env.read().bindings() {
+                if let Value::Function(stored_f) = value {
+                    if Arc::ptr_eq(f, stored_f) {
+                        return Some(name.clone());
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// 関数を適用するヘルパー（内部用）
     fn apply_func(&self, func: &Value, args: Vec<Value>) -> Result<Value, String> {
         match func {
@@ -913,7 +928,20 @@ impl Evaluator {
                     }
                 }
 
-                self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                // プロファイリングが有効な場合、時間測定
+                if builtins::profile::is_enabled() {
+                    let start = std::time::Instant::now();
+                    let result = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
+                    let duration = start.elapsed();
+
+                    // 関数名を取得（環境から逆引き）
+                    let func_name = self.get_function_name(func).unwrap_or_else(|| "<anonymous>".to_string());
+                    builtins::profile::record_call(&func_name, duration);
+
+                    result
+                } else {
+                    self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                }
             }
             _ => Err(fmt_msg(
                 MsgKey::TypeMismatch,
