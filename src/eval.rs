@@ -1787,6 +1787,64 @@ mod tests {
             Value::Integer(9)
         );
     }
+
+    #[test]
+    fn test_match_or_pattern() {
+        // orパターンのテスト - 数値
+        assert_eq!(
+            eval_str("(match 1 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 2 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 3 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 5 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("large".to_string())
+        );
+
+        // orパターンのテスト - 文字列
+        assert_eq!(
+            eval_str("(match \"red\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("primary".to_string())
+        );
+        assert_eq!(
+            eval_str("(match \"blue\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("primary".to_string())
+        );
+        assert_eq!(
+            eval_str("(match \"green\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("other".to_string())
+        );
+
+        // orパターンのテスト - 変数バインディング付き
+        assert_eq!(
+            eval_str("(match 2 1 | 2 | 3 -> (+ 10 2) _ -> 0)").unwrap(),
+            Value::Integer(12)
+        );
+    }
+
+    #[test]
+    fn test_match_or_pattern_with_wildcards() {
+        // orパターン + ワイルドカード
+        assert_eq!(
+            eval_str("(match nil nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("falsy".to_string())
+        );
+        assert_eq!(
+            eval_str("(match false nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("falsy".to_string())
+        );
+        assert_eq!(
+            eval_str("(match true nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("truthy".to_string())
+        );
+    }
 }
 
 // モジュールシステムのヘルパー関数

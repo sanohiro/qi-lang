@@ -220,3 +220,93 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/percentile", "lists or vectors"])),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mean() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_mean(&[Value::Vector(data)]).unwrap();
+        assert_eq!(result, Value::Float(3.0));
+    }
+
+    #[test]
+    fn test_mean_mixed() {
+        let data = vec![Value::Integer(1), Value::Float(2.5), Value::Integer(3)];
+        let result = native_mean(&[Value::Vector(data)]).unwrap();
+        assert!((match result { Value::Float(f) => f, _ => 0.0 } - 2.166666).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_median_odd() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_median(&[Value::Vector(data)]).unwrap();
+        assert_eq!(result, Value::Float(3.0));
+    }
+
+    #[test]
+    fn test_median_even() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4)];
+        let result = native_median(&[Value::Vector(data)]).unwrap();
+        assert_eq!(result, Value::Float(2.5));
+    }
+
+    #[test]
+    fn test_mode() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(2), Value::Integer(3), Value::Integer(3), Value::Integer(3)];
+        let result = native_mode(&[Value::Vector(data)]).unwrap();
+        assert_eq!(result, Value::Integer(3));
+    }
+
+    #[test]
+    fn test_variance() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_variance(&[Value::Vector(data)]).unwrap();
+        assert_eq!(result, Value::Float(2.0));
+    }
+
+    #[test]
+    fn test_stddev() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_stddev(&[Value::Vector(data)]).unwrap();
+        let expected = 2.0_f64.sqrt();
+        assert!((match result { Value::Float(f) => f, _ => 0.0 } - expected).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_percentile_50() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_percentile(&[Value::Vector(data), Value::Integer(50)]).unwrap();
+        assert_eq!(result, Value::Float(3.0));
+    }
+
+    #[test]
+    fn test_percentile_95() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let result = native_percentile(&[Value::Vector(data), Value::Integer(95)]).unwrap();
+        assert_eq!(result, Value::Float(4.8));
+    }
+
+    #[test]
+    fn test_empty_collection_error() {
+        let data = vec![];
+        let result = native_mean(&[Value::Vector(data)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_non_numeric_error() {
+        let data = vec![Value::Integer(1), Value::String("not a number".to_string())];
+        let result = native_mean(&[Value::Vector(data)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_percentile_invalid_range() {
+        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)];
+        let result = native_percentile(&[Value::Vector(data), Value::Integer(101)]);
+        assert!(result.is_err());
+    }
+}

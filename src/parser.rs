@@ -1108,4 +1108,43 @@ mod tests {
             _ => panic!("Expected Defer"),
         }
     }
+
+    #[test]
+    fn test_parse_or_pattern() {
+        let mut parser = Parser::new("(match x 1 | 2 | 3 -> \"small\")").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Match { arms, .. } => {
+                assert_eq!(arms.len(), 1);
+                match &arms[0].pattern {
+                    Pattern::Or(patterns) => {
+                        assert_eq!(patterns.len(), 3);
+                        assert_eq!(patterns[0], Pattern::Integer(1));
+                        assert_eq!(patterns[1], Pattern::Integer(2));
+                        assert_eq!(patterns[2], Pattern::Integer(3));
+                    }
+                    _ => panic!("Expected Or pattern"),
+                }
+            }
+            _ => panic!("Expected Match"),
+        }
+    }
+
+    #[test]
+    fn test_parse_or_pattern_string() {
+        let mut parser = Parser::new("(match x \"a\" | \"b\" -> \"ok\")").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Match { arms, .. } => {
+                assert_eq!(arms.len(), 1);
+                match &arms[0].pattern {
+                    Pattern::Or(patterns) => {
+                        assert_eq!(patterns.len(), 2);
+                        assert_eq!(patterns[0], Pattern::String("a".to_string()));
+                        assert_eq!(patterns[1], Pattern::String("b".to_string()));
+                    }
+                    _ => panic!("Expected Or pattern"),
+                }
+            }
+            _ => panic!("Expected Match"),
+        }
+    }
 }
