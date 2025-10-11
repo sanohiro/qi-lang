@@ -10,6 +10,7 @@
 
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
+use std::collections::HashMap;
 
 // ========================================
 // リスト操作（Evaluator不要）
@@ -383,15 +384,29 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Map(m) => {
-            let mut new_map = m.clone();
+            // 削除するキーの数を計算して capacity を確保
+            let num_remove_keys = args.len() - 1;
+            let new_capacity = m.len().saturating_sub(num_remove_keys);
+            let mut new_map = HashMap::with_capacity(new_capacity.max(m.len() / 2));
+
+            // キーのセットを作成
+            let mut keys_to_remove = std::collections::HashSet::with_capacity(num_remove_keys);
             for arg in &args[1..] {
                 let key = match arg {
                     Value::String(s) => s.clone(),
                     Value::Keyword(k) => k.clone(),
                     _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
                 };
-                new_map.remove(&key);
+                keys_to_remove.insert(key);
             }
+
+            // 削除するキー以外をコピー
+            new_map.extend(
+                m.iter()
+                    .filter(|(k, _)| !keys_to_remove.contains(*k))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+            );
+
             Ok(Value::Map(new_map))
         }
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["dissoc", "a map"])),
@@ -403,7 +418,7 @@ pub fn native_merge(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["merge", "1"]));
     }
-    let mut result = std::collections::HashMap::new();
+    let mut result = HashMap::new();
     for arg in args {
         match arg {
             Value::Map(m) => {
