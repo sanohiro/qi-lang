@@ -7,6 +7,7 @@
 //! - get-stream/post-stream/request-stream: ストリーミング版
 
 use crate::eval::Evaluator;
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
 use parking_lot::RwLock;
@@ -18,12 +19,12 @@ use std::time::Duration;
 /// HTTP GETリクエスト
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/get: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/get"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/get: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get", "URL"])),
     };
 
     http_request("GET", url, None, None, 30000)
@@ -32,12 +33,12 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 /// HTTP POSTリクエスト
 pub fn native_post(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("http/post: 2個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/post"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/post: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post", "URL"])),
     };
 
     http_request("POST", url, Some(&args[1]), None, 30000)
@@ -46,12 +47,12 @@ pub fn native_post(args: &[Value]) -> Result<Value, String> {
 /// HTTP PUTリクエスト
 pub fn native_put(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("http/put: 2個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/put"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/put: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/put", "URL"])),
     };
 
     http_request("PUT", url, Some(&args[1]), None, 30000)
@@ -60,12 +61,12 @@ pub fn native_put(args: &[Value]) -> Result<Value, String> {
 /// HTTP DELETEリクエスト
 pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/delete: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/delete"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/delete: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/delete", "URL"])),
     };
 
     http_request("DELETE", url, None, None, 30000)
@@ -74,12 +75,12 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
 /// HTTP PATCHリクエスト
 pub fn native_patch(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("http/patch: 2個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/patch"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/patch: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/patch", "URL"])),
     };
 
     http_request("PATCH", url, Some(&args[1]), None, 30000)
@@ -88,12 +89,12 @@ pub fn native_patch(args: &[Value]) -> Result<Value, String> {
 /// HTTP HEADリクエスト
 pub fn native_head(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/head: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/head"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/head: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/head", "URL"])),
     };
 
     http_request("HEAD", url, None, None, 30000)
@@ -102,12 +103,12 @@ pub fn native_head(args: &[Value]) -> Result<Value, String> {
 /// HTTP OPTIONSリクエスト
 pub fn native_options(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/options: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/options"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("http/options: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/options", "URL"])),
     };
 
     http_request("OPTIONS", url, None, None, 30000)
@@ -116,12 +117,12 @@ pub fn native_options(args: &[Value]) -> Result<Value, String> {
 /// 詳細なHTTPリクエスト
 pub fn native_request(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/request: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/request"]));
     }
 
     let opts = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("http/request: 引数はマップである必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeMap, &["http/request", "argument"])),
     };
 
     // オプションをパース
@@ -163,12 +164,12 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
 /// HTTP GETリクエスト (非同期)
 pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/get-async: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/get-async"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("http/get-async: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get-async", "URL"])),
     };
 
     let (sender, receiver) = bounded(1);
@@ -188,12 +189,12 @@ pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value,
 /// HTTP POSTリクエスト (非同期)
 pub fn native_post_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("http/post-async: 2個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/post-async"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("http/post-async: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post-async", "URL"])),
     };
 
     let body = args[1].clone();
@@ -339,12 +340,12 @@ fn http_request(
 ///      (http/get-stream "url" :bytes) - バイナリモード（バイトチャンクごと）
 pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/get-stream: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/get-stream"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("http/get-stream: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get-stream", "URL"])),
     };
 
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
@@ -357,12 +358,12 @@ pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
 ///      (http/post-stream "url" body :bytes) - バイナリモード
 pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("http/post-stream: 2個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/post-stream"]));
     }
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("http/post-stream: URLは文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post-stream", "URL"])),
     };
 
     let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if k == "bytes");
@@ -375,12 +376,12 @@ pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
 ///      (http/request-stream {:method "GET" :url "..."} :bytes) - バイナリモード
 pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("http/request-stream: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/request-stream"]));
     }
 
     let config = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("http/request-stream: 引数はマップである必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeMap, &["http/request-stream", "argument"])),
     };
 
     let method = match config.get("method") {
@@ -390,7 +391,7 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let url = match config.get("url") {
         Some(Value::String(s)) => s.clone(),
-        _ => return Err("http/request-stream: url は必須です".to_string()),
+        _ => return Err(fmt_msg(MsgKey::KeyNotFound, &["url"])),
     };
 
     let body = config.get("body");

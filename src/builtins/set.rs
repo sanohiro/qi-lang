@@ -1,5 +1,6 @@
 //! 集合演算関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashSet;
 
@@ -22,7 +23,7 @@ pub fn native_union(args: &[Value]) -> Result<Value, String> {
                     }
                 }
             }
-            _ => return Err("union: all arguments must be lists or vectors".to_string()),
+            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["union", "lists or vectors"])),
         }
     }
 
@@ -32,13 +33,13 @@ pub fn native_union(args: &[Value]) -> Result<Value, String> {
 /// intersect - 積集合
 pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("intersect requires at least 2 arguments".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["intersect", "2"]));
     }
 
     // 最初のリストをベースにする
     let first = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err("intersect: all arguments must be lists or vectors".to_string()),
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["intersect", "lists or vectors"])),
     };
 
     let mut result: HashSet<String> = first.iter()
@@ -54,7 +55,7 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
                     .collect();
                 result.retain(|k| set.contains(k));
             }
-            _ => return Err("intersect: all arguments must be lists or vectors".to_string()),
+            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["intersect", "lists or vectors"])),
         }
     }
 
@@ -70,12 +71,12 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
 /// difference - 差集合（第1引数から第2引数以降を除く）
 pub fn native_difference(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("difference requires at least 2 arguments".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["difference", "2"]));
     }
 
     let first = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err("difference: all arguments must be lists or vectors".to_string()),
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["difference", "lists or vectors"])),
     };
 
     let mut exclude = HashSet::new();
@@ -86,7 +87,7 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
                     exclude.insert(format!("{:?}", item));
                 }
             }
-            _ => return Err("difference: all arguments must be lists or vectors".to_string()),
+            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["difference", "lists or vectors"])),
         }
     }
 
@@ -101,17 +102,17 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
 /// subset? - 部分集合判定
 pub fn native_subset(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("subset? requires 2 arguments".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["subset?"]));
     }
 
     let subset = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err("subset?: arguments must be lists or vectors".to_string()),
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["subset?", "lists or vectors"])),
     };
 
     let superset = match &args[1] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err("subset?: arguments must be lists or vectors".to_string()),
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["subset?", "lists or vectors"])),
     };
 
     let superset_keys: HashSet<String> = superset.iter()

@@ -37,7 +37,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 Err(e) => Err(format!("write-file: failed to write {}: {}", path, e)),
             }
         }
-        _ => Err("write-file: requires two strings (path, content)".to_string()),
+        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["write-file", "2", "(path: string, content: string)"])),
     }
 }
 
@@ -59,7 +59,7 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
                 Err(e) => Err(format!("append-file: failed to open {}: {}", path, e)),
             }
         }
-        _ => Err("append-file: requires two strings (path, content)".to_string()),
+        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["append-file", "2", "(path: string, content: string)"])),
     }
 }
 
@@ -83,7 +83,7 @@ pub fn native_println(args: &[Value]) -> Result<Value, String> {
 /// read-lines - ファイルを行ごとに読み込み
 pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("read-lines requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["read-lines"]));
     }
 
     match &args[0] {
@@ -99,21 +99,21 @@ pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
                 Err(e) => Err(format!("read-lines: failed to read {}: {}", path, e)),
             }
         }
-        _ => Err("read-lines: argument must be a string (path)".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeString, &["read-lines", "argument"])),
     }
 }
 
 /// file-exists? - ファイルの存在を確認
 pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("file-exists? requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["file-exists?"]));
     }
 
     match &args[0] {
         Value::String(path) => {
             Ok(Value::Bool(std::path::Path::new(path).exists()))
         }
-        _ => Err("file-exists?: argument must be a string (path)".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeString, &["file-exists?", "argument"])),
     }
 }
 
@@ -122,12 +122,12 @@ pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
 ///      (file-stream "path" :bytes) - バイナリモード（バイトベクタごと）
 pub fn native_file_stream(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("file-stream requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["file-stream"]));
     }
 
     let path = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("file-stream: argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["file-stream", "a string"])),
     };
 
     // 第2引数でバイナリモード判定

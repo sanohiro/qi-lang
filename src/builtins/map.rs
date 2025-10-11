@@ -139,13 +139,13 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
 /// get-in - ネストしたマップから値を取得
 pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
-        return Err("get-in requires 2 or 3 arguments (map, path, default?)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["get-in", "2 or 3", "(map, path, default?)"]));
     }
 
     let map = &args[0];
     let path = match &args[1] {
         Value::List(p) | Value::Vector(p) => p,
-        _ => return Err("get-in: path must be a list or vector".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["get-in", "path"])),
     };
     let default = if args.len() == 3 {
         args[2].clone()
@@ -158,7 +158,7 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
         let key = match key_val {
             Value::String(s) => s.clone(),
             Value::Keyword(k) => k.clone(),
-            _ => return Err("get-in: keys must be strings or keywords".to_string()),
+            _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
         };
 
         match current {
@@ -178,18 +178,18 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 /// assoc-in - ネストしたマップに値を設定
 pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("assoc-in requires 3 arguments (map, path, value)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["assoc-in", "3", "(map, path, value)"]));
     }
 
     let map = &args[0];
     let path = match &args[1] {
         Value::List(p) | Value::Vector(p) => p,
-        _ => return Err("assoc-in: path must be a list or vector".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["assoc-in", "path"])),
     };
     let value = &args[2];
 
     if path.is_empty() {
-        return Err("assoc-in: path cannot be empty".to_string());
+        return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["assoc-in", "path"]));
     }
 
     match map {
@@ -198,7 +198,7 @@ pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
             assoc_in_helper(&mut result, path, 0, value)?;
             Ok(Value::Map(result))
         }
-        _ => Err("assoc-in: first argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeMap, &["assoc-in", "first argument"])),
     }
 }
 
@@ -211,7 +211,7 @@ fn assoc_in_helper(
     let key = match &path[index] {
         Value::String(s) => s.clone(),
         Value::Keyword(k) => k.clone(),
-        _ => return Err("assoc-in: keys must be strings or keywords".to_string()),
+        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
     };
 
     if index == path.len() - 1 {
@@ -239,17 +239,17 @@ fn assoc_in_helper(
 /// dissoc-in - ネストしたマップからキーを削除
 pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("dissoc-in requires 2 arguments (map, path)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["dissoc-in", "2", "(map, path)"]));
     }
 
     let map = &args[0];
     let path = match &args[1] {
         Value::List(p) | Value::Vector(p) => p,
-        _ => return Err("dissoc-in: path must be a list or vector".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["dissoc-in", "path"])),
     };
 
     if path.is_empty() {
-        return Err("dissoc-in: path cannot be empty".to_string());
+        return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["dissoc-in", "path"]));
     }
 
     match map {
@@ -258,7 +258,7 @@ pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
             dissoc_in_helper(&mut result, path, 0)?;
             Ok(Value::Map(result))
         }
-        _ => Err("dissoc-in: first argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeMap, &["dissoc-in", "first argument"])),
     }
 }
 
@@ -270,7 +270,7 @@ fn dissoc_in_helper(
     let key = match &path[index] {
         Value::String(s) => s.clone(),
         Value::Keyword(k) => k.clone(),
-        _ => return Err("dissoc-in: keys must be strings or keywords".to_string()),
+        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
     };
 
     if index == path.len() - 1 {
@@ -290,7 +290,7 @@ fn dissoc_in_helper(
 /// update-keys - マップのすべてのキーに関数を適用
 pub fn native_update_keys(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("update-keys requires 2 arguments (key-fn, map)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-keys", "2", "(key-fn, map)"]));
     }
 
     let key_fn = &args[0];
@@ -311,14 +311,14 @@ pub fn native_update_keys(args: &[Value], evaluator: &crate::eval::Evaluator) ->
             }
             Ok(Value::Map(result))
         }
-        _ => Err("update-keys: second argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeMap, &["update-keys", "second argument"])),
     }
 }
 
 /// update-vals - マップのすべての値に関数を適用
 pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("update-vals requires 2 arguments (val-fn, map)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-vals", "2", "(val-fn, map)"]));
     }
 
     let val_fn = &args[0];
@@ -333,6 +333,6 @@ pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) ->
             }
             Ok(Value::Map(result))
         }
-        _ => Err("update-vals: second argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeMap, &["update-vals", "second argument"])),
     }
 }

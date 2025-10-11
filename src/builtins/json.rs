@@ -5,6 +5,7 @@
 //! - stringify: 値をJSON文字列に変換（コンパクト）
 //! - pretty: 値をJSON文字列に変換（整形済み）
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_json;
 
@@ -18,12 +19,12 @@ use serde_json;
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("json/parse: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["json/parse"]));
     }
 
     let json_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("json/parse: 引数は文字列である必要があります".to_string()),
+        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["json/parse", "a string"])),
     };
 
     match serde_json::from_str::<serde_json::Value>(json_str) {
@@ -56,7 +57,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("json/stringify: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["json/stringify"]));
     }
 
     match serde_json::to_string(&value_to_json(&args[0])) {
@@ -86,7 +87,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("json/pretty: 1個の引数が必要です".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["json/pretty"]));
     }
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {

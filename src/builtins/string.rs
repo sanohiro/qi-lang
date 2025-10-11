@@ -1190,17 +1190,17 @@ pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
 /// re-find - 正規表現で最初のマッチを検索
 pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("re-find requires 2 arguments (pattern, text)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-find", "2", "(pattern, text)"]));
     }
 
     let pattern = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("re-find: pattern must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-find", "pattern"])),
     };
 
     let text = match &args[1] {
         Value::String(s) => s,
-        _ => return Err("re-find: text must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-find", "text"])),
     };
 
     let re = Regex::new(pattern)
@@ -1215,17 +1215,17 @@ pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
 /// re-matches - 正規表現で全てのマッチを検索
 pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("re-matches requires 2 arguments (pattern, text)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-matches", "2", "(pattern, text)"]));
     }
 
     let pattern = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("re-matches: pattern must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-matches", "pattern"])),
     };
 
     let text = match &args[1] {
         Value::String(s) => s,
-        _ => return Err("re-matches: text must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-matches", "text"])),
     };
 
     let re = Regex::new(pattern)
@@ -1241,22 +1241,22 @@ pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
 /// re-replace - 正規表現で置換
 pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("re-replace requires 3 arguments (pattern, replacement, text)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-replace", "3", "(pattern, replacement, text)"]));
     }
 
     let pattern = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("re-replace: pattern must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-replace", "pattern"])),
     };
 
     let replacement = match &args[1] {
         Value::String(s) => s,
-        _ => return Err("re-replace: replacement must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-replace", "replacement"])),
     };
 
     let text = match &args[2] {
         Value::String(s) => s,
-        _ => return Err("re-replace: text must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-replace", "text"])),
     };
 
     let re = Regex::new(pattern)
@@ -1268,12 +1268,12 @@ pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
 /// format - 文字列フォーマット（簡易実装）
 pub fn native_format(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("format requires at least 1 argument (format string)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["format", "1+", "(format string)"]));
     }
 
     let fmt_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("format: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["format", "a string"])),
     };
 
     let mut result = fmt_str.clone();

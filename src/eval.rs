@@ -648,7 +648,7 @@ impl Evaluator {
     /// pfilter関数の実装: (pfilter pred coll)
     fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("pfilter requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["pfilter"]));
         }
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
@@ -658,7 +658,7 @@ impl Evaluator {
     /// preduce関数の実装: (preduce f init coll)
     fn eval_preduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err("preduce requires 3 arguments".to_string());
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["preduce", "3", ""]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         let init = self.eval_with_env(&args[1], env.clone())?;
@@ -816,7 +816,7 @@ impl Evaluator {
     /// sort-by - キー関数でソート
     fn eval_sort_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("sort-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["sort-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -828,7 +828,7 @@ impl Evaluator {
     /// chunk - 固定サイズでリストを分割
     fn eval_chunk(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("chunk requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["chunk"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -840,7 +840,7 @@ impl Evaluator {
     /// count-by - 述語でカウント
     fn eval_count_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("count-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["count-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -852,7 +852,7 @@ impl Evaluator {
     /// max-by - キー関数で最大値を取得
     fn eval_max_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("max-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["max-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -864,7 +864,7 @@ impl Evaluator {
     /// min-by - キー関数で最小値を取得
     fn eval_min_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("min-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["min-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -876,7 +876,7 @@ impl Evaluator {
     /// sum-by - キー関数で合計
     fn eval_sum_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("sum-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["sum-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -887,7 +887,7 @@ impl Evaluator {
 
     fn eval_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err("go requires 1 argument".to_string());
+            return Err(fmt_msg(MsgKey::Need1Arg, &["go"]));
         }
         // 式を評価して値に変換
         let val = self.eval_with_env(&args[0], env)?;
@@ -896,7 +896,7 @@ impl Evaluator {
 
     fn eval_pipeline(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err("pipeline requires 3 arguments".to_string());
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline", "3", ""]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -907,7 +907,7 @@ impl Evaluator {
 
     fn eval_pipeline_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err("pipeline-map requires 3 arguments".to_string());
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-map", "3", ""]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -918,7 +918,7 @@ impl Evaluator {
 
     fn eval_pipeline_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err("pipeline-filter requires 3 arguments".to_string());
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-filter", "3", ""]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -929,7 +929,7 @@ impl Evaluator {
 
     fn eval_railway_pipe(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("_railway-pipe: 2個の引数が必要です".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["_railway-pipe"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -940,7 +940,7 @@ impl Evaluator {
 
     fn eval_time(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {
-            return Err("time: 1個の引数が必要です".to_string());
+            return Err(fmt_msg(MsgKey::Need1Arg, &["time"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -951,7 +951,7 @@ impl Evaluator {
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("then requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["then"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -962,7 +962,7 @@ impl Evaluator {
 
     fn eval_catch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("catch requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["catch"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -973,7 +973,7 @@ impl Evaluator {
 
     fn eval_select(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err("select! requires 1 argument".to_string());
+            return Err(fmt_msg(MsgKey::Need1Arg, &["select!"]));
         }
         let val = self.eval_with_env(&args[0], env.clone())?;
         builtins::select(&[val], self)
@@ -981,7 +981,7 @@ impl Evaluator {
 
     fn eval_scope_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("scope-go requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["scope-go"]));
         }
         let scope = self.eval_with_env(&args[0], env.clone())?;
         let func = self.eval_with_env(&args[1], env.clone())?;
@@ -990,7 +990,7 @@ impl Evaluator {
 
     fn eval_with_scope(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err("with-scope requires 1 argument".to_string());
+            return Err(fmt_msg(MsgKey::Need1Arg, &["with-scope"]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         builtins::with_scope(&[func], self)
@@ -1020,7 +1020,7 @@ impl Evaluator {
 
     fn eval_iterate(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("iterate requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["iterate"]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         let init = self.eval_with_env(&args[1], env.clone())?;
@@ -1029,7 +1029,7 @@ impl Evaluator {
 
     fn eval_stream_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("stream-map requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["stream-map"]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         let stream = self.eval_with_env(&args[1], env.clone())?;
@@ -1038,7 +1038,7 @@ impl Evaluator {
 
     fn eval_stream_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("stream-filter requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["stream-filter"]));
         }
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let stream = self.eval_with_env(&args[1], env.clone())?;
@@ -1047,7 +1047,7 @@ impl Evaluator {
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("find requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["find"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1058,7 +1058,7 @@ impl Evaluator {
 
     fn eval_find_index(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("find-index requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["find-index"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1069,7 +1069,7 @@ impl Evaluator {
 
     fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("every? requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["every?"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1080,7 +1080,7 @@ impl Evaluator {
 
     fn eval_some(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("some? requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["some?"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1091,7 +1091,7 @@ impl Evaluator {
 
     fn eval_update_keys(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("update-keys requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["update-keys"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1102,7 +1102,7 @@ impl Evaluator {
 
     fn eval_update_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("update-vals requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["update-vals"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1113,7 +1113,7 @@ impl Evaluator {
 
     fn eval_partition_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("partition-by requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["partition-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1124,7 +1124,7 @@ impl Evaluator {
 
     fn eval_keep(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("keep requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["keep"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1135,7 +1135,7 @@ impl Evaluator {
 
     fn eval_drop_last(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("drop-last requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["drop-last"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1146,7 +1146,7 @@ impl Evaluator {
 
     fn eval_split_at(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("split-at requires 2 arguments".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["split-at"]));
         }
         let vals: Vec<Value> = args
             .iter()

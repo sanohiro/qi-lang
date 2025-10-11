@@ -7,8 +7,8 @@ use std::sync::Arc;
 /// f-stringの部品（文字列またはコード）
 #[derive(Debug, Clone, PartialEq)]
 pub enum FStringPart {
-    Text(String),   // 通常の文字列部分
-    Code(String),   // {expr} 内のコード
+    Text(String), // 通常の文字列部分
+    Code(String), // {expr} 内のコード
 }
 
 /// Qi言語の値を表現する型
@@ -83,6 +83,34 @@ impl Value {
     }
 }
 
+/// ValueのPartialEq実装（関数やマクロなどはポインタ比較）
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Nil, Value::Nil) => true,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Integer(a), Value::Integer(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Symbol(a), Value::Symbol(b)) => a == b,
+            (Value::Keyword(a), Value::Keyword(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Vector(a), Value::Vector(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::NativeFunc(a), Value::NativeFunc(b)) => a == b,
+            (Value::Uvar(a), Value::Uvar(b)) => a == b,
+            // 関数、マクロ、アトム、チャネル、スコープ、ストリームはポインタ比較
+            (Value::Function(a), Value::Function(b)) => Arc::ptr_eq(a, b),
+            (Value::Macro(a), Value::Macro(b)) => Arc::ptr_eq(a, b),
+            (Value::Atom(a), Value::Atom(b)) => Arc::ptr_eq(a, b),
+            (Value::Channel(a), Value::Channel(b)) => Arc::ptr_eq(a, b),
+            (Value::Scope(a), Value::Scope(b)) => Arc::ptr_eq(a, b),
+            (Value::Stream(a), Value::Stream(b)) => Arc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+}
+
 /// 関数の定義
 #[derive(Debug, Clone)]
 pub struct Function {
@@ -144,9 +172,10 @@ impl Env {
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
-        self.bindings.get(name).cloned().or_else(|| {
-            self.parent.as_ref().and_then(|p| p.read().get(name))
-        })
+        self.bindings
+            .get(name)
+            .cloned()
+            .or_else(|| self.parent.as_ref().and_then(|p| p.read().get(name)))
     }
 
     pub fn set(&mut self, name: String, value: Value) {
@@ -160,7 +189,7 @@ impl Env {
 }
 
 /// AST（抽象構文木）の式
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     // リテラル
     Nil,
@@ -233,7 +262,7 @@ pub enum Expr {
 }
 
 /// useのインポートモード
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UseMode {
     /// :only [sym1 sym2]
     Only(Vec<String>),
@@ -244,7 +273,7 @@ pub enum UseMode {
 }
 
 /// matchのアーム（パターン -> 結果）
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MatchArm {
     pub pattern: Pattern,
     pub guard: Option<Box<Expr>>,
@@ -252,7 +281,7 @@ pub struct MatchArm {
 }
 
 /// パターン
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Pattern {
     /// ワイルドカード（_）
     Wildcard,

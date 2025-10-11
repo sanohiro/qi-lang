@@ -90,10 +90,23 @@ pub enum MsgKey {
     // 型エラー（汎用）
     TypeOnly,           // {0}は{1}のみ受け付けます
     TypeOnlyWithDebug,  // {0}は{1}のみ受け付けます: {2:?}
+    ArgMustBeType,      // {0}: 引数は{1}である必要があります
     FirstArgMustBe,     // {0}の第1引数は{1}が必要です
     SecondArgMustBe,    // {0}の第2引数は{1}が必要です
+    ThirdArgMustBe,     // {0}の第3引数は{1}が必要です
     KeyMustBeKeyword,   // キーは文字列またはキーワードが必要
     KeyNotFound,        // キーが見つかりません: {0}
+    MustBePositive,     // {0}: {1}は正の数である必要があります
+    MustBeNonNegative,  // {0}: {1}は非負の数である必要があります
+    MustBeInteger,      // {0}: {1}は整数である必要があります
+    MustBeString,       // {0}: {1}は文字列である必要があります
+    MustBeListOrVector, // {0}: {1}はリストまたはベクタである必要があります
+    MustBeChannel,      // {0}: {1}はチャネルである必要があります
+    MustBePromise,      // {0}: {1}はプロミス（チャネル）である必要があります
+    MustBeScope,        // {0}: {1}はスコープである必要があります
+    MustNotBeEmpty,     // {0}: {1}は空であってはいけません
+    FuncMustReturnType, // {0}: 関数は{1}を返す必要があります
+    MustBeMap,          // {0}: {1}はマップである必要があります
 
     // 特殊な引数エラー
     SplitTwoStrings,
@@ -127,6 +140,31 @@ pub enum MsgKey {
     ModuleParserInitError,
     ModuleParseError,
     ModuleMustExport,
+
+    // その他の特殊エラー
+    AsNeedsVarName,     // :asには変数名が必要です
+    NeedNArgsDesc,      // {0}には{1}個の引数が必要です: {2}
+    SelectNeedsList,    // {0}にはリストが必要です
+    SelectNeedsAtLeastOne, // {0}には少なくとも1つのケースが必要です
+    SelectTimeoutCase,  // {0}: :timeoutケースは3要素が必要です: [:timeout ms handler]
+    SelectOnlyOneTimeout, // {0}には:timeoutケースは1つだけです
+    SelectChannelCase,  // {0}: チャネルケースは2要素が必要です: [channel handler]
+    SelectCaseMustStart, // {0}: ケースはチャネルまたは:timeoutで始まる必要があります
+    SelectCaseMustBe,   // {0}: ケースはリストである必要があります [channel handler] or [:timeout ms handler]
+    AllElementsMustBe,  // {0}: 全ての要素は{1}である必要があります
+
+    // 並行処理エラー
+    ChannelClosed,      // {0}: channel is closed
+    ExpectedKeyword,    // {0}: expected {1} keyword
+    PromiseFailed,      // promise failed
+    NotAPromise,        // not a promise
+    UnexpectedError,    // {0}: unexpected error
+    RecvArgs,           // {0}: requires 1 or 3 arguments: ({0} ch) or ({0} ch :timeout ms)
+    TimeoutMustBeMs,    // {0}: timeout must be an integer (milliseconds)
+
+    // その他のエラー
+    UnsupportedNumberType, // unsupported number type
+    RailwayRequiresOkError, // |>? requires {:ok/:error} map
 }
 
 /// UIメッセージキー
@@ -231,10 +269,23 @@ impl Messages {
         // 英語メッセージ - 型エラー
         messages.insert((Lang::En, MsgKey::TypeOnly), "{0} accepts {1} only");
         messages.insert((Lang::En, MsgKey::TypeOnlyWithDebug), "{0} accepts {1} only: {2}");
+        messages.insert((Lang::En, MsgKey::ArgMustBeType), "{0}: argument must be {1}");
         messages.insert((Lang::En, MsgKey::FirstArgMustBe), "{0}'s first argument must be {1}");
         messages.insert((Lang::En, MsgKey::SecondArgMustBe), "{0}'s second argument must be {1}");
+        messages.insert((Lang::En, MsgKey::ThirdArgMustBe), "{0}'s third argument must be {1}");
         messages.insert((Lang::En, MsgKey::KeyMustBeKeyword), "key must be a string or keyword");
         messages.insert((Lang::En, MsgKey::KeyNotFound), "key not found: {0}");
+        messages.insert((Lang::En, MsgKey::MustBePositive), "{0}: {1} must be positive");
+        messages.insert((Lang::En, MsgKey::MustBeNonNegative), "{0}: {1} must be non-negative");
+        messages.insert((Lang::En, MsgKey::MustBeInteger), "{0}: {1} must be an integer");
+        messages.insert((Lang::En, MsgKey::MustBeString), "{0}: {1} must be a string");
+        messages.insert((Lang::En, MsgKey::MustBeListOrVector), "{0}: {1} must be a list or vector");
+        messages.insert((Lang::En, MsgKey::MustBeChannel), "{0}: {1} must be a channel");
+        messages.insert((Lang::En, MsgKey::MustBePromise), "{0}: {1} must be a promise (channel)");
+        messages.insert((Lang::En, MsgKey::MustBeScope), "{0}: {1} must be a scope");
+        messages.insert((Lang::En, MsgKey::MustNotBeEmpty), "{0}: {1} must not be empty");
+        messages.insert((Lang::En, MsgKey::FuncMustReturnType), "{0}: function must return {1}");
+        messages.insert((Lang::En, MsgKey::MustBeMap), "{0}: {1} must be a map");
 
         // 英語メッセージ - 特殊な引数エラー
         messages.insert((Lang::En, MsgKey::SplitTwoStrings), "split requires two strings");
@@ -268,6 +319,31 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::ModuleParserInitError), "module {0} parser initialization error: {1}");
         messages.insert((Lang::En, MsgKey::ModuleParseError), "module {0} parse error: {1}");
         messages.insert((Lang::En, MsgKey::ModuleMustExport), "module {0} must contain export");
+
+        // 英語メッセージ - その他の特殊エラー
+        messages.insert((Lang::En, MsgKey::AsNeedsVarName), ":as requires a variable name");
+        messages.insert((Lang::En, MsgKey::NeedNArgsDesc), "{0} requires {1} argument(s): {2}");
+        messages.insert((Lang::En, MsgKey::SelectNeedsList), "{0} requires a list");
+        messages.insert((Lang::En, MsgKey::SelectNeedsAtLeastOne), "{0} requires at least one case");
+        messages.insert((Lang::En, MsgKey::SelectTimeoutCase), "{0}: :timeout case must have 3 elements: [:timeout ms handler]");
+        messages.insert((Lang::En, MsgKey::SelectOnlyOneTimeout), "{0} can only have one :timeout case");
+        messages.insert((Lang::En, MsgKey::SelectChannelCase), "{0}: channel case must have 2 elements: [channel handler]");
+        messages.insert((Lang::En, MsgKey::SelectCaseMustStart), "{0}: case must start with a channel or :timeout");
+        messages.insert((Lang::En, MsgKey::SelectCaseMustBe), "{0}: case must be a list [channel handler] or [:timeout ms handler]");
+        messages.insert((Lang::En, MsgKey::AllElementsMustBe), "{0}: all elements must be {1}");
+
+        // 英語メッセージ - 並行処理
+        messages.insert((Lang::En, MsgKey::ChannelClosed), "{0}: channel is closed");
+        messages.insert((Lang::En, MsgKey::ExpectedKeyword), "{0}: expected {1} keyword");
+        messages.insert((Lang::En, MsgKey::PromiseFailed), "promise failed");
+        messages.insert((Lang::En, MsgKey::NotAPromise), "not a promise");
+        messages.insert((Lang::En, MsgKey::UnexpectedError), "{0}: unexpected error");
+        messages.insert((Lang::En, MsgKey::RecvArgs), "{0}: requires 1 or 3 arguments: ({0} ch) or ({0} ch :timeout ms)");
+        messages.insert((Lang::En, MsgKey::TimeoutMustBeMs), "{0}: timeout must be an integer (milliseconds)");
+
+        // 英語メッセージ - その他
+        messages.insert((Lang::En, MsgKey::UnsupportedNumberType), "unsupported number type");
+        messages.insert((Lang::En, MsgKey::RailwayRequiresOkError), "|>? requires {:ok/:error} map");
 
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
@@ -312,10 +388,23 @@ impl Messages {
         // 日本語メッセージ - 型エラー
         messages.insert((Lang::Ja, MsgKey::TypeOnly), "{0}は{1}のみ受け付けます");
         messages.insert((Lang::Ja, MsgKey::TypeOnlyWithDebug), "{0}は{1}のみ受け付けます: {2}");
+        messages.insert((Lang::Ja, MsgKey::ArgMustBeType), "{0}: 引数は{1}である必要があります");
         messages.insert((Lang::Ja, MsgKey::FirstArgMustBe), "{0}の第1引数は{1}が必要です");
         messages.insert((Lang::Ja, MsgKey::SecondArgMustBe), "{0}の第2引数は{1}が必要です");
+        messages.insert((Lang::Ja, MsgKey::ThirdArgMustBe), "{0}の第3引数は{1}が必要です");
         messages.insert((Lang::Ja, MsgKey::KeyMustBeKeyword), "キーは文字列またはキーワードが必要です");
         messages.insert((Lang::Ja, MsgKey::KeyNotFound), "キーが見つかりません: {0}");
+        messages.insert((Lang::Ja, MsgKey::MustBePositive), "{0}: {1}は正の数である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeNonNegative), "{0}: {1}は非負の数である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeInteger), "{0}: {1}は整数である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeString), "{0}: {1}は文字列である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeListOrVector), "{0}: {1}はリストまたはベクタである必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeChannel), "{0}: {1}はチャネルである必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBePromise), "{0}: {1}はプロミス（チャネル）である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeScope), "{0}: {1}はスコープである必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustNotBeEmpty), "{0}: {1}は空であってはいけません");
+        messages.insert((Lang::Ja, MsgKey::FuncMustReturnType), "{0}: 関数は{1}を返す必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeMap), "{0}: {1}はマップである必要があります");
 
         // 日本語メッセージ - 特殊な引数エラー
         messages.insert((Lang::Ja, MsgKey::SplitTwoStrings), "splitは2つの文字列が必要です");
@@ -349,6 +438,31 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::ModuleParserInitError), "モジュール{0}のパーサー初期化エラー: {1}");
         messages.insert((Lang::Ja, MsgKey::ModuleParseError), "モジュール{0}のパースエラー: {1}");
         messages.insert((Lang::Ja, MsgKey::ModuleMustExport), "モジュール{0}はexportを含む必要があります");
+
+        // 日本語メッセージ - その他の特殊エラー
+        messages.insert((Lang::Ja, MsgKey::AsNeedsVarName), ":asには変数名が必要です");
+        messages.insert((Lang::Ja, MsgKey::NeedNArgsDesc), "{0}には{1}個の引数が必要です: {2}");
+        messages.insert((Lang::Ja, MsgKey::SelectNeedsList), "{0}にはリストが必要です");
+        messages.insert((Lang::Ja, MsgKey::SelectNeedsAtLeastOne), "{0}には少なくとも1つのケースが必要です");
+        messages.insert((Lang::Ja, MsgKey::SelectTimeoutCase), "{0}: :timeoutケースは3要素が必要です: [:timeout ms handler]");
+        messages.insert((Lang::Ja, MsgKey::SelectOnlyOneTimeout), "{0}には:timeoutケースは1つだけです");
+        messages.insert((Lang::Ja, MsgKey::SelectChannelCase), "{0}: チャネルケースは2要素が必要です: [channel handler]");
+        messages.insert((Lang::Ja, MsgKey::SelectCaseMustStart), "{0}: ケースはチャネルまたは:timeoutで始まる必要があります");
+        messages.insert((Lang::Ja, MsgKey::SelectCaseMustBe), "{0}: ケースはリストである必要があります [channel handler] or [:timeout ms handler]");
+        messages.insert((Lang::Ja, MsgKey::AllElementsMustBe), "{0}: 全ての要素は{1}である必要があります");
+
+        // 日本語メッセージ - 並行処理
+        messages.insert((Lang::Ja, MsgKey::ChannelClosed), "{0}: チャネルがクローズされています");
+        messages.insert((Lang::Ja, MsgKey::ExpectedKeyword), "{0}: {1}キーワードが必要です");
+        messages.insert((Lang::Ja, MsgKey::PromiseFailed), "プロミスが失敗しました");
+        messages.insert((Lang::Ja, MsgKey::NotAPromise), "プロミスではありません");
+        messages.insert((Lang::Ja, MsgKey::UnexpectedError), "{0}: 予期しないエラー");
+        messages.insert((Lang::Ja, MsgKey::RecvArgs), "{0}: 1または3個の引数が必要です: ({0} ch) または ({0} ch :timeout ms)");
+        messages.insert((Lang::Ja, MsgKey::TimeoutMustBeMs), "{0}: タイムアウトは整数（ミリ秒）である必要があります");
+
+        // 日本語メッセージ - その他
+        messages.insert((Lang::Ja, MsgKey::UnsupportedNumberType), "サポートされていない数値型です");
+        messages.insert((Lang::Ja, MsgKey::RailwayRequiresOkError), "|>? には {:ok/:error} マップが必要です");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

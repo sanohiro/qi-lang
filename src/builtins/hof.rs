@@ -285,7 +285,7 @@ pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
                 if let Value::String(transformed) = result {
                     results.push(transformed);
                 } else {
-                    return Err("map-lines: function must return string".to_string());
+                    return Err(fmt_msg(MsgKey::FuncMustReturnType, &["map-lines", "string"]));
                 }
             }
             Ok(Value::String(results.join("\n")))
@@ -297,7 +297,7 @@ pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 /// update - マップの値を関数で更新
 pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("update requires 3 arguments (map, key, fn)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update", "3", "(map, key, fn)"]));
     }
 
     let map = &args[0];
@@ -309,7 +309,7 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
             let key = match key_val {
                 Value::String(s) => s.clone(),
                 Value::Keyword(k) => k.clone(),
-                _ => return Err("update: key must be string or keyword".to_string()),
+                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
             };
 
             let current_value = m.get(&key).cloned().unwrap_or(Value::Nil);
@@ -319,25 +319,25 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
             result.insert(key, new_value);
             Ok(Value::Map(result))
         }
-        _ => Err("update: first argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["update", "a map"])),
     }
 }
 
 /// update-in - ネストしたマップの値を関数で更新
 pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("update-in requires 3 arguments (map, path, fn)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-in", "3", "(map, path, fn)"]));
     }
 
     let map = &args[0];
     let path = match &args[1] {
         Value::List(p) | Value::Vector(p) => p,
-        _ => return Err("update-in: path must be a list or vector".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["update-in", "path"])),
     };
     let func = &args[2];
 
     if path.is_empty() {
-        return Err("update-in: path cannot be empty".to_string());
+        return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["update-in", "path"]));
     }
 
     match map {
@@ -346,7 +346,7 @@ pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
             update_in_helper(&mut result, path, 0, func, evaluator)?;
             Ok(Value::Map(result))
         }
-        _ => Err("update-in: first argument must be a map".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeMap, &["update-in", "first argument"])),
     }
 }
 
@@ -360,7 +360,7 @@ fn update_in_helper(
     let key = match &path[index] {
         Value::String(s) => s.clone(),
         Value::Keyword(k) => k.clone(),
-        _ => return Err("update-in: keys must be strings or keywords".to_string()),
+        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
     };
 
     if index == path.len() - 1 {
@@ -390,7 +390,7 @@ fn update_in_helper(
 /// identity - 引数をそのまま返す
 pub fn native_identity(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("identity requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["identity"]));
     }
     Ok(args[0].clone())
 }
@@ -400,7 +400,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.len() != 1 {
-        return Err("constantly requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["constantly"]));
     }
     let value = args[0].clone();
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
@@ -421,7 +421,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
     use std::sync::Arc;
 
     if args.is_empty() {
-        return Err("comp requires at least 1 function".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["comp", "1"]));
     }
 
     // 1つの関数の場合はそのまま返す
@@ -448,7 +448,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.len() < 2 {
-        return Err("partial requires at least 2 arguments (function and at least 1 arg)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["partial", "2+", "(function and at least 1 arg)"]));
     }
 
     let func = args[0].clone();
@@ -470,7 +470,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
 /// apply - リストを引数として関数適用（既存のものを公開用に再実装）
 pub fn native_apply_public(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("apply requires 2 arguments (function and list)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["apply", "2", "(function and list)"]));
     }
 
     let func = &args[0];
@@ -478,7 +478,7 @@ pub fn native_apply_public(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         Value::List(items) | Value::Vector(items) => {
             evaluator.apply_function(func, items)
         }
-        _ => Err("apply: second argument must be a list or vector".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["apply (2nd arg)", "second argument"])),
     }
 }
 
@@ -487,7 +487,7 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
     use std::collections::HashMap;
 
     if args.len() != 2 {
-        return Err("count-by requires 2 arguments (predicate, collection)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["count-by", "2", "(predicate, collection)"]));
     }
 
     let pred = &args[0];
@@ -508,7 +508,7 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             }
             Ok(Value::Map(result))
         }
-        _ => Err("count-by: second argument must be a list or vector".to_string()),
+        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["count-by (2nd arg)", "second argument"])),
     }
 }
 
@@ -517,7 +517,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.len() != 1 {
-        return Err("complement requires 1 argument (function)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["complement", "1", "(function)"]));
     }
 
     let func = args[0].clone();
@@ -541,7 +541,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.is_empty() {
-        return Err("juxt requires at least 1 function".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["juxt", "1"]));
     }
 
     let funcs = args.to_vec();

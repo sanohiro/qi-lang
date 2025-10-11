@@ -7,7 +7,7 @@ use rand::Rng;
 /// pow - べき乗
 pub fn native_pow(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("pow requires 2 arguments (base, exponent)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pow", "2", "(base, exponent)"]));
     }
 
     let base_f = match &args[0] {
@@ -36,7 +36,7 @@ pub fn native_pow(args: &[Value]) -> Result<Value, String> {
 /// sqrt - 平方根
 pub fn native_sqrt(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("sqrt requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["sqrt"]));
     }
 
     match &args[0] {
@@ -49,7 +49,7 @@ pub fn native_sqrt(args: &[Value]) -> Result<Value, String> {
 /// round - 四捨五入
 pub fn native_round(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("round requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["round"]));
     }
 
     match &args[0] {
@@ -62,7 +62,7 @@ pub fn native_round(args: &[Value]) -> Result<Value, String> {
 /// floor - 切り捨て
 pub fn native_floor(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("floor requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["floor"]));
     }
 
     match &args[0] {
@@ -75,7 +75,7 @@ pub fn native_floor(args: &[Value]) -> Result<Value, String> {
 /// ceil - 切り上げ
 pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("ceil requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["ceil"]));
     }
 
     match &args[0] {
@@ -88,7 +88,7 @@ pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
 /// clamp - 値を範囲内に制限
 pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("clamp requires 3 arguments (value, min, max)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["clamp", "3", "(value, min, max)"]));
     }
 
     match (&args[0], &args[1], &args[2]) {
@@ -120,7 +120,7 @@ pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
 /// rand - 0.0以上1.0未満の乱数
 pub fn native_rand(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("rand takes no arguments".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["rand"]));
     }
 
     let mut rng = rand::rng();
@@ -130,13 +130,13 @@ pub fn native_rand(args: &[Value]) -> Result<Value, String> {
 /// rand-int - 0以上n未満の整数乱数
 pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("rand-int requires 1 argument (upper bound)".to_string());
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["rand-int", "1", "(upper bound)"]));
     }
 
     match &args[0] {
         Value::Integer(n) => {
             if *n <= 0 {
-                return Err("rand-int: upper bound must be positive".to_string());
+                return Err(fmt_msg(MsgKey::MustBePositive, &["rand-int", "upper bound"]));
             }
             let mut rng = rand::rng();
             Ok(Value::Integer(rng.random_range(0..*n)))

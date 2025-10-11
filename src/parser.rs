@@ -710,7 +710,7 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        _ => return Err(":as requires a variable name".to_string()),
+                        _ => return Err(msg(MsgKey::AsNeedsVarName).to_string()),
                     }
                 }
             }
