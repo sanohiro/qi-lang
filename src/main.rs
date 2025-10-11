@@ -1,9 +1,88 @@
 use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
-use std::io::{self, Write};
+use qi_lang::value::Value;
+use rustyline::completion::{Completer, Pair};
+use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Editor, Helper};
+use std::collections::HashSet;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// タブ補完のためのヘルパー
+struct QiHelper {
+    completions: HashSet<String>,
+}
+
+impl QiHelper {
+    fn new() -> Self {
+        let mut completions = HashSet::new();
+
+        // REPLコマンド
+        completions.insert(":help".to_string());
+        completions.insert(":vars".to_string());
+        completions.insert(":funcs".to_string());
+        completions.insert(":builtins".to_string());
+        completions.insert(":clear".to_string());
+        completions.insert(":load".to_string());
+        completions.insert(":reload".to_string());
+        completions.insert(":quit".to_string());
+
+        QiHelper { completions }
+    }
+
+    fn update_completions(&mut self, evaluator: &Evaluator) {
+        // 環境から変数と関数を取得
+        if let Some(env) = evaluator.get_env() {
+            let env = env.read();
+            for (name, _) in env.bindings() {
+                self.completions.insert(name.clone());
+            }
+        }
+    }
+}
+
+impl Completer for QiHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        let start = line[..pos]
+            .rfind(|c: char| c.is_whitespace() || c == '(' || c == '[' || c == '{')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+
+        let word = &line[start..pos];
+
+        let mut matches: Vec<Pair> = self
+            .completions
+            .iter()
+            .filter(|s| s.starts_with(word))
+            .map(|s| Pair {
+                display: s.clone(),
+                replacement: s.clone(),
+            })
+            .collect();
+
+        matches.sort_by(|a, b| a.display.cmp(&b.display));
+
+        Ok((start, matches))
+    }
+}
+
+impl Highlighter for QiHelper {}
+impl Hinter for QiHelper {
+    type Hint = String;
+}
+impl Validator for QiHelper {}
+impl Helper for QiHelper {}
 
 fn main() {
     // 国際化システムを初期化
@@ -137,9 +216,21 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
 fn repl(preload: Option<&str>) {
     println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
     println!("{}", ui_msg(UiMsg::ReplPressCtrlC));
+    println!("Type :help for REPL commands");
     println!();
 
     let mut evaluator = Evaluator::new();
+    let mut helper = QiHelper::new();
+    let mut rl = Editor::new().unwrap();
+    rl.set_helper(Some(helper));
+
+    let history_file = dirs::home_dir()
+        .map(|p| p.join(".qi_history"))
+        .unwrap_or_else(|| std::path::PathBuf::from(".qi_history"));
+
+    let _ = rl.load_history(&history_file);
+
+    let mut last_loaded_file: Option<String> = None;
 
     // ファイルのプリロード
     if let Some(path) = preload {
@@ -148,6 +239,7 @@ fn repl(preload: Option<&str>) {
                 println!("{}", fmt_ui_msg(UiMsg::ReplLoading, &[path]));
                 eval_code(&mut evaluator, &content, false, Some(path));
                 println!("{}\n", ui_msg(UiMsg::ReplLoaded));
+                last_loaded_file = Some(path.to_string());
             }
             Err(e) => {
                 eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
@@ -157,26 +249,70 @@ fn repl(preload: Option<&str>) {
     }
 
     let mut line_number = 1;
+    let mut accumulated_input = String::new();
 
     loop {
-        print!("qi:{}> ", line_number);
-        io::stdout().flush().unwrap();
+        let prompt = if accumulated_input.is_empty() {
+            format!("qi:{}> ", line_number)
+        } else {
+            "     ... ".to_string()
+        };
 
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
-            Ok(0) => break, // EOF
-            Ok(_) => {
-                let input = input.trim();
-                if input.is_empty() {
+        let readline = rl.readline(&prompt);
+
+        match readline {
+            Ok(line) => {
+                let line = line.trim();
+
+                if line.is_empty() {
                     continue;
                 }
 
-                match Parser::new(input) {
+                // REPLコマンドの処理
+                if line.starts_with(':') && accumulated_input.is_empty() {
+                    rl.add_history_entry(line).ok();
+                    handle_repl_command(line, &evaluator, &mut last_loaded_file);
+
+                    // :clear の場合は evaluator と helper をリセット
+                    if line == ":clear" {
+                        evaluator = Evaluator::new();
+                        helper = QiHelper::new();
+                        rl.set_helper(Some(helper));
+                    } else if line == ":quit" {
+                        break;
+                    } else {
+                        // 補完候補を更新
+                        if let Some(h) = rl.helper_mut() {
+                            h.update_completions(&evaluator);
+                        }
+                    }
+                    continue;
+                }
+
+                // 複数行入力の処理
+                if !accumulated_input.is_empty() {
+                    accumulated_input.push('\n');
+                }
+                accumulated_input.push_str(line);
+
+                // 括弧のバランスチェック
+                if !is_balanced(&accumulated_input) {
+                    continue;
+                }
+
+                rl.add_history_entry(&accumulated_input).ok();
+
+                match Parser::new(&accumulated_input) {
                     Ok(mut parser) => match parser.parse() {
                         Ok(expr) => match evaluator.eval(&expr) {
                             Ok(value) => {
                                 println!("{}", value);
                                 line_number += 1;
+
+                                // 補完候補を更新
+                                if let Some(h) = rl.helper_mut() {
+                                    h.update_completions(&evaluator);
+                                }
                             }
                             Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e),
                         },
@@ -184,13 +320,191 @@ fn repl(preload: Option<&str>) {
                     },
                     Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e),
                 }
+
+                accumulated_input.clear();
             }
-            Err(e) => {
-                eprintln!("{}: {}", ui_msg(UiMsg::ErrorInput), e);
+            Err(ReadlineError::Interrupted) => {
+                println!("^C");
+                accumulated_input.clear();
+            }
+            Err(ReadlineError::Eof) => {
+                break;
+            }
+            Err(err) => {
+                eprintln!("{}: {:?}", ui_msg(UiMsg::ErrorInput), err);
                 break;
             }
         }
     }
 
+    let _ = rl.save_history(&history_file);
     println!("\n{}", ui_msg(UiMsg::ReplGoodbye));
+}
+
+/// 括弧のバランスをチェック
+fn is_balanced(input: &str) -> bool {
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape = false;
+
+    for ch in input.chars() {
+        if escape {
+            escape = false;
+            continue;
+        }
+
+        match ch {
+            '\\' if in_string => escape = true,
+            '"' => in_string = !in_string,
+            '(' | '[' | '{' if !in_string => depth += 1,
+            ')' | ']' | '}' if !in_string => depth -= 1,
+            _ => {}
+        }
+    }
+
+    depth == 0 && !in_string
+}
+
+/// REPLコマンドの処理
+fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut Option<String>) {
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    let command = parts[0];
+
+    match command {
+        ":help" => {
+            println!("Available REPL commands:");
+            println!("  :help           - Show this help");
+            println!("  :vars           - List all defined variables");
+            println!("  :funcs          - List all defined functions");
+            println!("  :builtins       - List all builtin functions");
+            println!("  :clear          - Clear environment");
+            println!("  :load <file>    - Load a file");
+            println!("  :reload         - Reload the last loaded file");
+            println!("  :quit           - Exit REPL");
+        }
+        ":vars" => {
+            if let Some(env) = evaluator.get_env() {
+                let env = env.read();
+                let mut vars: Vec<_> = env.bindings()
+                    .filter(|(_, v)| !matches!(v, Value::Function(_) | Value::NativeFunc(_)))
+                    .map(|(name, _)| name.clone())
+                    .collect();
+                vars.sort();
+
+                if vars.is_empty() {
+                    println!("No variables defined");
+                } else {
+                    println!("Defined variables:");
+                    for var in vars {
+                        println!("  {}", var);
+                    }
+                }
+            }
+        }
+        ":funcs" => {
+            if let Some(env) = evaluator.get_env() {
+                let env = env.read();
+                let mut funcs: Vec<_> = env.bindings()
+                    .filter(|(_, v)| matches!(v, Value::Function(_)))
+                    .map(|(name, _)| name.clone())
+                    .collect();
+                funcs.sort();
+
+                if funcs.is_empty() {
+                    println!("No user-defined functions");
+                } else {
+                    println!("User-defined functions:");
+                    for func in funcs {
+                        println!("  {}", func);
+                    }
+                }
+            }
+        }
+        ":builtins" => {
+            // builtins の一覧を表示
+            println!("Builtin functions are available but not enumerated");
+            println!("See documentation for full list");
+        }
+        ":clear" => {
+            println!("Environment cleared");
+        }
+        ":load" => {
+            if parts.len() < 2 {
+                eprintln!("Usage: :load <file>");
+                return;
+            }
+
+            let path = parts[1];
+            match std::fs::read_to_string(path) {
+                Ok(content) => {
+                    println!("{}", fmt_ui_msg(UiMsg::ReplLoading, &[path]));
+                    eval_repl_code(evaluator, &content, Some(path));
+                    println!("{}", ui_msg(UiMsg::ReplLoaded));
+                    *last_loaded_file = Some(path.to_string());
+                }
+                Err(e) => {
+                    eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
+                }
+            }
+        }
+        ":reload" => {
+            if let Some(path) = last_loaded_file.as_ref() {
+                match std::fs::read_to_string(path) {
+                    Ok(content) => {
+                        println!("{}", fmt_ui_msg(UiMsg::ReplLoading, &[path]));
+                        eval_repl_code(evaluator, &content, Some(path));
+                        println!("{}", ui_msg(UiMsg::ReplLoaded));
+                    }
+                    Err(e) => {
+                        eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
+                    }
+                }
+            } else {
+                eprintln!("No file has been loaded yet");
+            }
+        }
+        ":quit" => {
+            // handled in main loop
+        }
+        _ => {
+            eprintln!("Unknown command: {}", command);
+            eprintln!("Type :help for available commands");
+        }
+    }
+}
+
+/// REPL用のコード評価（エラーで終了しない）
+fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
+    match Parser::new(code) {
+        Ok(mut parser) => match parser.parse_all() {
+            Ok(exprs) => {
+                for expr in exprs.iter() {
+                    match evaluator.eval(expr) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            if let Some(file) = filename {
+                                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorRuntime), e);
+                            } else {
+                                eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                if let Some(file) = filename {
+                    eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorParse), e);
+                } else {
+                    eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                }
+            }
+        },
+        Err(e) => {
+            if let Some(file) = filename {
+                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorLexer), e);
+            } else {
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
+            }
+        }
+    }
 }

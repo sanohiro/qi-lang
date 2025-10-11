@@ -94,6 +94,11 @@ impl Evaluator {
         self.eval_with_env(expr, self.global_env.clone())
     }
 
+    /// グローバル環境への参照を取得（REPL用）
+    pub fn get_env(&self) -> Option<Arc<RwLock<Env>>> {
+        Some(self.global_env.clone())
+    }
+
     fn eval_with_env(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
         match expr {
             Expr::Nil => Ok(Value::Nil),
