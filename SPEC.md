@@ -2197,15 +2197,28 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ io - ファイルI/O（6個） - グローバルエンコーディング対応（日中韓欧露）
+##### ✅ io - ファイルI/O（15個） - グローバルエンコーディング対応（日中韓欧露）
 
-**コア関数**:
+**ファイル読み書き**:
 - `io/read-file` - ファイル読み込み（エンコーディング指定・自動検出対応）
 - `io/write-file` - ファイル書き込み（エンコーディング指定、if-exists、create-dirs対応）
 - `io/append-file` - ファイル追記
 - `io/write-stream` - ストリーム→ファイル書き込み
 - `io/read-lines` - 行ごと読み込み
+
+**ファイルシステム操作**:
+- `io/list-dir` - ディレクトリ一覧取得（グロブパターン対応）
+- `io/create-dir` - ディレクトリ作成
+- `io/delete-file` - ファイル削除
+- `io/delete-dir` - ディレクトリ削除
+- `io/copy-file` - ファイルコピー
+- `io/move-file` - ファイル移動・名前変更
+
+**メタデータ**:
+- `io/file-info` - ファイル情報取得
 - `io/file-exists?` - ファイル存在確認
+- `io/is-file?` - ファイル判定
+- `io/is-dir?` - ディレクトリ判定
 
 **エンコーディングサポート** - グローバル対応:
 
@@ -2327,9 +2340,97 @@ math/rand math/rand-int
 (io/write-file data "important.txt"
                :if-exists :error
                :create-dirs true)
+
+;; ============================================
+;; ファイルシステム操作
+;; ============================================
+
+;; ディレクトリ一覧取得
+(io/list-dir ".")                                ;; カレントディレクトリ
+(io/list-dir "logs" :pattern "*.log")            ;; ログファイルのみ
+(io/list-dir "src" :pattern "*.rs" :recursive true)  ;; 再帰的に検索
+
+;; ディレクトリ操作
+(io/create-dir "data/backup")                    ;; 親も自動作成
+(io/delete-dir "temp")                           ;; 空ディレクトリ削除
+(io/delete-dir "old_data" :recursive true)       ;; 中身ごと削除
+
+;; ファイル操作
+(io/copy-file "data.txt" "data_backup.txt")      ;; コピー
+(io/move-file "old.txt" "new.txt")               ;; 移動・名前変更
+(io/delete-file "temp.txt")                      ;; 削除
+
+;; メタデータ取得
+(def info (io/file-info "data.txt"))
+(get info "size")                                ;; ファイルサイズ
+(get info "modified")                            ;; 更新日時（UNIXタイムスタンプ）
+(get info "is-dir")                              ;; ディレクトリか
+(get info "is-file")                             ;; ファイルか
+
+;; 判定
+(io/is-file? "data.txt")                         ;; true
+(io/is-dir? "data")                              ;; true
+(io/file-exists? "config.json")                  ;; true/false
+
+;; パイプラインと組み合わせ
+("logs"
+ |> (io/list-dir :pattern "*.log")
+ |> (map io/read-file)
+ |> (map process-log)
+ |> (reduce merge))
 ```
 
 **注意**: パイプラインでキーワード引数を使う場合は無名関数でラップしてください。
+
+##### ✅ path - パス操作（9個）
+
+プラットフォーム非依存のパス操作を提供。
+
+**パス操作**:
+- `path/join` - パス結合
+- `path/basename` - ファイル名取得
+- `path/dirname` - ディレクトリ名取得
+- `path/extension` - 拡張子取得
+- `path/stem` - 拡張子なしファイル名取得
+- `path/absolute` - 絶対パス化
+- `path/normalize` - パス正規化
+
+**パス判定**:
+- `path/is-absolute?` - 絶対パス判定
+- `path/is-relative?` - 相対パス判定
+
+```lisp
+;; パス結合
+(path/join "dir" "subdir" "file.txt")            ;; "dir/subdir/file.txt"
+(path/join "/usr" "local" "bin")                 ;; "/usr/local/bin"
+
+;; ファイル名・ディレクトリ名取得
+(path/basename "/path/to/file.txt")              ;; "file.txt"
+(path/dirname "/path/to/file.txt")               ;; "/path/to"
+(path/extension "file.txt")                      ;; "txt"
+(path/extension "archive.tar.gz")                ;; "gz"
+(path/stem "file.txt")                           ;; "file"
+(path/stem "archive.tar.gz")                     ;; "archive.tar"
+
+;; パス正規化
+(path/normalize "a/./b/../c")                    ;; "a/c"
+(path/normalize "/usr/local/../bin")             ;; "/usr/bin"
+
+;; 絶対パス化
+(path/absolute "relative/path")                  ;; "/current/dir/relative/path"
+
+;; パス判定
+(path/is-absolute? "/usr/bin")                   ;; true
+(path/is-absolute? "relative/path")              ;; false
+(path/is-relative? "data/file.txt")              ;; true
+
+;; パイプラインと組み合わせ
+("logs"
+ |> io/list-dir
+ |> (filter (fn [p] (= (path/extension p) "log")))
+ |> (map (fn [p] (path/join "archive" (path/basename p))))
+ |> (map (fn [dst] (io/copy-file (path/join "logs" (path/basename dst)) dst))))
+```
 
 ##### ✅ dbg - デバッグ（2個）
 ```lisp

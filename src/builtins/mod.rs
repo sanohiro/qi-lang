@@ -53,6 +53,7 @@ pub mod json;
 pub mod list;
 pub mod map;
 pub mod math;
+pub mod path;
 pub mod set;
 pub mod stats;
 pub mod stream;
@@ -298,7 +299,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "csv/read-stream" => csv::native_csv_read_stream,
 
         // ========================================
-        // 専門モジュール: io（6個）
+        // 専門モジュール: io（15個）
         // ========================================
         "io/read-file" => io::native_read_file,
         "io/write-file" => io::native_write_file,
@@ -306,6 +307,28 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "io/write-stream" => io::native_write_stream,
         "io/read-lines" => io::native_read_lines,
         "io/file-exists?" => io::native_file_exists,
+        "io/list-dir" => io::native_list_dir,
+        "io/create-dir" => io::native_create_dir,
+        "io/delete-file" => io::native_delete_file,
+        "io/delete-dir" => io::native_delete_dir,
+        "io/copy-file" => io::native_copy_file,
+        "io/move-file" => io::native_move_file,
+        "io/file-info" => io::native_file_info,
+        "io/is-file?" => io::native_is_file,
+        "io/is-dir?" => io::native_is_dir,
+
+        // ========================================
+        // 専門モジュール: path（9個）
+        // ========================================
+        "path/join" => path::native_path_join,
+        "path/basename" => path::native_path_basename,
+        "path/dirname" => path::native_path_dirname,
+        "path/extension" => path::native_path_extension,
+        "path/stem" => path::native_path_stem,
+        "path/absolute" => path::native_path_absolute,
+        "path/normalize" => path::native_path_normalize,
+        "path/is-absolute?" => path::native_path_is_absolute,
+        "path/is-relative?" => path::native_path_is_relative,
 
         // ========================================
         // 専門モジュール: dbg（2個）

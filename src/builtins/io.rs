@@ -570,3 +570,273 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Integer(count))
 }
+
+// ============================================
+// ファイルシステム操作
+// ============================================
+
+/// list-dir - ディレクトリ内のファイル・ディレクトリ一覧を取得
+/// 引数: (path) または (path :pattern "*.txt" :recursive true)
+/// オプション:
+///   :pattern - グロブパターン（例: "*.txt", "**/*.rs"）
+///   :recursive - 再帰的に検索するか（デフォルト: false）
+pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("io/list-dir: at least 1 argument required".to_string());
+    }
+
+    let dir_path = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("io/list-dir: first argument must be a string".to_string()),
+    };
+
+    // キーワード引数を解析
+    let opts = if args.len() > 1 {
+        parse_keyword_args(args, 1)?
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    // パターンオプション
+    let pattern = opts.get("pattern")
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.as_str()),
+            _ => None
+        });
+
+    // recursiveオプション
+    let recursive = opts.get("recursive")
+        .and_then(|v| match v {
+            Value::Bool(b) => Some(*b),
+            _ => None
+        })
+        .unwrap_or(false);
+
+    // グロブパターンの構築
+    let glob_pattern = if let Some(pat) = pattern {
+        if recursive {
+            format!("{}/**/{}", dir_path, pat)
+        } else {
+            format!("{}/{}", dir_path, pat)
+        }
+    } else {
+        if recursive {
+            format!("{}/**/*", dir_path)
+        } else {
+            format!("{}/*", dir_path)
+        }
+    };
+
+    // グロブでファイル一覧を取得
+    let entries: Result<Vec<Value>, String> = glob::glob(&glob_pattern)
+        .map_err(|e| format!("io/list-dir: invalid pattern '{}': {}", glob_pattern, e))?
+        .map(|entry| {
+            entry
+                .map(|path| Value::String(path.to_string_lossy().to_string()))
+                .map_err(|e| format!("io/list-dir: failed to read entry: {}", e))
+        })
+        .collect();
+
+    Ok(Value::List(entries?))
+}
+
+/// create-dir - ディレクトリを作成
+/// 引数: (path) または (path :parents true)
+/// オプション:
+///   :parents - 親ディレクトリも作成するか（デフォルト: true）
+pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("io/create-dir: at least 1 argument required".to_string());
+    }
+
+    let path = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("io/create-dir: first argument must be a string".to_string()),
+    };
+
+    // キーワード引数を解析
+    let opts = if args.len() > 1 {
+        parse_keyword_args(args, 1)?
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    // parentsオプション（デフォルトtrue）
+    let parents = opts.get("parents")
+        .and_then(|v| match v {
+            Value::Bool(b) => Some(*b),
+            _ => None
+        })
+        .unwrap_or(true);
+
+    if parents {
+        fs::create_dir_all(path)
+            .map_err(|e| format!("io/create-dir: failed to create '{}': {}", path, e))?;
+    } else {
+        fs::create_dir(path)
+            .map_err(|e| format!("io/create-dir: failed to create '{}': {}", path, e))?;
+    }
+
+    Ok(Value::Nil)
+}
+
+/// delete-file - ファイルを削除
+/// 引数: (path)
+pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("io/delete-file: exactly 1 argument required".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            fs::remove_file(path)
+                .map_err(|e| format!("io/delete-file: failed to delete '{}': {}", path, e))?;
+            Ok(Value::Nil)
+        }
+        _ => Err("io/delete-file: argument must be a string".to_string()),
+    }
+}
+
+/// delete-dir - ディレクトリを削除
+/// 引数: (path) または (path :recursive true)
+/// オプション:
+///   :recursive - 中身ごと削除するか（デフォルト: false）
+pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("io/delete-dir: at least 1 argument required".to_string());
+    }
+
+    let path = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err("io/delete-dir: first argument must be a string".to_string()),
+    };
+
+    // キーワード引数を解析
+    let opts = if args.len() > 1 {
+        parse_keyword_args(args, 1)?
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    // recursiveオプション
+    let recursive = opts.get("recursive")
+        .and_then(|v| match v {
+            Value::Bool(b) => Some(*b),
+            _ => None
+        })
+        .unwrap_or(false);
+
+    if recursive {
+        fs::remove_dir_all(path)
+            .map_err(|e| format!("io/delete-dir: failed to delete '{}': {}", path, e))?;
+    } else {
+        fs::remove_dir(path)
+            .map_err(|e| format!("io/delete-dir: failed to delete '{}': {}", path, e))?;
+    }
+
+    Ok(Value::Nil)
+}
+
+/// copy-file - ファイルをコピー
+/// 引数: (src, dst)
+pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("io/copy-file: exactly 2 arguments required".to_string());
+    }
+
+    match (&args[0], &args[1]) {
+        (Value::String(src), Value::String(dst)) => {
+            fs::copy(src, dst)
+                .map_err(|e| format!("io/copy-file: failed to copy '{}' to '{}': {}", src, dst, e))?;
+            Ok(Value::Nil)
+        }
+        _ => Err("io/copy-file: both arguments must be strings".to_string()),
+    }
+}
+
+/// move-file - ファイルを移動（名前変更）
+/// 引数: (src, dst)
+pub fn native_move_file(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("io/move-file: exactly 2 arguments required".to_string());
+    }
+
+    match (&args[0], &args[1]) {
+        (Value::String(src), Value::String(dst)) => {
+            fs::rename(src, dst)
+                .map_err(|e| format!("io/move-file: failed to move '{}' to '{}': {}", src, dst, e))?;
+            Ok(Value::Nil)
+        }
+        _ => Err("io/move-file: both arguments must be strings".to_string()),
+    }
+}
+
+/// file-info - ファイル/ディレクトリのメタデータを取得
+/// 引数: (path)
+/// 戻り値: {:size 1024 :modified "2024-01-01" :is-dir false :is-file true}
+pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
+    use std::collections::HashMap;
+    use std::time::UNIX_EPOCH;
+
+    if args.len() != 1 {
+        return Err("io/file-info: exactly 1 argument required".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            let metadata = fs::metadata(path)
+                .map_err(|e| format!("io/file-info: failed to get metadata for '{}': {}", path, e))?;
+
+            let mut info = HashMap::new();
+
+            // サイズ
+            info.insert("size".to_string(), Value::Integer(metadata.len() as i64));
+
+            // ファイルタイプ
+            info.insert("is-dir".to_string(), Value::Bool(metadata.is_dir()));
+            info.insert("is-file".to_string(), Value::Bool(metadata.is_file()));
+
+            // 更新日時
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
+                    info.insert("modified".to_string(), Value::Integer(duration.as_secs() as i64));
+                }
+            }
+
+            Ok(Value::Map(info))
+        }
+        _ => Err("io/file-info: argument must be a string".to_string()),
+    }
+}
+
+/// is-file? - ファイルかどうか判定
+/// 引数: (path)
+pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("io/is-file?: exactly 1 argument required".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            let path_obj = Path::new(path);
+            Ok(Value::Bool(path_obj.is_file()))
+        }
+        _ => Err("io/is-file?: argument must be a string".to_string()),
+    }
+}
+
+/// is-dir? - ディレクトリかどうか判定
+/// 引数: (path)
+pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("io/is-dir?: exactly 1 argument required".to_string());
+    }
+
+    match &args[0] {
+        Value::String(path) => {
+            let path_obj = Path::new(path);
+            Ok(Value::Bool(path_obj.is_dir()))
+        }
+        _ => Err("io/is-dir?: argument must be a string".to_string()),
+    }
+}
