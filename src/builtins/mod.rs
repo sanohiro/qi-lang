@@ -24,6 +24,7 @@
 //! - set: 集合演算（7個）
 //! - math: 数学関数（10個）
 //! - time: 日時処理（4個）
+//! - stats: 統計関数（6個）
 //! - io: ファイルI/O（5個）
 //! - dbg: デバッグ（2個）
 //! - async: 並行処理（高度）（16個）
@@ -53,6 +54,7 @@ pub mod list;
 pub mod map;
 pub mod math;
 pub mod set;
+pub mod stats;
 pub mod stream;
 pub mod string;
 pub mod time;
@@ -273,6 +275,16 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "time/from-unix" => time::native_from_unix,
         "time/to-unix" => time::native_to_unix,
         "time/format" => time::native_format,
+
+        // ========================================
+        // 専門モジュール: stats（6個）
+        // ========================================
+        "stats/mean" => stats::native_mean,
+        "stats/median" => stats::native_median,
+        "stats/mode" => stats::native_mode,
+        "stats/variance" => stats::native_variance,
+        "stats/stddev" => stats::native_stddev,
+        "stats/percentile" => stats::native_percentile,
 
         // ========================================
         // 専門モジュール: io（5個）

@@ -167,6 +167,7 @@ pub enum MsgKey {
     RailwayRequiresOkError, // |>? requires {:ok/:error} map
     InvalidTimestamp,    // invalid timestamp
     InvalidDateFormat,   // invalid date format
+    InvalidPercentile,   // invalid percentile (must be 0-100)
 }
 
 /// UIメッセージキー
@@ -348,6 +349,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::RailwayRequiresOkError), "|>? requires {:ok/:error} map");
         messages.insert((Lang::En, MsgKey::InvalidTimestamp), "{0}: invalid timestamp");
         messages.insert((Lang::En, MsgKey::InvalidDateFormat), "{0}: invalid date format: {1}");
+        messages.insert((Lang::En, MsgKey::InvalidPercentile), "{0}: percentile must be between 0 and 100");
 
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
@@ -469,6 +471,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::RailwayRequiresOkError), "|>? には {:ok/:error} マップが必要です");
         messages.insert((Lang::Ja, MsgKey::InvalidTimestamp), "{0}: 不正なタイムスタンプです");
         messages.insert((Lang::Ja, MsgKey::InvalidDateFormat), "{0}: 不正な日付フォーマットです: {1}");
+        messages.insert((Lang::Ja, MsgKey::InvalidPercentile), "{0}: パーセンタイルは0から100の間である必要があります");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
