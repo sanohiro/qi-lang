@@ -10,6 +10,7 @@
   - **非同期パイプライン (`~>`)**: goroutine風の自動並行実行 ⭐ NEW
 - **パターンマッチング**: 強力な `match` 式
   - **orパターン**: `1 | 2 | 3 -> "small"` で複数パターンを簡潔に記述 ⭐ NEW
+- **文字列機能**: 複数行文字列 (`"""..."""`)、f-string、充実したフォーマット関数 ⭐ NEW
 - **統計分析**: `stats` モジュールで平均・中央値・標準偏差など ⭐ NEW
 - **Web開発**: JSON/HTTP完全対応、Railway Pipelineでエラーハンドリング
 - **並行・並列**: 3層アーキテクチャ（go/chan、パイプライン、async/await）で簡単に並列化
@@ -217,6 +218,47 @@ Qiは**2層モジュール設計**を採用しています：
  ||> http/get            ;; 並列リクエスト
  |> (map extract-data)
  |> merge-results)
+```
+
+### 文字列フォーマット ⭐ NEW
+
+```lisp
+;; 複数行文字列（SQL、HTML、マークダウンなどに便利）
+(def query """
+  SELECT name, price
+  FROM products
+  WHERE price >= 1000
+  ORDER BY price DESC
+""")
+
+;; 複数行f-string（テンプレートエンジン風）
+(def gen-report (fn [data]
+  f"""
+  === Sales Report ===
+  Date: {(:date data)}
+  Total: ¥{(str/format-comma (:total data))}
+  Growth: {(str/format-percent 1 (:growth data))}
+  """))
+
+(gen-report {:date "2024-01-15" :total 1234567 :growth 0.156})
+;; =>
+;; === Sales Report ===
+;; Date: 2024-01-15
+;; Total: ¥1,234,567
+;; Growth: 15.6%
+
+;; パイプラインで数値をフォーマット
+(3.14159 |> (str/format-decimal 2))    ;; "3.14"
+(1234567 |> (str/format-comma))        ;; "1,234,567"
+(0.856 |> (str/format-percent 1))      ;; "85.6%"
+
+;; 実用例: レポート生成パイプライン
+(def format-price (fn [price]
+  (price
+   |> (str/format-comma)
+   |> (fn [s] f"¥{s}"))))
+
+(12345 |> format-price)  ;; "¥12,345"
 ```
 
 ## 開発状況

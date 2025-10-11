@@ -346,6 +346,7 @@ impl Evaluator {
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
                         "time" | "dbg/time" | "debug/time" => return self.eval_time(args, env),
                         "tap" => return self.eval_tap(args, env),
+                        "branch" => return self.eval_branch(args, env),
                         "map" => return self.eval_map(args, env),
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
@@ -1006,6 +1007,14 @@ impl Evaluator {
         let func = self.eval_with_env(&args[0], env.clone())?;
         let value = self.eval_with_env(&args[1], env.clone())?;
         builtins::tap(&[func, value], self)
+    }
+
+    fn eval_branch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::branch(&vals, self)
     }
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {

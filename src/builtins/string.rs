@@ -1292,3 +1292,120 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::String(result))
 }
+
+/// format-decimal - 小数点桁数を指定してフォーマット
+/// 使い方: (str/format-decimal decimals number) または number |> (str/format-decimal decimals)
+pub fn native_format_decimal(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["format-decimal"]));
+    }
+
+    let decimals = match &args[0] {
+        Value::Integer(n) if *n >= 0 => *n as usize,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-decimal (1st arg - decimals)", "non-negative integer"])),
+    };
+
+    let number = match &args[1] {
+        Value::Integer(n) => *n as f64,
+        Value::Float(f) => *f,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-decimal (2nd arg - number)", "number"])),
+    };
+
+    Ok(Value::String(format!("{:.prec$}", number, prec = decimals)))
+}
+
+/// format-comma - 3桁区切りでフォーマット
+pub fn native_format_comma(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["format-comma"]));
+    }
+
+    let number = match &args[0] {
+        Value::Integer(n) => {
+            let s = n.to_string();
+            let negative = s.starts_with('-');
+            let digits: String = s.chars().filter(|c| c.is_ascii_digit()).collect();
+
+            let mut result = String::new();
+            for (i, ch) in digits.chars().rev().enumerate() {
+                if i > 0 && i % 3 == 0 {
+                    result.push(',');
+                }
+                result.push(ch);
+            }
+
+            let formatted: String = result.chars().rev().collect();
+            if negative {
+                format!("-{}", formatted)
+            } else {
+                formatted
+            }
+        }
+        Value::Float(f) => {
+            let s = f.to_string();
+            let parts: Vec<&str> = s.split('.').collect();
+            let int_part = parts[0];
+            let decimal_part = parts.get(1).copied();
+
+            let negative = int_part.starts_with('-');
+            let digits: String = int_part.chars().filter(|c| c.is_ascii_digit()).collect();
+
+            let mut result = String::new();
+            for (i, ch) in digits.chars().rev().enumerate() {
+                if i > 0 && i % 3 == 0 {
+                    result.push(',');
+                }
+                result.push(ch);
+            }
+
+            let formatted: String = result.chars().rev().collect();
+            let mut final_result = if negative {
+                format!("-{}", formatted)
+            } else {
+                formatted
+            };
+
+            if let Some(dec) = decimal_part {
+                final_result.push('.');
+                final_result.push_str(dec);
+            }
+
+            final_result
+        }
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-comma", "number"])),
+    };
+
+    Ok(Value::String(number))
+}
+
+/// format-percent - パーセント表示でフォーマット
+/// 使い方: (str/format-percent number [decimals]) または number |> (str/format-percent [decimals])
+pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 1 || args.len() > 2 {
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["format-percent"]));
+    }
+
+    let (number, decimals) = if args.len() == 2 {
+        // 2引数: (format-percent decimals number) - パイプライン用
+        let decimals = match &args[0] {
+            Value::Integer(n) if *n >= 0 => *n as usize,
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (1st arg - decimals)", "non-negative integer"])),
+        };
+        let number = match &args[1] {
+            Value::Integer(n) => (*n as f64) * 100.0,
+            Value::Float(f) => f * 100.0,
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (2nd arg - number)", "number"])),
+        };
+        (number, decimals)
+    } else {
+        // 1引数: (format-percent number) - デフォルトで0桁
+        let number = match &args[0] {
+            Value::Integer(n) => (*n as f64) * 100.0,
+            Value::Float(f) => f * 100.0,
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (1st arg - number)", "number"])),
+        };
+        (number, 0)
+    };
+
+    Ok(Value::String(format!("{:.prec$}%", number, prec = decimals)))
+}

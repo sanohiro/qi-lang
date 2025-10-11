@@ -2100,7 +2100,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 - ✅ `use :only [...]` - 特定関数のインポート
 - ✅ `use :all` - 全てインポート
 - ✅ 循環参照検出
-- 🚧 `use :as` - エイリアス機能（パース済み、評価未実装）
+- ✅ `use :as` - エイリアス機能（実装済み）
 
 ### 標準モジュール
 
@@ -2308,6 +2308,10 @@ stream/map stream/filter stream/file
   word-count
 
   ;; フォーマット ✅
+  format                  ;; プレースホルダー置換
+  format-decimal          ;; 小数点桁数指定
+  format-comma            ;; 3桁カンマ区切り
+  format-percent          ;; パーセント表示
   indent wrap
 ])
 
@@ -2383,11 +2387,56 @@ stream/map stream/filter stream/file
 (s/parse-int "123")    ;; 123
 (s/parse-float "3.14") ;; 3.14
 
-;; フォーマット
+;; フォーマット - レイアウト
 (s/indent "hello\nworld" 2)      ;; "  hello\n  world"
 (s/wrap "hello world from qi" 10) ;; "hello\nworld from\nqi"
 (s/truncate "hello world" 8)     ;; "hello..."
 (s/trunc-words "hello world from qi" 2) ;; "hello world..."
+
+;; フォーマット - プレースホルダー置換（Python/Rust風）
+(s/format "Hello, {}!" "World")           ;; "Hello, World!"
+(s/format "{} + {} = {}" 1 2 3)           ;; "1 + 2 = 3"
+(s/format "Name: {}, Age: {}" "Alice" 30) ;; "Name: Alice, Age: 30"
+
+;; フォーマット - 数値整形（パイプライン対応）
+;; format-decimal: 小数点桁数を指定
+(s/format-decimal 2 3.14159)     ;; "3.14"
+(3.14159 |> (s/format-decimal 2)) ;; "3.14" (パイプラインで使用)
+
+;; format-comma: 3桁カンマ区切り
+(s/format-comma 1234567)          ;; "1,234,567"
+(1234567 |> (s/format-comma))     ;; "1,234,567" (パイプラインで使用)
+(s/format-comma 1234.5678)        ;; "1,234.5678"
+
+;; format-percent: パーセント表示
+(s/format-percent 0.1234)         ;; "12%" (デフォルトで0桁)
+(s/format-percent 2 0.1234)       ;; "12.34%" (2桁指定)
+(0.856 |> (s/format-percent 1))   ;; "85.6%" (パイプラインで使用)
+
+;; 実用例: 価格表示のパイプライン
+(def format-price (fn [price]
+  (price
+   |> (s/format-comma)
+   |> (str/join "" ["¥" _]))))
+
+(format-price 1234567)  ;; "¥1,234,567"
+
+;; 実用例: レポート生成
+(def gen-report (fn [data]
+  f"""
+  Sales Report
+  ============
+  Total: {(s/format-comma (:total data))}
+  Growth: {(s/format-percent 1 (:growth data))}
+  """
+))
+
+(gen-report {:total 1234567 :growth 0.156})
+;; =>
+;; Sales Report
+;; ============
+;; Total: 1,234,567
+;; Growth: 15.6%
 
 ;; NLP
 (s/word-count "hello world")     ;; 2
@@ -2412,72 +2461,79 @@ stream/map stream/filter stream/file
 (s/random 16 :alnum)   ;; "aB3dE7fG9hJ2kL5m"
 ```
 
-#### 🚧 csv - CSV/TSV処理（未実装）
+#### ✅ csv - CSV処理（実装済み）
 ```lisp
-(use csv :only [
-  parse parse-file
-  format write-file
-  process-file
-])
+;; 4個の関数
+csv/parse          ;; CSV文字列をパース
+csv/stringify      ;; データをCSV文字列に
+csv/read-file      ;; CSVファイルを読み込み
+csv/read-stream    ;; CSVファイルをストリームで読み込み
 
-;; 基本的な使用
-(csv/parse "name,age\nAlice,30\nBob,25")
-;; [{:name "Alice" :age "30"} {:name "Bob" :age "25"}]
+;; RFC 4180準拠（ダブルクォートエスケープ対応）
+(csv/parse "name,age\n\"Alice\",30\n\"Bob\",25")
+;; => (("name" "age") ("Alice" "30") ("Bob" "25"))
 
-;; オプション
-(csv/parse text
-  {:delimiter ","
-   :header true
-   :skip-empty true
-   :trim true
-   :types {:age :int}})
+;; CSV生成
+(csv/stringify '(("name" "age") ("Alice" "30")))
+;; => "name,age\nAlice,30\n"
 
-;; TSV
-(csv/parse text {:delimiter "\t"})
+;; ファイル読み込み
+(csv/read-file "data.csv")  ;; => Vec<Vec<String>>
 
-;; ファイル
-(csv/parse-file "data.csv")
-(csv/write-file "output.csv" data)
-
-;; 大きいファイル
-(csv/process-file "huge.csv"
-  (fn [row] (process row))
-  {:batch-size 1000})
+;; ストリーム処理（巨大ファイル対応）
+(csv/read-stream "huge.csv" |> stream/take 1000 |> stream/realize)
 ```
 
-#### 🚧 regex - 正規表現（未実装）
+#### ✅ regex - 正規表現（基本実装）
+
+**実装済み機能**:
+- `str/re-find` - パターンマッチング（最初の一致を検索）
+- `str/re-matches` - 完全マッチチェック（文字列全体がパターンに一致するか）
+- `str/re-replace` - 正規表現による置換
+
 ```lisp
-(use regex :only [
-  match match-all
-  test
-  replace replace-all
-  split
-  compile
-])
+(use str :as s)
 
-;; マッチ
-(regex/match "hello123" #"\d+")
-;; {:matched "123" :start 5 :end 8}
+;; パターンマッチ - 最初の一致を検索
+(s/re-find "hello123world" "\\d+")
+;; => "123"
 
-;; グループキャプチャ
-(regex/match "Alice:30" #"(?<name>\w+):(?<age>\d+)")
-;; {:matched "Alice:30" :groups {:name "Alice" :age "30"}}
+;; 完全マッチチェック - 文字列全体がパターンに一致するか
+(s/re-matches "hello123" "\\w+")
+;; => true
 
-;; テスト
-(regex/test "hello123" #"\d+")  ;; true
+(s/re-matches "hello 123" "\\w+")
+;; => false (スペースがあるため)
 
-;; 置換
-(regex/replace "hello123" #"\d+" "X")  ;; "helloX"
-(regex/replace-all "hello123world456" #"\d+" "X")  ;; "helloXworldX"
+;; 置換 - パターンに一致する部分を置換
+(s/re-replace "hello123world456" "\\d+" "X")
+;; => "helloXworldX"
 
-;; コールバック置換
-(regex/replace-all "hello123world456" #"\d+"
-  (fn [match] (* (parse-int match) 2)))
-;; "hello246world912"
+;; パイプラインでの使用
+("hello123world" |> (s/re-find "\\d+"))
+;; => "123"
 
-;; コンパイル（再利用）
-(def email-pattern (regex/compile #"^[^@]+@[^@]+\.[^@]+$"))
-(regex/test "test@example.com" email-pattern)
+;; 実用例: メールアドレスの抽出
+(def extract-email (fn [text]
+  (s/re-find text "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")))
+
+(extract-email "Contact: test@example.com for details")
+;; => "test@example.com"
+
+;; 実用例: バリデーション
+(def valid-username? (fn [name]
+  (s/re-matches name "^[a-zA-Z0-9_]{3,16}$")))
+
+(valid-username? "user_123")  ;; => true
+(valid-username? "ab")        ;; => false (短すぎる)
+```
+
+**将来の拡張（未実装）**:
+- グループキャプチャ（名前付き・番号付き）
+- `match-all` - 全マッチの取得
+- `split` - 正規表現による分割
+- `compile` - パターンのプリコンパイル
+- コールバック置換
 ```
 
 #### 🔜 math - 数学関数（計画中）
@@ -2740,13 +2796,69 @@ test      ;; テストフレームワーク
 "say \"hello\""
 ```
 
-### 🚧 複数行（未実装）
+### ✅ 複数行（実装済み）
+
+Python風の`"""`を使った複数行文字列をサポートしています。
+
 ```lisp
+;; 基本的な複数行文字列
 """
 This is a
 multi-line
 string
 """
+
+;; エスケープシーケンスも利用可能
+"""Line 1\nLine 2\nLine 3"""
+
+;; SQLクエリなどに便利
+(def query """
+  SELECT name, age
+  FROM users
+  WHERE age >= 18
+  ORDER BY name
+""")
+
+;; JSONやHTML、マークダウンの埋め込みに便利
+(def html """
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Hello, World!</h1>
+  </body>
+</html>
+""")
+```
+
+### ✅ 複数行f-string（実装済み）
+
+f-stringでも複数行が使えます。`f"""..."""`の形式です。
+
+```lisp
+;; 変数を含む複数行文字列
+(def name "Alice")
+(def age 30)
+
+f"""
+Name: {name}
+Age: {age}
+Status: Active
+"""
+
+;; テンプレートエンジンのように使える
+(def gen-email (fn [user]
+  f"""
+  Dear {(:name user)},
+
+  Your order #{(:order-id user)} has been confirmed.
+  Total: ${(:total user)}
+
+  Thank you for your purchase!
+  """
+))
+
+(gen-email {:name "Bob" :order-id 12345 :total 99.99})
+;; => メール本文が生成される
 ```
 
 ### ✅ 補間（f-string）（実装済み）

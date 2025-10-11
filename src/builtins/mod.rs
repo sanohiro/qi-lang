@@ -61,6 +61,7 @@ pub mod time;
 pub mod concurrency;
 pub mod util;
 pub mod csv;
+pub mod flow;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -410,6 +411,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "str/re-matches" => string::native_re_matches,
         "str/re-replace" => string::native_re_replace,
         "str/format" => string::native_format,
+        "str/format-decimal" => string::native_format_decimal,
+        "str/format-comma" => string::native_format_comma,
+        "str/format-percent" => string::native_format_percent,
 
         // ========================================
         // async/pipeline モジュール（Evaluator不要な関数）
@@ -653,4 +657,9 @@ pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 
 pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_post_async(args, evaluator)
+}
+
+/// branch - 条件分岐（パイプライン用）
+pub fn branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    flow::native_branch(args, evaluator)
 }

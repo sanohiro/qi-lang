@@ -156,6 +156,44 @@ impl Lexer {
         Err(msg(MsgKey::UnclosedString).to_string())
     }
 
+    /// 複数行文字列を読み取る: """..."""
+    fn read_multiline_string(&mut self) -> Result<String, String> {
+        // """ をスキップ
+        self.advance(); // "
+        self.advance(); // "
+        self.advance(); // "
+
+        let mut result = String::new();
+
+        while let Some(ch) = self.current() {
+            // """ で終了チェック
+            if ch == '"' && self.peek(1) == Some('"') && self.peek(2) == Some('"') {
+                self.advance(); // "
+                self.advance(); // "
+                self.advance(); // "
+                return Ok(result);
+            } else if ch == '\\' {
+                // エスケープシーケンス処理
+                self.advance();
+                match self.current() {
+                    Some('n') => result.push('\n'),
+                    Some('t') => result.push('\t'),
+                    Some('r') => result.push('\r'),
+                    Some('\\') => result.push('\\'),
+                    Some('"') => result.push('"'),
+                    Some(c) => result.push(c),
+                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
+                }
+                self.advance();
+            } else {
+                result.push(ch);
+                self.advance();
+            }
+        }
+
+        Err(msg(MsgKey::UnclosedString).to_string())
+    }
+
     fn read_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
         self.advance(); // f
         self.advance(); // "
@@ -203,6 +241,83 @@ impl Lexer {
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
+                self.advance();
+                match self.current() {
+                    Some('n') => current_text.push('\n'),
+                    Some('t') => current_text.push('\t'),
+                    Some('r') => current_text.push('\r'),
+                    Some('\\') => current_text.push('\\'),
+                    Some('"') => current_text.push('"'),
+                    Some('{') => current_text.push('{'),
+                    Some('}') => current_text.push('}'),
+                    Some(c) => current_text.push(c),
+                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
+                }
+                self.advance();
+            } else {
+                current_text.push(ch);
+                self.advance();
+            }
+        }
+
+        Err(msg(MsgKey::FStringUnclosed).to_string())
+    }
+
+    /// 複数行f-stringを読み取る: f"""..."""
+    fn read_multiline_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
+        self.advance(); // f
+        self.advance(); // "
+        self.advance(); // "
+        self.advance(); // "
+
+        let mut parts = Vec::new();
+        let mut current_text = String::new();
+
+        while let Some(ch) = self.current() {
+            // """ で終了チェック
+            if ch == '"' && self.peek(1) == Some('"') && self.peek(2) == Some('"') {
+                // 残ったテキストを追加
+                if !current_text.is_empty() {
+                    parts.push(FStringPart::Text(current_text));
+                }
+                self.advance(); // "
+                self.advance(); // "
+                self.advance(); // "
+                return Ok(parts);
+            } else if ch == '{' {
+                // テキスト部分を確定
+                if !current_text.is_empty() {
+                    parts.push(FStringPart::Text(current_text.clone()));
+                    current_text.clear();
+                }
+                // {}内のコードを読み取る
+                self.advance(); // {
+                let mut code = String::new();
+                let mut depth = 1;
+                while let Some(ch) = self.current() {
+                    if ch == '{' {
+                        depth += 1;
+                        code.push(ch);
+                        self.advance();
+                    } else if ch == '}' {
+                        depth -= 1;
+                        if depth == 0 {
+                            self.advance(); // }
+                            break;
+                        }
+                        code.push(ch);
+                        self.advance();
+                    } else {
+                        code.push(ch);
+                        self.advance();
+                    }
+                }
+                if depth != 0 {
+                    return Err(msg(MsgKey::FStringUnclosedBrace).to_string());
+                }
+                parts.push(FStringPart::Code(code));
+            } else if ch == '\\' {
+                // エスケープシーケンス処理
                 self.advance();
                 match self.current() {
                     Some('n') => current_text.push('\n'),
@@ -342,6 +457,11 @@ impl Lexer {
                     self.advance();
                     return Ok(Token::At);
                 }
+                // 複数行文字列: """..."""
+                Some('"') if self.peek(1) == Some('"') && self.peek(2) == Some('"') => {
+                    let s = self.read_multiline_string()?;
+                    return Ok(Token::String(s));
+                }
                 Some('"') => {
                     let s = self.read_string()?;
                     return Ok(Token::String(s));
@@ -387,6 +507,11 @@ impl Lexer {
                 }
                 Some('-') if self.peek(1).map_or(false, |c| c.is_numeric()) => {
                     return Ok(self.read_number());
+                }
+                // 複数行f-string: f"""..."""
+                Some('f') if self.peek(1) == Some('"') && self.peek(2) == Some('"') && self.peek(3) == Some('"') => {
+                    let parts = self.read_multiline_fstring()?;
+                    return Ok(Token::FString(parts));
                 }
                 Some('f') if self.peek(1) == Some('"') => {
                     let parts = self.read_fstring()?;
@@ -474,5 +599,41 @@ mod tests {
         assert_eq!(lexer.next_token().unwrap(), Token::Integer(1));
         assert_eq!(lexer.next_token().unwrap(), Token::Integer(2));
         assert_eq!(lexer.next_token().unwrap(), Token::RParen);
+    }
+
+    #[test]
+    fn test_multiline_string() {
+        let mut lexer = Lexer::new(r#""""hello
+world""""#);
+        match lexer.next_token().unwrap() {
+            Token::String(s) => assert_eq!(s, "hello\nworld"),
+            _ => panic!("Expected multiline string"),
+        }
+    }
+
+    #[test]
+    fn test_multiline_string_with_escape() {
+        let mut lexer = Lexer::new(r#""""line1\nline2\tindented""""#);
+        match lexer.next_token().unwrap() {
+            Token::String(s) => assert_eq!(s, "line1\nline2\tindented"),
+            _ => panic!("Expected multiline string with escapes"),
+        }
+    }
+
+    #[test]
+    fn test_multiline_fstring() {
+        crate::i18n::init();
+        let input = r#"f"""Hello, {name}
+Welcome!""""#;
+        let mut lexer = Lexer::new(input);
+        match lexer.next_token().unwrap() {
+            Token::FString(parts) => {
+                assert_eq!(parts.len(), 3);
+                assert_eq!(parts[0], FStringPart::Text("Hello, ".to_string()));
+                assert_eq!(parts[1], FStringPart::Code("name".to_string()));
+                assert_eq!(parts[2], FStringPart::Text("\nWelcome!".to_string()));
+            }
+            _ => panic!("Expected multiline f-string"),
+        }
     }
 }
