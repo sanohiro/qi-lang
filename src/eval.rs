@@ -2477,6 +2477,40 @@ impl Evaluator {
                                 return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[2])?)));
                             }
                         }
+                        "defn" if items.len() >= 4 => {
+                            // defn展開: (defn name [params] body) -> (def name (fn [params] body))
+                            // NOTE: ドキュメント文字列/マップは現在未サポート（将来の拡張用に位置は認識）
+                            if let Value::Symbol(name) = &items[1] {
+                                // パラメータリスト（Vector）の位置を探す
+                                let mut params_idx = 2;
+
+                                // items[2]がVectorでなければドキュメント（今は無視）
+                                if !matches!(&items[2], Value::Vector(_)) {
+                                    params_idx = 3;
+                                }
+
+                                // パラメータリストと本体を確認
+                                if params_idx < items.len() && matches!(&items[params_idx], Value::Vector(_)) {
+                                    let params = items[params_idx].clone();
+                                    let body: Vec<Value> = items[params_idx + 1..].to_vec();
+
+                                    // (fn [params] body...) を構築
+                                    let mut fn_items = vec![Value::Symbol("fn".to_string()), params];
+                                    fn_items.extend(body);
+                                    let fn_value = Value::List(fn_items);
+
+                                    // (def name (fn ...)) を構築
+                                    let def_items = vec![
+                                        Value::Symbol("def".to_string()),
+                                        Value::Symbol(name.clone()),
+                                        fn_value,
+                                    ];
+
+                                    // 展開したdefを再度処理
+                                    return self.value_to_expr(&Value::List(def_items));
+                                }
+                            }
+                        }
                         // quasiquote/unquote/unquote-spliceは展開後には出現しないはず
                         // もし出現した場合は通常のリストとして扱う
                         _ => {}

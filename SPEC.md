@@ -4241,3 +4241,68 @@ mean median stddev
 - 必要になったら検討
 
 ---
+
+## ドキュメントシステム
+
+Qiは柔軟なドキュメントシステムを提供します。
+
+### 概要
+
+- **多言語対応**（i18n）：現在は日本語（ja）と英語（en）
+- **ハイブリッド型**：ソースコード内記述と外部ファイルの両方に対応
+- **3つの記述レベル**：シンプルな文字列から詳細な構造化まで
+- **遅延読み込み**：メモリ効率を重視し、必要時のみロード
+
+### 記述方法
+
+```lisp
+;; 1. 文字列形式（シンプル）
+(def greet
+  "指定された名前で挨拶する"
+  (fn [name]
+    (str "Hello, " name "!")))
+
+;; 2. 構造化形式（詳細）
+(def greet
+  {:desc "指定された名前で挨拶する"
+   :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
+   :returns {:type "string" :desc "挨拶メッセージ"}
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]}
+  (fn [name]
+    (str "Hello, " name "!")))
+
+;; 3. 外部参照形式（大規模）
+(def complex-function
+  :see-ja "docs/ja/complex-function.qi"
+  :see-en "docs/en/complex-function.qi"
+  (fn [x y z]
+    ;; 実装
+    ))
+```
+
+### ディレクトリ構造
+
+```
+project/
+  main.qi
+  docs/
+    ja/my-module.qi
+    en/my-module.qi
+
+qi (バイナリ)
+std/
+  ja/io-module.qi
+  en/io-module.qi
+```
+
+### 言語フォールバック
+
+1. 現在の言語（環境変数 `QI_LANG`）
+2. 英語（`en`）
+3. 表示なし
+
+### 詳細仕様
+
+詳細は [DOC_SYSTEM.md](DOC_SYSTEM.md) を参照してください。
+
+---

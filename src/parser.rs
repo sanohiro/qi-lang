@@ -172,6 +172,7 @@ impl Parser {
             let name = name.clone();
             match name.as_str() {
                 "def" => return self.parse_def(),
+                "defn" => return self.parse_defn(),
                 "fn" => return self.parse_fn(),
                 "let" => return self.parse_let(),
                 "if" => return self.parse_if(),
@@ -305,6 +306,67 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Def(name, value))
+    }
+
+    /// defn を def + fn に展開
+    /// (defn name [params] body) -> (def name (fn [params] body))
+    /// (defn name doc [params] body) -> (def name (fn [params] body))  // docは将来サポート予定
+    fn parse_defn(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'defn'をスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(s)) => s.clone(),
+            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string()),
+        };
+        self.advance();
+
+        // ドキュメント文字列/マップをスキップ（将来サポート予定）
+        if !matches!(self.current(), Some(Token::LBracket)) {
+            // パラメータリストでない場合はドキュメント
+            self.parse_expr()?; // 読み飛ばす
+        }
+
+        // パラメータリストのパース
+        self.expect(Token::LBracket)?;
+        let mut params = Vec::new();
+        let mut is_variadic = false;
+
+        while self.current() != Some(&Token::RBracket) {
+            if let Some(Token::Symbol(s)) = self.current() {
+                if s == "&" {
+                    self.advance();
+                    is_variadic = true;
+                    if let Some(Token::Symbol(vararg)) = self.current() {
+                        params.push(vararg.clone());
+                        self.advance();
+                    } else {
+                        return Err(msg(MsgKey::VarargNeedsName).to_string());
+                    }
+                    break;
+                } else {
+                    params.push(s.clone());
+                    self.advance();
+                }
+            } else {
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string());
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let body = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        // (fn [params] body) を構築
+        let fn_expr = Expr::Fn {
+            params,
+            body,
+            is_variadic,
+        };
+
+        // (def name (fn ...)) に変換
+        Ok(Expr::Def(name, Box::new(fn_expr)))
     }
 
     fn parse_fn(&mut self) -> Result<Expr, String> {
