@@ -72,6 +72,7 @@ pub mod log;
 pub mod zip;
 pub mod args;
 pub mod temp;
+pub mod test;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -403,6 +404,15 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "io/temp-file-keep" => temp::native_temp_file_keep,
         "io/temp-dir" => temp::native_temp_dir,
         "io/temp-dir-keep" => temp::native_temp_dir_keep,
+
+        // ========================================
+        // 専門モジュール: test（4個）
+        // ========================================
+        "test/assert-eq" => test::native_assert_eq,
+        "test/assert" => test::native_assert,
+        "test/assert-not" => test::native_assert_not,
+        "test/run-all" => test::native_run_all,
+        "test/clear" => test::native_test_clear,
 
         // ========================================
         // 専門モジュール: dbg（2個）
@@ -761,4 +771,14 @@ pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// branch - 条件分岐（パイプライン用）
 pub fn branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     flow::native_branch(args, evaluator)
+}
+
+/// test/run - テストを実行して結果を記録
+pub fn test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    test::native_test_run(args, evaluator)
+}
+
+/// test/assert-throws - 式が例外を投げることをアサート
+pub fn test_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    test::native_assert_throws(args, evaluator)
 }

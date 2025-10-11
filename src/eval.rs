@@ -398,6 +398,8 @@ impl Evaluator {
                         "iterate" | "stream/iterate" => return self.eval_iterate(args, env),
                         "stream-map" | "stream/map" => return self.eval_stream_map(args, env),
                         "stream-filter" | "stream/filter" => return self.eval_stream_filter(args, env),
+                        "test/run" => return self.eval_test_run(args, env),
+                        "test/assert-throws" => return self.eval_test_assert_throws(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -766,6 +768,25 @@ impl Evaluator {
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
         builtins::drop_while(&[pred, coll], self)
+    }
+
+    /// test/run - テストを実行して結果を記録
+    fn eval_test_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err("test/run: requires 2 arguments (name body)".to_string());
+        }
+        let name = self.eval_with_env(&args[0], env.clone())?;
+        let body = self.eval_with_env(&args[1], env.clone())?;
+        builtins::test_run(&[name, body], self)
+    }
+
+    /// test/assert-throws - 式が例外を投げることをアサート
+    fn eval_test_assert_throws(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err("test/assert-throws: requires 1 argument (function)".to_string());
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        builtins::test_assert_throws(&[func], self)
     }
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
