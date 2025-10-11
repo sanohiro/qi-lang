@@ -248,6 +248,11 @@ fn repl(preload: Option<&str>) {
         }
     }
 
+    // ビルトイン関数を補完候補に追加
+    if let Some(h) = rl.helper_mut() {
+        h.update_completions(&evaluator);
+    }
+
     let mut line_number = 1;
     let mut accumulated_input = String::new();
 
@@ -373,14 +378,14 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
     match command {
         ":help" => {
             println!("Available REPL commands:");
-            println!("  :help           - Show this help");
-            println!("  :vars           - List all defined variables");
-            println!("  :funcs          - List all defined functions");
-            println!("  :builtins       - List all builtin functions");
-            println!("  :clear          - Clear environment");
-            println!("  :load <file>    - Load a file");
-            println!("  :reload         - Reload the last loaded file");
-            println!("  :quit           - Exit REPL");
+            println!("  :help              - Show this help");
+            println!("  :vars              - List all defined variables");
+            println!("  :funcs             - List all defined functions");
+            println!("  :builtins [filter] - List all builtin functions (optional: filter by pattern)");
+            println!("  :clear             - Clear environment");
+            println!("  :load <file>       - Load a file");
+            println!("  :reload            - Reload the last loaded file");
+            println!("  :quit              - Exit REPL");
         }
         ":vars" => {
             if let Some(env) = evaluator.get_env() {
@@ -421,9 +426,44 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
             }
         }
         ":builtins" => {
-            // builtins の一覧を表示
-            println!("Builtin functions are available but not enumerated");
-            println!("See documentation for full list");
+            if let Some(env) = evaluator.get_env() {
+                let env = env.read();
+                let mut builtins: Vec<_> = env.bindings()
+                    .filter(|(_, v)| matches!(v, Value::NativeFunc(_)))
+                    .map(|(name, _)| name.clone())
+                    .collect();
+                builtins.sort();
+
+                if parts.len() > 1 {
+                    // フィルタリング
+                    let filter = parts[1];
+                    builtins.retain(|name| name.contains(filter));
+
+                    if builtins.is_empty() {
+                        println!("No builtin functions matching '{}'", filter);
+                    } else {
+                        println!("Builtin functions matching '{}':", filter);
+                        for (i, name) in builtins.iter().enumerate() {
+                            if i % 4 == 0 {
+                                print!("\n  ");
+                            }
+                            print!("{:<20}", name);
+                        }
+                        println!("\n\nTotal: {} functions", builtins.len());
+                    }
+                } else {
+                    // 全表示
+                    println!("Builtin functions:");
+                    for (i, name) in builtins.iter().enumerate() {
+                        if i % 4 == 0 {
+                            print!("\n  ");
+                        }
+                        print!("{:<20}", name);
+                    }
+                    println!("\n\nTotal: {} functions", builtins.len());
+                    println!("\nTip: Use ':builtins <pattern>' to filter (e.g., ':builtins str')");
+                }
+            }
         }
         ":clear" => {
             println!("Environment cleared");
