@@ -1239,7 +1239,7 @@ mod tests {
 
     fn eval_str(s: &str) -> Result<Value, String> {
         crate::i18n::init(); // i18nシステムを初期化
-        let mut evaluator = Evaluator::new();
+        let evaluator = Evaluator::new();
         let mut parser = Parser::new(s)?;
         let exprs = parser.parse_all()?;
         let mut result = Value::Nil;

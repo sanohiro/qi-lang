@@ -21,8 +21,9 @@
 //! - list: 高度なリスト操作（18個）
 //! - map: 高度なマップ操作（5個）
 //! - fn: 高階関数（3個）
-//! - set: 集合演算（4個）
+//! - set: 集合演算（7個）
 //! - math: 数学関数（10個）
+//! - time: 日時処理（4個）
 //! - io: ファイルI/O（5個）
 //! - dbg: デバッグ（2個）
 //! - async: 並行処理（高度）（16個）
@@ -54,6 +55,7 @@ pub mod math;
 pub mod set;
 pub mod stream;
 pub mod string;
+pub mod time;
 pub mod concurrency;
 pub mod util;
 
@@ -263,6 +265,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "math/rand-int" => math::native_rand_int,
         "math/random-range" => math::native_random_range,
         "math/shuffle" => math::native_shuffle,
+
+        // ========================================
+        // 専門モジュール: time（4個）
+        // ========================================
+        "time/now-iso" => time::native_now_iso,
+        "time/from-unix" => time::native_from_unix,
+        "time/to-unix" => time::native_to_unix,
+        "time/format" => time::native_format,
 
         // ========================================
         // 専門モジュール: io（5個）

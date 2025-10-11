@@ -165,6 +165,8 @@ pub enum MsgKey {
     // その他のエラー
     UnsupportedNumberType, // unsupported number type
     RailwayRequiresOkError, // |>? requires {:ok/:error} map
+    InvalidTimestamp,    // invalid timestamp
+    InvalidDateFormat,   // invalid date format
 }
 
 /// UIメッセージキー
@@ -344,6 +346,8 @@ impl Messages {
         // 英語メッセージ - その他
         messages.insert((Lang::En, MsgKey::UnsupportedNumberType), "unsupported number type");
         messages.insert((Lang::En, MsgKey::RailwayRequiresOkError), "|>? requires {:ok/:error} map");
+        messages.insert((Lang::En, MsgKey::InvalidTimestamp), "{0}: invalid timestamp");
+        messages.insert((Lang::En, MsgKey::InvalidDateFormat), "{0}: invalid date format: {1}");
 
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
@@ -463,6 +467,8 @@ impl Messages {
         // 日本語メッセージ - その他
         messages.insert((Lang::Ja, MsgKey::UnsupportedNumberType), "サポートされていない数値型です");
         messages.insert((Lang::Ja, MsgKey::RailwayRequiresOkError), "|>? には {:ok/:error} マップが必要です");
+        messages.insert((Lang::Ja, MsgKey::InvalidTimestamp), "{0}: 不正なタイムスタンプです");
+        messages.insert((Lang::Ja, MsgKey::InvalidDateFormat), "{0}: 不正な日付フォーマットです: {1}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
