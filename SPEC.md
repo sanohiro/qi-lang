@@ -27,9 +27,9 @@ Qiは**Flow-Oriented Programming**（流れ指向プログラミング）を体�
    - Unix哲学の「Do One Thing Well」を関数型で実現
 
 2. **Simple, Fast, Concise**
-   - **Simple**: 特殊形式8つ、記法最小限、学習曲線が緩やか
+   - **Simple**: 特殊形式9つ、記法最小限、学習曲線が緩やか
    - **Fast**: 軽量・高速起動・将来的にJITコンパイル
-   - **Concise**: 短い関数名、パイプライン、関数型で表現力豊か
+   - **Concise**: 短い関数名、パイプライン、`defn`糖衣構文で表現力豊か
 
 3. **エネルギーの流れ**
    - データは一方向に流れる（左から右、上から下）
@@ -624,7 +624,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ---
 
-## 3. 特殊形式（8つ）✅
+## 3. 特殊形式（9つ）✅
 
 ### ✅ `def` - グローバル定義
 ```lisp
@@ -632,6 +632,28 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 (def greet (fn [name] (str "Hello, " name)))
 (def ops [+ - * /])
 ```
+
+### ✅ `defn` - 関数定義（糖衣構文）
+```lisp
+;; 基本形式
+(defn greet [name]
+  (str "Hello, " name))
+
+;; 可変長引数
+(defn sum [& nums]
+  (reduce + 0 nums))
+
+;; ドキュメント付き（将来サポート予定）
+(defn greet "挨拶する" [name]
+  (str "Hello, " name))
+
+;; defnは以下のように展開される
+(defn greet [name] body)
+;; ↓
+(def greet (fn [name] body))
+```
+
+**Note**: `defn`は`def + fn`の糖衣構文です。ドキュメント文字列/マップは認識されますが、現在は無視されます（将来のドキュメントシステムで活用予定）。
 
 ### ✅ `fn` - 関数定義
 ```lisp
