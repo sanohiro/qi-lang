@@ -7,7 +7,13 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Arc;
-use encoding_rs::{Encoding, UTF_8, SHIFT_JIS, EUC_JP, ISO_2022_JP};
+use encoding_rs::{
+    Encoding, UTF_8, UTF_16LE, UTF_16BE,
+    SHIFT_JIS, EUC_JP, ISO_2022_JP,  // 日本語
+    GBK, GB18030, BIG5,               // 中国語（簡体字・繁体字）
+    EUC_KR,                           // 韓国語
+    WINDOWS_1252, WINDOWS_1251,       // 欧州（西欧・ロシア）
+};
 
 // ============================================
 // エンコーディング処理ユーティリティ
@@ -16,22 +22,48 @@ use encoding_rs::{Encoding, UTF_8, SHIFT_JIS, EUC_JP, ISO_2022_JP};
 /// エンコーディングを解決
 fn resolve_encoding(keyword: &str) -> Result<&'static Encoding, String> {
     match keyword {
+        // Unicode
         "utf-8" | "utf8" => Ok(UTF_8),
         "utf-8-bom" | "utf8-bom" => Ok(UTF_8), // BOMは別途処理
+        "utf-16le" | "utf16le" => Ok(UTF_16LE),
+        "utf-16be" | "utf16be" => Ok(UTF_16BE),
+
+        // 日本語
         "sjis" | "shift-jis" | "shift_jis" => Ok(SHIFT_JIS),
         "euc-jp" | "euc_jp" | "eucjp" => Ok(EUC_JP),
         "iso-2022-jp" | "iso2022jp" => Ok(ISO_2022_JP),
+
+        // 中国語
+        "gbk" => Ok(GBK),
+        "gb18030" => Ok(GB18030),
+        "big5" => Ok(BIG5),
+
+        // 韓国語
+        "euc-kr" | "euc_kr" | "euckr" => Ok(EUC_KR),
+
+        // 欧州
+        "windows-1252" | "cp1252" | "latin1" => Ok(WINDOWS_1252),
+        "windows-1251" | "cp1251" => Ok(WINDOWS_1251),
+
         _ => Err(format!("Unsupported encoding: {}", keyword)),
     }
 }
 
-/// BOMをチェックして除去
-fn strip_bom(bytes: &[u8]) -> (&[u8], bool) {
+/// BOMをチェックして除去（エンコーディングも返す）
+fn strip_bom(bytes: &[u8]) -> (&[u8], Option<&'static Encoding>) {
+    // UTF-8 BOM
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        (&bytes[3..], true)
-    } else {
-        (bytes, false)
+        return (&bytes[3..], Some(UTF_8));
     }
+    // UTF-16LE BOM
+    if bytes.starts_with(&[0xFF, 0xFE]) {
+        return (&bytes[2..], Some(UTF_16LE));
+    }
+    // UTF-16BE BOM
+    if bytes.starts_with(&[0xFE, 0xFF]) {
+        return (&bytes[2..], Some(UTF_16BE));
+    }
+    (bytes, None)
 }
 
 /// バイト列をUTF-8文字列にデコード
@@ -46,44 +78,82 @@ fn decode_bytes(bytes: &[u8], encoding: &'static Encoding, path: &str) -> Result
 
 /// 自動エンコーディング検出（ベストエフォート）
 fn auto_detect_encoding(bytes: &[u8], path: &str) -> Result<String, String> {
-    // BOMチェック
-    let (bytes_without_bom, has_bom) = strip_bom(bytes);
-    if has_bom {
-        return decode_bytes(bytes_without_bom, UTF_8, path);
+    // BOMチェック（UTF-8/UTF-16LE/UTF-16BE）
+    let (bytes_without_bom, detected_encoding) = strip_bom(bytes);
+    if let Some(encoding) = detected_encoding {
+        return decode_bytes(bytes_without_bom, encoding, path);
     }
 
-    // UTF-8として試行
+    // UTF-8として試行（BOMなし）
     if let Ok(s) = String::from_utf8(bytes.to_vec()) {
         return Ok(s);
     }
 
-    // Shift_JISとして試行
-    if let Ok(s) = decode_bytes(bytes, SHIFT_JIS, path) {
+    // 日本語エンコーディング
+    let japanese_encodings = [SHIFT_JIS, EUC_JP, ISO_2022_JP];
+    for encoding in &japanese_encodings {
+        if let Ok(s) = decode_bytes(bytes, encoding, path) {
+            return Ok(s);
+        }
+    }
+
+    // 中国語エンコーディング（簡体字・繁体字）
+    let chinese_encodings = [GBK, GB18030, BIG5];
+    for encoding in &chinese_encodings {
+        if let Ok(s) = decode_bytes(bytes, encoding, path) {
+            return Ok(s);
+        }
+    }
+
+    // 韓国語エンコーディング
+    if let Ok(s) = decode_bytes(bytes, EUC_KR, path) {
         return Ok(s);
     }
 
-    // EUC-JPとして試行
-    if let Ok(s) = decode_bytes(bytes, EUC_JP, path) {
-        return Ok(s);
+    // 欧州エンコーディング
+    let european_encodings = [WINDOWS_1252, WINDOWS_1251];
+    for encoding in &european_encodings {
+        if let Ok(s) = decode_bytes(bytes, encoding, path) {
+            return Ok(s);
+        }
     }
 
-    // ISO-2022-JPとして試行
-    if let Ok(s) = decode_bytes(bytes, ISO_2022_JP, path) {
-        return Ok(s);
-    }
-
-    Err(format!("{}: could not detect encoding (tried UTF-8, Shift_JIS, EUC-JP, ISO-2022-JP)", path))
+    Err(format!(
+        "{}: could not detect encoding (tried UTF-8, UTF-16, Japanese, Chinese, Korean, European encodings)",
+        path
+    ))
 }
 
 /// 文字列をバイト列にエンコード
 fn encode_string(content: &str, encoding: &'static Encoding, add_bom: bool) -> Vec<u8> {
-    let (encoded, _, _) = encoding.encode(content);
     let mut result = Vec::new();
 
+    // UTF-16は手動でエンコード（encoding_rsがエンコーダーをサポートしていないため）
+    // UTF-16はデフォルトでBOM付き（Excel互換）
+    if encoding == UTF_16LE {
+        // UTF-16LEはデフォルトでBOM付き
+        result.extend_from_slice(&[0xFF, 0xFE]); // UTF-16LE BOM
+        for code_unit in content.encode_utf16() {
+            result.extend_from_slice(&code_unit.to_le_bytes());
+        }
+        return result;
+    }
+
+    if encoding == UTF_16BE {
+        // UTF-16BEはデフォルトでBOM付き
+        result.extend_from_slice(&[0xFE, 0xFF]); // UTF-16BE BOM
+        for code_unit in content.encode_utf16() {
+            result.extend_from_slice(&code_unit.to_be_bytes());
+        }
+        return result;
+    }
+
+    // その他のエンコーディング
     if add_bom && encoding == UTF_8 {
         result.extend_from_slice(&[0xEF, 0xBB, 0xBF]);
     }
 
+    let (encoded, _, _) = encoding.encode(content);
     result.extend_from_slice(&encoded);
     result
 }
@@ -152,7 +222,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     let content = if encoding_keyword == "auto" {
         auto_detect_encoding(&bytes, path)?
     } else {
-        let (bytes_to_decode, _has_bom) = strip_bom(&bytes);
+        let (bytes_to_decode, _detected_encoding) = strip_bom(&bytes);
 
         if encoding_keyword == "utf-8" || encoding_keyword == "utf-8-bom" {
             // UTF-8の場合はBOMを自動除去

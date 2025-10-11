@@ -2197,7 +2197,7 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ io - ファイルI/O（6個） - エンコーディング完全対応
+##### ✅ io - ファイルI/O（6個） - グローバルエンコーディング対応（日中韓欧露）
 
 **コア関数**:
 - `io/read-file` - ファイル読み込み（エンコーディング指定・自動検出対応）
@@ -2207,13 +2207,33 @@ math/rand math/rand-int
 - `io/read-lines` - 行ごと読み込み
 - `io/file-exists?` - ファイル存在確認
 
-**エンコーディングサポート**:
+**エンコーディングサポート** - グローバル対応:
+
+**Unicode**:
 - `:utf-8` (デフォルト、BOM自動除去)
 - `:utf-8-bom` (BOM付きUTF-8、Excel対応)
-- `:sjis` / `:shift-jis` (Shift_JIS、日本語Windows/Excel)
-- `:euc-jp` (EUC-JP)
-- `:iso-2022-jp` (JIS)
-- `:auto` (自動検出)
+- `:utf-16le` (UTF-16LE、BOM付き、Excel多言語対応)
+- `:utf-16be` (UTF-16BE、BOM付き)
+
+**日本語**:
+- `:sjis` / `:shift-jis` (Shift_JIS/Windows-31J、日本Windows/Excel)
+- `:euc-jp` (EUC-JP、Unix系)
+- `:iso-2022-jp` (JIS、メール)
+
+**中国語**:
+- `:gbk` (GBK、中国本土・シンガポール、簡体字Windows/Excel)
+- `:gb18030` (GB18030、中国国家規格、GBK上位互換)
+- `:big5` (Big5、台湾・香港、繁体字Windows/Excel)
+
+**韓国語**:
+- `:euc-kr` (EUC-KR、韓国Windows/Excel)
+
+**欧州**:
+- `:windows-1252` / `:cp1252` / `:latin1` (西欧、米国Windows/Excel)
+- `:windows-1251` / `:cp1251` (ロシア・キリル文字圏Windows/Excel)
+
+**自動検出**:
+- `:auto` (BOM検出 → UTF-8 → 各地域エンコーディングを順次試行)
 
 ```lisp
 ;; ============================================
@@ -2258,22 +2278,47 @@ math/rand math/rand-int
                :create-dirs true)
 
 ;; ============================================
-;; 実用例
+;; 実用例 - 各国のExcel/レガシーシステム対応
 ;; ============================================
 
-;; Excel用CSV作成（Shift_JIS）
+;; 日本: Excel用CSV（Shift_JIS）
 (data
  |> csv/stringify
- |> (fn [s] (io/write-file s "for_excel.csv" :encoding :sjis)))
+ |> (fn [s] (io/write-file s "japan_excel.csv" :encoding :sjis)))
 
-;; レガシーShift_JIS → UTF-8変換
-(io/read-file "legacy_sjis.csv" :encoding :sjis)
+;; 中国（簡体字）: Excel用CSV（GBK）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "china_excel.csv" :encoding :gbk)))
+
+;; 台湾・香港（繁体字）: Excel用CSV（Big5）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "taiwan_excel.csv" :encoding :big5)))
+
+;; 韓国: Excel用CSV（EUC-KR）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "korea_excel.csv" :encoding :euc-kr)))
+
+;; 西欧・米国: Excel用CSV（Windows-1252）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "europe_excel.csv" :encoding :windows-1252)))
+
+;; 多言語混在: UTF-16LE（Excel推奨、BOM付き）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "multilang_excel.csv" :encoding :utf-16le)))
+
+;; レガシーエンコーディング → UTF-8変換
+(io/read-file "legacy.csv" :encoding :sjis)
  |> csv/parse
  |> (map transform)
  |> csv/stringify
  |> (fn [s] (io/write-file s "modern_utf8.csv"))
 
-;; エンコーディング不明ファイルの処理
+;; エンコーディング不明ファイルの自動検出
 (io/read-file "unknown.txt" :encoding :auto)
  |> process
  |> (fn [s] (io/write-file s "output.txt" :encoding :utf-8-bom))
