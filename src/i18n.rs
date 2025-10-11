@@ -59,7 +59,9 @@ pub enum MsgKey {
 
     // 評価器エラー
     UndefinedVar,
+    UndefinedVarWithSuggestions, // 未定義変数（サジェスト付き）
     NotAFunction,
+    TypeMismatch,       // 型エラー（期待と実際）
     ArgCountMismatch,
     DivisionByZero,
     ExportOnlyInModule,
@@ -251,7 +253,9 @@ impl Messages {
 
         // 英語メッセージ - 評価器
         messages.insert((Lang::En, MsgKey::UndefinedVar), "undefined variable: {0}");
+        messages.insert((Lang::En, MsgKey::UndefinedVarWithSuggestions), "undefined variable: {0}\n      Did you mean: {1}?");
         messages.insert((Lang::En, MsgKey::NotAFunction), "not a function: {0}");
+        messages.insert((Lang::En, MsgKey::TypeMismatch), "type error: expected {0}, got {1} ({2})");
         messages.insert((Lang::En, MsgKey::ArgCountMismatch), "argument count mismatch: expected {0}, got {1}");
         messages.insert((Lang::En, MsgKey::DivisionByZero), "division by zero");
         messages.insert((Lang::En, MsgKey::ExportOnlyInModule), "export can only be used inside a module definition");
@@ -383,7 +387,9 @@ impl Messages {
 
         // 日本語メッセージ - 評価器
         messages.insert((Lang::Ja, MsgKey::UndefinedVar), "未定義の変数: {0}");
+        messages.insert((Lang::Ja, MsgKey::UndefinedVarWithSuggestions), "未定義の変数: {0}\n      もしかして: {1}?");
         messages.insert((Lang::Ja, MsgKey::NotAFunction), "関数ではありません: {0}");
+        messages.insert((Lang::Ja, MsgKey::TypeMismatch), "型エラー: 期待={0}, 実際={1} ({2})");
         messages.insert((Lang::Ja, MsgKey::ArgCountMismatch), "引数の数が一致しません: 期待 {0}, 実際 {1}");
         messages.insert((Lang::Ja, MsgKey::DivisionByZero), "ゼロ除算エラー");
         messages.insert((Lang::Ja, MsgKey::ExportOnlyInModule), "exportはmodule定義の中でのみ使用できます");

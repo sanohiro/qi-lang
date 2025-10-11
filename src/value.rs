@@ -107,6 +107,30 @@ impl Value {
     pub fn is_truthy(&self) -> bool {
         !matches!(self, Value::Nil | Value::Bool(false))
     }
+
+    /// 型名を取得（エラーメッセージ用）
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Value::Nil => "nil",
+            Value::Bool(_) => "boolean",
+            Value::Integer(_) => "integer",
+            Value::Float(_) => "float",
+            Value::String(_) => "string",
+            Value::Symbol(_) => "symbol",
+            Value::Keyword(_) => "keyword",
+            Value::List(_) => "list",
+            Value::Vector(_) => "vector",
+            Value::Map(_) => "map",
+            Value::Function(_) => "function",
+            Value::NativeFunc(_) => "function",
+            Value::Macro(_) => "macro",
+            Value::Atom(_) => "atom",
+            Value::Channel(_) => "channel",
+            Value::Scope(_) => "scope",
+            Value::Stream(_) => "stream",
+            Value::Uvar(_) => "uvar",
+        }
+    }
 }
 
 /// ValueのPartialEq実装（関数やマクロなどはポインタ比較）

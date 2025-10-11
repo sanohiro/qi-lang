@@ -5,6 +5,58 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// レーベンシュタイン距離を計算（文字列の類似度）
+fn levenshtein_distance(s1: &str, s2: &str) -> usize {
+    let len1 = s1.chars().count();
+    let len2 = s2.chars().count();
+    let mut matrix = vec![vec![0; len2 + 1]; len1 + 1];
+
+    for i in 0..=len1 {
+        matrix[i][0] = i;
+    }
+    for j in 0..=len2 {
+        matrix[0][j] = j;
+    }
+
+    let s1_chars: Vec<char> = s1.chars().collect();
+    let s2_chars: Vec<char> = s2.chars().collect();
+
+    for i in 1..=len1 {
+        for j in 1..=len2 {
+            let cost = if s1_chars[i - 1] == s2_chars[j - 1] { 0 } else { 1 };
+            matrix[i][j] = (matrix[i - 1][j] + 1)
+                .min(matrix[i][j - 1] + 1)
+                .min(matrix[i - 1][j - 1] + cost);
+        }
+    }
+
+    matrix[len1][len2]
+}
+
+/// 環境から変数名の候補を取得
+fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize) -> Vec<String> {
+    let mut candidates: Vec<(String, usize)> = env
+        .bindings()
+        .filter_map(|(name, _)| {
+            let distance = levenshtein_distance(target, name);
+            if distance <= max_distance {
+                Some((name.clone(), distance))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // 距離でソート
+    candidates.sort_by_key(|(_, dist)| *dist);
+
+    // 上位のみ取得
+    candidates.into_iter()
+        .take(limit)
+        .map(|(name, _)| name)
+        .collect()
+}
+
 /// モジュール情報
 #[derive(Debug, Clone)]
 struct Module {
@@ -109,10 +161,21 @@ impl Evaluator {
             Expr::FString(parts) => self.eval_fstring(parts, env.clone()),
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
 
-            Expr::Symbol(name) => env
-                .read()
-                .get(name)
-                .ok_or_else(|| fmt_msg(MsgKey::UndefinedVar, &[name])),
+            Expr::Symbol(name) => {
+                let env_read = env.read();
+                env_read.get(name).ok_or_else(|| {
+                    // 類似した変数名を検索（最大編集距離3、最大3件）
+                    let suggestions = find_similar_names(&env_read, name, 3, 3);
+                    if suggestions.is_empty() {
+                        fmt_msg(MsgKey::UndefinedVar, &[name])
+                    } else {
+                        fmt_msg(
+                            MsgKey::UndefinedVarWithSuggestions,
+                            &[name, &suggestions.join(", ")],
+                        )
+                    }
+                })
+            }
 
             Expr::List(items) => {
                 let values: Result<Vec<_>, _> = items
@@ -440,7 +503,10 @@ impl Evaluator {
                             _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
                         }
                     }
-                    _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func_val)])),
+                    _ => Err(fmt_msg(
+                        MsgKey::TypeMismatch,
+                        &["function", func_val.type_name(), &format!("{}", func_val)],
+                    )),
                 }
             }
         }
@@ -849,7 +915,10 @@ impl Evaluator {
 
                 self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
             }
-            _ => Err(fmt_msg(MsgKey::NotAFunction, &[&format!("{:?}", func)])),
+            _ => Err(fmt_msg(
+                MsgKey::TypeMismatch,
+                &["function", func.type_name(), &format!("{}", func)],
+            )),
         }
     }
 
