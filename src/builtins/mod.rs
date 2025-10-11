@@ -36,7 +36,8 @@
 //! - str: 文字列操作（62個）
 //! - json: JSON処理（3個）
 //! - csv: CSV処理（5個）
-//! - http: HTTP通信（11個）
+//! - http: HTTP通信（22個）
+//! - db: データベース（8個）
 
 // Coreモジュール
 pub mod core_numeric;
@@ -75,6 +76,8 @@ pub mod temp;
 pub mod test;
 pub mod profile;
 pub mod ds;
+pub mod db;
+pub mod sqlite;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -457,8 +460,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "json/pretty" => json::native_pretty,
 
         // ========================================
-        // 専門モジュール: http（11個）
+        // 専門モジュール: http（22個）
         // ========================================
+        // HTTPクライアント
         "http/get" => http::native_get,
         "http/post" => http::native_post,
         "http/put" => http::native_put,
@@ -467,6 +471,32 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "http/head" => http::native_head,
         "http/options" => http::native_options,
         "http/request" => http::native_request,
+        // HTTPサーバー
+        "http/serve" => http::native_http_serve,
+        "http/router" => http::native_http_router,
+        "http/ok" => http::native_http_ok,
+        "http/json" => http::native_http_json,
+        "http/not-found" => http::native_http_not_found,
+        "http/no-content" => http::native_http_no_content,
+        // HTTPミドルウェア
+        "http/with-logging" => http::native_http_with_logging,
+        "http/with-cors" => http::native_http_with_cors,
+        "http/with-json-body" => http::native_http_with_json_body,
+        // HTTP静的ファイル配信
+        "http/static-file" => http::native_http_static_file,
+        "http/static-dir" => http::native_http_static_dir,
+
+        // ========================================
+        // 専門モジュール: db（7個）
+        // ========================================
+        "db/connect" => db::native_connect,
+        "db/query" => db::native_query,
+        "db/query-one" => db::native_query_one,
+        "db/exec" => db::native_exec,
+        "db/close" => db::native_close,
+        "db/sanitize" => db::native_sanitize,
+        "db/sanitize-identifier" => db::native_sanitize_identifier,
+        "db/escape-like" => db::native_escape_like,
 
         // ========================================
         // 専門モジュール: stream（11個）

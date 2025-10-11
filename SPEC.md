@@ -1450,6 +1450,348 @@ http/post-async         ;; 非同期POST: Channelを返す
 ;; => {:error {...}}
 ```
 
+#### HTTP サーバー（✅ 実装済み - Phase 5）
+
+**Flow-Oriented な Web アプリケーション構築**
+
+Qiの哲学（Flow-Oriented Programming）に沿った、ハンドラーはパイプライン、ルーティングはデータという設計です。
+
+**基本関数**:
+```lisp
+;; レスポンスヘルパー
+http/ok                 ;; 200 OKレスポンス: (http/ok "Hello!")
+http/json               ;; JSONレスポンス: (http/json {:message "hello"})
+http/not-found          ;; 404レスポンス: (http/not-found "Not Found")
+http/no-content         ;; 204 No Contentレスポンス
+
+;; ルーティング & サーバー
+http/router             ;; ルーター作成: (http/router routes)
+http/serve              ;; サーバー起動: (http/serve app {:port 3000})
+
+;; ミドルウェア
+http/with-logging       ;; ロギングミドルウェア
+http/with-cors          ;; CORSミドルウェア
+http/with-json-body     ;; JSONボディ自動パースミドルウェア
+```
+
+**使用例 - シンプルなサーバー**:
+```lisp
+;; ハンドラー（リクエスト -> レスポンス）
+(def hello-handler
+  (fn [req]
+    (http/ok "Hello, World!")))
+
+;; ルート定義（データ駆動）
+(def routes
+  [["/" (assoc {} "get" hello-handler)]])
+
+;; ルーターを作成
+(def app (http/router routes))
+
+;; サーバー起動
+(http/serve app {"port" 3000})
+;; => HTTP server started on http://127.0.0.1:3000
+```
+
+**使用例 - JSON API with パスパラメータ**:
+```lisp
+;; ハンドラーはパイプラインで構成
+(def list-users
+  (fn [req]
+    (http/json {"users" [{"id" 1 "name" "Alice"}
+                         {"id" 2 "name" "Bob"}]})))
+
+;; パスパラメータを使う（✅ 実装済み）
+(def get-user
+  (fn [req]
+    (let [params (get req "params")
+          user-id (get params "id")]
+      (http/json {"id" user-id "name" "Alice"}))))
+
+;; 複数のパスパラメータ
+(def get-post
+  (fn [req]
+    (let [params (get req "params")
+          user-id (get params "user_id")
+          post-id (get params "post_id")]
+      (http/json {"user_id" user-id "post_id" post-id}))))
+
+(def create-user
+  (fn [req]
+    ;; リクエストボディは req の "body" キーから取得
+    (http/json {"status" "created"} {"status" 201})))
+
+;; ルート定義 - データ構造なので検査・変換可能
+;; ✅ パスパラメータ: /users/:id 形式をサポート
+(def routes
+  [["/api/users" (assoc {} "get" list-users "post" create-user)]
+   ["/api/users/:id" (assoc {} "get" get-user)]
+   ["/api/users/:user_id/posts/:post_id" (assoc {} "get" get-post)]])
+
+;; アプリ起動（タイムアウト設定可能）
+(def app (http/router routes))
+(http/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+```
+
+**リクエストオブジェクト**:
+```lisp
+;; リクエストは以下の構造のマップ:
+{:method "get"                    ;; HTTPメソッド（小文字）
+ :path "/api/users/123"           ;; リクエストパス
+ :query "page=1&limit=10"         ;; クエリ文字列（生）
+ :query-params {"page" "1"        ;; ✅ クエリパラメータ（自動パース）
+                "limit" "10"}
+ :headers {"content-type" "application/json" ...}
+ :body "..."                      ;; リクエストボディ（文字列）
+ :params {"id" "123"}}            ;; ✅ パスパラメータ（マッチした場合のみ）
+```
+
+**レスポンスオブジェクト**:
+```lisp
+;; ハンドラーは以下の構造のマップを返す:
+{:status 200                ;; HTTPステータスコード
+ :headers {"Content-Type" "text/plain; charset=utf-8" ...}
+ :body "Hello, World!"}     ;; レスポンスボディ
+```
+
+**実装済み機能**:
+- ✅ **データ駆動**: ルーティングは検査・変換可能なデータ構造
+- ✅ **パイプライン**: ハンドラーは `|>` で流れが明確
+- ✅ **合成可能**: すべてが関数で、ミドルウェアも関数
+- ✅ **スレッドセーフ**: 並列リクエスト処理に対応
+- ✅ **Flow-Oriented**: Qiの哲学を体現
+- ✅ **パスパラメータ**: `/users/:id` 形式をサポート（複数パラメータ対応）
+- ✅ **クエリパラメータ**: `?page=1&limit=10` を自動パース、配列対応、URLデコード
+- ✅ **タイムアウト**: リクエストタイムアウトを設定可能（デフォルト30秒）
+- ✅ **ミドルウェア**: ロギング、CORS、JSONボディパース（複数重ね可能）
+- ✅ **静的ファイル配信**: HTML、CSS、JS、画像、フォントなどのバイナリファイル対応
+
+**メモリ管理**:
+- リクエストごとにクリーンな環境を使用
+- Arc による自動メモリ管理
+- 長時間実行サービスに適した設計（SPEC.md「14. メモリ管理」参照）
+
+**設定オプション**:
+```lisp
+(http/serve app {
+  "port" 3000           ;; ポート番号（デフォルト: 3000）
+  "host" "0.0.0.0"      ;; ホスト（デフォルト: "127.0.0.1"）
+  "timeout" 30})        ;; タイムアウト秒数（デフォルト: 30）
+```
+
+**ミドルウェアシステム**（✅ 実装済み）:
+
+Qiのミドルウェアは**ハンドラーをラップして機能を追加する高階関数**です。複数のミドルウェアを重ねることで、横断的な関心事を分離できます。
+
+```lisp
+;; ミドルウェア関数
+http/with-logging       ;; リクエスト/レスポンスをログ出力
+http/with-cors          ;; CORSヘッダーを追加
+http/with-json-body     ;; リクエストボディを自動的にJSONパース
+```
+
+**使用例 - ミドルウェアの基本**:
+```lisp
+;; 1. ロギングミドルウェア
+(def logging-handler
+  (http/with-logging
+    (fn [req]
+      (http/ok "Hello!"))))
+
+;; リクエスト時: [HTTP] GET /logging
+;; レスポンス時: [HTTP] -> 200
+
+;; 2. CORSミドルウェア
+(def cors-handler
+  (http/with-cors
+    (fn [req]
+      (http/json {"message" "CORS enabled"}))))
+
+;; レスポンスに自動的にCORSヘッダーが追加される:
+;; Access-Control-Allow-Origin: *
+;; Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+;; Access-Control-Allow-Headers: Content-Type, Authorization
+
+;; 3. JSONボディパースミドルウェア
+(def json-handler
+  (http/with-json-body
+    (fn [req]
+      (let [json-data (get req "json")]
+        (http/json {"received" json-data})))))
+
+;; リクエストボディが自動的にパースされ、req["json"]に格納される
+;; curl -X POST ... -d '{"name":"alice"}'
+;; => req["json"] = {"name" "alice"}
+```
+
+**使用例 - ミドルウェアの組み合わせ**:
+```lisp
+;; 複数のミドルウェアを重ねて使用（外側から順に適用）
+(def api-handler
+  (http/with-logging        ;; 最外層: ログを出力
+    (http/with-cors         ;; 中層: CORSヘッダーを追加
+      (http/with-json-body  ;; 最内層: JSONを自動パース
+        (fn [req]
+          (let [data (get req "json")
+                user (get data "user")]
+            (http/json {"message" (str "Hello, " user "!")})))))))
+
+(def routes
+  [["/api" (assoc {} "post" api-handler)]])
+
+(def app (http/router routes))
+(http/serve app {"port" 3000})
+
+;; curl -X POST http://localhost:3000/api -d '{"user":"alice"}'
+;; [HTTP] POST /api              <- ログ出力
+;; [HTTP] -> 200                 <- ログ出力
+;; {"message":"Hello, alice!"}   <- JSON + CORSヘッダー付きレスポンス
+```
+
+**ミドルウェアのカスタマイズ**:
+```lisp
+;; CORSのオリジンを指定
+(def cors-handler
+  (http/with-cors
+    (fn [req] (http/json {"data" "..."}))
+    {"origins" ["https://example.com" "https://api.example.com"]}))
+```
+
+**クエリパラメータの使用例**:
+```lisp
+;; 基本的なクエリパラメータ
+(def search-handler
+  (fn [req]
+    (let [params (get req "query-params")
+          query (get params "q")
+          page (get params "page")
+          limit (get params "limit")]
+      (http/json {"search" query "page" page "limit" limit}))))
+
+;; GET /search?q=lisp&page=1&limit=20
+;; => {"search":"lisp","page":"1","limit":"20"}
+
+;; 配列パラメータ（同じキーが複数）
+(def filter-handler
+  (fn [req]
+    (let [params (get req "query-params")
+          tags (get params "tags")]  ;; 配列になる
+      (http/json {"tags" tags}))))
+
+;; GET /filter?tags=ruby&tags=python&tags=lisp
+;; => {"tags":["ruby","python","lisp"]}
+
+;; URLエンコードされた値も自動デコード
+;; GET /search?q=Hello%20World
+;; => {"search":"Hello World"}
+```
+
+**静的ファイル配信**（✅ 実装済み）:
+
+Qiは静的ファイル（HTML、CSS、JavaScript、画像、フォントなど）の配信をネイティブサポートします。バイナリファイルも正しく処理されます。
+
+```lisp
+;; ミドルウェア関数
+http/static-file        ;; 単一ファイルを配信するレスポンスを生成
+http/static-dir         ;; ディレクトリから静的ファイルを配信するハンドラーを生成
+```
+
+**使用例 - ディレクトリ配信**:
+```lisp
+;; publicディレクトリ配下の静的ファイルを配信
+(def routes
+  [["/" (assoc {} "get" (http/static-dir "./public"))]])
+
+(def app (http/router routes))
+(http/serve app {"port" 3000})
+
+;; GET /index.html  => ./public/index.html を配信
+;; GET /style.css   => ./public/style.css を配信
+;; GET /logo.png    => ./public/logo.png を配信（バイナリ）
+;; GET /            => ./public/index.html を自動配信
+```
+
+**使用例 - 単一ファイル配信**:
+```lisp
+;; 特定のファイルを直接配信
+(def favicon-handler
+  (fn [req]
+    (http/static-file "./public/favicon.ico")))
+
+(def routes
+  [["/favicon.ico" (assoc {} "get" favicon-handler)]])
+```
+
+**使用例 - APIと静的ファイルの組み合わせ**:
+```lisp
+;; APIエンドポイントと静的ファイルを同時に提供
+(def routes
+  [["/api/users" (assoc {} "get" list-users "post" create-user)]
+   ["/api/users/:id" (assoc {} "get" get-user)]
+   ["/" (assoc {} "get" (http/static-dir "./public"))]])  ;; 静的ファイル
+
+(def app (http/router routes))
+(http/serve app {"port" 8080})
+
+;; GET /api/users         => APIレスポンス（JSON）
+;; GET /api/users/123     => APIレスポンス（JSON）
+;; GET /index.html        => 静的ファイル（HTML）
+;; GET /app.js            => 静的ファイル（JavaScript）
+;; GET /logo.png          => 静的ファイル（PNG画像）
+```
+
+**機能**:
+- ✅ **Content-Type自動判定**: 拡張子から適切なMIMEタイプを設定（HTML、CSS、JS、画像、フォント、PDF等）
+- ✅ **バイナリファイル対応**: 画像、フォント、PDFなどをデータ損失なく配信
+- ✅ **index.html自動配信**: ディレクトリへのリクエストで自動的にindex.htmlを配信
+- ✅ **セキュリティ**: パストラバーサル攻撃（`..`を含むパス）を自動検出・拒否
+- ✅ **プレフィックスマッチング**: `/` に配置した静的ハンドラーはすべてのサブパスにマッチ
+
+**対応ファイル形式**（Content-Type自動判定）:
+- テキスト: `.html`, `.css`, `.js`, `.json`, `.xml`, `.txt`, `.md`
+- 画像: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.ico`, `.webp`
+- フォント: `.woff`, `.woff2`, `.ttf`, `.otf`
+- アーカイブ: `.pdf`, `.zip`, `.gz`
+- その他: `application/octet-stream`（デフォルト）
+
+**制限事項**:
+- ⚠️ タイムアウトは非同期処理に適用されるが、Qiの同期的なブロッキング操作（`sleep`など）には効かない
+- ⚠️ クエリパラメータの値は文字列のまま（数値への自動変換は行わない）
+- ⚠️ **静的ファイル配信はファイル全体をメモリに読み込む**
+  - **最大ファイルサイズ: 10MB**
+  - これを超えるファイルはエラーになる
+  - リクエストボディも全体をメモリに読み込む
+  - **メモリ使用量** = ファイルサイズ × 同時リクエスト数
+  - **推奨**: 大きなファイル（動画、大きなPDFなど）は別のCDNやリバースプロキシで配信
+
+**メモリ使用量の例**:
+```lisp
+;; 小さいファイル（推奨）
+GET /logo.png (100KB) × 10同時リクエスト = 1MB メモリ
+
+;; 中規模ファイル（許容範囲）
+GET /document.pdf (5MB) × 10同時リクエスト = 50MB メモリ
+
+;; 大きいファイル（制限あり）
+GET /large.pdf (10MB) × 10同時リクエスト = 100MB メモリ
+
+;; 大きすぎるファイル（エラー）
+GET /video.mp4 (50MB) → エラー: "file too large: 52428800 bytes (max: 10485760 bytes / 10 MB)"
+```
+
+**将来の拡張予定** 🚧:
+- **ストリーミングレスポンス** 🎯 優先度高
+  - 大きなファイル（動画、大きなPDF等）をチャンク単位で配信
+  - メモリ効率的な実装（Rust: `tokio::fs::File` + `ReaderStream`）
+  - Range requests 対応（部分ダウンロード、動画シーク）
+- カスタムミドルウェア作成API
+- クエリパラメータの型自動推論（`"42"` → `42`）
+- ストリーミングリクエスト（大きなファイルアップロード）
+- WebSocket サポート
+- セッション管理
+- グレースフルシャットダウン
+
 #### デバッグ・計測（✅ 実装済み）
 ```lisp
 ;; ✅ Phase 4.5で実装
@@ -2699,6 +3041,192 @@ zip/gzip zip/gunzip
 args/all args/get args/parse args/count
 ```
 
+##### ✅ db - データベース（Phase 1: 基本操作）
+
+**概要**:
+- **統一API**: 複数データベースに対する共通インターフェース
+- **標準サポート**: SQLite（組み込み、外部依存なし）
+- **拡張可能**: PostgreSQL、MySQL、DuckDB等は外部パッケージとして提供予定
+- **セキュアAPI**: プレースホルダー + サニタイズ機能
+
+**Phase 1 機能** (✅ 実装済み):
+```lisp
+db/connect              ;; データベースに接続
+db/query                ;; SQLクエリを実行（複数行）
+db/query-one            ;; SQLクエリを実行（1行のみ）
+db/exec                 ;; SQL文を実行（INSERT/UPDATE/DELETE）
+db/close                ;; 接続を閉じる
+db/sanitize             ;; 値をサニタイズ
+db/sanitize-identifier  ;; 識別子をサニタイズ
+db/escape-like          ;; LIKE句のパターンをエスケープ
+```
+
+**Phase 2 機能** (TODO):
+- トランザクション: `db/transaction`, `db/begin`, `db/commit`, `db/rollback`
+- メタデータAPI: `db/tables`, `db/columns`, `db/indexes`, `db/foreign-keys`
+- ストアド実行: `db/call` (関数のRETURN値、プロシージャのOUT/INOUT/結果セット対応)
+- クエリ情報: `db/query-info`
+- 機能検出: `db/supports?`, `db/driver-info`
+
+**Phase 3 機能** (TODO):
+- コネクションプーリング
+
+**基本的な使い方**:
+```lisp
+;; 接続（SQLite）
+(def conn (db/connect "sqlite:app.db"))
+(def conn (db/connect "sqlite::memory:"))  ;; インメモリDB
+
+;; 接続オプション
+(def conn (db/connect "sqlite:app.db" {
+  "timeout" 30000        ;; タイムアウト(ms)
+  "read-only" false      ;; 読み取り専用
+}))
+
+;; テーブル作成
+(db/exec conn "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)" [])
+
+;; データ挿入（プレースホルダー使用）
+(db/exec conn "INSERT INTO users (name, age) VALUES (?, ?)" ["Alice" 30])
+(db/exec conn "INSERT INTO users (name, age) VALUES (?, ?)" ["Bob" 25])
+
+;; 全データ取得
+(def users (db/query conn "SELECT * FROM users" []))
+;; => [{"id" 1 "name" "Alice" "age" 30} {"id" 2 "name" "Bob" "age" 25}]
+
+;; 条件付き取得
+(def alice (db/query-one conn "SELECT * FROM users WHERE name = ?" ["Alice"]))
+;; => {"id" 1 "name" "Alice" "age" 30}
+
+;; 更新
+(def affected (db/exec conn "UPDATE users SET age = ? WHERE name = ?" [31 "Alice"]))
+;; => 1
+
+;; 削除
+(def deleted (db/exec conn "DELETE FROM users WHERE id = ?" [2]))
+;; => 1
+
+;; 接続を閉じる
+(db/close conn)
+```
+
+**クエリオプション**:
+```lisp
+;; タイムアウト、limit、offset指定
+(db/query conn "SELECT * FROM users" [] {
+  "timeout" 5000    ;; タイムアウト(ms)
+  "limit" 10        ;; 最大取得行数
+  "offset" 20       ;; スキップ行数
+})
+```
+
+**サニタイズ（動的SQL用）**:
+```lisp
+;; ⚠️ 基本的にプレースホルダー(?)を使用すべき
+;; サニタイズは動的SQL構築時のみ使用
+
+;; 値のエスケープ（シングルクォート対応）
+(db/sanitize conn "O'Reilly")
+;; => "O''Reilly"
+
+;; 識別子のエスケープ（テーブル名、カラム名）
+(db/sanitize-identifier conn "user_name")
+;; => "\"user_name\""
+
+;; LIKE句のパターンエスケープ
+(db/escape-like conn "50%_off")
+;; => "50\\%\\_off"
+```
+
+**安全なクエリ例**:
+```lisp
+;; ✅ 推奨: プレースホルダー使用
+(db/query conn "SELECT * FROM users WHERE age > ?" [min-age])
+
+;; ⚠️ 動的カラム名: sanitize-identifier使用
+(def col-name (db/sanitize-identifier conn user-input))
+(def sql (str "SELECT " col-name " FROM users"))
+(db/query conn sql [])
+
+;; ⚠️ LIKE検索: escape-like使用
+(def pattern (db/escape-like conn user-search))
+(db/query conn "SELECT * FROM products WHERE name LIKE ? ESCAPE '\\'"
+          [(str "%" pattern "%")])
+```
+
+**パイプラインとの組み合わせ**:
+```lisp
+;; データ処理パイプライン
+(db/query conn "SELECT * FROM users WHERE age > ?" [25])
+  |> (filter (fn [u] (starts-with? (get u "name") "A")))
+  |> (map (fn [u] (assoc u "senior" true)))
+  |> (take 10)
+
+;; CSV → DB インポート
+(io/read-file "users.csv")
+  |> csv/parse
+  |> (map (fn [row]
+            (db/exec conn
+                     "INSERT INTO users (name, age) VALUES (?, ?)"
+                     [(get row "name") (to-int (get row "age"))])))
+```
+
+**将来の拡張（Phase 2+）**:
+```lisp
+;; トランザクション（Phase 2）
+(db/transaction conn
+  (fn []
+    (db/exec conn "INSERT INTO accounts ..." [...])
+    (db/exec conn "UPDATE balance ..." [...]))
+  {"isolation" "serializable" "timeout" 10000})
+
+;; メタデータAPI（Phase 2）
+(db/tables conn)
+;; => ["users" "products" "orders"]
+
+(db/columns conn "users")
+;; => [{"name" "id" "type" "INTEGER" "nullable" false "primary-key" true}
+;;     {"name" "name" "type" "TEXT" "nullable" false}]
+
+;; ストアドプロシージャ/ファンクション実行（Phase 2）
+;; 関数（RETURN値あり）
+(db/call conn "add" [1 2])
+;; => 3
+
+;; プロシージャ（結果セット）
+(db/call conn "get_users_by_age" [25])
+;; => [{"id" 1 "name" "Alice" "age" 30} ...]
+
+;; プロシージャ（OUTパラメータ）
+(db/call conn "calc" [2 3] {"out" ["sum" "product"]})
+;; => {"out" {"sum" 5 "product" 6}}
+
+;; プロシージャ（INOUTパラメータ）
+(db/call conn "increment" [10] {"inout" ["value"]})
+;; => {"inout" {"value" 11}}
+
+;; 複数結果セット + OUTパラメータ
+(db/call conn "complex_proc" [arg1] {"out" ["status" "message"]})
+;; => {"result-sets" [[rows1...] [rows2...]]
+;;     "out" {"status" 0 "message" "Success"}}
+
+;; 機能検出
+(db/supports? conn "stored-procedures")
+;; => true (PostgreSQL, MySQL) / false (SQLite)
+
+;; 外部DB（外部パッケージとして提供予定）
+(db/connect "postgresql://localhost/mydb")
+(db/connect "mysql://user:pass@localhost/mydb")
+(db/connect "duckdb:analytics.db")
+```
+
+**設計思想**:
+- **統一API**: Python DBAPI 2.0やGo database/sqlのような統一インターフェース
+- **ドライバー分離**: SQLiteは標準、他DBは外部パッケージ
+- **安全第一**: プレースホルダー推奨、サニタイズは補助的
+- **エスケープ責任**: 各ドライバーがDB固有のエスケープルールを実装
+- **Phase分け**: Phase 1(基本), Phase 2(メタデータ), Phase 3(プーリング)
+
 #### ✅ str - 文字列操作（ほぼ完全実装）
 ```lisp
 (use str :only [
@@ -3925,6 +4453,118 @@ $ qi build myapp.qi
 $ qi install http json
 $ qi update
 ```
+
+## 14. メモリ管理と実行モデル ✅
+
+### メモリ管理
+
+Qiは**GC（ガベージコレクション）不要**の設計です。Rustの所有権システムと参照カウントで自動的にメモリ管理されます。
+
+#### メモリ管理の仕組み
+
+**基本原則:**
+- **Arc（Atomic Reference Counting）**: スレッドセーフな参照カウント
+  - `Function`, `Macro`, `Atom`, `Channel`, `Scope`, `Stream` に使用
+  - 参照カウントが0になると自動的にメモリ解放
+- **RwLock**: 読み書きロックでスレッドセーフな可変性を実現
+- **値のコピー**: イミュータブルな値は必要に応じてクローン
+
+**循環参照の防止:**
+```rust
+// 関数作成時に環境をクローンすることで循環参照を防ぐ
+(fn [x] (+ x 1))  ; 環境全体がクローンされる
+```
+
+関数やクロージャ作成時に環境全体をクローンするため、循環参照は発生しません。
+
+#### メモリ効率
+
+**利点:**
+- ✅ メモリリークなし（循環参照がない）
+- ✅ スレッドセーフ（Arc + RwLock）
+- ✅ 予測可能なメモリ解放（参照カウント）
+- ✅ GCの停止時間なし
+
+**トレードオフ:**
+- 環境クローンのコスト（関数作成時）
+- コレクションのクローンコスト（リスト、ベクタ、マップ）
+- 関数型言語としては一般的なトレードオフ
+
+#### 長時間実行サービスでの注意点
+
+APIサーバーやHTTPサーバーなど、長時間実行するサービスを構築する場合の推奨事項:
+
+**メモリ管理のベストプラクティス:**
+```lisp
+; ✅ リクエストごとにクリーンな環境を使う
+(defn handle-request [req]
+  (let [session (new-session req)]
+    ;; 処理後、環境は自動的に解放される
+    (process session)))
+
+; ✅ 共有データはAtomで管理
+(def cache (atom {}))
+
+; ✅ 長時間保持するデータはArcで共有される
+(def config (load-config))  ; 自動的にArcでラップ
+
+; ⚠️ グローバルな状態の蓄積に注意
+(def global-log (atom []))  ; 無限に増える可能性
+```
+
+**推奨設計:**
+- リクエストごとにクリーンな環境を使用
+- グローバル状態は最小限に抑える
+- 定期的なクリーンアップ（TTL、メモリ上限など）
+- ストリーミング処理で全データを保持しない
+
+#### 将来の最適化案
+
+現在の実装は小〜中規模アプリケーションに最適化されています。大規模・高負荷なサービスを構築する場合、以下の最適化を検討できます:
+
+**1. Copy-on-Write (CoW):**
+```lisp
+; データをArcで共有し、変更時のみコピー
+```
+
+**2. 構造共有（Persistent Data Structures）:**
+```lisp
+; Clojureスタイルの永続データ構造
+; 変更時も既存データを共有
+```
+
+**3. 環境の最適化:**
+```lisp
+; 環境全体ではなく、使用する変数のみキャプチャ
+```
+
+### スレッドセーフ性
+
+Qiの並列・並行処理はスレッドセーフに設計されています:
+
+**スレッドセーフな要素:**
+- ✅ Evaluator: 複数スレッドから安全に使用可能
+- ✅ 環境（Env）: RwLockで保護
+- ✅ Atom: スレッドセーフな可変状態
+- ✅ Channel: crossbeam-channelによるスレッドセーフ通信
+
+**並列処理の例:**
+```lisp
+; pmapは自動的に並列実行（スレッドセーフ）
+(pmap expensive-computation large-dataset)
+
+; go/chanも完全にスレッドセーフ
+(let [ch (chan)]
+  (go (send ch 42))
+  (recv ch))
+```
+
+### パフォーマンス特性
+
+**起動時間**: 高速（Rustネイティブバイナリ）
+**実行速度**: 中速〜高速（将来的にJITコンパイル予定）
+**メモリ使用量**: 効率的（参照カウント、無駄なコピーなし）
+**並列性能**: 優秀（スレッドセーフ設計、Rust並行処理基盤）
 
 ## まとめ
 
