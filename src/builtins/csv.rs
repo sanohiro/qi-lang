@@ -142,6 +142,33 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Stream(Arc::new(RwLock::new(stream))))
 }
 
+/// csv/write-file - データをCSV形式でファイルに書き込み
+/// 引数: (data, path) - パイプライン対応
+/// 使い方: (data |> (csv/write-file "output.csv"))
+/// csv/stringify + io/write-file の便利関数
+pub fn native_csv_write_file(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["csv/write-file"]));
+    }
+
+    // データをCSV文字列に変換
+    let csv_str = native_csv_stringify(&[args[0].clone()])?;
+
+    // ファイルに書き込み
+    let path = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["csv/write-file (2nd arg)", "string"])),
+    };
+
+    std::fs::write(path, match csv_str {
+        Value::String(s) => s,
+        _ => return Err(format!("csv/write-file: stringify failed")),
+    })
+    .map_err(|e| format!("csv/write-file: failed to write {}: {}", path, e))?;
+
+    Ok(Value::Nil)
+}
+
 /// CSV文字列をパースする（RFC 4180準拠）
 fn parse_csv(input: &str) -> Result<Vec<Vec<String>>, String> {
     let mut records = Vec::new();

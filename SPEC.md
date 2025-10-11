@@ -968,7 +968,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
 - **set**: 集合演算（4個）- `set/union`, `set/intersect`, etc.
 - **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
-- **io**: ファイルI/O（5個）- `io/read-file`, `io/write-file`, etc.
+- **io**: ファイルI/O（6個）- `io/read-file`, `io/write-file`, `io/write-stream`, etc.
 - **dbg**: デバッグ（2個）- `dbg/inspect`, `dbg/time`
 - **async**: 並行処理（高度）（16個）- `async/await`, `async/then`, `async/pfilter`, etc.
 - **pipeline**: パイプライン処理（5個）- `pipeline/pipeline`, `pipeline/map`, etc.
@@ -2197,10 +2197,27 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ io - ファイルI/O（5個）
+##### ✅ io - ファイルI/O（6個）
 ```lisp
-io/read-file io/write-file io/append-file
-io/read-lines io/file-exists?
+;; 読み込み
+io/read-file io/read-lines io/file-exists?
+
+;; 書き込み（パイプライン対応: content が最初の引数）
+io/write-file   ;; (content, path) - 上書き
+io/append-file  ;; (content, path) - 追記
+io/write-stream ;; (stream, path) - ストリームをファイルに
+
+;; パイプライン例
+("input.txt"
+ |> io/read-file
+ |> process
+ |> (io/write-file "output.txt"))
+
+;; ストリーム処理
+("input.txt"
+ |> io/file-stream
+ |> (stream/map transform)
+ |> (io/write-stream "output.txt"))
 ```
 
 ##### ✅ dbg - デバッグ（2個）
@@ -2462,26 +2479,56 @@ stream/map stream/filter stream/file
 ```
 
 #### ✅ csv - CSV処理（実装済み）
-```lisp
-;; 4個の関数
-csv/parse          ;; CSV文字列をパース
-csv/stringify      ;; データをCSV文字列に
-csv/read-file      ;; CSVファイルを読み込み
-csv/read-stream    ;; CSVファイルをストリームで読み込み
 
-;; RFC 4180準拠（ダブルクォートエスケープ対応）
+**コア関数（パイプライン対応）**:
+- `csv/parse` - CSV文字列をパース
+- `csv/stringify` - データをCSV文字列に変換
+
+**便利関数**:
+- `csv/read-file` - ファイルを直接読み込み（`io/read-file` + `csv/parse`と同等）
+- `csv/write-file` - ファイルに直接書き込み（`csv/stringify` + `io/write-file`と同等）
+- `csv/read-stream` - ストリームとして読み込み
+
+```lisp
+;; 基本的な使い方（RFC 4180準拠、ダブルクォートエスケープ対応）
 (csv/parse "name,age\n\"Alice\",30\n\"Bob\",25")
 ;; => (("name" "age") ("Alice" "30") ("Bob" "25"))
 
-;; CSV生成
 (csv/stringify '(("name" "age") ("Alice" "30")))
 ;; => "name,age\nAlice,30\n"
 
-;; ファイル読み込み
-(csv/read-file "data.csv")  ;; => Vec<Vec<String>>
+;; ✨ パイプライン推奨パターン - データが左から右へ流れる
+("data.csv"
+ |> io/read-file        ;; ファイル → 文字列
+ |> csv/parse           ;; 文字列 → データ
+ |> (filter active?)    ;; データ処理
+ |> (map transform)
+ |> csv/stringify       ;; データ → 文字列
+ |> (io/write-file "output.csv"))  ;; 文字列 → ファイル
+
+;; 便利関数 - シンプルな読み書き
+(csv/read-file "data.csv")  ;; => (("name" "age") ("Alice" "30") ...)
+(data |> (csv/write-file "output.csv"))  ;; データをCSV形式で保存
 
 ;; ストリーム処理（巨大ファイル対応）
-(csv/read-stream "huge.csv" |> stream/take 1000 |> stream/realize)
+("huge.csv"
+ |> csv/read-stream
+ |> (stream/take 1000)
+ |> (stream/map transform)
+ |> (io/write-stream "processed.txt"))
+
+;; 実用例: CSVデータの変換パイプライン
+(def process-users (fn []
+  ("users.csv"
+   |> io/read-file
+   |> csv/parse
+   |> rest                    ;; ヘッダー行をスキップ
+   |> (filter (fn [row]       ;; 30歳以上のみ
+        (>= (str/parse-int (nth row 1)) 30)))
+   |> (map (fn [row]          ;; 年齢を+1
+        (update row 1 (fn [age] (str (inc (str/parse-int age)))))))
+   |> (cons '("name" "age"))  ;; ヘッダーを追加
+   |> (csv/write-file "users_processed.csv"))))  ;; 便利関数で保存
 ```
 
 #### ✅ regex - 正規表現（基本実装）

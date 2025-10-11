@@ -289,19 +289,21 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "stats/percentile" => stats::native_percentile,
 
         // ========================================
-        // 専門モジュール: csv（4個）
+        // 専門モジュール: csv（5個）
         // ========================================
         "csv/parse" => csv::native_csv_parse,
         "csv/stringify" => csv::native_csv_stringify,
         "csv/read-file" => csv::native_csv_read_file,
+        "csv/write-file" => csv::native_csv_write_file,
         "csv/read-stream" => csv::native_csv_read_stream,
 
         // ========================================
-        // 専門モジュール: io（5個）
+        // 専門モジュール: io（6個）
         // ========================================
         "io/read-file" => io::native_read_file,
         "io/write-file" => io::native_write_file,
         "io/append-file" => io::native_append_file,
+        "io/write-stream" => io::native_write_stream,
         "io/read-lines" => io::native_read_lines,
         "io/file-exists?" => io::native_file_exists,
 

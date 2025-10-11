@@ -25,30 +25,34 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
 }
 
 /// write-file - ファイルに書き込む（上書き）
+/// 引数: (content, path) - パイプライン対応
+/// 使い方: (content |> (io/write-file "output.txt"))
 pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["write-file"]));
     }
 
     match (&args[0], &args[1]) {
-        (Value::String(path), Value::String(content)) => {
+        (Value::String(content), Value::String(path)) => {
             match fs::write(path, content) {
                 Ok(_) => Ok(Value::Nil),
                 Err(e) => Err(format!("write-file: failed to write {}: {}", path, e)),
             }
         }
-        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["write-file", "2", "(path: string, content: string)"])),
+        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["write-file", "2", "(content: string, path: string)"])),
     }
 }
 
 /// append-file - ファイルに追記
+/// 引数: (content, path) - パイプライン対応
+/// 使い方: (content |> (io/append-file "log.txt"))
 pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["append-file"]));
     }
 
     match (&args[0], &args[1]) {
-        (Value::String(path), Value::String(content)) => {
+        (Value::String(content), Value::String(path)) => {
             match fs::OpenOptions::new().create(true).append(true).open(path) {
                 Ok(mut file) => {
                     match file.write_all(content.as_bytes()) {
@@ -59,7 +63,7 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
                 Err(e) => Err(format!("append-file: failed to open {}: {}", path, e)),
             }
         }
-        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["append-file", "2", "(path: string, content: string)"])),
+        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["append-file", "2", "(content: string, path: string)"])),
     }
 }
 
@@ -199,4 +203,57 @@ fn create_file_byte_stream(path: &str) -> Result<Value, String> {
     };
 
     Ok(Value::Stream(Arc::new(RwLock::new(stream))))
+}
+
+/// write-stream - ストリームをファイルに書き込み
+/// 引数: (stream, path) - パイプライン対応
+/// 使い方: (stream |> (io/write-stream "output.txt"))
+/// ストリームの各要素を文字列に変換して改行付きで書き込む
+pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["write-stream"]));
+    }
+
+    let stream = match &args[0] {
+        Value::Stream(s) => s.clone(),
+        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["write-stream (1st arg)", "a stream"])),
+    };
+
+    let path = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["write-stream (2nd arg)", "string"])),
+    };
+
+    // ファイルを開く
+    let mut file = fs::File::create(path)
+        .map_err(|e| format!("write-stream: failed to create {}: {}", path, e))?;
+
+    // ストリームの各要素をファイルに書き込み
+    let mut count = 0;
+    loop {
+        let next_val = {
+            let s = stream.read();
+            (s.next_fn)()
+        };
+
+        match next_val {
+            Some(val) => {
+                let line = match &val {
+                    Value::String(s) => s.clone(),
+                    Value::Integer(n) => n.to_string(),
+                    Value::Float(f) => f.to_string(),
+                    Value::Bool(b) => b.to_string(),
+                    Value::Nil => String::from("nil"),
+                    _ => format!("{:?}", val),
+                };
+
+                writeln!(file, "{}", line)
+                    .map_err(|e| format!("write-stream: failed to write to {}: {}", path, e))?;
+                count += 1;
+            }
+            None => break,
+        }
+    }
+
+    Ok(Value::Integer(count))
 }
