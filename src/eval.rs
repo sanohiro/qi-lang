@@ -2046,6 +2046,54 @@ impl Evaluator {
         Ok(Value::Nil)
     }
 
+    /// パッケージ検索パスを解決
+    fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
+        let mut paths = Vec::new();
+
+        // 相対パスの場合はそのまま使用
+        if name.starts_with("./") || name.starts_with("../") {
+            paths.push(format!("{}.qi", name));
+            return Ok(paths);
+        }
+
+        // 1. プロジェクトローカル: ./qi_packages/{name}/mod.qi
+        paths.push(format!("./qi_packages/{}/mod.qi", name));
+
+        // 2. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
+        if let Some(home) = dirs::home_dir() {
+            let packages_dir = home.join(".qi").join("packages").join(name);
+
+            // バージョンディレクトリを探す（最新版を使用）
+            if let Ok(entries) = std::fs::read_dir(&packages_dir) {
+                let mut versions: Vec<String> = entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().is_dir())
+                    .filter_map(|e| e.file_name().into_string().ok())
+                    .collect();
+
+                // セマンティックバージョニングでソート（簡易版）
+                versions.sort_by(|a, b| {
+                    let a_parts: Vec<u32> = a.split('.').filter_map(|s| s.parse().ok()).collect();
+                    let b_parts: Vec<u32> = b.split('.').filter_map(|s| s.parse().ok()).collect();
+                    b_parts.cmp(&a_parts) // 降順（新しい順）
+                });
+
+                // 最新バージョンのmod.qiを追加
+                if let Some(latest) = versions.first() {
+                    paths.push(packages_dir.join(latest).join("mod.qi").to_string_lossy().to_string());
+                }
+            }
+        }
+
+        // 3. 後方互換性: カレントディレクトリの.qiファイル
+        paths.push(format!("{}.qi", name));
+
+        // 4. 後方互換性: examples/
+        paths.push(format!("examples/{}.qi", name));
+
+        Ok(paths)
+    }
+
     /// モジュールファイルをロード
     fn load_module(&self, name: &str) -> Result<Arc<Module>, String> {
         // 既にロード済みならキャッシュから返す
@@ -2064,16 +2112,15 @@ impl Evaluator {
         // ロード中のモジュールリストに追加
         self.loading_modules.write().push(name.to_string());
 
-        // ファイルを探す（カレントディレクトリとexamples/）
-        let paths = vec![
-            format!("{}.qi", name),
-            format!("examples/{}.qi", name),
-        ];
+        // パッケージ検索パスを解決
+        let paths = self.resolve_module_path(name)?;
 
         let mut content = None;
+        let mut found_path = None;
         for path in &paths {
             if let Ok(c) = std::fs::read_to_string(path) {
                 content = Some(c);
+                found_path = Some(path.clone());
                 break;
             }
         }
@@ -2081,6 +2128,11 @@ impl Evaluator {
         let content = content.ok_or_else(|| {
             fmt_msg(MsgKey::ModuleNotFound, &[name])
         })?;
+
+        // デバッグ: ロードしたパスを表示（開発時のみ）
+        if std::env::var("QI_DEBUG").is_ok() {
+            eprintln!("[DEBUG] Loaded module '{}' from: {}", name, found_path.unwrap_or_default());
+        }
 
         // パースして評価
         let mut parser = crate::parser::Parser::new(&content)
