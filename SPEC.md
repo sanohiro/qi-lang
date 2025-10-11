@@ -2197,28 +2197,94 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ io - ファイルI/O（6個）
+##### ✅ io - ファイルI/O（6個） - エンコーディング完全対応
+
+**コア関数**:
+- `io/read-file` - ファイル読み込み（エンコーディング指定・自動検出対応）
+- `io/write-file` - ファイル書き込み（エンコーディング指定、if-exists、create-dirs対応）
+- `io/append-file` - ファイル追記
+- `io/write-stream` - ストリーム→ファイル書き込み
+- `io/read-lines` - 行ごと読み込み
+- `io/file-exists?` - ファイル存在確認
+
+**エンコーディングサポート**:
+- `:utf-8` (デフォルト、BOM自動除去)
+- `:utf-8-bom` (BOM付きUTF-8、Excel対応)
+- `:sjis` / `:shift-jis` (Shift_JIS、日本語Windows/Excel)
+- `:euc-jp` (EUC-JP)
+- `:iso-2022-jp` (JIS)
+- `:auto` (自動検出)
+
 ```lisp
-;; 読み込み
-io/read-file io/read-lines io/file-exists?
+;; ============================================
+;; 基本的な読み書き
+;; ============================================
 
-;; 書き込み（パイプライン対応: content が最初の引数）
-io/write-file   ;; (content, path) - 上書き
-io/append-file  ;; (content, path) - 追記
-io/write-stream ;; (stream, path) - ストリームをファイルに
+;; シンプル（UTF-8）
+(io/read-file "data.txt")
+(io/write-file content "output.txt")
 
-;; パイプライン例
-("input.txt"
- |> io/read-file
+;; ============================================
+;; エンコーディング指定
+;; ============================================
+
+;; Shift_JIS（日本語Windows/Excel）
+(io/read-file "legacy.csv" :encoding :sjis)
+(io/write-file data "for_excel.csv" :encoding :sjis)
+
+;; UTF-8 BOM付き（Excel用CSV）
+(io/write-file csv-data "excel.csv" :encoding :utf-8-bom)
+
+;; 自動検出（エンコーディング不明なファイル）
+(io/read-file "unknown.txt" :encoding :auto)
+
+;; ============================================
+;; 書き込みオプション
+;; ============================================
+
+;; ファイル存在時の動作
+(io/write-file data "out.txt" :if-exists :error)      ;; 存在したらエラー
+(io/write-file data "out.txt" :if-exists :skip)       ;; 存在したらスキップ
+(io/write-file data "out.txt" :if-exists :append)     ;; 追記
+(io/write-file data "out.txt" :if-exists :overwrite)  ;; 上書き（デフォルト）
+
+;; ディレクトリ自動作成
+(io/write-file data "path/to/out.txt" :create-dirs true)
+
+;; 複数オプション組み合わせ
+(io/write-file data "backup/data.csv"
+               :encoding :sjis
+               :if-exists :error
+               :create-dirs true)
+
+;; ============================================
+;; 実用例
+;; ============================================
+
+;; Excel用CSV作成（Shift_JIS）
+(data
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "for_excel.csv" :encoding :sjis)))
+
+;; レガシーShift_JIS → UTF-8変換
+(io/read-file "legacy_sjis.csv" :encoding :sjis)
+ |> csv/parse
+ |> (map transform)
+ |> csv/stringify
+ |> (fn [s] (io/write-file s "modern_utf8.csv"))
+
+;; エンコーディング不明ファイルの処理
+(io/read-file "unknown.txt" :encoding :auto)
  |> process
- |> (io/write-file "output.txt"))
+ |> (fn [s] (io/write-file s "output.txt" :encoding :utf-8-bom))
 
-;; ストリーム処理
-("input.txt"
- |> io/file-stream
- |> (stream/map transform)
- |> (io/write-stream "output.txt"))
+;; 安全な書き込み（既存ファイル保護）
+(io/write-file data "important.txt"
+               :if-exists :error
+               :create-dirs true)
 ```
+
+**注意**: パイプラインでキーワード引数を使う場合は無名関数でラップしてください。
 
 ##### ✅ dbg - デバッグ（2個）
 ```lisp
