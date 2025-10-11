@@ -25,7 +25,7 @@
 //! - math: 数学関数（10個）
 //! - time: 日時処理（4個）
 //! - stats: 統計関数（6個）
-//! - io: ファイルI/O（15個）
+//! - io: ファイルI/O（19個）
 //! - path: パス操作（9個）
 //! - env: 環境変数（4個）
 //! - log: 構造化ログ（6個）
@@ -71,6 +71,7 @@ pub mod env;
 pub mod log;
 pub mod zip;
 pub mod args;
+pub mod temp;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -307,7 +308,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "csv/read-stream" => csv::native_csv_read_stream,
 
         // ========================================
-        // 専門モジュール: io（15個）
+        // 専門モジュール: io（19個）
         // ========================================
         "io/read-file" => io::native_read_file,
         "io/write-file" => io::native_write_file,
@@ -373,6 +374,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "args/get" => args::native_args_get,
         "args/parse" => args::native_args_parse,
         "args/count" => args::native_args_count,
+
+        // ========================================
+        // 専門モジュール: temp（4個）
+        // ========================================
+        "io/temp-file" => temp::native_temp_file,
+        "io/temp-file-keep" => temp::native_temp_file_keep,
+        "io/temp-dir" => temp::native_temp_dir,
+        "io/temp-dir-keep" => temp::native_temp_dir_keep,
 
         // ========================================
         // 専門モジュール: dbg（2個）

@@ -968,7 +968,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
 - **set**: 集合演算（4個）- `set/union`, `set/intersect`, etc.
 - **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
-- **io**: ファイルI/O（15個）- `io/read-file`, `io/write-file`, `io/list-dir`, etc.
+- **io**: ファイルI/O（19個）- `io/read-file`, `io/write-file`, `io/list-dir`, `io/temp-file`, etc.
 - **path**: パス操作（9個）- `path/join`, `path/basename`, `path/dirname`, etc.
 - **env**: 環境変数（4個）- `env/get`, `env/set`, `env/load-dotenv`, etc.
 - **log**: 構造化ログ（6個）- `log/info`, `log/warn`, `log/error`, `log/set-level`, etc.
@@ -2203,7 +2203,7 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ io - ファイルI/O（15個） - グローバルエンコーディング対応（日中韓欧露）
+##### ✅ io - ファイルI/O（19個） - グローバルエンコーディング対応（日中韓欧露）
 
 **ファイル読み書き**:
 - `io/read-file` - ファイル読み込み（エンコーディング指定・自動検出対応）
@@ -2384,6 +2384,95 @@ math/rand math/rand-int
  |> (map io/read-file)
  |> (map process-log)
  |> (reduce merge))
+```
+
+**一時ファイル・ディレクトリ**:
+- `io/temp-file` - 一時ファイル作成（自動削除）
+- `io/temp-file-keep` - 一時ファイル作成（削除しない）
+- `io/temp-dir` - 一時ディレクトリ作成（自動削除）
+- `io/temp-dir-keep` - 一時ディレクトリ作成（削除しない）
+
+```lisp
+;; ============================================
+;; 一時ファイル（自動削除）
+;; ============================================
+
+;; 一時ファイルを作成して使用（プログラム終了時に自動削除）
+(let [tmp (io/temp-file)]
+  (io/write-file "temporary data" tmp)
+  (process-file tmp))
+;; プログラム終了時にtmpは自動的に削除される
+
+;; 一時ディレクトリを作成（自動削除）
+(let [tmpdir (io/temp-dir)]
+  (io/write-file "data1" (path/join tmpdir "file1.txt"))
+  (io/write-file "data2" (path/join tmpdir "file2.txt"))
+  (process-directory tmpdir))
+;; プログラム終了時にtmpdirと中身は自動的に削除される
+
+;; ============================================
+;; 一時ファイル（削除しない）
+;; ============================================
+
+;; 永続的な一時ファイルを作成（手動で削除が必要）
+(let [tmp (io/temp-file-keep)]
+  (io/write-file "persistent data" tmp)
+  (println f"Created: {tmp}")
+  tmp)
+;; => "/tmp/.tmpXXXXXX" （削除されない）
+
+;; 永続的な一時ディレクトリを作成
+(let [tmpdir (io/temp-dir-keep)]
+  (io/create-dir (path/join tmpdir "subdir"))
+  tmpdir)
+;; => "/tmp/.tmpXXXXXX" （削除されない）
+
+;; ============================================
+;; 実用例: 一時ファイルでのデータ処理
+;; ============================================
+
+;; 大きなデータを一時ファイルで処理
+(def process-large-data (fn [url]
+  (let [tmp (io/temp-file)]
+    ;; データをダウンロードして一時ファイルに保存
+    (http/get url :output tmp)
+    ;; 一時ファイルを処理
+    (let [result (process-file tmp)]
+      ;; 関数終了後、tmpは自動削除される
+      result))))
+
+;; 複数の一時ファイルを使用
+(def merge-files (fn [files output]
+  (let [tmpdir (io/temp-dir)
+        processed (files
+                   |> (map (fn [f]
+                         (let [tmp (path/join tmpdir (path/basename f))]
+                           (io/copy-file f tmp)
+                           (process-file tmp)
+                           tmp))))]
+    ;; 処理済みファイルをマージ
+    (merge-all processed output)
+    ;; 関数終了後、tmpdirと中身は自動削除される
+    output)))
+
+;; ============================================
+;; 実用例: ビルドの一時ディレクトリ
+;; ============================================
+
+;; ビルド成果物を一時ディレクトリで作成してからコピー
+(def build-project (fn [source-dir output-dir]
+  (let [build-dir (io/temp-dir)]
+    (try
+      (do
+        ;; 一時ディレクトリでビルド
+        (compile-sources source-dir build-dir)
+        (run-tests build-dir)
+        ;; 成功したら出力ディレクトリにコピー
+        (io/copy-file build-dir output-dir)
+        {:ok true})
+      (catch e
+        ;; エラーが起きても一時ディレクトリは自動削除される
+        {:error e})))))
 ```
 
 **注意**: パイプラインでキーワード引数を使う場合は無名関数でラップしてください。
