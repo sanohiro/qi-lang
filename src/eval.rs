@@ -1737,6 +1737,28 @@ mod tests {
         assert_eq!(eval_str("(min 10)").unwrap(), Value::Integer(10));
         assert_eq!(eval_str("(max 10)").unwrap(), Value::Integer(10));
     }
+
+    #[test]
+    fn test_tap() {
+        // tap関数が値を返しつつ副作用を実行することを確認
+        // （副作用のテストは難しいので、値が正しく返されることのみ確認）
+        assert_eq!(
+            eval_str("([1 2 3] |> (map inc) |> (tap (fn [x] x)) |> sum)").unwrap(),
+            Value::Integer(9)
+        );
+
+        // tapが元の値をそのまま返すことを確認
+        assert_eq!(
+            eval_str("(def x 42) (x |> (tap (fn [y] (+ y 1))))").unwrap(),
+            Value::Integer(42)  // 副作用の結果ではなく元の値
+        );
+
+        // fn/tap>（高階関数版）のテスト
+        assert_eq!(
+            eval_str("([1 2 3] |> (map inc) |> ((fn/tap> (fn [x] x))) |> sum)").unwrap(),
+            Value::Integer(9)
+        );
+    }
 }
 
 // モジュールシステムのヘルパー関数

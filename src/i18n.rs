@@ -100,6 +100,7 @@ pub enum MsgKey {
     MustBeNonNegative,  // {0}: {1}は非負の数である必要があります
     MustBeInteger,      // {0}: {1}は整数である必要があります
     MustBeString,       // {0}: {1}は文字列である必要があります
+    MinMustBeLessThanMax, // {0}: min must be less than max
     MustBeListOrVector, // {0}: {1}はリストまたはベクタである必要があります
     MustBePromise,      // {0}: {1}はプロミス（チャネル）である必要があります
     MustBeScope,        // {0}: {1}はスコープである必要があります
@@ -278,6 +279,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::MustBeNonNegative), "{0}: {1} must be non-negative");
         messages.insert((Lang::En, MsgKey::MustBeInteger), "{0}: {1} must be an integer");
         messages.insert((Lang::En, MsgKey::MustBeString), "{0}: {1} must be a string");
+        messages.insert((Lang::En, MsgKey::MinMustBeLessThanMax), "{0}: min must be less than max");
         messages.insert((Lang::En, MsgKey::MustBeListOrVector), "{0}: {1} must be a list or vector");
         messages.insert((Lang::En, MsgKey::MustBePromise), "{0}: {1} must be a promise (channel)");
         messages.insert((Lang::En, MsgKey::MustBeScope), "{0}: {1} must be a scope");
@@ -396,6 +398,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::MustBeNonNegative), "{0}: {1}は非負の数である必要があります");
         messages.insert((Lang::Ja, MsgKey::MustBeInteger), "{0}: {1}は整数である必要があります");
         messages.insert((Lang::Ja, MsgKey::MustBeString), "{0}: {1}は文字列である必要があります");
+        messages.insert((Lang::Ja, MsgKey::MinMustBeLessThanMax), "{0}: minはmaxより小さい必要があります");
         messages.insert((Lang::Ja, MsgKey::MustBeListOrVector), "{0}: {1}はリストまたはベクタである必要があります");
         messages.insert((Lang::Ja, MsgKey::MustBePromise), "{0}: {1}はプロミス（チャネル）である必要があります");
         messages.insert((Lang::Ja, MsgKey::MustBeScope), "{0}: {1}はスコープである必要があります");

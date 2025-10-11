@@ -240,12 +240,15 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "fn/tap>" => hof::native_tap,
 
         // ========================================
-        // 専門モジュール: set（4個）
+        // 専門モジュール: set（7個）
         // ========================================
         "set/union" => set::native_union,
         "set/intersect" => set::native_intersect,
         "set/difference" => set::native_difference,
         "set/subset?" => set::native_subset,
+        "set/superset?" => set::native_superset,
+        "set/disjoint?" => set::native_disjoint,
+        "set/symmetric-difference" => set::native_symmetric_difference,
 
         // ========================================
         // 専門モジュール: math（10個）
@@ -258,6 +261,8 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "math/clamp" => math::native_clamp,
         "math/rand" => math::native_rand,
         "math/rand-int" => math::native_rand_int,
+        "math/random-range" => math::native_random_range,
+        "math/shuffle" => math::native_shuffle,
 
         // ========================================
         // 専門モジュール: io（5個）

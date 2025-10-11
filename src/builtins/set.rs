@@ -127,3 +127,88 @@ pub fn native_subset(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Bool(true))
 }
+
+/// superset? - 上位集合判定（第1引数が第2引数の上位集合か）
+pub fn native_superset(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["superset?"]));
+    }
+
+    // superset?(A, B) = subset?(B, A)
+    native_subset(&[args[1].clone(), args[0].clone()])
+}
+
+/// disjoint? - 互いに素判定（共通要素がないか）
+pub fn native_disjoint(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["disjoint?"]));
+    }
+
+    let set1 = match &args[0] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["disjoint?", "lists or vectors"])),
+    };
+
+    let set2 = match &args[1] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["disjoint?", "lists or vectors"])),
+    };
+
+    let keys1: HashSet<String> = set1.iter()
+        .map(|v| format!("{:?}", v))
+        .collect();
+
+    for item in set2 {
+        if keys1.contains(&format!("{:?}", item)) {
+            return Ok(Value::Bool(false));
+        }
+    }
+
+    Ok(Value::Bool(true))
+}
+
+/// symmetric-difference - 対称差（どちらか一方にのみ存在する要素）
+pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["symmetric-difference"]));
+    }
+
+    let set1 = match &args[0] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["symmetric-difference", "lists or vectors"])),
+    };
+
+    let set2 = match &args[1] {
+        Value::List(items) | Value::Vector(items) => items,
+        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["symmetric-difference", "lists or vectors"])),
+    };
+
+    let keys1: HashSet<String> = set1.iter()
+        .map(|v| format!("{:?}", v))
+        .collect();
+
+    let keys2: HashSet<String> = set2.iter()
+        .map(|v| format!("{:?}", v))
+        .collect();
+
+    let mut result = Vec::new();
+    let mut seen = HashSet::new();
+
+    // set1にのみ存在する要素
+    for item in set1 {
+        let key = format!("{:?}", item);
+        if !keys2.contains(&key) && seen.insert(key) {
+            result.push(item.clone());
+        }
+    }
+
+    // set2にのみ存在する要素
+    for item in set2 {
+        let key = format!("{:?}", item);
+        if !keys1.contains(&key) && seen.insert(key) {
+            result.push(item.clone());
+        }
+    }
+
+    Ok(Value::List(result))
+}

@@ -144,3 +144,45 @@ pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["rand-int", "integers"])),
     }
 }
+
+/// random-range - min以上max未満の整数乱数
+pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["random-range", "2", "(min, max)"]));
+    }
+
+    match (&args[0], &args[1]) {
+        (Value::Integer(min), Value::Integer(max)) => {
+            if min >= max {
+                return Err(fmt_msg(MsgKey::MinMustBeLessThanMax, &["random-range"]));
+            }
+            let mut rng = rand::rng();
+            Ok(Value::Integer(rng.random_range(*min..*max)))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["random-range", "integers"])),
+    }
+}
+
+/// shuffle - リストをシャッフル
+pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
+    use rand::seq::SliceRandom;
+
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["shuffle"]));
+    }
+
+    match &args[0] {
+        Value::List(items) | Value::Vector(items) => {
+            let mut shuffled = items.clone();
+            let mut rng = rand::rng();
+            shuffled.shuffle(&mut rng);
+
+            match &args[0] {
+                Value::List(_) => Ok(Value::List(shuffled)),
+                Value::Vector(_) => Ok(Value::Vector(shuffled)),
+                _ => unreachable!(),
+            }
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["shuffle", "lists or vectors"])),
+    }
+}
