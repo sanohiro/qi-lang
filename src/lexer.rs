@@ -45,6 +45,7 @@ pub enum Token {
     At,     // @
     Arrow,  // ->
     FatArrow, // =>
+    Bar,    // | (or pattern用)
     Pipe,   // |>
     PipeRailway,  // |>?
     ParallelPipe,  // ||>
@@ -361,6 +362,10 @@ impl Lexer {
                     self.advance(); // |
                     self.advance(); // >
                     return Ok(Token::Pipe);
+                }
+                Some('|') => {
+                    self.advance(); // |
+                    return Ok(Token::Bar);
                 }
                 Some(ch) if ch.is_numeric() => {
                     return Ok(self.read_number());

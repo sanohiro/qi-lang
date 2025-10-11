@@ -749,6 +749,25 @@ impl Parser {
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, String> {
+        // 最初のパターンをパース
+        let first_pattern = self.parse_single_pattern()?;
+
+        // | があればorパターンとして複数パターンを収集
+        if self.current() == Some(&Token::Bar) {
+            let mut patterns = vec![first_pattern];
+
+            while self.current() == Some(&Token::Bar) {
+                self.advance(); // |
+                patterns.push(self.parse_single_pattern()?);
+            }
+
+            Ok(Pattern::Or(patterns))
+        } else {
+            Ok(first_pattern)
+        }
+    }
+
+    fn parse_single_pattern(&mut self) -> Result<Pattern, String> {
         match self.current() {
             Some(Token::Symbol(s)) if s == "_" => {
                 self.advance();

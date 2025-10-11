@@ -597,6 +597,19 @@ impl Evaluator {
                     Ok(false)
                 }
             }
+            Pattern::Or(patterns) => {
+                // 各パターンを順番に試す
+                for pat in patterns {
+                    let mut temp_bindings = bindings.clone();
+                    if self.match_pattern(pat, value, &mut temp_bindings)? {
+                        // 最初にマッチしたパターンのバインディングを使う
+                        *bindings = temp_bindings;
+                        return Ok(true);
+                    }
+                }
+                // どれもマッチしなかった
+                Ok(false)
+            }
             Pattern::Transform(_, _) => {
                 // Transformは match_pattern_with_transforms で処理される
                 unreachable!("Transform pattern should be handled in match_pattern_with_transforms")

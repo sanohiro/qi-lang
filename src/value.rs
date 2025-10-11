@@ -371,6 +371,8 @@ pub enum Pattern {
     As(Box<Pattern>, String),
     /// 変換 var => expr (束縛後に変換を適用)
     Transform(String, Box<Expr>),
+    /// Orパターン (p1 | p2 | p3)
+    Or(Vec<Pattern>),
 }
 
 impl fmt::Display for Value {
