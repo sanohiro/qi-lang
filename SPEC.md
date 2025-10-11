@@ -980,6 +980,8 @@ Qiは**2層モジュール設計**を採用しています：
 - **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
 - **http**: HTTP通信（11個）- `http/get`, `http/post`, etc.
 - **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
+- **zip**: ZIP圧縮・解凍（6個）- `zip/create`, `zip/extract`, `zip/list`, `zip/gzip`, etc.
+- **args**: コマンドライン引数パース（4個）- `args/all`, `args/get`, `args/parse`, `args/count`
 
 **使用例**:
 ```lisp
@@ -2563,6 +2565,17 @@ stream/take stream/drop stream/realize stream/iterate
 stream/map stream/filter stream/file
 ```
 
+##### ✅ zip - ZIP圧縮・解凍（6個）
+```lisp
+zip/create zip/extract zip/list zip/add
+zip/gzip zip/gunzip
+```
+
+##### ✅ args - コマンドライン引数パース（4個）
+```lisp
+args/all args/get args/parse args/count
+```
+
 #### ✅ str - 文字列操作（ほぼ完全実装）
 ```lisp
 (use str :only [
@@ -3018,6 +3031,283 @@ stream/map stream/filter stream/file
 - すべての要素が数値である必要がある
 - 空のコレクションはエラー
 - Flow-oriented設計でパイプラインに組み込める
+
+#### ✅ zip - ZIP圧縮・解凍とgzip（実装済み）
+
+**ZIP圧縮・解凍のための汎用モジュール**
+
+```lisp
+(use zip :only [
+  create            ;; ZIPファイルを作成
+  extract           ;; ZIPファイルを解凍
+  list              ;; ZIP内容を一覧表示
+  add               ;; 既存ZIPにファイルを追加
+  gzip              ;; gzip圧縮（単一ファイル）
+  gunzip            ;; gzip解凍（単一ファイル）
+])
+
+;; ============================================
+;; ZIP圧縮
+;; ============================================
+
+;; 単一ファイルをZIP化
+(zip/create "archive.zip" "document.txt")
+
+;; 複数ファイルをZIP化
+(zip/create "archive.zip" ["file1.txt" "file2.txt" "data.csv"])
+
+;; ディレクトリ全体をZIP化（再帰的）
+(zip/create "backup.zip" "myproject/")
+
+;; ============================================
+;; ZIP解凍
+;; ============================================
+
+;; カレントディレクトリに解凍
+(zip/extract "archive.zip")
+
+;; 指定ディレクトリに解凍
+(zip/extract "archive.zip" "extracted/")
+
+;; ============================================
+;; ZIP内容の確認
+;; ============================================
+
+;; ZIP内のファイル一覧を取得
+(zip/list "archive.zip")
+;; => [{:name "file1.txt" :size 1024 :compressed-size 512 :is-dir false}
+;;     {:name "dir/" :size 0 :compressed-size 0 :is-dir true}
+;;     {:name "dir/file2.txt" :size 2048 :compressed-size 1024 :is-dir false}]
+
+;; パイプラインで処理
+("archive.zip"
+ |> zip/list
+ |> (filter (fn [entry] (not (:is-dir entry))))
+ |> (map :name))
+;; => ["file1.txt" "dir/file2.txt"]
+
+;; ============================================
+;; 既存ZIPへのファイル追加
+;; ============================================
+
+;; 単一ファイルを追加
+(zip/add "archive.zip" "newfile.txt")
+
+;; 複数ファイルを追加
+(zip/add "archive.zip" ["file3.txt" "file4.txt"])
+
+;; ディレクトリを追加
+(zip/add "archive.zip" "newdir/")
+
+;; ============================================
+;; gzip圧縮（単一ファイル）
+;; ============================================
+
+;; ファイルをgzip圧縮（.gz拡張子を自動付与）
+(zip/gzip "largefile.txt")
+;; => "largefile.txt.gz"を作成
+
+;; 出力ファイル名を指定
+(zip/gzip "largefile.txt" "output.gz")
+
+;; ============================================
+;; gzip解凍
+;; ============================================
+
+;; gzipファイルを解凍（.gz拡張子を自動除去）
+(zip/gunzip "largefile.txt.gz")
+;; => "largefile.txt"を作成
+
+;; 出力ファイル名を指定
+(zip/gunzip "data.gz" "data.txt")
+
+;; ============================================
+;; 実用例: ログファイルのアーカイブ
+;; ============================================
+
+;; 古いログをgzip圧縮してアーカイブ
+(def archive-logs (fn [log-dir archive-name]
+  (let [logs (io/list-dir log-dir :pattern "*.log")]
+    ;; 各ログファイルをgzip圧縮
+    (logs |> (map zip/gzip))
+    ;; 圧縮ファイルをZIPにまとめる
+    (let [gz-files (io/list-dir log-dir :pattern "*.gz")]
+      (zip/create archive-name gz-files)
+      ;; 元の.gzファイルを削除
+      (gz-files |> (map io/delete-file))))))
+
+(archive-logs "logs/" "logs-2025-01.zip")
+
+;; ============================================
+;; 実用例: バックアップと復元
+;; ============================================
+
+;; プロジェクトをバックアップ
+(def backup-project (fn [project-dir backup-file]
+  (zip/create backup-file project-dir)
+  (println f"Backup created: {backup-file}")))
+
+(backup-project "myapp/" "backups/myapp-2025-01-11.zip")
+
+;; バックアップから復元
+(def restore-project (fn [backup-file restore-dir]
+  (zip/extract backup-file restore-dir)
+  (println f"Restored to: {restore-dir}")))
+
+(restore-project "backups/myapp-2025-01-11.zip" "restored/")
+```
+
+**設計方針**:
+- ZIP圧縮にはDeflateアルゴリズムを使用（一般的なZIP形式）
+- ディレクトリ構造を保持したまま圧縮・解凍
+- gzipは単一ファイル向けの高速圧縮
+- Pure Rustクレート（zip, flate2）を使用
+
+#### ✅ args - コマンドライン引数パース（実装済み）
+
+**CLI/サーバーアプリケーションのための引数パース**
+
+```lisp
+(use args :only [
+  all               ;; 全コマンドライン引数を取得
+  get               ;; 指定位置の引数を取得
+  parse             ;; 引数をパース（フラグ・オプション・位置引数）
+  count             ;; 引数の数を取得
+])
+
+;; ============================================
+;; 基本的な引数アクセス
+;; ============================================
+
+;; 全引数を取得
+(args/all)
+;; プログラム実行: ./qi script.qi arg1 arg2
+;; => ["./qi" "script.qi" "arg1" "arg2"]
+
+;; 引数の数を取得
+(args/count)
+;; => 4
+
+;; 指定位置の引数を取得
+(args/get 0)           ;; => "./qi" (プログラム名)
+(args/get 1)           ;; => "script.qi" (第1引数)
+(args/get 2)           ;; => "arg1" (第2引数)
+
+;; デフォルト値を指定
+(args/get 5 "default") ;; => "default" (存在しない場合)
+(args/get 10)          ;; => nil (存在せずデフォルトもない場合)
+
+;; ============================================
+;; 高度な引数パース（GNU形式）
+;; ============================================
+
+;; フラグ・オプション・位置引数を自動解析
+(args/parse)
+;; プログラム実行: ./qi script.qi --verbose --port 3000 -df input.txt
+;; => {:flags ["verbose" "d" "f"]
+;;     :options {"port" "3000"}
+;;     :args ["./qi" "script.qi" "input.txt"]}
+
+;; 解析ルール:
+;; - "--flag"               → フラグ（真偽値）
+;; - "--key=value"          → オプション（キー・値ペア）
+;; - "--key value"          → オプション（キー・値ペア）
+;; - "-abc"                 → 短縮フラグ（a, b, c の3つ）
+;; - その他                 → 位置引数
+
+;; ============================================
+;; 実用例: CLIツール
+;; ============================================
+
+;; シンプルなファイル処理ツール
+(def main (fn []
+  (let [parsed (args/parse)
+        flags (:flags parsed)
+        options (:options parsed)
+        files (:args parsed)]
+
+    ;; フラグのチェック
+    (let [verbose? (contains? flags "verbose")
+          help? (contains? flags "help")]
+
+      (if help?
+        (print-help)
+        (do
+          ;; オプションの取得
+          (let [output (map/get options "output" "output.txt")
+                format (map/get options "format" "json")]
+
+            ;; ファイル処理
+            (when verbose?
+              (println f"Processing {(count files)} files..."))
+
+            (files
+             |> (drop 2)  ;; プログラム名とスクリプト名をスキップ
+             |> (map process-file)
+             |> (fn [results] (save-results results output format)))
+
+            (when verbose?
+              (println "Done!")))))))))
+
+;; 使用例:
+;; ./qi tool.qi --verbose --output results.json --format json data1.txt data2.txt
+
+;; ============================================
+;; 実用例: 設定のオーバーライド
+;; ============================================
+
+(def load-config (fn []
+  (let [parsed (args/parse)
+        options (:options parsed)
+
+        ;; デフォルト設定
+        default-config {:host "localhost"
+                       :port 3000
+                       :debug false}
+
+        ;; コマンドライン引数でオーバーライド
+        config (default-config
+                |> (fn [c] (if (map/has-key? options "host")
+                             (assoc c :host (map/get options "host"))
+                             c))
+                |> (fn [c] (if (map/has-key? options "port")
+                             (assoc c :port (parse-int (map/get options "port")))
+                             c))
+                |> (fn [c] (if (contains? (:flags parsed) "debug")
+                             (assoc c :debug true)
+                             c)))]
+    config)))
+
+;; 使用例:
+;; ./qi server.qi --host 0.0.0.0 --port 8080 --debug
+;; => {:host "0.0.0.0" :port 8080 :debug true}
+
+;; ============================================
+;; 実用例: サブコマンド処理
+;; ============================================
+
+(def main (fn []
+  (let [subcommand (args/get 2)  ;; 第2引数（プログラム名、スクリプト名の次）
+        rest-args (args/all |> (drop 3))]
+
+    (match subcommand
+      "init"    -> (cmd-init rest-args)
+      "build"   -> (cmd-build rest-args)
+      "test"    -> (cmd-test rest-args)
+      "deploy"  -> (cmd-deploy rest-args)
+      _         -> (println "Unknown command. Use: init, build, test, or deploy")))))
+
+;; 使用例:
+;; ./qi cli.qi init myproject
+;; ./qi cli.qi build --release
+;; ./qi cli.qi test --verbose
+```
+
+**設計方針**:
+- GNU形式の引数解析をサポート（--long, -short）
+- シンプルな位置引数アクセスから高度なパースまで対応
+- Flow-oriented設計でパイプラインと組み合わせ可能
+- CLIツールとサーバーアプリケーション両方で使用可能
 
 #### 🔜 time/date - 日付・時刻（計画中）
 
@@ -3712,8 +4002,12 @@ mean median stddev
 21. ✅ Structured Concurrency（make-scope, scope-go, cancel!, cancelled?, with-scope）
 22. ✅ parallel-do（複数式の並列実行）
 
+**フェーズ5.5: アプリケーション開発機能（✅ 完了）**
+23. ✅ ZIP圧縮・解凍モジュール（zip/create, zip/extract, zip/list, zip/add, zip/gzip, zip/gunzip）
+24. ✅ コマンドライン引数パースモジュール（args/all, args/get, args/parse, args/count）
+
 **フェーズ6: 統計・高度な処理**
-23. mean, median, stddev
+25. mean, median, stddev
 
 #### 🚧 将来の計画
 

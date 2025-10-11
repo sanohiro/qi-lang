@@ -69,6 +69,8 @@ pub mod csv;
 pub mod flow;
 pub mod env;
 pub mod log;
+pub mod zip;
+pub mod args;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -353,6 +355,24 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "log/error" => log::native_log_error,
         "log/set-level" => log::native_log_set_level,
         "log/set-format" => log::native_log_set_format,
+
+        // ========================================
+        // 専門モジュール: zip（6個）
+        // ========================================
+        "zip/create" => zip::native_zip_create,
+        "zip/extract" => zip::native_zip_extract,
+        "zip/list" => zip::native_zip_list,
+        "zip/add" => zip::native_zip_add,
+        "zip/gzip" => zip::native_gzip,
+        "zip/gunzip" => zip::native_gunzip,
+
+        // ========================================
+        // 専門モジュール: args（4個）
+        // ========================================
+        "args/all" => args::native_args_all,
+        "args/get" => args::native_args_get,
+        "args/parse" => args::native_args_parse,
+        "args/count" => args::native_args_count,
 
         // ========================================
         // 専門モジュール: dbg（2個）
