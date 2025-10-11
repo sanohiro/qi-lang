@@ -168,6 +168,11 @@ pub enum MsgKey {
     InvalidTimestamp,    // invalid timestamp
     InvalidDateFormat,   // invalid date format
     InvalidPercentile,   // invalid percentile (must be 0-100)
+
+    // 警告
+    RedefineBuiltin,     // warning: redefining builtin function: {0} ({1})
+    RedefineFunction,    // warning: redefining function: {0}
+    RedefineVariable,    // warning: redefining variable: {0}
 }
 
 /// UIメッセージキー
@@ -351,6 +356,11 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::InvalidDateFormat), "{0}: invalid date format: {1}");
         messages.insert((Lang::En, MsgKey::InvalidPercentile), "{0}: percentile must be between 0 and 100");
 
+        // 英語メッセージ - 警告
+        messages.insert((Lang::En, MsgKey::RedefineBuiltin), "warning: redefining builtin function '{0}' ({1})");
+        messages.insert((Lang::En, MsgKey::RedefineFunction), "warning: redefining function '{0}'");
+        messages.insert((Lang::En, MsgKey::RedefineVariable), "warning: redefining variable '{0}'");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -472,6 +482,11 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::InvalidTimestamp), "{0}: 不正なタイムスタンプです");
         messages.insert((Lang::Ja, MsgKey::InvalidDateFormat), "{0}: 不正な日付フォーマットです: {1}");
         messages.insert((Lang::Ja, MsgKey::InvalidPercentile), "{0}: パーセンタイルは0から100の間である必要があります");
+
+        // 日本語メッセージ - 警告
+        messages.insert((Lang::Ja, MsgKey::RedefineBuiltin), "警告: ビルトイン関数を再定義しています: '{0}' ({1})");
+        messages.insert((Lang::Ja, MsgKey::RedefineFunction), "警告: 関数を再定義しています: '{0}'");
+        messages.insert((Lang::Ja, MsgKey::RedefineVariable), "警告: 変数を再定義しています: '{0}'");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

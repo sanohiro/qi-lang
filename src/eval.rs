@@ -141,6 +141,21 @@ impl Evaluator {
             }
 
             Expr::Def(name, value) => {
+                // 名前衝突チェック
+                if let Some(existing) = env.read().get(name) {
+                    match existing {
+                        Value::NativeFunc(nf) => {
+                            eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name]));
+                        }
+                        Value::Function(_) | Value::Macro(_) => {
+                            eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
+                        }
+                        _ => {
+                            eprintln!("{}", fmt_msg(MsgKey::RedefineVariable, &[name]));
+                        }
+                    }
+                }
+
                 let val = self.eval_with_env(value, env.clone())?;
                 // 現在の環境に定義（モジュール内ならmodule_env、通常ならglobal_env）
                 env.write().set(name.clone(), val.clone());
