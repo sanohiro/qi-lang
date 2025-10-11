@@ -938,6 +938,55 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 
 Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流れと変換を重視した設計になっています。
 
+### モジュール構成
+
+Qiは**2層モジュール設計**を採用しています：
+
+**Core（90個）** - グローバル名前空間、自動インポート
+- 特殊形式・演算子（11個）: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`
+- リスト操作（29個）: `first`, `rest`, `last`, `nth`, `take`, `drop`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every`, `some`, etc.
+- マップ操作（9個）: `get`, `keys`, `vals`, `assoc`, `dissoc`, `merge`, `get-in`, `update-in`, `update`
+- 数値・比較（17個）: `+`, `-`, `*`, `/`, `%`, `inc`, `dec`, `abs`, `min`, `max`, `sum`, `=`, `!=`, `<`, `>`, `<=`, `>=`
+- 文字列（3個）: `str`, `split`, `join`
+- 述語・型判定（22個）: `nil?`, `list?`, `vector?`, `map?`, `string?`, `integer?`, `float?`, `number?`, etc.
+- 並行処理（5個）: `go`, `chan`, `send!`, `recv!`, `close!`
+- 論理・I/O（4個）: `not`, `print`, `println`, `error` (※ `and`, `or`は特殊形式)
+- 状態管理（4個）: `atom`, `deref`, `swap!`, `reset!`
+- メタプログラミング（4個）: `eval`, `uvar`, `variable`, `macro?`
+- 型変換（3個）: `to-int`, `to-float`, `to-string`
+- 日時（3個）: `now`, `timestamp`, `sleep`
+- デバッグ（1個）: `time` (dbg/time)
+
+**専門モジュール** - 明示的インポートまたは `module/function` 形式で使用
+- **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
+- **map**: 高度なマップ操作（5個）- `map/select-keys`, `map/update-keys`, etc.
+- **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
+- **set**: 集合演算（4個）- `set/union`, `set/intersect`, etc.
+- **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
+- **io**: ファイルI/O（5個）- `io/read-file`, `io/write-file`, etc.
+- **dbg**: デバッグ（2個）- `dbg/inspect`, `dbg/time`
+- **async**: 並行処理（高度）（16個）- `async/await`, `async/then`, `async/pfilter`, etc.
+- **pipeline**: パイプライン処理（5個）- `pipeline/pipeline`, `pipeline/map`, etc.
+- **stream**: ストリーム処理（11個）- `stream/stream`, `stream/map`, etc.
+- **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
+- **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
+- **http**: HTTP通信（11個）- `http/get`, `http/post`, etc.
+
+**使用例**:
+```lisp
+;; Core関数はそのまま使える
+(data |> filter valid? |> map transform |> sort)
+
+;; 専門モジュール関数は module/function 形式
+(io/read-file "data.txt")
+(math/pow 2 8)
+(list/frequencies [1 2 2 3])
+
+;; useで短縮可能
+(use io :only [read-file])
+(read-file "data.txt")
+```
+
 ### リスト操作
 
 #### 基本操作（✅ 実装済み）
@@ -956,13 +1005,28 @@ flatten                 ;; 平坦化（全階層）
 ;; 生成・変換
 range                   ;; (range 10) => (0 1 2 ... 9)
 reverse                 ;; 反転
-zip                     ;; 組み合わせ: (zip [1 2] [:a :b]) => ([1 :a] [2 :b])
 ```
 
 #### 高階関数（✅ 実装済み）
 ```lisp
 map filter reduce       ;; 基本の高階関数
 pmap                    ;; 並列map（現在はシングルスレッド実装）
+tap                     ;; 副作用タップ（値を返しつつ副作用実行）
+```
+
+**tapの使用例**:
+```lisp
+;; パイプライン内でのデバッグ
+([1 2 3]
+ |> (map inc)
+ |> (tap println)       ;; (2 3 4)を出力して、そのまま次に渡す
+ |> sum)                ;; => 9
+
+;; データの流れを観察
+(def data {:name "Alice" :age 30})
+(data
+ |> (tap println)       ;; Map({"name": String("Alice"), "age": Integer(30)})
+ |> keys)               ;; => (:name :age)
 ```
 
 #### コレクション検索・述語（✅ 実装済み）
@@ -2035,13 +2099,137 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ### 標準モジュール
 
-#### ✅ core（自動インポート）
+#### ✅ core（自動インポート・87個）
+Coreモジュールは自動的にグローバル名前空間にインポートされます。
+
 ```lisp
-;; 基本関数全て
-map filter reduce
-str len empty?
-uvar variable
-...
+;; 特殊形式・演算子（11個）
+def fn let do if match try defer
+|> ||> |>?
+
+;; リスト操作（29個）
+first rest last nth len count
+take drop cons conj concat flatten range reverse
+map filter reduce pmap tap
+find every some take-while drop-while
+sort distinct
+identity comp partial apply constantly
+
+;; マップ操作（9個）
+get keys vals assoc dissoc merge
+get-in update-in update
+
+;; 数値・比較（17個）
++ - * / % inc dec abs min max sum
+= != < > <= >=
+
+;; 文字列（3個）
+str split join
+
+;; 述語・型判定（22個）
+nil? list? vector? map? string?
+integer? float? number? keyword?
+function? atom? coll? sequential?
+empty? some? true? false?
+even? odd? positive? negative? zero?
+
+;; 並行処理（5個）
+go chan send! recv! close!
+
+;; 論理・I/O（4個）
+not print println error
+;; 注: and, or は特殊形式（遅延評価のため）
+
+;; 状態管理（4個）
+atom deref swap! reset!
+
+;; メタプログラミング（4個）
+eval uvar variable macro?
+
+;; 型変換（3個）
+to-int to-float to-string
+
+;; 日時（3個）
+now timestamp sleep
+
+;; デバッグ（1個）
+time
+```
+
+#### 専門モジュール
+
+##### ✅ list - 高度なリスト操作（18個）
+```lisp
+list/frequencies list/sort-by list/count-by
+list/max-by list/min-by list/sum-by list/find-index
+list/partition list/partition-by list/group-by list/keep
+list/zip list/chunk list/zipmap
+list/interleave list/take-nth list/dedupe
+list/split-at list/drop-last
+```
+
+##### ✅ map - 高度なマップ操作（5個）
+```lisp
+map/select-keys
+map/assoc-in map/dissoc-in
+map/update-keys map/update-vals
+```
+
+##### ✅ fn - 高階関数（3個）
+```lisp
+fn/complement fn/juxt fn/tap>
+```
+
+##### ✅ set - 集合演算（4個）
+```lisp
+set/union set/intersect set/difference set/subset?
+```
+
+##### ✅ math - 数学関数（10個）
+```lisp
+math/pow math/sqrt
+math/round math/floor math/ceil math/clamp
+math/rand math/rand-int
+```
+
+##### ✅ io - ファイルI/O（5個）
+```lisp
+io/read-file io/write-file io/append-file
+io/read-lines io/file-exists?
+```
+
+##### ✅ dbg - デバッグ（2個）
+```lisp
+dbg/inspect dbg/time
+```
+
+##### ✅ async - 並行処理（高度）（16個）
+```lisp
+;; チャネル拡張
+async/try-recv! async/select!
+
+;; Structured Concurrency
+async/make-scope async/scope-go async/with-scope
+async/cancel! async/cancelled?
+
+;; 並列処理
+async/pfilter async/preduce async/parallel-do
+
+;; Promise
+async/await async/then async/catch async/all async/race
+```
+
+##### ✅ pipeline - パイプライン処理（5個）
+```lisp
+pipeline/pipeline pipeline/map pipeline/filter
+pipeline/fan-out pipeline/fan-in
+```
+
+##### ✅ stream - ストリーム処理（11個）
+```lisp
+stream/stream stream/range stream/repeat stream/cycle
+stream/take stream/drop stream/realize stream/iterate
+stream/map stream/filter stream/file
 ```
 
 #### ✅ str - 文字列操作（ほぼ完全実装）

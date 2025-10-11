@@ -668,6 +668,12 @@ Qi言語では、`|>` を使ってデータの流れを左から右に記述で�
 ; 引数付き関数にも使える
 (10 |> (+ 5))         ; 15 (+ 5 10) と同じ
 (1 |> (+ 2) |> (* 3)) ; 9  (* 3 (+ 2 1)) と同じ
+
+; パイプライン内でデバッグ（tap）
+([1 2 3]
+  |> (map inc)         ; (2 3 4)
+  |> (tap println)     ; (2 3 4)を出力してそのまま次に渡す
+  |> sum)              ; 9
 ```
 
 **なぜパイプラインが便利？**
@@ -1243,22 +1249,22 @@ pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
 **Qi言語での使用例**:
 
 ```lisp
-;; Base64エンコード/デコード
-(to-base64 "hello")        ;; => "aGVsbG8="
-(from-base64 "aGVsbG8=")   ;; => "hello"
+;; Base64エンコード/デコード（str モジュール）
+(str/to-base64 "hello")        ;; => "aGVsbG8="
+(str/from-base64 "aGVsbG8=")   ;; => "hello"
 
-;; URLエンコード/デコード
-(url-encode "hello world")  ;; => "hello%20world"
-(url-decode "hello%20world") ;; => "hello world"
+;; URLエンコード/デコード（str モジュール）
+(str/url-encode "hello world")  ;; => "hello%20world"
+(str/url-decode "hello%20world") ;; => "hello world"
 
-;; HTMLエスケープ
-(html-escape "<div>test</div>")  ;; => "&lt;div&gt;test&lt;/div&gt;"
+;; HTMLエスケープ（str モジュール）
+(str/html-escape "<div>test</div>")  ;; => "&lt;div&gt;test&lt;/div&gt;"
 
-;; ハッシュ生成
-(hash "hello")  ;; => "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+;; ハッシュ生成（str モジュール）
+(str/hash "hello")  ;; => "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
 
-;; UUID生成
-(uuid)  ;; => "550e8400-e29b-41d4-a716-446655440000" (毎回異なる)
+;; UUID生成（str モジュール）
+(str/uuid)  ;; => "550e8400-e29b-41d4-a716-446655440000" (毎回異なる)
 ```
 
 ### 実装する関数
@@ -2142,8 +2148,12 @@ fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
 
 コードを複数ファイルに分割し、再利用可能にする。
 
+**Qiの2層モジュール設計**:
+- **Core（90個）**: グローバル名前空間、自動インポート
+- **専門モジュール（154個）**: `module/function` 形式で明示的に使用
+
 ```lisp
-;; math.qi
+;; math.qi - カスタムモジュール
 (module math)
 
 (def square (fn [x] (* x x)))
@@ -2151,10 +2161,15 @@ fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
 
 (export square cube)
 
-;; main.qi
+;; main.qi - モジュールの使用
 (use math :only [square])
 
 (print (square 5))  ; 25
+
+;; 組み込み専門モジュールも同じ形式
+(io/read-file "data.txt")      ; ファイルI/O
+(math/pow 2 8)                  ; 数学関数
+(str/upper "hello")             ; 文字列操作
 ```
 
 ### 学習内容

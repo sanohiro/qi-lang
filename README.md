@@ -83,9 +83,47 @@ qi -l utils.qi
 qi --help
 ```
 
+## モジュール構造
+
+Qiは**2層モジュール設計**を採用しています：
+
+### Core（90個）- グローバル名前空間
+最もよく使う関数は、すぐに使えます：
+```lisp
+(map inc [1 2 3])           ; Core関数はそのまま
+(filter even? [1 2 3 4])
+(reduce + [1 2 3 4])
+(tap println)               ; パイプライン内で副作用実行
+```
+
+### 専門モジュール（154個）- `module/function` 形式
+専門的な機能は、名前空間を明示して使います：
+```lisp
+(io/read-file "data.txt")        ; ファイルI/O
+(math/pow 2 8)                   ; 数学関数
+(str/upper "hello")              ; 文字列操作
+(json/parse "{\"a\": 1}")        ; JSON処理
+(http/get "https://api.example.com")  ; HTTP通信
+```
+
+**主な専門モジュール**:
+- **list**: 高度なリスト操作 - `list/frequencies`, `list/partition-by`
+- **map**: 高度なマップ操作 - `map/select-keys`, `map/update-keys`
+- **str**: 文字列操作（62個）- `str/upper`, `str/snake`, `str/to-base64`
+- **math**: 数学関数 - `math/pow`, `math/sqrt`, `math/round`
+- **io**: ファイルI/O - `io/read-file`, `io/write-file`
+- **dbg**: デバッグ - `dbg/inspect`, `dbg/time`
+- **json**: JSON処理 - `json/parse`, `json/stringify`
+- **http**: HTTP通信 - `http/get`, `http/post`
+- **stream**: ストリーム処理 - `stream/map`, `stream/filter`
+- **async**: 並行処理（高度）- `async/await`, `async/all`
+
+詳細は [SPEC.md](SPEC.md) を参照してください。
+
 ## ドキュメント
 
 - [完全な言語仕様](SPEC.md) - 詳細な文法、組み込み関数、モジュールシステム
+- [実装チュートリアル](TUTORIAL.md) - Rust、言語実装、Qi言語を同時に学ぶ
 - [実用例](examples/web-api/) - Web API、JSON処理、Railway Pipelineの実例 ⭐ NEW
 
 ## 実装例
@@ -128,22 +166,28 @@ qi --help
 ;; 全員が成人か？
 (every? (fn [u] (>= (get u :age) 20)) users)  ;; => true
 
-;; マップのキーを全て大文字に
-(update-keys upper {:name "Alice" :city "Tokyo"})
+;; マップのキーを全て大文字に（専門モジュール）
+(map/update-keys str/upper {:name "Alice" :city "Tokyo"})
 ;; => {"NAME" "Alice" "CITY" "Tokyo"}
 ```
 
 ### デバッグ・計測 ⭐ NEW
 
 ```lisp
-;; データフローを観察
+;; データフローを観察（tap）
+([1 2 3]
+ |> (map inc)
+ |> (tap println)        ;; (2 3 4)を出力してそのまま返す
+ |> sum)                 ;; => 9
+
+;; 整形表示
 (data
  |> transform
- |> inspect              ;; 整形表示してそのまま返す
+ |> dbg/inspect          ;; 整形表示してそのまま返す
  |> validate)
 
 ;; パフォーマンス計測
-(time (fn [] (reduce + (range 1000000))))
+(dbg/time (fn [] (reduce + (range 1000000))))
 ;; Elapsed: 0.234s
 ```
 

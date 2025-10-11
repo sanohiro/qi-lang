@@ -1,39 +1,60 @@
 //! 組み込み関数モジュール
 //!
-//! このモジュールは組み込み関数を機能別に整理しています:
-//! - arithmetic: 算術演算（+, -, *, /, %, abs, min, max, inc, dec, sum）
-//! - comparison: 比較演算（=, !=, <, >, <=, >=）
-//! - list: リスト操作（first, rest, nth, cons, conj, take, drop, concat, flatten, range）
-//! - string: 文字列操作（str, split, join, upper, lower, trim）
-//! - map: マップ操作（get, keys, vals, assoc, dissoc）
-//! - predicates: 述語関数（empty?, nil?, list?, vector?, map?, string?, integer?, float?, keyword?, even?, odd?, positive?, negative?, zero?, some?, true?, false?, coll?, sequential?）
-//! - logic: 論理演算（not）
-//! - hof: 高階関数（map, filter, reduce, identity, constantly, comp, partial, apply）
-//! - set: 集合演算（union, intersect, difference, subset?）
-//! - math: 数学関数（pow, sqrt, round, floor, ceil, clamp, rand, rand-int）
-//! - error: エラー処理（error）
-//! - atom: 状態管理（atom, deref, swap!, reset!）
-//! - io: ファイルI/O（read-file, write-file, append-file）
-//! - concurrency: 並行処理（chan, send!, recv!, try-recv!, close!, go）
+//! Qi-langは**2層モジュール設計**を採用しています：
+//!
+//! ## Core（90個）- グローバル名前空間、自動インポート
+//! - 特殊形式・演算子（11個）: def, fn, let, do, if, match, try, defer, |>, ||>, |>?
+//! - リスト操作（29個）: first, rest, last, nth, take, drop, map, filter, reduce, pmap, tap, etc.
+//! - マップ操作（9個）: get, keys, vals, assoc, dissoc, merge, get-in, update-in, update
+//! - 数値・比較（17個）: +, -, *, /, %, inc, dec, abs, min, max, sum, =, !=, <, >, <=, >=
+//! - 文字列（3個）: str, split, join
+//! - 述語・型判定（22個）: nil?, list?, vector?, map?, string?, integer?, float?, etc.
+//! - 並行処理（5個）: go, chan, send!, recv!, close!
+//! - 論理・I/O（4個）: not, print, println, error (※ and, or は特殊形式)
+//! - 状態管理（4個）: atom, deref, swap!, reset!
+//! - メタプログラミング（4個）: eval, uvar, variable, macro?
+//! - 型変換（3個）: to-int, to-float, to-string
+//! - 日時（3個）: now, timestamp, sleep
+//! - デバッグ（1個）: time (dbg/time)
+//!
+//! ## 専門モジュール - `module/function` 形式で使用
+//! - list: 高度なリスト操作（18個）
+//! - map: 高度なマップ操作（5個）
+//! - fn: 高階関数（3個）
+//! - set: 集合演算（4個）
+//! - math: 数学関数（10個）
+//! - io: ファイルI/O（5個）
+//! - dbg: デバッグ（2個）
+//! - async: 並行処理（高度）（16個）
+//! - pipeline: パイプライン処理（5個）
+//! - stream: ストリーム処理（11個）
+//! - str: 文字列操作（62個）
+//! - json: JSON処理（3個）
+//! - http: HTTP通信（11個）
 
-pub mod arithmetic;
-pub mod atom;
-pub mod comparison;
-pub mod concurrency;
-pub mod error;
+// Coreモジュール
+pub mod core_numeric;
+pub mod core_collections;
+pub mod core_predicates;
+pub mod core_string;
+pub mod core_util;
+pub mod core_io_logic;
+pub mod core_functions;
+pub mod core_state_meta;
+pub mod core_concurrency;
+
+// 専門モジュール
 pub mod hof;
 pub mod http;
 pub mod io;
 pub mod json;
 pub mod list;
-pub mod logic;
 pub mod map;
 pub mod math;
-pub mod meta;
-pub mod predicates;
 pub mod set;
 pub mod stream;
 pub mod string;
+pub mod concurrency;
 pub mod util;
 
 use crate::eval::Evaluator;
@@ -59,257 +80,209 @@ macro_rules! register_native {
 /// すべての組み込み関数を環境に登録
 pub fn register_all(env: &Arc<RwLock<Env>>) {
     register_native!(env.write(),
-        // 算術演算
-        "+" => arithmetic::native_add,
-        "-" => arithmetic::native_sub,
-        "*" => arithmetic::native_mul,
-        "/" => arithmetic::native_div,
-        "%" => arithmetic::native_mod,
-        "abs" => arithmetic::native_abs,
-        "min" => arithmetic::native_min,
-        "max" => arithmetic::native_max,
-        "inc" => arithmetic::native_inc,
-        "dec" => arithmetic::native_dec,
-        "sum" => arithmetic::native_sum,
+        // ========================================
+        // Core: 数値・比較演算（17個）
+        // ========================================
+        "+" => core_numeric::native_add,
+        "-" => core_numeric::native_sub,
+        "*" => core_numeric::native_mul,
+        "/" => core_numeric::native_div,
+        "%" => core_numeric::native_mod,
+        "abs" => core_numeric::native_abs,
+        "min" => core_numeric::native_min,
+        "max" => core_numeric::native_max,
+        "inc" => core_numeric::native_inc,
+        "dec" => core_numeric::native_dec,
+        "sum" => core_numeric::native_sum,
+        "=" => core_numeric::native_eq,
+        "!=" => core_numeric::native_ne,
+        "<" => core_numeric::native_lt,
+        ">" => core_numeric::native_gt,
+        "<=" => core_numeric::native_le,
+        ">=" => core_numeric::native_ge,
 
-        // 比較演算
-        "=" => comparison::native_eq,
-        "!=" => comparison::native_ne,
-        "<" => comparison::native_lt,
-        ">" => comparison::native_gt,
-        "<=" => comparison::native_le,
-        ">=" => comparison::native_ge,
+        // ========================================
+        // Core: リスト操作（Evaluator不要な基本関数）
+        // ========================================
+        "first" => core_collections::native_first,
+        "rest" => core_collections::native_rest,
+        "last" => core_collections::native_last,
+        "nth" => core_collections::native_nth,
+        "len" => core_collections::native_len,
+        "count" => core_collections::native_count,
+        "cons" => core_collections::native_cons,
+        "conj" => core_collections::native_conj,
+        "concat" => core_collections::native_concat,
+        "flatten" => core_collections::native_flatten,
+        "range" => core_collections::native_range,
+        "reverse" => core_collections::native_reverse,
+        "take" => core_collections::native_take,
+        "drop" => core_collections::native_drop,
+        "sort" => core_collections::native_sort,
+        "distinct" => core_collections::native_distinct,
+        "zip" => core_collections::native_zip,
 
-        // リスト操作
-        "first" => list::native_first,
-        "rest" => list::native_rest,
-        "len" => list::native_len,
-        "count" => list::native_count,
-        "nth" => list::native_nth,
-        "reverse" => list::native_reverse,
-        "cons" => list::native_cons,
-        "conj" => list::native_conj,
-        "take" => list::native_take,
-        "drop" => list::native_drop,
-        "concat" => list::native_concat,
-        "flatten" => list::native_flatten,
-        "range" => list::native_range,
-        "last" => list::native_last,
-        "zip" => list::native_zip,
-        "sort" => list::native_sort,
-        "distinct" => list::native_distinct,
-        "interleave" => list::native_interleave,
-        "take-nth" => list::native_take_nth,
-        "dedupe" => list::native_dedupe,
+        // ========================================
+        // Core: マップ操作（Evaluator不要）
+        // ========================================
+        "get" => core_collections::native_get,
+        "keys" => core_collections::native_keys,
+        "vals" => core_collections::native_vals,
+        "assoc" => core_collections::native_assoc,
+        "dissoc" => core_collections::native_dissoc,
+        "merge" => core_collections::native_merge,
+        "get-in" => core_collections::native_get_in,
 
-        // 文字列操作
-        "str" => string::native_str,
-        "split" => string::native_split,
-        "join" => string::native_join,
-        "upper" => string::native_upper,
-        "lower" => string::native_lower,
-        "trim" => string::native_trim,
-        "contains?" => string::native_contains,
-        "starts-with?" => string::native_starts_with,
-        "ends-with?" => string::native_ends_with,
-        "index-of" => string::native_index_of,
-        "last-index-of" => string::native_last_index_of,
-        "slice" => string::native_slice,
-        "take-str" => string::native_take_str,
-        "drop-str" => string::native_drop_str,
-        "sub-before" => string::native_sub_before,
-        "sub-after" => string::native_sub_after,
-        "replace" => string::native_replace,
-        "replace-first" => string::native_replace_first,
-        "lines" => string::native_lines,
-        "words" => string::native_words,
-        "capitalize" => string::native_capitalize,
-        "trim-left" => string::native_trim_left,
-        "trim-right" => string::native_trim_right,
-        "repeat" => string::native_repeat,
-        "chars-count" => string::native_chars_count,
-        "bytes-count" => string::native_bytes_count,
-        "digit?" => string::native_digit_p,
-        "alpha?" => string::native_alpha_p,
-        "alnum?" => string::native_alnum_p,
-        "space?" => string::native_space_p,
-        "lower?" => string::native_lower_p,
-        "upper?" => string::native_upper_p,
-        "pad-left" => string::native_pad_left,
-        "pad-right" => string::native_pad_right,
-        "pad" => string::native_pad,
-        "squish" => string::native_squish,
-        "expand-tabs" => string::native_expand_tabs,
-        "title" => string::native_title,
-        "reverse" => string::native_reverse,
-        "chars" => string::native_chars,
-        "snake" => string::native_snake,
-        "camel" => string::native_camel,
-        "kebab" => string::native_kebab,
-        "pascal" => string::native_pascal,
-        "split-camel" => string::native_split_camel,
-        "truncate" => string::native_truncate,
-        "trunc-words" => string::native_trunc_words,
-        "splice" => string::native_splice,
-        "numeric?" => string::native_numeric_p,
-        "integer?" => string::native_integer_p,
-        "blank?" => string::native_blank_p,
-        "ascii?" => string::native_ascii_p,
-        "indent" => string::native_indent,
-        "wrap" => string::native_wrap,
-        "parse-int" => string::native_parse_int,
-        "parse-float" => string::native_parse_float,
-        "slugify" => string::native_slugify,
-        "word-count" => string::native_word_count,
-        "to-base64" => string::native_to_base64,
-        "from-base64" => string::native_from_base64,
-        "url-encode" => string::native_url_encode,
-        "url-decode" => string::native_url_decode,
-        "html-encode" => string::native_html_encode,
-        "html-decode" => string::native_html_decode,
-        "hash" => string::native_hash,
-        "uuid" => string::native_uuid,
+        // ========================================
+        // Core: 述語・型判定（20個）
+        // ========================================
+        "nil?" => core_predicates::native_nil,
+        "list?" => core_predicates::native_list_q,
+        "vector?" => core_predicates::native_vector_q,
+        "map?" => core_predicates::native_map_q,
+        "string?" => core_predicates::native_string_q,
+        "integer?" => core_predicates::native_integer_q,
+        "float?" => core_predicates::native_float_q,
+        "number?" => core_predicates::native_number_q,
+        "keyword?" => core_predicates::native_keyword_q,
+        "function?" => core_predicates::native_function_q,
+        "atom?" => core_predicates::native_atom_q,
+        "coll?" => core_predicates::native_coll_q,
+        "sequential?" => core_predicates::native_sequential_q,
+        "empty?" => core_predicates::native_empty,
+        "some?" => core_predicates::native_some_q,
+        "true?" => core_predicates::native_true_q,
+        "false?" => core_predicates::native_false_q,
+        "even?" => core_predicates::native_even_q,
+        "odd?" => core_predicates::native_odd_q,
+        "positive?" => core_predicates::native_positive_q,
+        "negative?" => core_predicates::native_negative_q,
+        "zero?" => core_predicates::native_zero_q,
 
-        // マップ操作
-        "get" => map::native_get,
-        "keys" => map::native_keys,
-        "vals" => map::native_vals,
-        "assoc" => map::native_assoc,
-        "dissoc" => map::native_dissoc,
-        "merge" => map::native_merge,
-        "select-keys" => map::native_select_keys,
-        "get-in" => map::native_get_in,
-        "assoc-in" => map::native_assoc_in,
-        "dissoc-in" => map::native_dissoc_in,
-        "zipmap" => list::native_zipmap,
+        // ========================================
+        // Core: 文字列（3個）
+        // ========================================
+        "str" => core_string::native_str,
+        "split" => core_string::native_split,
+        "join" => core_string::native_join,
 
-        // 述語関数
-        "empty?" => predicates::native_empty,
-        "nil?" => predicates::native_nil,
-        "list?" => predicates::native_list_q,
-        "vector?" => predicates::native_vector_q,
-        "map?" => predicates::native_map_q,
-        "string?" => predicates::native_string_q,
-        "integer?" => predicates::native_integer_q,
-        "float?" => predicates::native_float_q,
-        "keyword?" => predicates::native_keyword_q,
-        "even?" => predicates::native_even_q,
-        "odd?" => predicates::native_odd_q,
-        "positive?" => predicates::native_positive_q,
-        "negative?" => predicates::native_negative_q,
-        "zero?" => predicates::native_zero_q,
-        "some?" => predicates::native_some_q,
-        "true?" => predicates::native_true_q,
-        "false?" => predicates::native_false_q,
-        "coll?" => predicates::native_coll_q,
-        "sequential?" => predicates::native_sequential_q,
+        // ========================================
+        // Core: 型変換・日時（6個）
+        // ========================================
+        "to-int" => core_util::native_to_int,
+        "to-float" => core_util::native_to_float,
+        "to-string" => core_util::native_to_string,
+        "now" => core_util::native_now,
+        "timestamp" => core_util::native_timestamp,
+        "sleep" => core_util::native_sleep,
 
-        // 論理演算
-        "not" => logic::native_not,
+        // ========================================
+        // Core: I/O・論理・エラー（4個）
+        // ========================================
+        "print" => core_io_logic::native_print,
+        "println" => core_io_logic::native_println,
+        "not" => core_io_logic::native_not,
+        "error" => core_io_logic::native_error,
 
-        // エラー処理
-        "error" => error::native_error,
+        // ========================================
+        // Core: 高階関数（Evaluator不要な関数）
+        // ========================================
+        "identity" => core_functions::native_identity,
+        "constantly" => core_functions::native_constantly,
+        "partial" => core_functions::native_partial,
 
-        // 状態管理
-        "atom" => atom::native_atom,
-        "deref" => atom::native_deref,
-        "reset!" => atom::native_reset,
+        // ========================================
+        // Core: 状態管理（Evaluator不要）
+        // ========================================
+        "atom" => core_state_meta::native_atom,
+        "deref" => core_state_meta::native_deref,
+        "reset!" => core_state_meta::native_reset,
 
-        // メタプログラミング
-        "uvar" => meta::native_uvar,
-        "variable" => meta::native_variable,
-        "macro?" => meta::native_macro_q,
+        // ========================================
+        // Core: メタプログラミング（Evaluator不要）
+        // ========================================
+        "uvar" => core_state_meta::native_uvar,
+        "variable" => core_state_meta::native_variable,
+        "macro?" => core_state_meta::native_macro_q,
 
-        // ファイルI/O
-        "read-file" => io::native_read_file,
-        "write-file" => io::native_write_file,
-        "append-file" => io::native_append_file,
-        "println" => io::native_println,
-        "read-lines" => io::native_read_lines,
-        "file-exists?" => io::native_file_exists,
+        // ========================================
+        // Core: 並行処理（Evaluator不要）
+        // ========================================
+        "chan" => core_concurrency::native_chan,
+        "send!" => core_concurrency::native_send,
+        "recv!" => core_concurrency::native_recv,
+        "close!" => core_concurrency::native_close,
 
-        // 関数型基礎
-        "identity" => hof::native_identity,
-        "constantly" => hof::native_constantly,
-        "partial" => hof::native_partial,
-        "complement" => hof::native_complement,
-        "juxt" => hof::native_juxt,
+        // ========================================
+        // 専門モジュール: list（18個）
+        // ========================================
+        "list/frequencies" => list::native_frequencies,
+        "list/interleave" => list::native_interleave,
+        "list/take-nth" => list::native_take_nth,
+        "list/dedupe" => list::native_dedupe,
+        "list/split-at" => list::native_split_at,
+        "list/zipmap" => list::native_zipmap,
+        "list/chunk" => list::native_chunk,
+        "list/drop-last" => list::native_drop_last,
 
-        // 集合演算
-        "union" => set::native_union,
-        "intersect" => set::native_intersect,
-        "difference" => set::native_difference,
-        "subset?" => set::native_subset,
+        // ========================================
+        // 専門モジュール: map（5個）
+        // ========================================
+        "map/select-keys" => map::native_select_keys,
+        "map/assoc-in" => map::native_assoc_in,
+        "map/dissoc-in" => map::native_dissoc_in,
 
-        // 数学関数
-        "pow" => math::native_pow,
-        "sqrt" => math::native_sqrt,
-        "round" => math::native_round,
-        "floor" => math::native_floor,
-        "ceil" => math::native_ceil,
-        "clamp" => math::native_clamp,
-        "rand" => math::native_rand,
-        "rand-int" => math::native_rand_int,
+        // ========================================
+        // 専門モジュール: fn（3個）
+        // ========================================
+        "fn/complement" => hof::native_complement,
+        "fn/juxt" => hof::native_juxt,
+        "fn/tap>" => hof::native_tap,
 
-        // 文字列処理（正規表現）
-        "re-find" => string::native_re_find,
-        "re-matches" => string::native_re_matches,
-        "re-replace" => string::native_re_replace,
-        "format" => string::native_format,
+        // ========================================
+        // 専門モジュール: set（4個）
+        // ========================================
+        "set/union" => set::native_union,
+        "set/intersect" => set::native_intersect,
+        "set/difference" => set::native_difference,
+        "set/subset?" => set::native_subset,
 
-        // リスト処理（高度）
-        "split-at" => list::native_split_at,
-        "interleave" => list::native_interleave,
-        "frequencies" => list::native_frequencies,
+        // ========================================
+        // 専門モジュール: math（10個）
+        // ========================================
+        "math/pow" => math::native_pow,
+        "math/sqrt" => math::native_sqrt,
+        "math/round" => math::native_round,
+        "math/floor" => math::native_floor,
+        "math/ceil" => math::native_ceil,
+        "math/clamp" => math::native_clamp,
+        "math/rand" => math::native_rand,
+        "math/rand-int" => math::native_rand_int,
 
-        // 日付・時刻
-        "now" => util::native_now,
-        "timestamp" => util::native_timestamp,
-        "sleep" => util::native_sleep,
+        // ========================================
+        // 専門モジュール: io（5個）
+        // ========================================
+        "io/read-file" => io::native_read_file,
+        "io/write-file" => io::native_write_file,
+        "io/append-file" => io::native_append_file,
+        "io/read-lines" => io::native_read_lines,
+        "io/file-exists?" => io::native_file_exists,
 
-        // JSON処理
-        "json-parse" => util::native_json_parse,
-        "json-stringify" => util::native_json_stringify,
-        "json-pretty" => util::native_json_pretty,
+        // ========================================
+        // 専門モジュール: dbg（2個）
+        // ========================================
+        "dbg/inspect" => util::native_inspect,
 
-        // JSONモジュール（新形式）
+        // ========================================
+        // 専門モジュール: json（3個）
+        // ========================================
         "json/parse" => json::native_parse,
         "json/stringify" => json::native_stringify,
         "json/pretty" => json::native_pretty,
 
-        // 型変換
-        "to-int" => util::native_to_int,
-        "to-float" => util::native_to_float,
-        "to-string" => util::native_to_string,
-
-        // 型チェック
-        "number?" => util::native_number_p,
-        "function?" => util::native_function_p,
-        "atom?" => util::native_atom_p,
-
-        // デバッグ
-        "inspect" => util::native_inspect,
-
-        // 並行処理（チャネル）
-        "chan" => concurrency::native_chan,
-        "send!" => concurrency::native_send,
-        "recv!" => concurrency::native_recv,
-        "try-recv!" => concurrency::native_try_recv,
-        "close!" => concurrency::native_close,
-        "fan-out" => concurrency::native_fan_out,
-        "fan-in" => concurrency::native_fan_in,
-
-        // Structured Concurrency
-        "make-scope" => concurrency::native_make_scope,
-        "cancel!" => concurrency::native_cancel,
-        "cancelled?" => concurrency::native_cancelled_q,
-
-        // async/await
-        "await" => concurrency::native_await,
-        "all" => concurrency::native_all,
-        "race" => concurrency::native_race,
-
-        // HTTP
+        // ========================================
+        // 専門モジュール: http（11個）
+        // ========================================
         "http/get" => http::native_get,
         "http/post" => http::native_post,
         "http/put" => http::native_put,
@@ -319,47 +292,204 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "http/options" => http::native_options,
         "http/request" => http::native_request,
 
-        // Stream (non-evaluator) - メモリ内遅延評価
-        "stream" => stream::native_stream,
-        "range-stream" => stream::native_range_stream,
-        "repeat" => stream::native_repeat,
-        "cycle" => stream::native_cycle,
-        "stream-take" => stream::native_stream_take,
-        "stream-drop" => stream::native_stream_drop,
-        "realize" => stream::native_realize,
+        // ========================================
+        // 専門モジュール: stream（11個）
+        // ========================================
+        "stream/stream" => stream::native_stream,
+        "stream/range" => stream::native_range_stream,
+        "stream/repeat" => stream::native_repeat,
+        "stream/cycle" => stream::native_cycle,
+        "stream/take" => stream::native_stream_take,
+        "stream/drop" => stream::native_stream_drop,
+        "stream/realize" => stream::native_realize,
+        "stream/file" => io::native_file_stream,
 
-        // I/O Stream
-        "file-stream" => io::native_file_stream,
-        "http/get-stream" => http::native_get_stream,
-        "http/post-stream" => http::native_post_stream,
-        "http/request-stream" => http::native_request_stream,
+        // ========================================
+        // 専門モジュール: str（62個）
+        // ========================================
+        "str/upper" => string::native_upper,
+        "str/lower" => string::native_lower,
+        "str/trim" => string::native_trim,
+        "str/contains?" => string::native_contains,
+        "str/starts-with?" => string::native_starts_with,
+        "str/ends-with?" => string::native_ends_with,
+        "str/index-of" => string::native_index_of,
+        "str/last-index-of" => string::native_last_index_of,
+        "str/slice" => string::native_slice,
+        "str/take" => string::native_take_str,
+        "str/drop" => string::native_drop_str,
+        "str/sub-before" => string::native_sub_before,
+        "str/sub-after" => string::native_sub_after,
+        "str/replace" => string::native_replace,
+        "str/replace-first" => string::native_replace_first,
+        "str/lines" => string::native_lines,
+        "str/words" => string::native_words,
+        "str/capitalize" => string::native_capitalize,
+        "str/trim-left" => string::native_trim_left,
+        "str/trim-right" => string::native_trim_right,
+        "str/repeat" => string::native_repeat,
+        "str/chars-count" => string::native_chars_count,
+        "str/bytes-count" => string::native_bytes_count,
+        "str/digit?" => string::native_digit_p,
+        "str/alpha?" => string::native_alpha_p,
+        "str/alnum?" => string::native_alnum_p,
+        "str/space?" => string::native_space_p,
+        "str/lower?" => string::native_lower_p,
+        "str/upper?" => string::native_upper_p,
+        "str/pad-left" => string::native_pad_left,
+        "str/pad-right" => string::native_pad_right,
+        "str/pad" => string::native_pad,
+        "str/squish" => string::native_squish,
+        "str/expand-tabs" => string::native_expand_tabs,
+        "str/title" => string::native_title,
+        "str/reverse" => string::native_reverse,
+        "str/chars" => string::native_chars,
+        "str/snake" => string::native_snake,
+        "str/camel" => string::native_camel,
+        "str/kebab" => string::native_kebab,
+        "str/pascal" => string::native_pascal,
+        "str/split-camel" => string::native_split_camel,
+        "str/truncate" => string::native_truncate,
+        "str/trunc-words" => string::native_trunc_words,
+        "str/splice" => string::native_splice,
+        "str/numeric?" => string::native_numeric_p,
+        "str/integer?" => string::native_integer_p,
+        "str/blank?" => string::native_blank_p,
+        "str/ascii?" => string::native_ascii_p,
+        "str/indent" => string::native_indent,
+        "str/wrap" => string::native_wrap,
+        "str/parse-int" => string::native_parse_int,
+        "str/parse-float" => string::native_parse_float,
+        "str/slugify" => string::native_slugify,
+        "str/word-count" => string::native_word_count,
+        "str/to-base64" => string::native_to_base64,
+        "str/from-base64" => string::native_from_base64,
+        "str/url-encode" => string::native_url_encode,
+        "str/url-decode" => string::native_url_decode,
+        "str/html-encode" => string::native_html_encode,
+        "str/html-decode" => string::native_html_decode,
+        "str/hash" => string::native_hash,
+        "str/uuid" => string::native_uuid,
+        "str/re-find" => string::native_re_find,
+        "str/re-matches" => string::native_re_matches,
+        "str/re-replace" => string::native_re_replace,
+        "str/format" => string::native_format,
+
+        // ========================================
+        // async/pipeline モジュール（Evaluator不要な関数）
+        // ========================================
+        "async/try-recv!" => concurrency::native_try_recv,
+        "async/make-scope" => concurrency::native_make_scope,
+        "async/cancel!" => concurrency::native_cancel,
+        "async/cancelled?" => concurrency::native_cancelled_q,
+        "async/await" => concurrency::native_await,
+        "async/all" => concurrency::native_all,
+        "async/race" => concurrency::native_race,
+        "pipeline/fan-out" => concurrency::native_fan_out,
+        "pipeline/fan-in" => concurrency::native_fan_in,
     );
 }
 
-/// 高階関数を登録（Evaluatorへの参照が必要なため別扱い）
+// ========================================
+// Evaluatorが必要な関数（mod.rsでラップ）
+// ========================================
+
+/// map - リストの各要素に関数を適用
 pub fn map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_map(args, evaluator)
 }
 
+/// filter - リストから条件を満たす要素のみ抽出
 pub fn filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_filter(args, evaluator)
 }
 
+/// reduce - リストを畳み込み
 pub fn reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_reduce(args, evaluator)
 }
 
+/// pmap - 並列map
 pub fn pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_pmap(args, evaluator)
 }
 
-pub fn pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_pfilter(args, evaluator)
+/// comp - 関数合成
+pub fn comp(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_functions::native_comp(args, evaluator)
 }
 
-pub fn preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_preduce(args, evaluator)
+/// apply - リストを引数として関数適用
+pub fn apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_functions::native_apply(args, evaluator)
 }
+
+/// take-while - 条件を満たす間要素を取得
+pub fn take_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_take_while(args, evaluator)
+}
+
+/// drop-while - 条件を満たす間要素をスキップ
+pub fn drop_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_drop_while(args, evaluator)
+}
+
+/// find - リストから条件を満たす最初の要素を検索
+pub fn find(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_find(args, evaluator)
+}
+
+/// every - すべての要素が条件を満たすか判定
+pub fn every(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_every(args, evaluator)
+}
+
+/// some - いずれかの要素が条件を満たすか判定
+pub fn some(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_some(args, evaluator)
+}
+
+/// update-in - ネストしたマップの値を更新
+pub fn update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_update_in(args, evaluator)
+}
+
+/// update - マップの値を関数で更新
+pub fn update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_update(args, evaluator)
+}
+
+/// swap! - アトムの値を関数で更新
+pub fn swap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_state_meta::native_swap(args, evaluator)
+}
+
+/// eval - 式を評価
+pub fn eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_state_meta::native_eval(args, evaluator)
+}
+
+/// go - goroutine風の非同期実行
+pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_concurrency::native_go(args, evaluator)
+}
+
+/// time - 関数実行時間を計測（dbg/time）
+pub fn time(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    util::native_time(args, evaluator)
+}
+
+/// tap - 副作用タップ（パイプライン内で括弧1つで使用可能）
+pub fn tap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_tap_direct(args, evaluator)
+}
+
+/// Railway Pipeline用の内部関数
+pub fn railway_pipe(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    util::native_railway_pipe(args, evaluator)
+}
+
+// 以下、その他のEvaluator必要な関数
 
 pub fn partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_partition(args, evaluator)
@@ -367,46 +497,6 @@ pub fn partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
 
 pub fn group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_group_by(args, evaluator)
-}
-
-pub fn map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_map_lines(args, evaluator)
-}
-
-pub fn update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_update(args, evaluator)
-}
-
-pub fn update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_update_in(args, evaluator)
-}
-
-pub fn comp(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_comp(args, evaluator)
-}
-
-pub fn apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    hof::native_apply_public(args, evaluator)
-}
-
-pub fn take_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_take_while(args, evaluator)
-}
-
-pub fn find(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_find(args, evaluator)
-}
-
-pub fn find_index(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_find_index(args, evaluator)
-}
-
-pub fn every(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_every(args, evaluator)
-}
-
-pub fn some(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_some(args, evaluator)
 }
 
 pub fn update_keys(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -425,29 +515,14 @@ pub fn keep(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_keep(args, evaluator)
 }
 
-pub fn drop_last(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_drop_last(args)
-}
-
 pub fn split_at(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
     list::native_split_at(args)
 }
 
-pub fn drop_while(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_drop_while(args, evaluator)
+pub fn drop_last(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_drop_last(args)
 }
 
-/// 状態管理関数（Evaluatorへの参照が必要なため別扱い）
-pub fn swap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    atom::native_swap(args, evaluator)
-}
-
-/// メタプログラミング関数（Evaluatorへの参照が必要なため別扱い）
-pub fn eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    meta::native_eval(args, evaluator)
-}
-
-/// リスト処理（Evaluatorが必要な関数）
 pub fn sort_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sort_by(args, evaluator)
 }
@@ -472,9 +547,20 @@ pub fn sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sum_by(args, evaluator)
 }
 
-/// 並行処理関数（Evaluatorが必要な関数）
-pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    concurrency::native_go(args, evaluator)
+pub fn find_index(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    list::native_find_index(args, evaluator)
+}
+
+pub fn pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_pfilter(args, evaluator)
+}
+
+pub fn preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_preduce(args, evaluator)
+}
+
+pub fn map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_map_lines(args, evaluator)
 }
 
 pub fn pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -513,7 +599,6 @@ pub fn parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     concurrency::native_parallel_do(args, evaluator)
 }
 
-/// Stream関数（Evaluatorが必要な関数）
 pub fn iterate(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     stream::native_iterate(args, evaluator)
 }
@@ -526,21 +611,10 @@ pub fn stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
     stream::native_stream_filter(args, evaluator)
 }
 
-/// HTTP関数（Evaluatorが必要な関数）
 pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_get_async(args, evaluator)
 }
 
 pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_post_async(args, evaluator)
-}
-
-/// Railway Pipeline用の内部関数
-pub fn railway_pipe(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    util::native_railway_pipe(args, evaluator)
-}
-
-/// time関数用ラッパー
-pub fn time(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    util::native_time(args, evaluator)
 }

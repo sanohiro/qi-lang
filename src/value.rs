@@ -59,10 +59,27 @@ pub struct Channel {
     pub receiver: Receiver<Value>,
 }
 
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// 実際の等価性比較はValueのPartialEqでArc::ptr_eqを使用
+impl PartialEq for Channel {
+    fn eq(&self, _other: &Self) -> bool {
+        // チャネルは構造的な等価性比較が困難なため、常にfalse
+        false
+    }
+}
+
 /// スコープ（Structured Concurrency用）
 #[derive(Debug, Clone)]
 pub struct Scope {
     pub cancelled: Arc<RwLock<bool>>,
+}
+
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// 実際の等価性比較はValueのPartialEqでArc::ptr_eqを使用
+impl PartialEq for Scope {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.cancelled, &other.cancelled)
+    }
 }
 
 /// ストリーム（遅延評価）
@@ -73,6 +90,15 @@ pub struct Stream {
 impl std::fmt::Debug for Stream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Stream {{ next_fn: <closure> }}")
+    }
+}
+
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// 実際の等価性比較はValueのPartialEqでArc::ptr_eqを使用
+impl PartialEq for Stream {
+    fn eq(&self, _other: &Self) -> bool {
+        // ストリームは関数を持つため構造的な等価性比較が困難
+        false
     }
 }
 
@@ -120,6 +146,16 @@ pub struct Function {
     pub is_variadic: bool, // &argsに対応
 }
 
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// 実際の等価性比較はValueのPartialEqでArc::ptr_eqを使用
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        // 関数の等価性はパラメータ、ボディ、可変長フラグで判定
+        // 環境は比較しない（クロージャの等価性は意味論的に困難）
+        self.params == other.params && self.body == other.body && self.is_variadic == other.is_variadic
+    }
+}
+
 /// マクロの定義
 #[derive(Debug, Clone)]
 pub struct Macro {
@@ -128,6 +164,18 @@ pub struct Macro {
     pub body: Expr,
     pub env: Env,
     pub is_variadic: bool,
+}
+
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// 実際の等価性比較はValueのPartialEqでArc::ptr_eqを使用
+impl PartialEq for Macro {
+    fn eq(&self, other: &Self) -> bool {
+        // マクロの等価性は名前、パラメータ、ボディ、可変長フラグで判定
+        self.name == other.name
+            && self.params == other.params
+            && self.body == other.body
+            && self.is_variadic == other.is_variadic
+    }
 }
 
 /// ネイティブ関数
@@ -154,6 +202,20 @@ impl fmt::Debug for NativeFunc {
 pub struct Env {
     bindings: HashMap<String, Value>,
     parent: Option<Arc<RwLock<Env>>>,
+}
+
+// NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
+// FunctionとMacroがEnvを持つため、それらのPartialEq実装に必要
+impl PartialEq for Env {
+    fn eq(&self, other: &Self) -> bool {
+        // 環境はポインタ比較とバインディング比較の組み合わせ
+        self.bindings == other.bindings
+            && match (&self.parent, &other.parent) {
+                (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+                (None, None) => true,
+                _ => false,
+            }
+    }
 }
 
 impl Env {

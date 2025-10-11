@@ -1,21 +1,17 @@
-//! 述語関数（型判定など）
+//! Core述語・型判定関数
+//!
+//! 型チェック（9個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?
+//! コレクション（3個）: coll?, sequential?, empty?
+//! 状態（3個）: some?, true?, false?
+//! 数値（5個）: even?, odd?, positive?, negative?, zero?
+//! 合計20個のCore関数
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
-/// empty? - コレクションが空かどうか判定
-pub fn native_empty(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["empty?"]));
-    }
-    match &args[0] {
-        Value::Nil => Ok(Value::Bool(true)),
-        Value::List(v) | Value::Vector(v) => Ok(Value::Bool(v.is_empty())),
-        Value::Map(m) => Ok(Value::Bool(m.is_empty())),
-        Value::String(s) => Ok(Value::Bool(s.is_empty())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["empty?", "strings or collections"])),
-    }
-}
+// ========================================
+// 型チェック（11個）
+// ========================================
 
 /// nil? - nilかどうか判定
 pub fn native_nil(args: &[Value]) -> Result<Value, String> {
@@ -73,6 +69,14 @@ pub fn native_float_q(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Bool(matches!(args[0], Value::Float(_))))
 }
 
+/// number? - 数値判定
+pub fn native_number_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["number?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
+}
+
 /// keyword? - キーワードかどうか判定
 pub fn native_keyword_q(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -80,6 +84,94 @@ pub fn native_keyword_q(args: &[Value]) -> Result<Value, String> {
     }
     Ok(Value::Bool(matches!(args[0], Value::Keyword(_))))
 }
+
+/// function? - 関数判定
+pub fn native_function_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["function?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
+}
+
+/// atom? - atom判定
+pub fn native_atom_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["atom?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Atom(_))))
+}
+
+// ========================================
+// コレクション（3個）
+// ========================================
+
+/// coll? - コレクション型かどうか判定
+pub fn native_coll_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["coll?"]));
+    }
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::List(_) | Value::Vector(_) | Value::Map(_)
+    )))
+}
+
+/// sequential? - シーケンシャル型かどうか判定
+pub fn native_sequential_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["sequential?"]));
+    }
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::List(_) | Value::Vector(_)
+    )))
+}
+
+/// empty? - コレクションが空かどうか判定
+pub fn native_empty(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["empty?"]));
+    }
+    match &args[0] {
+        Value::Nil => Ok(Value::Bool(true)),
+        Value::List(v) | Value::Vector(v) => Ok(Value::Bool(v.is_empty())),
+        Value::Map(m) => Ok(Value::Bool(m.is_empty())),
+        Value::String(s) => Ok(Value::Bool(s.is_empty())),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["empty?", "strings or collections"])),
+    }
+}
+
+// ========================================
+// 状態（3個）
+// ========================================
+
+/// some? - nilでないかどうか判定
+pub fn native_some_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["some?"]));
+    }
+    Ok(Value::Bool(!matches!(args[0], Value::Nil)))
+}
+
+/// true? - 厳密にtrueかどうか判定
+pub fn native_true_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["true?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bool(true))))
+}
+
+/// false? - 厳密にfalseかどうか判定
+pub fn native_false_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["false?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bool(false))))
+}
+
+// ========================================
+// 数値（5個）
+// ========================================
 
 /// even? - 偶数かどうか判定
 pub fn native_even_q(args: &[Value]) -> Result<Value, String> {
@@ -137,50 +229,4 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
         Value::Float(f) => Ok(Value::Bool(*f == 0.0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["zero?", "numbers"])),
     }
-}
-
-/// some? - nilでないかどうか判定
-pub fn native_some_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["some?"]));
-    }
-    Ok(Value::Bool(!matches!(args[0], Value::Nil)))
-}
-
-/// true? - 厳密にtrueかどうか判定
-pub fn native_true_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["true?"]));
-    }
-    Ok(Value::Bool(matches!(args[0], Value::Bool(true))))
-}
-
-/// false? - 厳密にfalseかどうか判定
-pub fn native_false_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["false?"]));
-    }
-    Ok(Value::Bool(matches!(args[0], Value::Bool(false))))
-}
-
-/// coll? - コレクション型かどうか判定
-pub fn native_coll_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["coll?"]));
-    }
-    Ok(Value::Bool(matches!(
-        args[0],
-        Value::List(_) | Value::Vector(_) | Value::Map(_)
-    )))
-}
-
-/// sequential? - シーケンシャル型かどうか判定
-pub fn native_sequential_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["sequential?"]));
-    }
-    Ok(Value::Bool(matches!(
-        args[0],
-        Value::List(_) | Value::Vector(_)
-    )))
 }

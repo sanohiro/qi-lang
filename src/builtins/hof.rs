@@ -558,3 +558,65 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
         is_variadic: false,
     })))
 }
+
+/// tap> - 副作用タップ（流れを止めずに観察）- 高階関数版
+///
+/// Unixのteeコマンド相当の機能。
+/// データフローを止めずに副作用（ログ、デバッグ出力など）を実行します。
+///
+/// 使用例:
+/// ```lisp
+/// (data
+///  |> process
+///  |> ((fn/tap> print))  ;; データを表示しつつ通過させる
+///  |> save)
+/// ```
+pub fn native_tap(args: &[Value]) -> Result<Value, String> {
+    use std::sync::Arc;
+
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["fn/tap>"]));
+    }
+
+    let func = args[0].clone();
+
+    // (fn [x] (do (f x) x)) を返す
+    // 実装はeval.rsのapply_funcで特殊処理される
+    Ok(Value::Function(Arc::new(crate::value::Function {
+        params: vec!["x".to_string()],
+        body: crate::value::Expr::Symbol("x".to_string()),
+        env: {
+            let mut env = crate::value::Env::new();
+            env.set("__tap_func__".to_string(), func);
+            env
+        },
+        is_variadic: false,
+    })))
+}
+
+/// tap - 副作用タップ（Evaluator版、パイプライン内で直接使用可能）
+///
+/// `(tap print)`の形で使えるバージョン。
+/// パイプライン内で`|> (tap print)`と書ける。
+///
+/// 使用例:
+/// ```lisp
+/// ([1 2 3]
+///  |> (map inc)
+///  |> (tap print)  ;; 括弧1つでOK
+///  |> sum)
+/// ```
+pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["tap"]));
+    }
+
+    let func = &args[0];
+    let value = &args[1];
+
+    // 副作用関数を実行（結果は無視）
+    let _ = evaluator.apply_function(func, &[value.clone()]);
+
+    // 元の値をそのまま返す
+    Ok(value.clone())
+}

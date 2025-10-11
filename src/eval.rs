@@ -70,14 +70,24 @@ impl Evaluator {
             }),
         );
 
-        Evaluator {
-            global_env: env_rc,
+        let evaluator = Evaluator {
+            global_env: env_rc.clone(),
             defer_stack: Arc::new(RwLock::new(Vec::new())),
             modules: Arc::new(RwLock::new(HashMap::new())),
             current_module: Arc::new(RwLock::new(None)),
             loading_modules: Arc::new(RwLock::new(Vec::new())),
             call_stack: Arc::new(RwLock::new(Vec::new())),
-        }
+        };
+
+        // 標準マクロを定義
+        evaluator.define_standard_macros();
+
+        evaluator
+    }
+
+    /// 標準マクロを定義
+    fn define_standard_macros(&self) {
+        // tapは特別なEvaluator必要関数として別途登録済み
     }
 
     pub fn eval(&self, expr: &Expr) -> Result<Value, String> {
@@ -319,53 +329,54 @@ impl Evaluator {
                 if let Expr::Symbol(name) = func.as_ref() {
                     match name.as_str() {
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
-                        "time" => return self.eval_time(args, env),
+                        "time" | "dbg/time" | "debug/time" => return self.eval_time(args, env),
+                        "tap" => return self.eval_tap(args, env),
                         "map" => return self.eval_map(args, env),
                         "filter" => return self.eval_filter(args, env),
                         "reduce" => return self.eval_reduce(args, env),
                         "pmap" => return self.eval_pmap(args, env),
-                        "pfilter" => return self.eval_pfilter(args, env),
-                        "preduce" => return self.eval_preduce(args, env),
-                        "partition" => return self.eval_partition(args, env),
-                        "group-by" => return self.eval_group_by(args, env),
-                        "map-lines" => return self.eval_map_lines(args, env),
+                        "pfilter" | "async/pfilter" => return self.eval_pfilter(args, env),
+                        "preduce" | "async/preduce" => return self.eval_preduce(args, env),
+                        "partition" | "list/partition" => return self.eval_partition(args, env),
+                        "group-by" | "list/group-by" => return self.eval_group_by(args, env),
+                        "map-lines" | "str/map-lines" => return self.eval_map_lines(args, env),
                         "take-while" => return self.eval_take_while(args, env),
                         "drop-while" => return self.eval_drop_while(args, env),
                         "find" => return self.eval_find(args, env),
-                        "find-index" => return self.eval_find_index(args, env),
+                        "find-index" | "list/find-index" => return self.eval_find_index(args, env),
                         "every?" => return self.eval_every(args, env),
                         "some?" => return self.eval_some(args, env),
-                        "update-keys" => return self.eval_update_keys(args, env),
-                        "update-vals" => return self.eval_update_vals(args, env),
-                        "partition-by" => return self.eval_partition_by(args, env),
-                        "keep" => return self.eval_keep(args, env),
-                        "drop-last" => return self.eval_drop_last(args, env),
-                        "split-at" => return self.eval_split_at(args, env),
+                        "update-keys" | "map/update-keys" => return self.eval_update_keys(args, env),
+                        "update-vals" | "map/update-vals" => return self.eval_update_vals(args, env),
+                        "partition-by" | "list/partition-by" => return self.eval_partition_by(args, env),
+                        "keep" | "list/keep" => return self.eval_keep(args, env),
+                        "drop-last" | "list/drop-last" => return self.eval_drop_last(args, env),
+                        "split-at" | "list/split-at" => return self.eval_split_at(args, env),
                         "update" => return self.eval_update(args, env),
                         "update-in" => return self.eval_update_in(args, env),
                         "comp" => return self.eval_comp(args, env),
                         "apply" => return self.eval_apply(args, env),
-                        "sort-by" => return self.eval_sort_by(args, env),
-                        "chunk" => return self.eval_chunk(args, env),
-                        "count-by" => return self.eval_count_by(args, env),
-                        "max-by" => return self.eval_max_by(args, env),
-                        "min-by" => return self.eval_min_by(args, env),
-                        "sum-by" => return self.eval_sum_by(args, env),
+                        "sort-by" | "list/sort-by" => return self.eval_sort_by(args, env),
+                        "chunk" | "list/chunk" => return self.eval_chunk(args, env),
+                        "count-by" | "list/count-by" => return self.eval_count_by(args, env),
+                        "max-by" | "list/max-by" => return self.eval_max_by(args, env),
+                        "min-by" | "list/min-by" => return self.eval_min_by(args, env),
+                        "sum-by" | "list/sum-by" => return self.eval_sum_by(args, env),
                         "swap!" => return self.eval_swap(args, env),
                         "eval" => return self.eval_eval(args, env),
                         "go" => return self.eval_go(args, env),
-                        "pipeline" => return self.eval_pipeline(args, env),
-                        "pipeline-map" => return self.eval_pipeline_map(args, env),
-                        "pipeline-filter" => return self.eval_pipeline_filter(args, env),
-                        "then" => return self.eval_then(args, env),
-                        "catch" => return self.eval_catch(args, env),
-                        "select!" => return self.eval_select(args, env),
-                        "scope-go" => return self.eval_scope_go(args, env),
-                        "with-scope" => return self.eval_with_scope(args, env),
-                        "parallel-do" => return self.eval_parallel_do(args, env),
-                        "iterate" => return self.eval_iterate(args, env),
-                        "stream-map" => return self.eval_stream_map(args, env),
-                        "stream-filter" => return self.eval_stream_filter(args, env),
+                        "pipeline" | "pipeline/pipeline" => return self.eval_pipeline(args, env),
+                        "pipeline-map" | "pipeline/map" => return self.eval_pipeline_map(args, env),
+                        "pipeline-filter" | "pipeline/filter" => return self.eval_pipeline_filter(args, env),
+                        "then" | "async/then" => return self.eval_then(args, env),
+                        "catch" | "async/catch" => return self.eval_catch(args, env),
+                        "select!" | "async/select!" => return self.eval_select(args, env),
+                        "scope-go" | "async/scope-go" => return self.eval_scope_go(args, env),
+                        "with-scope" | "async/with-scope" => return self.eval_with_scope(args, env),
+                        "parallel-do" | "async/parallel-do" => return self.eval_parallel_do(args, env),
+                        "iterate" | "stream/iterate" => return self.eval_iterate(args, env),
+                        "stream-map" | "stream/map" => return self.eval_stream_map(args, env),
+                        "stream-filter" | "stream/filter" => return self.eval_stream_filter(args, env),
                         "and" => return self.eval_and(args, env),
                         "or" => return self.eval_or(args, env),
                         "quote" => return self.eval_quote(args),
@@ -749,6 +760,17 @@ impl Evaluator {
                     return Ok(Value::Vector(results));
                 }
 
+                // tap>特殊処理 - 副作用を実行してから値を返す
+                if let Some(tap_func) = f.env.get("__tap_func__") {
+                    if args.len() == 1 {
+                        let value = args[0].clone();
+                        // 副作用関数を実行（結果は無視）
+                        let _ = self.apply_func(&tap_func, vec![value.clone()]);
+                        // 元の値をそのまま返す
+                        return Ok(value);
+                    }
+                }
+
                 // 通常の関数処理
                 let parent_env = Arc::new(RwLock::new(f.env.clone()));
                 let mut new_env = Env::with_parent(parent_env);
@@ -947,6 +969,15 @@ impl Evaluator {
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::time(&vals, self)
+    }
+
+    fn eval_tap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err(fmt_msg(MsgKey::Need2Args, &["tap"]));
+        }
+        let func = self.eval_with_env(&args[0], env.clone())?;
+        let value = self.eval_with_env(&args[1], env.clone())?;
+        builtins::tap(&[func, value], self)
     }
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
