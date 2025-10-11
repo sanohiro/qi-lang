@@ -2203,6 +2203,18 @@ math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
+##### ✅ time - 日付・時刻（25個）
+```lisp
+time/now-iso time/today
+time/from-unix time/to-unix time/format time/parse
+time/add-days time/add-hours time/add-minutes
+time/sub-days time/sub-hours time/sub-minutes
+time/diff-days time/diff-hours time/diff-minutes
+time/before? time/after? time/between?
+time/year time/month time/day
+time/hour time/minute time/second time/weekday
+```
+
 ##### ✅ io - ファイルI/O（19個） - グローバルエンコーディング対応（日中韓欧露）
 
 **ファイル読み書き**:
@@ -3398,7 +3410,7 @@ args/all args/get args/parse args/count
 - Flow-oriented設計でパイプラインと組み合わせ可能
 - CLIツールとサーバーアプリケーション両方で使用可能
 
-#### 🔜 time/date - 日付・時刻（計画中）
+#### ✅ time - 日付・時刻（25個）（実装済み）
 
 **設計方針**: ISO 8601準拠。Flow-orientedな変換・操作。
 

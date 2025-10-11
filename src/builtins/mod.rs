@@ -23,7 +23,7 @@
 //! - fn: 高階関数（3個）
 //! - set: 集合演算（7個）
 //! - math: 数学関数（10個）
-//! - time: 日時処理（4個）
+//! - time: 日時処理（25個）
 //! - stats: 統計関数（6個）
 //! - io: ファイルI/O（19個）
 //! - path: パス操作（9個）
@@ -281,12 +281,33 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "math/shuffle" => math::native_shuffle,
 
         // ========================================
-        // 専門モジュール: time（4個）
+        // 専門モジュール: time（25個）
         // ========================================
         "time/now-iso" => time::native_now_iso,
+        "time/today" => time::native_today,
         "time/from-unix" => time::native_from_unix,
         "time/to-unix" => time::native_to_unix,
         "time/format" => time::native_format,
+        "time/parse" => time::native_parse,
+        "time/add-days" => time::native_add_days,
+        "time/add-hours" => time::native_add_hours,
+        "time/add-minutes" => time::native_add_minutes,
+        "time/sub-days" => time::native_sub_days,
+        "time/sub-hours" => time::native_sub_hours,
+        "time/sub-minutes" => time::native_sub_minutes,
+        "time/diff-days" => time::native_diff_days,
+        "time/diff-hours" => time::native_diff_hours,
+        "time/diff-minutes" => time::native_diff_minutes,
+        "time/before?" => time::native_before,
+        "time/after?" => time::native_after,
+        "time/between?" => time::native_between,
+        "time/year" => time::native_year,
+        "time/month" => time::native_month,
+        "time/day" => time::native_day,
+        "time/hour" => time::native_hour,
+        "time/minute" => time::native_minute,
+        "time/second" => time::native_second,
+        "time/weekday" => time::native_weekday,
 
         // ========================================
         // 専門モジュール: stats（6個）
