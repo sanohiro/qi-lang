@@ -182,6 +182,7 @@ impl Parser {
                 "loop" => return self.parse_loop(),
                 "recur" => return self.parse_recur(),
                 "mac" => return self.parse_mac(),
+                "flow" => return self.parse_flow(),
                 "module" => return self.parse_module(),
                 "export" => return self.parse_export(),
                 "use" => return self.parse_use(),
@@ -596,6 +597,124 @@ impl Parser {
             is_variadic,
             body,
         })
+    }
+
+    /// flowをパース
+    /// (flow data |> fn1 |> fn2) → (data |> fn1 |> fn2)
+    /// (flow |> fn1 |> fn2) → (fn [x] (x |> fn1 |> fn2))
+    fn parse_flow(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'flow'をスキップ
+
+        // 最初が|>の場合、ラムダを生成
+        if self.current() == Some(&Token::Pipe) {
+            // (flow |> fn1 |> fn2) → (fn [__flow_x] (__flow_x |> fn1 |> fn2))
+            let var_name = "__flow_x".to_string();
+            let mut expr = Expr::Symbol(var_name.clone());
+
+            // パイプラインをパース
+            while self.current() == Some(&Token::Pipe)
+                || self.current() == Some(&Token::PipeRailway)
+                || self.current() == Some(&Token::ParallelPipe) {
+                match self.current() {
+                    Some(Token::Pipe) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+                        expr = match right {
+                            Expr::Call { func, mut args } => {
+                                args.push(expr);
+                                Expr::Call { func, args }
+                            }
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                            },
+                        };
+                    }
+                    Some(Token::PipeRailway) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                            args: vec![right, expr],
+                        };
+                    }
+                    Some(Token::ParallelPipe) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol("pmap".to_string())),
+                            args: vec![right, expr],
+                        };
+                    }
+                    _ => break,
+                }
+            }
+
+            self.expect(Token::RParen)?;
+
+            // ラムダでラップ
+            Ok(Expr::Fn {
+                params: vec![var_name],
+                body: Box::new(expr),
+                is_variadic: false,
+            })
+        } else {
+            // (flow data |> fn1 |> fn2) → 通常のパイプラインとしてパース
+            let first = self.parse_primary()?;
+
+            // パイプラインのチェック
+            if self.current() == Some(&Token::Pipe)
+                || self.current() == Some(&Token::PipeRailway)
+                || self.current() == Some(&Token::ParallelPipe) {
+                let mut expr = first;
+
+                // パイプラインをパース
+                while self.current() == Some(&Token::Pipe)
+                    || self.current() == Some(&Token::PipeRailway)
+                    || self.current() == Some(&Token::ParallelPipe) {
+                    match self.current() {
+                        Some(Token::Pipe) => {
+                            self.advance();
+                            let right = self.parse_primary()?;
+                            expr = match right {
+                                Expr::Call { func, mut args } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                },
+                            };
+                        }
+                        Some(Token::PipeRailway) => {
+                            self.advance();
+                            let right = self.parse_primary()?;
+                            expr = Expr::Call {
+                                func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                                args: vec![right, expr],
+                            };
+                        }
+                        Some(Token::ParallelPipe) => {
+                            self.advance();
+                            let right = self.parse_primary()?;
+                            expr = Expr::Call {
+                                func: Box::new(Expr::Symbol("pmap".to_string())),
+                                args: vec![right, expr],
+                            };
+                        }
+                        _ => break,
+                    }
+                }
+
+                self.expect(Token::RParen)?;
+                Ok(expr)
+            } else {
+                // パイプラインなし、単にfirstを返す
+                self.expect(Token::RParen)?;
+                Ok(first)
+            }
+        }
     }
 
     /// quasiquoteをパース
