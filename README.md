@@ -5,14 +5,17 @@
 ## 特徴
 
 - **シンプル**: 特殊形式8つのみ（`def` `fn` `let` `do` `if` `match` `try` `defer`）
-- **パイプライン**: `|>` `|>?` `||>` でデータフローを直感的に記述
-  - **Railway Pipeline (`|>?`)**: エラーハンドリングを流れに組み込む ⭐ NEW
+- **パイプライン**: `|>` `|>?` `||>` `~>` でデータフローを直感的に記述
+  - **Railway Pipeline (`|>?`)**: エラーハンドリングを流れに組み込む
+  - **非同期パイプライン (`~>`)**: goroutine風の自動並行実行 ⭐ NEW
 - **パターンマッチング**: 強力な `match` 式
-- **Web開発**: JSON/HTTP完全対応、Railway Pipelineでエラーハンドリング ⭐ NEW
+  - **orパターン**: `1 | 2 | 3 -> "small"` で複数パターンを簡潔に記述 ⭐ NEW
+- **統計分析**: `stats` モジュールで平均・中央値・標準偏差など ⭐ NEW
+- **Web開発**: JSON/HTTP完全対応、Railway Pipelineでエラーハンドリング
 - **並行・並列**: 3層アーキテクチャ（go/chan、パイプライン、async/await）で簡単に並列化
-- **デバッグ**: `inspect`、`time`でパイプライン内のデータを観察 ⭐ NEW
+- **デバッグ**: `inspect`、`time`でパイプライン内のデータを観察
 - **多言語対応**: 英語・日本語のエラーメッセージ（環境変数 `QI_LANG` で設定）
-- **安全なマクロ**: `uvar` による変数衝突回避
+- **安全性**: 名前衝突警告、`uvar` による変数衝突回避 ⭐ NEW
 
 ## 多言語対応
 
@@ -52,7 +55,7 @@ QI_LANG=en qi script.qi  # 英語
  |> log)
 ```
 
-### Railway Pipeline - エラーハンドリング ⭐ NEW
+### Railway Pipeline - エラーハンドリング
 ```lisp
 ;; Web APIからデータ取得 → 変換 → 保存
 ("https://api.example.com/users/123"
@@ -62,6 +65,18 @@ QI_LANG=en qi script.qi  # 英語
  |>? validate-user
  |>? save-to-db)
 ;; エラーが起きたら自動的にショートサーキット！
+```
+
+### 非同期パイプライン - goroutine風の並行実行 ⭐ NEW
+```lisp
+;; 即座にチャネルを返し、バックグラウンドで実行
+(def result (data ~> transform ~> process))
+(recv! result)  ;; 結果を受信
+
+;; 複数の非同期処理を並行実行
+(def r1 (10 ~> inc ~> double))
+(def r2 (20 ~> double ~> inc))
+(println (recv! r1) (recv! r2))  ;; 両方並行実行
 ```
 
 ## 使い方
@@ -96,7 +111,7 @@ Qiは**2層モジュール設計**を採用しています：
 (tap println)               ; パイプライン内で副作用実行
 ```
 
-### 専門モジュール（154個）- `module/function` 形式
+### 専門モジュール（160個）- `module/function` 形式
 専門的な機能は、名前空間を明示して使います：
 ```lisp
 (io/read-file "data.txt")        ; ファイルI/O
@@ -110,7 +125,8 @@ Qiは**2層モジュール設計**を採用しています：
 - **list**: 高度なリスト操作 - `list/frequencies`, `list/partition-by`
 - **map**: 高度なマップ操作 - `map/select-keys`, `map/update-keys`
 - **str**: 文字列操作（62個）- `str/upper`, `str/snake`, `str/to-base64`
-- **math**: 数学関数 - `math/pow`, `math/sqrt`, `math/round`
+- **math**: 数学関数 - `math/pow`, `math/sqrt`, `math/round`, `math/random-range`
+- **stats**: 統計関数（6個）- `stats/mean`, `stats/median`, `stats/stddev`, `stats/percentile` ⭐ NEW
 - **io**: ファイルI/O - `io/read-file`, `io/write-file`
 - **dbg**: デバッグ - `dbg/inspect`, `dbg/time`
 - **json**: JSON処理 - `json/parse`, `json/stringify`
