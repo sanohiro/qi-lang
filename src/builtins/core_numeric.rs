@@ -210,7 +210,7 @@ fn values_equal(a: &Value, b: &Value) -> bool {
             a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_equal(x, y))
         }
         (Value::Map(a), Value::Map(b)) => {
-            a.len() == b.len() && a.iter().all(|(k, v)| b.get(k).map_or(false, |bv| values_equal(v, bv)))
+            a.len() == b.len() && a.iter().all(|(k, v)| b.get(k).is_some_and(|bv| values_equal(v, bv)))
         }
         (Value::Function(a), Value::Function(b)) => ptr::eq(&**a, &**b),
         (Value::NativeFunc(a), Value::NativeFunc(b)) => a.name == b.name,

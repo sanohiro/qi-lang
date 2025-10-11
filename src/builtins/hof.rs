@@ -104,7 +104,7 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
             // すべての関数を並列処理（Evaluatorが&selfなので複数スレッドで共有可能）
             let results: Result<Vec<_>, _> = items
                 .par_iter()
-                .map(|item| evaluator.apply_function(func, &[item.clone()]))
+                .map(|item| evaluator.apply_function(func, std::slice::from_ref(item)))
                 .collect();
 
             match collection {
@@ -136,7 +136,7 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
             let results: Result<Vec<_>, _> = items
                 .par_iter()
                 .filter_map(|item| {
-                    match evaluator.apply_function(pred, &[item.clone()]) {
+                    match evaluator.apply_function(pred, std::slice::from_ref(item)) {
                         Ok(result) if result.is_truthy() => Some(Ok(item.clone())),
                         Ok(_) => None,
                         Err(e) => Some(Err(e)),
@@ -254,7 +254,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
                 let key_str = format!("{:?}", key);
-                groups.entry(key_str).or_insert_with(Vec::new).push(item.clone());
+                groups.entry(key_str).or_default().push(item.clone());
             }
 
             let mut result = HashMap::new();
@@ -615,7 +615,7 @@ pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value,
     let value = &args[1];
 
     // 副作用関数を実行（結果は無視）
-    let _ = evaluator.apply_function(func, &[value.clone()]);
+    let _ = evaluator.apply_function(func, std::slice::from_ref(value));
 
     // 元の値をそのまま返す
     Ok(value.clone())

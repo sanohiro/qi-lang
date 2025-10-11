@@ -180,7 +180,7 @@ pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value,
 
     std::thread::spawn(move || {
         let result = native_get(&[Value::String(url)]);
-        let _ = sender.send(result.unwrap_or_else(|e| Value::String(e)));
+        let _ = sender.send(result.unwrap_or_else(Value::String));
     });
 
     Ok(Value::Channel(result_channel))
@@ -207,7 +207,7 @@ pub fn native_post_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value
 
     std::thread::spawn(move || {
         let result = native_post(&[Value::String(url), body]);
-        let _ = sender.send(result.unwrap_or_else(|e| Value::String(e)));
+        let _ = sender.send(result.unwrap_or_else(Value::String));
     });
 
     Ok(Value::Channel(result_channel))
@@ -254,7 +254,7 @@ fn http_request(
             }
             _ => {
                 // JSON自動変換
-                let json_str = crate::builtins::json::native_stringify(&[b.clone()])?;
+                let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
                 if let Value::Map(m) = json_str {
                     if let Some(Value::String(s)) = m.get("ok") {
                         request = request
@@ -425,7 +425,7 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
             }
             _ => {
                 // JSON自動変換
-                let json_str = crate::builtins::json::native_stringify(&[b.clone()])?;
+                let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
                 if let Value::Map(m) = json_str {
                     if let Some(Value::String(s)) = m.get("ok") {
                         request = request
