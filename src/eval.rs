@@ -1845,6 +1845,57 @@ mod tests {
             Value::String("truthy".to_string())
         );
     }
+
+    #[test]
+    fn test_use_as_alias() {
+        // 一時的なモジュールファイルを作成
+        use std::fs;
+
+        let module_path = "/tmp/test_alias_module.qi";
+        let test_path = "/tmp/test_alias.qi";
+
+        // モジュールファイルを作成
+        fs::write(module_path, r#"
+(module test_alias_module)
+(def double (fn [x] (* x 2)))
+(def triple (fn [x] (* x 3)))
+(export double triple)
+"#).unwrap();
+
+        // テストファイルを作成
+        fs::write(test_path, r#"
+(use test_alias_module :as tm)
+(+ (tm/double 5) (tm/triple 3))
+"#).unwrap();
+
+        // 評価
+        let content = fs::read_to_string(test_path).unwrap();
+        let result = std::panic::catch_unwind(|| {
+            let evaluator = Evaluator::new();
+            let mut parser = crate::parser::Parser::new(&content).unwrap();
+            let exprs = parser.parse_all().unwrap();
+            let mut last = Value::Nil;
+
+            // /tmp ディレクトリに移動（モジュールロードのため）
+            let original_dir = std::env::current_dir().unwrap();
+            std::env::set_current_dir("/tmp").unwrap();
+
+            for expr in exprs {
+                last = evaluator.eval(&expr).unwrap();
+            }
+
+            // 元のディレクトリに戻る
+            std::env::set_current_dir(original_dir).unwrap();
+            last
+        });
+
+        // クリーンアップ
+        let _ = fs::remove_file(module_path);
+        let _ = fs::remove_file(test_path);
+
+        // 結果確認: (tm/double 5) = 10, (tm/triple 3) = 9, 10 + 9 = 19
+        assert_eq!(result.unwrap(), Value::Integer(19));
+    }
 }
 
 // モジュールシステムのヘルパー関数
@@ -1879,9 +1930,12 @@ impl Evaluator {
                     env.write().set(name.clone(), value.clone());
                 }
             }
-            UseMode::As(_alias) => {
-                // TODO: エイリアス機能は将来実装
-                return Err(msg(MsgKey::UseAsNotImplemented).to_string());
+            UseMode::As(alias) => {
+                // エイリアス機能: alias/name という形式で全ての関数をインポート
+                for (name, value) in &module.exports {
+                    let aliased_name = format!("{}/{}", alias, name);
+                    env.write().set(aliased_name, value.clone());
+                }
             }
         }
 
