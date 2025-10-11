@@ -60,14 +60,14 @@ Qiは段階的にFlow機能を強化していきます：
 - `flow` DSL - 分岐・合流を含む複雑な流れ
 
 *match強化* ⭐ **Qi独自の差別化要素**:
-- `:as` 束縛 - 部分と全体を両方使える
-- `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
-- `or` パターン - 複数パターンで同じ処理
+- ✅ `:as` 束縛 - 部分と全体を両方使える
+- ✅ `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
+- ✅ `or` パターン - 複数パターンで同じ処理（`1 | 2 | 3 -> "small"`）
 
 **フェーズ3（🔜 進行中）**:
 - ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化
-- 🚧 並行処理 - go/chan、パイプライン、async/await
-- 🚧 `~>` 非同期パイプライン - go/chan統合
+- ✅ 並行処理 - go/chan、パイプライン、async/await
+- ✅ `~>` 非同期パイプライン - go/chan統合
 - ✅ `stream` 遅延評価ストリーム - 巨大データ処理（無限データ構造対応）
 - 再利用可能な「小パイプ」文化の確立
 
@@ -356,20 +356,25 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ---
 
-### 🚧 `~>` 非同期パイプライン（将来）
+### ✅ `~>` 非同期パイプライン（実装済み）
 
-**並行処理との統合**
+**並行処理との統合 - goroutine風の非同期実行**
+
+`~>` 演算子はパイプラインをgoroutineで自動実行し、結果をチャネルで返します。
 
 ```lisp
-;; 非同期HTTP
-(urls ~> http-get-async ~> parse-json ~> process)
+;; 基本的な非同期パイプライン
+(def result (data ~> transform ~> process))  ; 即座にチャネルを返す
+(recv! result)  ; 結果を受信
 
-;; チャネルとの統合
-(chan ~> (filter valid?) ~> process ~> output-chan)
+;; 複数の非同期処理
+(def r1 (10 ~> inc ~> double))
+(def r2 (20 ~> double ~> inc))
+(println (recv! r1) (recv! r2))  ; 並行実行
 
-;; go ブロック
+;; goブロック内でも利用可能
 (go
-  (data ~> transform ~> (send output-chan _)))
+  (data ~> transform ~> (send! output-chan)))
 ```
 
 ---
@@ -2500,11 +2505,6 @@ stream/map stream/filter stream/file
   ;; 指数・対数
   exp log log10 log2
 
-  ;; 統計（データ分析用）
-  mean median mode
-  stddev variance
-  percentile
-
   ;; 乱数
   random                      ;; [0, 1)の乱数
   random-int                  ;; 整数乱数
@@ -2559,10 +2559,53 @@ stream/map stream/filter stream/file
 ```
 
 **実装優先度**:
-- Phase 1: pow, sqrt, round, floor, ceil, clamp
-- Phase 2: random系（実用性高い）
-- Phase 3: mean, median, stddev（データ分析用）
+- ✅ Phase 1: pow, sqrt, round, floor, ceil, clamp（実装済み）
+- ✅ Phase 2: random系（実装済み）
+- ✅ Phase 3: statsモジュール（独立モジュールとして実装済み）
 - Phase 4: 三角関数・対数（必要になったら）
+
+#### ✅ stats - 統計関数（実装済み）
+
+**データ分析のための統計モジュール**
+
+```lisp
+(use stats :only [
+  mean              ;; 平均値
+  median            ;; 中央値
+  mode              ;; 最頻値
+  variance          ;; 分散
+  stddev            ;; 標準偏差
+  percentile        ;; パーセンタイル（0-100）
+])
+
+;; 使用例
+(def data [1 2 3 4 5 5 6 7 8 9 10])
+
+;; 基本統計量
+(stats/mean data)       ; => 5.454545...
+(stats/median data)     ; => 5
+(stats/mode data)       ; => 5
+
+;; 分散・標準偏差
+(stats/variance data)   ; => 7.272727...
+(stats/stddev data)     ; => 2.697...
+
+;; パーセンタイル
+(stats/percentile data 50)   ; => 5.0 (中央値と同じ)
+(stats/percentile data 95)   ; => 9.5
+
+;; パイプラインで使える
+(test-scores
+ |> (filter passing?)
+ |> stats/mean
+ |> (fn [avg] (println f"Average: {avg}")))
+```
+
+**設計方針**:
+- コレクション（リストまたはベクタ）を引数に取る
+- すべての要素が数値である必要がある
+- 空のコレクションはエラー
+- Flow-oriented設計でパイプラインに組み込める
 
 #### 🔜 time/date - 日付・時刻（計画中）
 
@@ -3227,70 +3270,33 @@ mean median stddev
 
 ## 将来の改善計画
 
-### 名前衝突の警告システム 🚧 **Phase 5以降**
+### ✅ 名前衝突の警告システム（実装済み）
 
-#### 問題
+#### 機能概要
+`def` で既存の変数、関数、ビルトイン関数を再定義しようとすると、警告を表示します。
+エラーではないため、処理は継続されます。
+
 ```lisp
-;; ユーザーが組み込み関数と同じ名前を定義
-(def map {"key" "value"})  ;; 組み込みのmapが使えなくなる
+;; ビルトイン関数の再定義
+(def inc (fn [x] (* x 2)))
+;; 警告: ビルトイン関数を再定義しています: 'inc' (inc)
 
-(map inc [1 2 3])  ;; エラー！mapは関数じゃない
+;; 関数の再定義
+(def my-fn (fn [x] x))
+(def my-fn (fn [x] (* x 2)))
+;; 警告: 関数を再定義しています: 'my-fn'
+
+;; 変数の再定義
+(def x 10)
+(def x 20)
+;; 警告: 変数を再定義しています: 'x'
 ```
 
-#### 解決策: 警告を出す（推奨）
-
-**実装方針**:
-```lisp
-;; defで組み込み関数名を再定義しようとすると警告
-(def map {...})
-;; Warning: 'map' shadows built-in function
-
-;; filter, reduce, など全ての組み込み関数が対象
-(def filter {...})
-;; Warning: 'filter' shadows built-in function
-```
-
-**設計**:
-1. **警告のみ（エラーにしない）**
-   - ユーザーの自由を尊重（Lisp的）
-   - でも間違いには気づける（初心者に優しい）
-
-2. **チェック対象**
-   - コア関数（map, filter, reduce, etc.）
-   - 特殊形式（def, fn, let, etc.）は**対象外**（再定義不可能）
-
-3. **実装場所**
-   - `eval.rs`の`def`評価時にチェック
-   - 組み込み関数のリストと照合
-   - 警告メッセージを出力（実行は継続）
-
-**実装例**:
-```rust
-// eval.rs
-fn eval_def(&self, name: &str, value: Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
-    // 組み込み関数名チェック
-    if is_builtin_function(name) {
-        eprintln!("Warning: '{}' shadows built-in function", name);
-    }
-
-    // 定義は続行
-    let val = self.eval_with_env(&value, env.clone())?;
-    env.write().define(name.to_string(), val.clone());
-    Ok(val)
-}
-```
-
-**他の言語の例**:
-- **Clojure**: 警告を出す
-- **Scheme/Racket**: 実装による（警告 or エラー）
-- **Common Lisp**: 警告を出す（パッケージシステムで回避可）
-
-**優先度**: 中（緊急ではないが、実用上重要）
-
-**なぜ今やらないのか**:
-- 新機能の追加が優先
-- 後からでも追加可能
-- 既存コードへの影響なし
+#### 実装詳細
+- `def` 評価時に既存の束縛をチェック
+- ビルトイン関数、ユーザー定義関数、変数を区別して警告
+- 英語・日本語の多言語対応
+- エラーではなく警告のため、処理は継続（Lisp的自由を尊重）
 
 ---
 
