@@ -25,13 +25,17 @@
 //! - math: 数学関数（10個）
 //! - time: 日時処理（4個）
 //! - stats: 統計関数（6個）
-//! - io: ファイルI/O（5個）
+//! - io: ファイルI/O（15個）
+//! - path: パス操作（9個）
+//! - env: 環境変数（4個）
+//! - log: 構造化ログ（6個）
 //! - dbg: デバッグ（2個）
 //! - async: 並行処理（高度）（16個）
 //! - pipeline: パイプライン処理（5個）
 //! - stream: ストリーム処理（11個）
 //! - str: 文字列操作（62個）
 //! - json: JSON処理（3個）
+//! - csv: CSV処理（5個）
 //! - http: HTTP通信（11個）
 
 // Coreモジュール
@@ -63,6 +67,8 @@ pub mod concurrency;
 pub mod util;
 pub mod csv;
 pub mod flow;
+pub mod env;
+pub mod log;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -329,6 +335,24 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "path/normalize" => path::native_path_normalize,
         "path/is-absolute?" => path::native_path_is_absolute,
         "path/is-relative?" => path::native_path_is_relative,
+
+        // ========================================
+        // 専門モジュール: env（4個）
+        // ========================================
+        "env/get" => env::native_env_get,
+        "env/set" => env::native_env_set,
+        "env/all" => env::native_env_all,
+        "env/load-dotenv" => env::native_env_load_dotenv,
+
+        // ========================================
+        // 専門モジュール: log（6個）
+        // ========================================
+        "log/debug" => log::native_log_debug,
+        "log/info" => log::native_log_info,
+        "log/warn" => log::native_log_warn,
+        "log/error" => log::native_log_error,
+        "log/set-level" => log::native_log_set_level,
+        "log/set-format" => log::native_log_set_format,
 
         // ========================================
         // 専門モジュール: dbg（2個）

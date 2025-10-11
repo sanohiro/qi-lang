@@ -968,7 +968,10 @@ Qiは**2層モジュール設計**を採用しています：
 - **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
 - **set**: 集合演算（4個）- `set/union`, `set/intersect`, etc.
 - **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
-- **io**: ファイルI/O（6個）- `io/read-file`, `io/write-file`, `io/write-stream`, etc.
+- **io**: ファイルI/O（15個）- `io/read-file`, `io/write-file`, `io/list-dir`, etc.
+- **path**: パス操作（9個）- `path/join`, `path/basename`, `path/dirname`, etc.
+- **env**: 環境変数（4個）- `env/get`, `env/set`, `env/load-dotenv`, etc.
+- **log**: 構造化ログ（6個）- `log/info`, `log/warn`, `log/error`, `log/set-level`, etc.
 - **dbg**: デバッグ（2個）- `dbg/inspect`, `dbg/time`
 - **async**: 並行処理（高度）（16個）- `async/await`, `async/then`, `async/pfilter`, etc.
 - **pipeline**: パイプライン処理（5個）- `pipeline/pipeline`, `pipeline/map`, etc.
@@ -976,6 +979,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
 - **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
 - **http**: HTTP通信（11個）- `http/get`, `http/post`, etc.
+- **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
 
 **使用例**:
 ```lisp
@@ -2432,6 +2436,99 @@ math/rand math/rand-int
  |> (map (fn [dst] (io/copy-file (path/join "logs" (path/basename dst)) dst))))
 ```
 
+##### ✅ env - 環境変数（4個）
+
+アプリケーション設定や環境依存の値を管理。dotenvファイルサポート。
+
+**環境変数操作**:
+- `env/get` - 環境変数取得（デフォルト値対応）
+- `env/set` - 環境変数設定
+- `env/all` - 全環境変数をマップで取得
+- `env/load-dotenv` - .envファイルを読み込み
+
+```lisp
+;; 環境変数取得
+(env/get "HOME")                                 ;; "/Users/username"
+(env/get "PORT" "3000")                          ;; デフォルト値付き
+
+;; 環境変数設定
+(env/set "API_KEY" "secret123")
+(env/set "DEBUG" "true")
+
+;; 全環境変数取得
+(def all-env (env/all))                          ;; {:PATH "..." :HOME "..." ...}
+
+;; .envファイル読み込み
+(env/load-dotenv)                                ;; ".env"を読み込み
+(env/load-dotenv ".env.production")              ;; 特定のファイル
+
+;; .envファイル形式
+;; # コメント
+;; DATABASE_URL=postgresql://localhost:5432/mydb
+;; API_KEY=secret123
+;; DEBUG=true
+;; HOST="0.0.0.0"
+;; NAME='My App'
+
+;; APIサーバー設定例
+(env/load-dotenv)
+(def config
+  {:port (to-int (env/get "PORT" "3000"))
+   :host (env/get "HOST" "localhost")
+   :db-url (env/get "DATABASE_URL")
+   :debug (= (env/get "DEBUG" "false") "true")})
+```
+
+##### ✅ log - 構造化ログ（6個）
+
+プロダクション対応の構造化ログ出力。レベルフィルタリング、JSON形式対応。
+
+**ログ出力**:
+- `log/debug` - DEBUGレベルログ
+- `log/info` - INFOレベルログ
+- `log/warn` - WARNレベルログ
+- `log/error` - ERRORレベルログ
+
+**設定**:
+- `log/set-level` - ログレベル設定（debug/info/warn/error）
+- `log/set-format` - 出力形式設定（text/json）
+
+```lisp
+;; 基本的なログ出力
+(log/info "サーバー起動")
+;; => [2025-10-11T21:40:37.312+0900] INFO サーバー起動
+
+;; 構造化データ付きログ
+(log/info "API呼び出し" {:method "GET" :path "/users" :status 200})
+;; => [2025-10-11T21:40:37.312+0900] INFO API呼び出し | method=GET path=/users status=200
+
+;; エラーログ
+(log/error "データベース接続失敗" {:error "connection refused" :db "users"})
+
+;; ログレベル設定（デフォルト: info）
+(log/set-level "debug")                          ;; DEBUG以上を出力
+(log/set-level "warn")                           ;; WARN以上のみ出力
+
+;; JSON形式で出力（構造化ログ）
+(log/set-format "json")
+(log/info "API呼び出し" {:method "GET" :path "/users" :status 200})
+;; => {"timestamp":"2025-10-11T21:40:37.364+0900","level":"INFO","message":"API呼び出し","method":"GET","path":"/users","status":"200"}
+
+;; APIサーバーでの使用例
+(do
+  (log/set-format "json")                        ;; 本番環境はJSON
+  (log/set-level (if (env/get "DEBUG") "debug" "info"))
+
+  (log/info "サーバー起動" {:port 3000 :env "production"})
+
+  ;; リクエストログ
+  (fn [request]
+    (log/info "HTTP Request"
+              {:method (get request :method)
+               :path (get request :path)
+               :ip (get request :ip)})))
+```
+
 ##### ✅ dbg - デバッグ（2個）
 ```lisp
 dbg/inspect dbg/time
@@ -3619,10 +3716,62 @@ mean median stddev
 23. mean, median, stddev
 
 #### 🚧 将来の計画
-- 標準モジュール群（str完全版/csv/regex/http/json）
-- 非同期パイプライン演算子（~>）
-- ストリーム処理（stream）
-- 遅延ストリーム（stream）
+
+**APIサーバー・アプリケーション開発機能（優先度高）**:
+
+1. **HTTPサーバー** 🔥
+   - ルーティング（GET, POST, PUT, DELETE, PATCH）
+   - ミドルウェアシステム（認証、CORS、ロギング、エラーハンドリング）
+   - 静的ファイル配信
+   - WebSocket対応
+   - ストリーミングレスポンス
+
+2. **テストフレームワーク** ⚡
+   - `test/deftest` - テスト定義
+   - `test/assert`, `test/assert-eq`, `test/assert-throws` - アサーション
+   - `test/run-tests` - テスト実行
+   - テストカバレッジ計測
+
+3. **データベース接続** 🎯
+   - PostgreSQL, MySQL, SQLite対応
+   - コネクションプール
+   - トランザクション管理
+   - ORM機能（オプション）
+
+4. **認証・認可** 🎯
+   - JWT（JSON Web Token）
+   - セッション管理
+   - OAuth2対応
+   - パスワードハッシュ（bcrypt, argon2）
+
+5. **ファイル監視** 📁
+   - `fs/watch` - ファイル・ディレクトリ監視
+   - 変更検知イベント（作成、更新、削除、リネーム）
+   - ホットリロード機能
+
+6. **ログ高度機能** 📊
+   - ログ出力先指定（ファイル、標準出力、syslog）
+   - ログローテーション（サイズ、日付ベース）
+   - ログ圧縮（gzip）
+   - 非同期ログ出力（パフォーマンス向上）
+
+7. **圧縮・解凍** 🗜️
+   - `zip/create` - ZIP作成
+   - `zip/extract` - ZIP解凍
+   - `zip/list` - ZIP内容一覧
+   - `zip/add` - ZIPにファイル追加
+   - ストリーミング圧縮・解凍
+
+8. **メトリクス・モニタリング** 📈
+   - カウンター、ゲージ、ヒストグラム
+   - Prometheus形式エクスポート
+   - APM（Application Performance Monitoring）連携
+
+**その他の計画**:
+- 標準モジュール群の完全版（✅ str完全版, ✅ csv, ✅ http client, ✅ json, 🚧 regex）
+- ✅ 非同期パイプライン演算子（~>）
+- ✅ ストリーム処理（stream）
+- ✅ 遅延ストリーム（stream）
 - flow DSL（構造化パイプライン）
 
 ### 実装の方針
