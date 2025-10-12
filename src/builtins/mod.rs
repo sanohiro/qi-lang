@@ -36,6 +36,7 @@
 //! - str: 文字列操作（62個）
 //! - json: JSON処理（3個）
 //! - csv: CSV処理（5個）
+//! - markdown: Markdown生成（8個）
 //! - http: HTTP通信（22個）
 //! - db: データベース（17個）
 
@@ -97,6 +98,9 @@ pub mod temp;
 
 #[cfg(feature = "cmd-exec")]
 pub mod cmd;
+
+#[cfg(feature = "format-markdown")]
+pub mod markdown;
 
 pub mod test;
 pub mod profile;
@@ -507,6 +511,19 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     // ========================================
     // Feature-gated modules
     // ========================================
+
+    // Markdown生成（8個）
+    #[cfg(feature = "format-markdown")]
+    register_native!(env.write(),
+        "markdown/header" => markdown::native_markdown_header,
+        "markdown/list" => markdown::native_markdown_list,
+        "markdown/ordered-list" => markdown::native_markdown_ordered_list,
+        "markdown/table" => markdown::native_markdown_table,
+        "markdown/code-block" => markdown::native_markdown_code_block,
+        "markdown/join" => markdown::native_markdown_join,
+        "markdown/link" => markdown::native_markdown_link,
+        "markdown/image" => markdown::native_markdown_image,
+    );
 
     // 乱数関数（4個）
     #[cfg(feature = "std-math")]

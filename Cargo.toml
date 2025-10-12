@@ -30,6 +30,7 @@ default = [
     # データフォーマット
     "format-json",
     "format-csv",
+    "format-markdown",
 
     # 文字列処理
     "string-encoding",
@@ -76,6 +77,7 @@ http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio",
 
 format-json = ["dep:serde_json"]
 format-csv = []  # Pure Rust自前実装
+format-markdown = []  # Pure Rust自前実装
 
 string-encoding = ["dep:base64", "dep:urlencoding", "dep:html-escape"]
 string-crypto = ["dep:sha2", "dep:uuid"]

@@ -4025,6 +4025,160 @@ db/rollback             ;; トランザクションロールバック
    |> (csv/write-file "users_processed.csv"))))  ;; 便利関数で保存
 ```
 
+#### ✅ markdown - Markdown生成（実装済み）
+
+**Pure Rust実装 - 外部依存なし**
+
+Markdownドキュメントの生成・加工機能を提供。特にLLMへのプロンプト生成、レポート作成、ドキュメント自動生成に最適。HTML/PDF変換は`pandoc`など外部ツールに委任する設計で、軽量かつ保守しやすい実装。
+
+**生成関数**:
+- `markdown/header` - 見出し生成（レベル1-6）
+- `markdown/list` - 箇条書きリスト
+- `markdown/ordered-list` - 番号付きリスト
+- `markdown/table` - テーブル生成
+- `markdown/code-block` - コードブロック
+- `markdown/link` - ハイパーリンク
+- `markdown/image` - 画像記法
+- `markdown/join` - 複数要素の結合
+
+```lisp
+;; 基本的な生成
+(markdown/header 1 "Title")
+;; => "# Title"
+
+(markdown/list ["Item 1" "Item 2" "Item 3"])
+;; => "- Item 1\n- Item 2\n- Item 3"
+
+(markdown/ordered-list ["First" "Second" "Third"])
+;; => "1. First\n2. Second\n3. Third"
+
+(markdown/table [["Name" "Score"] ["Alice" "95"] ["Bob" "87"]])
+;; => "| Name | Score |\n| --- | --- |\n| Alice | 95 |\n| Bob | 87 |"
+
+(markdown/code-block "qi" "(+ 1 2)")
+;; => "```qi\n(+ 1 2)\n```"
+
+(markdown/link "GitHub" "https://github.com")
+;; => "[GitHub](https://github.com)"
+
+(markdown/image "Logo" "logo.png")
+;; => "![Logo](logo.png)"
+
+;; ✨ パイプラインでのMarkdown組み立て
+(markdown/join
+  [(markdown/header 1 "Report")
+   (markdown/list ["Point 1" "Point 2"])
+   "Some content"])
+;; => "# Report\n\n- Point 1\n- Point 2\n\nSome content"
+```
+
+**実用例1: LLMへのプロンプト生成**
+```lisp
+;; コードレビュー依頼のプロンプト生成
+(defn create-review-prompt [code questions]
+  (markdown/join
+    [(markdown/header 1 "Code Review Request")
+     (markdown/code-block "qi" code)
+     (markdown/header 2 "Questions")
+     (markdown/list questions)
+     (markdown/header 2 "Context")
+     (markdown/table [["Language" "Version"] ["Qi" "0.1.0"]])]))
+
+;; 使用例
+(create-review-prompt
+  "(def factorial (fn [n]\n  (if (<= n 1) 1 (* n (factorial (dec n))))))"
+  ["Is this implementation efficient?"
+   "Any improvements?"
+   "How to handle large numbers?"])
+;; LLMに直接渡せる整形済みMarkdownを生成
+```
+
+**実用例2: データレポート生成**
+```lisp
+;; CSVデータからMarkdownレポートを生成
+(defn generate-sales-report [csv-file]
+  (let [data (csv/read-file csv-file)
+        header (first data)
+        rows (rest data)
+        total (rows |> (map (fn [r] (str/parse-int (nth r 2)))) |> sum)]
+    (markdown/join
+      [(markdown/header 1 "Sales Report")
+       (markdown/header 2 "Summary")
+       (str "Total Sales: $" total)
+       (markdown/header 2 "Details")
+       (markdown/table data)
+       (markdown/header 2 "Notes")
+       (markdown/list
+         ["Report generated automatically"
+          (str "Date: " (time/today))
+          (str "Total records: " (len rows))])])))
+
+;; 使用例
+(generate-sales-report "sales.csv"
+ |> (io/write-file "report.md"))
+
+;; HTML変換（外部ツール連携）
+(cmd/sh "pandoc report.md -o report.html")
+```
+
+**実用例3: ドキュメント生成パイプライン**
+```lisp
+;; APIドキュメント生成
+(defn document-api [endpoints]
+  (let [sections
+        (endpoints
+         |> (map (fn [ep]
+                  (markdown/join
+                    [(markdown/header 3 (:name ep))
+                     (markdown/code-block "http"
+                       (str (:method ep) " " (:path ep)))
+                     (:description ep)
+                     (markdown/header 4 "Parameters")
+                     (markdown/table
+                       (cons ["Name" "Type" "Required"]
+                             (:params ep)))]))))]
+    (markdown/join
+      [(markdown/header 1 "API Documentation")
+       (markdown/header 2 "Endpoints")
+       (markdown/join sections)])))
+
+;; 使用例
+(def api-spec
+  [{:name "Get User"
+    :method "GET"
+    :path "/api/users/:id"
+    :description "Retrieve user information"
+    :params [["id" "integer" "Yes"]
+             ["include" "string" "No"]]}
+   {:name "Create User"
+    :method "POST"
+    :path "/api/users"
+    :description "Create a new user"
+    :params [["name" "string" "Yes"]
+             ["email" "string" "Yes"]]}])
+
+(document-api api-spec
+ |> (io/write-file "api.md"))
+```
+
+**設計哲学**:
+- **軽量**: Pure Rust実装、外部依存なし
+- **パイプライン志向**: データが左から右へ流れる自然な記述
+- **LLM時代対応**: 構造化されたプロンプト生成に最適
+- **拡張性**: 基本機能に集中、複雑な処理は外部ツールに委任
+
+**外部ツール連携**:
+```lisp
+;; HTML変換
+(cmd/sh "pandoc doc.md -o doc.html")
+
+;; PDF変換
+(cmd/sh "pandoc doc.md -o doc.pdf")
+
+;; GitHub Flavored Markdown
+(cmd/sh "pandoc doc.md -f gfm -o doc.html")
+```
+
 #### ✅ regex - 正規表現（基本実装）
 
 **実装済み機能**:

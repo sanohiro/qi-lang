@@ -335,6 +335,12 @@ pub enum MsgKey {
     // Featureエラー
     FeatureDisabled,             // {0} support is disabled. Build with feature '{1}': {2}
     DbUnsupportedDriver,         // Unsupported database driver: {0}
+
+    // Markdownエラー
+    MdHeaderInvalidLevel,        // markdown/header: level must be 1-6, got: {0}
+    MdTableEmpty,                // markdown/table: table must not be empty
+    MdTableRowMustBeList,        // markdown/table: row {0} must be a list
+    MdTableColumnMismatch,       // markdown/table: row {0} has {1} columns, expected {2}
 }
 
 /// UIメッセージキー
@@ -730,6 +736,12 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::FeatureDisabled), "{0} support is disabled. Build with feature '{1}': {2}");
         messages.insert((Lang::En, MsgKey::DbUnsupportedDriver), "Unsupported database driver: {0}");
 
+        // 英語メッセージ - Markdown
+        messages.insert((Lang::En, MsgKey::MdHeaderInvalidLevel), "markdown/header: level must be 1-6, got: {0}");
+        messages.insert((Lang::En, MsgKey::MdTableEmpty), "markdown/table: table must not be empty");
+        messages.insert((Lang::En, MsgKey::MdTableRowMustBeList), "markdown/table: row {0} must be a list");
+        messages.insert((Lang::En, MsgKey::MdTableColumnMismatch), "markdown/table: row {0} has {1} columns, expected {2}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -1018,6 +1030,12 @@ impl Messages {
         // 日本語メッセージ - Feature
         messages.insert((Lang::Ja, MsgKey::FeatureDisabled), "{0} サポートは無効化されています。feature '{1}' を有効にしてビルドしてください: {2}");
         messages.insert((Lang::Ja, MsgKey::DbUnsupportedDriver), "サポートされていないデータベースドライバー: {0}");
+
+        // 日本語メッセージ - Markdown
+        messages.insert((Lang::Ja, MsgKey::MdHeaderInvalidLevel), "markdown/header: レベルは1-6である必要があります、実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::MdTableEmpty), "markdown/table: テーブルは空であってはいけません");
+        messages.insert((Lang::Ja, MsgKey::MdTableRowMustBeList), "markdown/table: 行{0}はリストである必要があります");
+        messages.insert((Lang::Ja, MsgKey::MdTableColumnMismatch), "markdown/table: 行{0}は{1}列ありますが、{2}列が期待されています");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
