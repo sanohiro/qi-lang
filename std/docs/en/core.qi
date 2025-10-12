@@ -1,0 +1,38 @@
+;; Standard Library Documentation (English)
+;; Core Functions
+
+(def __doc__+
+  {:desc "Add numbers together"
+   :params [{:name "& args" :type "number" :desc "Numbers to add"}]
+   :returns {:type "number" :desc "Sum of all arguments"}
+   :examples ["(+ 1 2 3) ;=> 6"
+              "(+ 10 20) ;=> 30"]})
+
+(def __doc__str
+  {:desc "Convert values to strings and concatenate them"
+   :params [{:name "& args" :type "any" :desc "Values to stringify"}]
+   :returns {:type "string" :desc "Concatenated string"}
+   :examples ["(str \"hello\" \" \" \"world\") ;=> \"hello world\""
+              "(str 1 2 3) ;=> \"123\""]})
+
+(def __doc__count
+  {:desc "Count the number of elements in a collection"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "number" :desc "Number of elements"}
+   :examples ["(count [1 2 3 4 5]) ;=> 5"
+              "(count \"hello\") ;=> 5"]})
+
+(def __doc__drop
+  {:desc "Drop first n elements from a collection"
+   :params [{:name "n" :type "number" :desc "Number of elements to drop"}
+            {:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "List without first n elements"}
+   :examples ["(drop 2 [1 2 3 4 5]) ;=> (3 4 5)"
+              "(drop 3 \"hello\") ;=> (\"l\" \"o\")"]})
+
+(def __doc__concat
+  {:desc "Concatenate multiple collections"
+   :params [{:name "& colls" :type "collection" :desc "Collections to concatenate"}]
+   :returns {:type "list" :desc "Concatenated list"}
+   :examples ["(concat [1 2] [3 4] [5 6]) ;=> (1 2 3 4 5 6)"
+              "(concat \"ab\" \"cd\") ;=> (\"a\" \"b\" \"c\" \"d\")"]})

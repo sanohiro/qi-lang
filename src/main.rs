@@ -3,6 +3,7 @@ use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::value::Value;
 use std::io::Read;
+use std::sync::atomic::{AtomicBool, Ordering};
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
@@ -389,6 +390,35 @@ fn is_balanced(input: &str) -> bool {
     depth == 0 && !in_string
 }
 
+/// 標準ライブラリドキュメントの遅延ロード
+fn lazy_load_std_docs(evaluator: &Evaluator) {
+    static DOCS_LOADED: AtomicBool = AtomicBool::new(false);
+
+    // 既にロード済みならスキップ
+    if DOCS_LOADED.load(Ordering::Relaxed) {
+        return;
+    }
+
+    let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
+
+    // 1. 英語版を先に読み込み
+    let en_doc_path = "std/docs/en/core.qi";
+    if let Ok(content) = std::fs::read_to_string(en_doc_path) {
+        eval_repl_code(evaluator, &content, Some(en_doc_path));
+    }
+
+    // 2. 指定言語版を読み込み（enと同じ場合はスキップ）
+    if lang != "en" {
+        let lang_doc_path = format!("std/docs/{}/core.qi", lang);
+        if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
+            eval_repl_code(evaluator, &content, Some(&lang_doc_path));
+        }
+    }
+
+    // ロード完了フラグを立てる
+    DOCS_LOADED.store(true, Ordering::Relaxed);
+}
+
 /// REPLコマンドの処理
 fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut Option<String>) {
     let parts: Vec<&str> = cmd.split_whitespace().collect();
@@ -446,6 +476,9 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
             }
         }
         ":doc" => {
+            // 初回実行時に標準ライブラリドキュメントをロード
+            lazy_load_std_docs(evaluator);
+
             if parts.len() < 2 {
                 eprintln!("Usage: :doc <name>");
                 return;

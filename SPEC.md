@@ -6223,93 +6223,63 @@ Qiは柔軟なドキュメントシステムを提供します：
     (str "Hello, " name "!")))
 ```
 
-#### 3. 外部参照形式（大規模）**【未実装】**
+### 標準ライブラリドキュメント
 
-複雑な関数や大量のドキュメントを外部ファイルで管理。
-
-```lisp
-(def complex-function
-  :see-ja "docs/ja/complex-function.qi"
-  :see-en "docs/en/complex-function.qi"
-  (fn [x y z]
-    ;; 実装
-    ))
-```
-
-**注意**: この機能は将来実装予定です。現在は文字列形式と構造化形式のみサポートしています。
-
-### 外部ファイル形式 **【未実装】**
+標準ライブラリの関数ドキュメントは外部ファイルで管理されます。
 
 #### ディレクトリ構造
 
 ```
-project/
-  main.qi              # メインソース
-  docs/
-    ja/
-      my-module.qi     # モジュール単位のドキュメント
-    en/
-      my-module.qi
+qi-lang/
+  std/
+    docs/
+      ja/
+        core.qi      # 基本関数（map, filter, reduce等）
+        string.qi    # 文字列関数
+        list.qi      # リスト操作
+        io.qi        # ファイルIO
+      en/
+        core.qi
+        string.qi
+        list.qi
+        io.qi
 ```
 
-標準ライブラリ：
-```
-qi (バイナリ)
-std/
-  ja/
-    io-module.qi
-    list-module.qi
-    time-module.qi
-  en/
-    io-module.qi
-    list-module.qi
-    time-module.qi
-```
+#### ファイル形式
 
-#### 外部ファイル内の記述
+標準的なQi構文で記述します：
 
-外部ファイル内でも文字列・構造化どちらでも記述可能。
-
-**文字列形式**：
 ```lisp
-{
-  greet "指定された名前で挨拶する"
-  farewell "指定された名前で別れの挨拶をする"
-}
+;; std/docs/ja/core.qi
+
+(def __doc__map
+  {:desc "各要素に関数を適用してリストを返す"
+   :params [{:name "f" :type "function" :desc "適用する関数"}
+            {:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "変換後のリスト"}
+   :examples [
+     "(map inc [1 2 3]) ;=> (2 3 4)"
+     "(map str [1 2 3]) ;=> (\"1\" \"2\" \"3\")"
+   ]})
+
+(def __doc__filter
+  {:desc "条件に合う要素だけを残す"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "フィルタ後のリスト"}
+   :examples [
+     "(filter odd? [1 2 3 4]) ;=> (1 3)"
+   ]})
 ```
 
-**構造化形式**：
-```lisp
-{
-  greet {
-    :desc "指定された名前で挨拶する"
-    :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
-    :returns {:type "string" :desc "挨拶メッセージ"}
-    :examples [
-      "(greet \"Alice\") ;=> \"Hello, Alice!\""
-    ]
-  }
+#### 自動ロード
 
-  farewell {
-    :desc "指定された名前で別れの挨拶をする"
-    :params [{:name "name" :type "string" :desc "別れる相手の名前"}]
-    :returns {:type "string" :desc "別れのメッセージ"}
-  }
-}
-```
+`:doc`コマンド初回実行時に自動的にロードされます：
 
-**混在も可能**：
-```lisp
-{
-  greet "指定された名前で挨拶する"  ; シンプルな関数は文字列
+1. `std/docs/en/*.qi` を読み込み（英語版）
+2. `std/docs/{QI_LANG}/*.qi` を読み込み（言語版で上書き）
 
-  complex-function {                  ; 複雑な関数は構造化
-    :desc "複雑な処理を実行する"
-    :params [...]
-    :examples [...]
-  }
-}
-```
+これにより、言語フォールバックが自動的に実現されます。
 
 ### 言語フォールバック
 
@@ -6355,56 +6325,20 @@ qi repl
 > :doc greet   # __doc__greet_fr → __doc__greet → __doc__greet_en の順で探索
 ```
 
-### ドキュメント読み込み優先順位
-
-#### REPLでの `:doc` コマンド（インタラクティブ検索）
-
-1. **カレントディレクトリ**のドキュメント（ユーザー定義優先）
-2. **qiバイナリディレクトリ**の `std/` 配下（標準ライブラリ）
-
-```lisp
-qi> :doc read
-[fzf風のインタラクティブ検索]
-3. my-read-config      設定ファイルを読み込む（ユーザー定義）
-1. io/read-file        ファイルの内容を読み込む
-2. io/read-bytes       バイナリファイルを読み込む
-
-> _
-
-[選択後]
-doc: my-read-config
-説明: プロジェクトの設定ファイル（config.json）を読み込んでパースします
-引数: なし
-戻り値: 設定のマップ
-例:
-  (my-read-config)
-  ;=> {:host "localhost" :port 8080}
-```
-
-#### qiコマンド（一括出力）
-
-デフォルトはユーザードキュメントのみ出力。
-
-```bash
-# ユーザードキュメントをmarkdown一括出力
-qi --gen-doc > my-functions.md
-
-# 標準ライブラリ含めて全部出力
-qi --gen-doc --include-std > all-functions.md
-```
 
 ### 実装方針
 
 #### メモリ効率
 
-- **遅延読み込み**：`:doc` コマンド実行時のみロード
+- **遅延読み込み**：`:doc` コマンド初回実行時のみロード
 - **ファイルシステムベース**：バイナリに埋め込まない
-- **必要最小限**：検索時は関数名+短い説明のみ、詳細は選択後
+- **一括ロード**：初回ロード後はメモリ上に保持（高速アクセス）
 
 #### パフォーマンス
 
-- ドキュメント参照は頻繁な操作ではないため、速度よりメモリ効率を優先
-- キャッシュは実装しない（シンプルさ重視）
+- 初回`:doc`時に標準ライブラリドキュメントを全てロード
+- 2回目以降は即座に表示
+- メモリ上のデータ構造から直接検索（高速）
 
 ### 設計思想
 
@@ -6421,7 +6355,7 @@ qi --gen-doc --include-std > all-functions.md
 #### 段階的詳細化
 
 - シンプルな文字列から始められる
-- 必要に応じて構造化、外部ファイルへと拡張
+- 必要に応じて構造化へと拡張
 - 強制しない、選択肢を提供する
 
 #### 明確な分離

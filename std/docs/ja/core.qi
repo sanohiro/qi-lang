@@ -1,0 +1,38 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 基本関数
+
+(def __doc__+
+  {:desc "数値を加算する"
+   :params [{:name "& args" :type "number" :desc "加算する数値"}]
+   :returns {:type "number" :desc "全引数の合計"}
+   :examples ["(+ 1 2 3) ;=> 6"
+              "(+ 10 20) ;=> 30"]})
+
+(def __doc__str
+  {:desc "値を文字列に変換して連結する"
+   :params [{:name "& args" :type "any" :desc "文字列化する値"}]
+   :returns {:type "string" :desc "連結された文字列"}
+   :examples ["(str \"hello\" \" \" \"world\") ;=> \"hello world\""
+              "(str 1 2 3) ;=> \"123\""]})
+
+(def __doc__count
+  {:desc "コレクションの要素数を数える"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "number" :desc "要素数"}
+   :examples ["(count [1 2 3 4 5]) ;=> 5"
+              "(count \"hello\") ;=> 5"]})
+
+(def __doc__drop
+  {:desc "コレクションから最初のn個の要素を除外"
+   :params [{:name "n" :type "number" :desc "除外する要素数"}
+            {:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "最初のn個を除いたリスト"}
+   :examples ["(drop 2 [1 2 3 4 5]) ;=> (3 4 5)"
+              "(drop 3 \"hello\") ;=> (\"l\" \"o\")"]})
+
+(def __doc__concat
+  {:desc "複数のコレクションを連結する"
+   :params [{:name "& colls" :type "collection" :desc "連結するコレクション"}]
+   :returns {:type "list" :desc "連結されたリスト"}
+   :examples ["(concat [1 2] [3 4] [5 6]) ;=> (1 2 3 4 5 6)"
+              "(concat \"ab\" \"cd\") ;=> (\"a\" \"b\" \"c\" \"d\")"]})
