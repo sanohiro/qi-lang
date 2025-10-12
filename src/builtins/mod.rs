@@ -498,7 +498,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "server/static-dir" => server::native_server_static_dir,
 
         // ========================================
-        // 専門モジュール: db（7個）
+        // 専門モジュール: db（10個）
         // ========================================
         "db/connect" => db::native_connect,
         "db/query" => db::native_query,
@@ -508,6 +508,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "db/sanitize" => db::native_sanitize,
         "db/sanitize-identifier" => db::native_sanitize_identifier,
         "db/escape-like" => db::native_escape_like,
+        "db/begin" => db::native_begin,
+        "db/commit" => db::native_commit,
+        "db/rollback" => db::native_rollback,
 
         // ========================================
         // 専門モジュール: stream（11個）

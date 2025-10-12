@@ -279,6 +279,9 @@ pub enum MsgKey {
     SqliteFailedToPrepare,    // Failed to prepare statement: {0}
     SqliteFailedToExecuteQuery, // Failed to execute query: {0}
     SqliteFailedToExecuteStatement, // Failed to execute statement: {0}
+    SqliteFailedToBeginTransaction, // Failed to begin transaction: {0}
+    SqliteFailedToCommitTransaction, // Failed to commit transaction: {0}
+    SqliteFailedToRollbackTransaction, // Failed to rollback transaction: {0}
 
     // 環境変数エラー（詳細）
     EnvLoadDotenvFailedToRead, // env/load-dotenv: failed to read file '{0}': {1}
@@ -303,6 +306,8 @@ pub enum MsgKey {
     DbNeed2To4Args,              // {0} requires 2-4 arguments, got {1}
     DbExpectedConnection,        // Expected DbConnection, got: {0}
     DbConnectionNotFound,        // Connection not found: {0}
+    DbExpectedTransaction,       // Expected DbTransaction, got: {0}
+    DbTransactionNotFound,       // Transaction not found: {0}
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs,          // {0}: failed to decode as {1} (invalid byte sequence)
@@ -645,6 +650,9 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::SqliteFailedToPrepare), "Failed to prepare statement: {0}");
         messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteQuery), "Failed to execute query: {0}");
         messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteStatement), "Failed to execute statement: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToBeginTransaction), "Failed to begin transaction: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToCommitTransaction), "Failed to commit transaction: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToRollbackTransaction), "Failed to rollback transaction: {0}");
 
         // 英語メッセージ - 環境変数（詳細）
         messages.insert((Lang::En, MsgKey::EnvLoadDotenvFailedToRead), "env/load-dotenv: failed to read file '{0}': {1}");
@@ -669,6 +677,8 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::DbNeed2To4Args), "{0} requires 2-4 arguments, got {1}");
         messages.insert((Lang::En, MsgKey::DbExpectedConnection), "Expected DbConnection, got: {0}");
         messages.insert((Lang::En, MsgKey::DbConnectionNotFound), "Connection not found: {0}");
+        messages.insert((Lang::En, MsgKey::DbExpectedTransaction), "Expected DbTransaction, got: {0}");
+        messages.insert((Lang::En, MsgKey::DbTransactionNotFound), "Transaction not found: {0}");
 
         // 英語メッセージ - I/O（追加）
         messages.insert((Lang::En, MsgKey::IoFailedToDecodeAs), "{0}: failed to decode as {1} (invalid byte sequence)");
@@ -909,6 +919,9 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToPrepare), "ステートメントの準備に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteQuery), "クエリの実行に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteStatement), "ステートメントの実行に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToBeginTransaction), "トランザクションの開始に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToCommitTransaction), "トランザクションのコミットに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToRollbackTransaction), "トランザクションのロールバックに失敗しました: {0}");
 
         // 日本語メッセージ - 環境変数（詳細）
         messages.insert((Lang::Ja, MsgKey::EnvLoadDotenvFailedToRead), "env/load-dotenv: ファイル '{0}' の読み込みに失敗しました: {1}");
@@ -933,6 +946,8 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::DbNeed2To4Args), "{0}には2〜4個の引数が必要です。実際: {1}個");
         messages.insert((Lang::Ja, MsgKey::DbExpectedConnection), "DbConnectionが期待されましたが、実際: {0}");
         messages.insert((Lang::Ja, MsgKey::DbConnectionNotFound), "接続が見つかりません: {0}");
+        messages.insert((Lang::Ja, MsgKey::DbExpectedTransaction), "DbTransactionが期待されましたが、実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::DbTransactionNotFound), "トランザクションが見つかりません: {0}");
 
         // 日本語メッセージ - I/O（追加）
         messages.insert((Lang::Ja, MsgKey::IoFailedToDecodeAs), "{0}: {1}としてデコードできませんでした (無効なバイト列)");

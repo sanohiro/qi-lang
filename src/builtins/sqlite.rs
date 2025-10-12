@@ -46,7 +46,7 @@ impl DbDriver for SqliteDriver {
         }
 
         Ok(Arc::new(SqliteConnection {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         }))
     }
 
@@ -57,7 +57,7 @@ impl DbDriver for SqliteDriver {
 
 /// SQLite接続
 pub struct SqliteConnection {
-    conn: Mutex<SqliteConn>,
+    conn: Arc<Mutex<SqliteConn>>,
 }
 
 impl SqliteConnection {
@@ -148,9 +148,26 @@ impl DbConnection for SqliteConnection {
         Ok(affected as i64)
     }
 
-    fn begin(&self, _opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
-        // TODO: Phase 2で実装
-        Err(DbError::new("Transactions are not yet implemented (coming in Phase 2)"))
+    fn begin(&self, opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
+        let conn = self.conn.lock();
+
+        // トランザクション開始
+        let isolation_sql = match opts.isolation {
+            IsolationLevel::ReadUncommitted => "PRAGMA read_uncommitted = true; BEGIN;",
+            IsolationLevel::ReadCommitted => "BEGIN;",
+            IsolationLevel::RepeatableRead => "BEGIN;",
+            IsolationLevel::Serializable => "BEGIN IMMEDIATE;",
+        };
+
+        conn.execute_batch(isolation_sql)
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToBeginTransaction, &[&e.to_string()])))?;
+
+        drop(conn); // ロックを解放
+
+        Ok(Arc::new(SqliteTransaction {
+            conn: self.conn.clone(),
+            committed: Mutex::new(false),
+        }))
     }
 
     fn close(&self) -> DbResult<()> {
@@ -178,7 +195,79 @@ impl DbConnection for SqliteConnection {
     }
 }
 
-// TODO: Phase 2でトランザクション機能を実装
+/// SQLiteトランザクション
+pub struct SqliteTransaction {
+    conn: Arc<Mutex<SqliteConn>>,
+    committed: Mutex<bool>,
+}
+
+impl DbTransaction for SqliteTransaction {
+    fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
+        let conn = self.conn.lock();
+        let mut stmt = conn
+            .prepare(sql)
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+
+        // パラメータをrusqliteの形式に変換
+        let param_refs: Vec<_> = params.iter().map(SqliteConnection::value_to_param).collect();
+
+        let rows = stmt
+            .query(params_from_iter(param_refs.iter()))
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToExecuteQuery, &[&e.to_string()])))?;
+
+        let mut results = Vec::new();
+        let mut rows = rows;
+        while let Some(row) = rows.next().map_err(|e| DbError::new(e.to_string()))? {
+            results.push(SqliteConnection::row_to_hashmap(row)?);
+        }
+
+        Ok(results)
+    }
+
+    fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
+        let conn = self.conn.lock();
+        let mut stmt = conn
+            .prepare(sql)
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+
+        // パラメータをrusqliteの形式に変換
+        let param_refs: Vec<_> = params.iter().map(SqliteConnection::value_to_param).collect();
+
+        let affected = stmt
+            .execute(params_from_iter(param_refs.iter()))
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToExecuteStatement, &[&e.to_string()])))?;
+
+        Ok(affected as i64)
+    }
+
+    fn commit(self: Arc<Self>) -> DbResult<()> {
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
+
+        let conn = self.conn.lock();
+        conn.execute_batch("COMMIT;")
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToCommitTransaction, &[&e.to_string()])))?;
+
+        *committed = true;
+        Ok(())
+    }
+
+    fn rollback(self: Arc<Self>) -> DbResult<()> {
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
+
+        let conn = self.conn.lock();
+        conn.execute_batch("ROLLBACK;")
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToRollbackTransaction, &[&e.to_string()])))?;
+
+        *committed = true;
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
