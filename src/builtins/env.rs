@@ -1,5 +1,6 @@
 //! 環境変数関連関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::env;
 use std::fs;
@@ -11,12 +12,12 @@ use std::collections::HashMap;
 ///     (env/get "MISSING_VAR" "default-value")
 pub fn native_env_get(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("env/get: 1 or 2 arguments required (key [default])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["env/get"]));
     }
 
     let key = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("env/get: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["env/get", "a string"])),
     };
 
     match env::var(key) {
@@ -36,12 +37,12 @@ pub fn native_env_get(args: &[Value]) -> Result<Value, String> {
 /// 例: (env/set "MY_VAR" "my-value")
 pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("env/set: exactly 2 arguments required (key value)".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["env/set", "2"]));
     }
 
     let key = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("env/set: key must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["env/set", "a string"])),
     };
 
     let value = match &args[1] {
@@ -49,7 +50,7 @@ pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
         Value::Integer(i) => &i.to_string(),
         Value::Float(f) => &f.to_string(),
         Value::Bool(b) => if *b { "true" } else { "false" },
-        _ => return Err("env/set: value must be a string, number, or boolean".to_string()),
+        _ => return Err(fmt_msg(MsgKey::ValueMustBeStringNumberBool, &["env/set"])),
     };
 
     env::set_var(key, value);
@@ -61,7 +62,7 @@ pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
 /// 例: (env/all)
 pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("env/all: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["env/all"]));
     }
 
     let mut map = HashMap::new();
@@ -78,7 +79,7 @@ pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
 ///     (env/load-dotenv ".env.local")
 pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
     if args.len() > 1 {
-        return Err("env/load-dotenv: 0 or 1 argument required ([path])".to_string());
+        return Err(fmt_msg(MsgKey::Need0Or1Args, &["env/load-dotenv"]));
     }
 
     let path = if args.is_empty() {
@@ -86,7 +87,7 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
     } else {
         match &args[0] {
             Value::String(s) => s.as_str(),
-            _ => return Err("env/load-dotenv: path must be a string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["env/load-dotenv", "a string"])),
         }
     };
 

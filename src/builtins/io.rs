@@ -45,7 +45,7 @@ fn resolve_encoding(keyword: &str) -> Result<&'static Encoding, String> {
         "windows-1252" | "cp1252" | "latin1" => Ok(WINDOWS_1252),
         "windows-1251" | "cp1251" => Ok(WINDOWS_1251),
 
-        _ => Err(format!("Unsupported encoding: {}", keyword)),
+        _ => Err(fmt_msg(MsgKey::UnsupportedEncoding, &[keyword])),
     }
 }
 
@@ -167,13 +167,13 @@ fn parse_keyword_args(args: &[Value], start_idx: usize) -> Result<std::collectio
         match &args[i] {
             Value::Keyword(key) => {
                 if i + 1 >= args.len() {
-                    return Err(format!("Keyword :{} requires a value", key));
+                    return Err(fmt_msg(MsgKey::KeywordRequiresValue, &[key]));
                 }
                 opts.insert(key.clone(), args[i + 1].clone());
                 i += 2;
             }
             _ => {
-                return Err(format!("Expected keyword argument, got {:?}", args[i]));
+                return Err(fmt_msg(MsgKey::ExpectedKeywordArg, &[&format!("{:?}", args[i])]));
             }
         }
     }
@@ -216,7 +216,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
 
     // ファイルをバイト列として読み込み
     let bytes = fs::read(path)
-        .map_err(|e| format!("{}: {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::IoFileError, &[path, &e.to_string()]))?;
 
     // エンコーディングに応じてデコード
     let content = if encoding_keyword == "auto" {
@@ -227,7 +227,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
         if encoding_keyword == "utf-8" || encoding_keyword == "utf-8-bom" {
             // UTF-8の場合はBOMを自動除去
             String::from_utf8(bytes_to_decode.to_vec())
-                .map_err(|_| format!("{}: failed to decode as UTF-8 (invalid byte sequence)", path))?
+                .map_err(|_| fmt_msg(MsgKey::IoFailedToDecodeUtf8, &[path]))?
         } else {
             let encoding = resolve_encoding(encoding_keyword)?;
             decode_bytes(bytes_to_decode, encoding, path)?
@@ -306,7 +306,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
         if let Some(parent) = path_obj.parent() {
             if !parent.exists() {
                 fs::create_dir_all(parent)
-                    .map_err(|e| format!("{}: failed to create directory: {}", parent.display(), e))?;
+                    .map_err(|e| fmt_msg(MsgKey::IoFailedToCreateDir, &[&parent.display().to_string(), &e.to_string()]))?;
             }
         }
     }
@@ -315,7 +315,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     if path_obj.exists() {
         match if_exists {
             "error" => {
-                return Err(format!("{}: file already exists", path));
+                return Err(fmt_msg(MsgKey::FileAlreadyExists, &[path]));
             }
             "skip" => {
                 return Ok(Value::Nil);
@@ -329,10 +329,10 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 let mut file = fs::OpenOptions::new()
                     .append(true)
                     .open(path)
-                    .map_err(|e| format!("{}: failed to open for append: {}", path, e))?;
+                    .map_err(|e| fmt_msg(MsgKey::IoFailedToOpenForAppend, &[path, &e.to_string()]))?;
 
                 file.write_all(&bytes)
-                    .map_err(|e| format!("{}: failed to append: {}", path, e))?;
+                    .map_err(|e| fmt_msg(MsgKey::IoFailedToAppend, &[path, &e.to_string()]))?;
 
                 return Ok(Value::Nil);
             }
@@ -340,7 +340,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 // 上書き（デフォルト）
             }
             _ => {
-                return Err(format!("Invalid :if-exists option: {}", if_exists));
+                return Err(fmt_msg(MsgKey::InvalidIfExistsOption, &[if_exists]));
             }
         }
     }
@@ -351,7 +351,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     let bytes = encode_string(content, encoding, add_bom);
 
     fs::write(path, bytes)
-        .map_err(|e| format!("{}: failed to write: {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::IoFailedToWrite, &[path, &e.to_string()]))?;
 
     Ok(Value::Nil)
 }
@@ -460,7 +460,7 @@ pub fn native_file_stream(args: &[Value]) -> Result<Value, String> {
 /// ファイルを行ごとに読み込むストリーム（テキストモード）
 fn create_file_line_stream(path: &str) -> Result<Value, String> {
     let file = File::open(path)
-        .map_err(|e| format!("file-stream: failed to open '{}': {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::FileStreamFailedToOpen, &[path, &e.to_string()]))?;
 
     let reader = Arc::new(RwLock::new(BufReader::new(file)));
 
@@ -493,7 +493,7 @@ fn create_file_byte_stream(path: &str) -> Result<Value, String> {
     use std::io::Read;
 
     let file = File::open(path)
-        .map_err(|e| format!("file-stream: failed to open '{}': {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::FileStreamFailedToOpen, &[path, &e.to_string()]))?;
 
     let reader = Arc::new(RwLock::new(BufReader::new(file)));
     const CHUNK_SIZE: usize = 4096; // 4KB chunks
@@ -539,7 +539,7 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
 
     // ファイルを開く
     let mut file = fs::File::create(path)
-        .map_err(|e| format!("write-stream: failed to create {}: {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::WriteStreamFailedToCreate, &[path, &e.to_string()]))?;
 
     // ストリームの各要素をファイルに書き込み
     let mut count = 0;
@@ -561,7 +561,7 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
                 };
 
                 writeln!(file, "{}", line)
-                    .map_err(|e| format!("write-stream: failed to write to {}: {}", path, e))?;
+                    .map_err(|e| fmt_msg(MsgKey::WriteStreamFailedToWrite, &[path, &e.to_string()]))?;
                 count += 1;
             }
             None => break,
@@ -582,12 +582,12 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
 ///   :recursive - 再帰的に検索するか（デフォルト: false）
 pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("io/list-dir: at least 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/list-dir", "1"]));
     }
 
     let dir_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("io/list-dir: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/list-dir", "a string"])),
     };
 
     // キーワード引数を解析
@@ -629,11 +629,11 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
 
     // グロブでファイル一覧を取得
     let entries: Result<Vec<Value>, String> = glob::glob(&glob_pattern)
-        .map_err(|e| format!("io/list-dir: invalid pattern '{}': {}", glob_pattern, e))?
+        .map_err(|e| fmt_msg(MsgKey::IoListDirInvalidPattern, &[&glob_pattern, &e.to_string()]))?
         .map(|entry| {
             entry
                 .map(|path| Value::String(path.to_string_lossy().to_string()))
-                .map_err(|e| format!("io/list-dir: failed to read entry: {}", e))
+                .map_err(|e| fmt_msg(MsgKey::IoListDirFailedToRead, &[&e.to_string()]))
         })
         .collect();
 
@@ -646,12 +646,12 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
 ///   :parents - 親ディレクトリも作成するか（デフォルト: true）
 pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("io/create-dir: at least 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/create-dir", "1"]));
     }
 
     let path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("io/create-dir: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/create-dir", "a string"])),
     };
 
     // キーワード引数を解析
@@ -671,10 +671,10 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
 
     if parents {
         fs::create_dir_all(path)
-            .map_err(|e| format!("io/create-dir: failed to create '{}': {}", path, e))?;
+            .map_err(|e| fmt_msg(MsgKey::IoCreateDirFailed, &[path, &e.to_string()]))?;
     } else {
         fs::create_dir(path)
-            .map_err(|e| format!("io/create-dir: failed to create '{}': {}", path, e))?;
+            .map_err(|e| fmt_msg(MsgKey::IoCreateDirFailed, &[path, &e.to_string()]))?;
     }
 
     Ok(Value::Nil)
@@ -684,16 +684,16 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path)
 pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("io/delete-file: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/delete-file", "1"]));
     }
 
     match &args[0] {
         Value::String(path) => {
             fs::remove_file(path)
-                .map_err(|e| format!("io/delete-file: failed to delete '{}': {}", path, e))?;
+                .map_err(|e| fmt_msg(MsgKey::IoDeleteFileFailed, &[path, &e.to_string()]))?;
             Ok(Value::Nil)
         }
-        _ => Err("io/delete-file: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/delete-file", "a string"])),
     }
 }
 
@@ -703,12 +703,12 @@ pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
 ///   :recursive - 中身ごと削除するか（デフォルト: false）
 pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("io/delete-dir: at least 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/delete-dir", "1"]));
     }
 
     let path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("io/delete-dir: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/delete-dir", "a string"])),
     };
 
     // キーワード引数を解析
@@ -728,10 +728,10 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
 
     if recursive {
         fs::remove_dir_all(path)
-            .map_err(|e| format!("io/delete-dir: failed to delete '{}': {}", path, e))?;
+            .map_err(|e| fmt_msg(MsgKey::IoDeleteDirFailed, &[path, &e.to_string()]))?;
     } else {
         fs::remove_dir(path)
-            .map_err(|e| format!("io/delete-dir: failed to delete '{}': {}", path, e))?;
+            .map_err(|e| fmt_msg(MsgKey::IoDeleteDirFailed, &[path, &e.to_string()]))?;
     }
 
     Ok(Value::Nil)
@@ -741,16 +741,16 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
 /// 引数: (src, dst)
 pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("io/copy-file: exactly 2 arguments required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/copy-file", "2"]));
     }
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
             fs::copy(src, dst)
-                .map_err(|e| format!("io/copy-file: failed to copy '{}' to '{}': {}", src, dst, e))?;
+                .map_err(|e| fmt_msg(MsgKey::IoCopyFileFailed, &[src, dst, &e.to_string()]))?;
             Ok(Value::Nil)
         }
-        _ => Err("io/copy-file: both arguments must be strings".to_string()),
+        _ => Err(fmt_msg(MsgKey::BothArgsMustBeStrings, &["io/copy-file"])),
     }
 }
 
@@ -758,16 +758,16 @@ pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
 /// 引数: (src, dst)
 pub fn native_move_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("io/move-file: exactly 2 arguments required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/move-file", "2"]));
     }
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
             fs::rename(src, dst)
-                .map_err(|e| format!("io/move-file: failed to move '{}' to '{}': {}", src, dst, e))?;
+                .map_err(|e| fmt_msg(MsgKey::IoMoveFileFailed, &[src, dst, &e.to_string()]))?;
             Ok(Value::Nil)
         }
-        _ => Err("io/move-file: both arguments must be strings".to_string()),
+        _ => Err(fmt_msg(MsgKey::BothArgsMustBeStrings, &["io/move-file"])),
     }
 }
 
@@ -779,13 +779,13 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
     use std::time::UNIX_EPOCH;
 
     if args.len() != 1 {
-        return Err("io/file-info: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/file-info", "1"]));
     }
 
     match &args[0] {
         Value::String(path) => {
             let metadata = fs::metadata(path)
-                .map_err(|e| format!("io/file-info: failed to get metadata for '{}': {}", path, e))?;
+                .map_err(|e| fmt_msg(MsgKey::IoGetMetadataFailed, &[path, &e.to_string()]))?;
 
             let mut info = HashMap::new();
 
@@ -805,7 +805,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::Map(info))
         }
-        _ => Err("io/file-info: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/file-info", "a string"])),
     }
 }
 
@@ -813,7 +813,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path)
 pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("io/is-file?: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/is-file?", "1"]));
     }
 
     match &args[0] {
@@ -821,7 +821,7 @@ pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
             let path_obj = Path::new(path);
             Ok(Value::Bool(path_obj.is_file()))
         }
-        _ => Err("io/is-file?: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/is-file?", "a string"])),
     }
 }
 
@@ -829,7 +829,7 @@ pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path)
 pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("io/is-dir?: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/is-dir?", "1"]));
     }
 
     match &args[0] {
@@ -837,6 +837,6 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
             let path_obj = Path::new(path);
             Ok(Value::Bool(path_obj.is_dir()))
         }
-        _ => Err("io/is-dir?: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/is-dir?", "a string"])),
     }
 }

@@ -237,7 +237,7 @@ pub fn native_after(args: &[Value]) -> Result<Value, String> {
 /// between? - dateがstart〜end内か判定
 pub fn native_between(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err("time/between?: 3 arguments required (date start end)".to_string());
+        return Err(fmt_msg(MsgKey::Need3Args, &["time/between?"]));
     }
 
     let date = parse_datetime(&args[0], "time/between? (date)")?;

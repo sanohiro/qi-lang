@@ -1,5 +1,6 @@
 //! コマンドライン引数パース関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;
 use std::env;
@@ -9,7 +10,7 @@ use std::env;
 /// 例: (args/all) => ["./qi" "script.qi" "arg1" "arg2"]
 pub fn native_args_all(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("args/all: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["args/all"]));
     }
 
     let cmd_args: Vec<Value> = env::args().map(Value::String).collect();
@@ -23,12 +24,12 @@ pub fn native_args_all(args: &[Value]) -> Result<Value, String> {
 ///     (args/get 5 "default") ;; 第5引数、なければ"default"
 pub fn native_args_get(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("args/get: 1 or 2 arguments required (index [default])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["args/get"]));
     }
 
     let index = match &args[0] {
         Value::Integer(i) => *i as usize,
-        _ => return Err("args/get: index must be an integer".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["args/get", "index"])),
     };
 
     let cmd_args: Vec<String> = env::args().collect();
@@ -59,7 +60,7 @@ pub fn native_args_get(args: &[Value]) -> Result<Value, String> {
 ///           :args ["./qi" "script.qi" "input.txt"]}
 pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("args/parse: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["args/parse"]));
     }
 
     let cmd_args: Vec<String> = env::args().collect();
@@ -121,7 +122,7 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 /// 例: (args/count) => 5
 pub fn native_args_count(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("args/count: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["args/count"]));
     }
 
     let count = env::args().count();

@@ -8,6 +8,7 @@
 //! - static-file/static-dir: 静的ファイル配信
 
 use crate::eval::Evaluator;
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
@@ -199,7 +200,7 @@ fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
 /// server/ok - 200 OKレスポンスを作成
 pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/ok: requires at least 1 argument (body)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/ok", "1"]));
     }
 
     let body = match &args[0] {
@@ -221,7 +222,7 @@ pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
 /// server/json - JSONレスポンスを作成
 pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/json: requires at least 1 argument (data)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/json", "1"]));
     }
 
     // データをJSON文字列に変換
@@ -229,9 +230,9 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     let json_str = match json_result {
         Value::Map(m) => match m.get("ok") {
             Some(Value::String(s)) => s.clone(),
-            _ => return Err("Failed to stringify JSON".to_string()),
+            _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
         },
-        _ => return Err("Failed to stringify JSON".to_string()),
+        _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
     };
 
     let status = if args.len() > 1 {
@@ -291,7 +292,7 @@ pub fn native_server_no_content(_args: &[Value]) -> Result<Value, String> {
 /// server/router - ルーターを作成
 pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/router: requires at least 1 argument (routes)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/router", "1"]));
     }
 
     // ルート定義をそのまま返す（後でserveで使用）
@@ -302,7 +303,7 @@ pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
 /// server/serve - HTTPサーバーを起動
 pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/serve: requires at least 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/serve", "1"]));
     }
 
     let handler = args[0].clone();
@@ -311,7 +312,7 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     let opts = if args.len() > 1 {
         match &args[1] {
             Value::Map(m) => m.clone(),
-            _ => return Err("server/serve: second argument must be a map".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["server/serve", "a map"])),
         }
     } else {
         HashMap::new()
@@ -459,17 +460,17 @@ fn route_request(req: &Value, routes: &[Value]) -> Result<Value, String> {
     let method = match req {
         Value::Map(m) => match m.get("method") {
             Some(Value::Keyword(k)) => k.clone(),
-            _ => return Err("Request must have :method keyword".to_string()),
+            _ => return Err(fmt_msg(MsgKey::RequestMustHave, &["request", ":method keyword"])),
         },
-        _ => return Err("Request must be a map".to_string()),
+        _ => return Err(fmt_msg(MsgKey::RequestMustBe, &["request", "a map"])),
     };
 
     let path = match req {
         Value::Map(m) => match m.get("path") {
             Some(Value::String(p)) => p.clone(),
-            _ => return Err("Request must have :path string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::RequestMustHave, &["request", ":path string"])),
         },
-        _ => return Err("Request must be a map".to_string()),
+        _ => return Err(fmt_msg(MsgKey::RequestMustBe, &["request", "a map"])),
     };
 
     // ルートを探索
@@ -525,14 +526,14 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
     let path = match req {
         Value::Map(m) => match m.get("path") {
             Some(Value::String(p)) => p,
-            _ => return Err("Request must have :path string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::RequestMustHave, &["request", ":path string"])),
         },
-        _ => return Err("Request must be a map".to_string()),
+        _ => return Err(fmt_msg(MsgKey::RequestMustBe, &["request", "a map"])),
     };
 
     // セキュリティチェック
     if !is_safe_path(path) {
-        return Err("Invalid file path (contains ..)".to_string());
+        return Err(fmt_msg(MsgKey::InvalidFilePath, &["serve_static_file"]));
     }
 
     // ファイルパスを構築
@@ -965,7 +966,7 @@ fn error_response(status: u16, message: &str) -> Response<Full<Bytes>> {
 /// リクエスト/レスポンスをログ出力
 pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-logging: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-logging"]));
     }
 
     let handler = args[0].clone();
@@ -982,7 +983,7 @@ pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
 /// CORSヘッダーを追加
 pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-cors: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-cors"]));
     }
 
     let handler = args[0].clone();
@@ -1020,7 +1021,7 @@ pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
 /// リクエストボディを自動的にJSONパース
 pub fn native_server_with_json_body(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-json-body: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-json-body"]));
     }
 
     let handler = args[0].clone();
@@ -1037,7 +1038,7 @@ pub fn native_server_with_json_body(args: &[Value]) -> Result<Value, String> {
 /// レスポンスボディをgzip圧縮
 pub fn native_server_with_compression(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-compression: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-compression"]));
     }
 
     let handler = args[0].clone();
@@ -1117,17 +1118,17 @@ const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024;
 /// server/static-file - 単一ファイルを配信するレスポンスを生成
 pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/static-file: requires 1 argument (file path)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/static-file"]));
     }
 
     let file_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("server/static-file: file path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["server/static-file", "file path"])),
     };
 
     // セキュリティチェック
     if !is_safe_path(file_path) {
-        return Err("server/static-file: invalid file path (contains ..)".to_string());
+        return Err(fmt_msg(MsgKey::InvalidFilePath, &["server/static-file"]));
     }
 
     // ファイルサイズチェック
@@ -1174,17 +1175,17 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
 /// server/static-dir - ディレクトリから静的ファイルを配信するハンドラーを生成
 pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/static-dir: requires 1 argument (directory path)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/static-dir"]));
     }
 
     let dir_path = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("server/static-dir: directory path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["server/static-dir", "directory path"])),
     };
 
     // セキュリティチェック
     if !is_safe_path(&dir_path) {
-        return Err("server/static-dir: invalid directory path (contains ..)".to_string());
+        return Err(fmt_msg(MsgKey::InvalidFilePath, &["server/static-dir"]));
     }
 
     // ディレクトリの存在チェック
@@ -1207,7 +1208,7 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
 /// リクエストのAuthorizationヘッダーをチェックし、認証に失敗したら401を返す
 pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-basic-auth: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-basic-auth"]));
     }
 
     let handler = args[0].clone();
@@ -1238,7 +1239,7 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
 /// AuthorizationヘッダーからBearerトークンを抽出してreq["bearer-token"]に格納
 pub fn native_server_with_bearer(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-bearer: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-bearer"]));
     }
 
     let handler = args[0].clone();
@@ -1259,7 +1260,7 @@ pub fn native_server_with_bearer(args: &[Value]) -> Result<Value, String> {
 /// レスポンスにキャッシュを無効化するヘッダーを追加
 pub fn native_server_with_no_cache(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-no-cache: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-no-cache"]));
     }
 
     let handler = args[0].clone();
@@ -1277,7 +1278,7 @@ pub fn native_server_with_no_cache(args: &[Value]) -> Result<Value, String> {
 /// オプション: {"max-age" 3600 "public" true "private" false "no-store" false}
 pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("server/with-cache-control: requires 1 argument (handler)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-cache-control"]));
     }
 
     let handler = args[0].clone();

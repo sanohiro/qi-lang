@@ -85,6 +85,7 @@ pub enum MsgKey {
     NeedExactlyNArgs,   // {0}には{1}個の引数が必要
     Need2Or3Args,       // {0}には2または3個の引数が必要
     Need1Or2Args,       // {0}には1または2個の引数が必要
+    Need0Or1Args,       // {0}には0または1個の引数が必要
     Need2Args,          // {0}には2つの引数が必要
     Need1Arg,           // {0}には1つの引数が必要
     Need0Args,          // {0}には引数は不要
@@ -121,6 +122,7 @@ pub enum MsgKey {
     FStringUnclosedBrace,
     FStringUnclosed,
     FStringCannotBeQuoted,
+    FStringCodeParseError,  // f-string: コードのパースエラー: {0}
 
     // マクロエラー
     MacVarargNeedsSymbol,
@@ -170,6 +172,15 @@ pub enum MsgKey {
     InvalidTimestamp,    // invalid timestamp
     InvalidDateFormat,   // invalid date format
     InvalidPercentile,   // invalid percentile (must be 0-100)
+    SystemTimeError,     // {0}: system time error: {1}
+    JsonParseError,      // {0}: {1}
+    JsonStringifyError2, // {0}: {1}
+    CannotParseAsInt,    // {0}: cannot parse '{1}' as integer
+    CannotConvertToInt,  // {0}: cannot convert {1} to integer
+    CannotParseAsFloat,  // {0}: cannot parse '{1}' as float
+    CannotConvertToFloat, // {0}: cannot convert {1} to float
+    CannotConvertToJson, // Cannot convert {0} to JSON
+    InvalidRegex,        // {0}: invalid regex: {1}
 
     // 警告
     RedefineBuiltin,     // warning: redefining builtin function: {0} ({1})
@@ -180,6 +191,68 @@ pub enum MsgKey {
     FileReadError,       // {0}: file read error: {1}
     CsvCannotSerialize,  // csv/stringify: cannot serialize {0}
     CsvRecordMustBeList, // csv/stringify: each record must be a list
+
+    // データ構造エラー
+    MustBeQueue,         // {0}: {1} must be a queue
+    MustBeStack,         // {0}: {1} must be a stack
+    IsEmpty,             // {0}: {1} is empty
+
+    // テストエラー
+    TestsFailed,         // Some tests failed
+    AssertExpectedException, // Assertion failed: expected exception but none was thrown
+
+    // パスエラー
+    AllPathsMustBeStrings, // {0}: all paths must be strings
+
+    // サーバーエラー
+    JsonStringifyError,  // Failed to stringify JSON
+    RequestMustHave,     // {0}: request must have {1}
+    RequestMustBe,       // {0}: request must be {1}
+    InvalidFilePath,     // {0}: invalid file path (contains ..)
+    FourthArgMustBe,     // {0}'s fourth argument must be {1}
+    Need3Args,           // {0} requires 3 arguments
+    Need1Or3Args,        // {0}: requires 1 or 3 arguments
+
+    // 環境変数エラー
+    ValueMustBeStringNumberBool, // {0}: value must be a string, number, or boolean
+
+    // I/Oエラー
+    BothArgsMustBeStrings, // {0}: both arguments must be strings
+    UnsupportedEncoding,   // Unsupported encoding: {0}
+    KeywordRequiresValue,  // Keyword :{0} requires a value
+    ExpectedKeywordArg,    // Expected keyword argument, got {0}
+    FileAlreadyExists,     // {0}: file already exists
+    InvalidIfExistsOption, // Invalid :if-exists option: {0}
+
+    // HTTPエラー
+    HttpClientError,       // HTTP client error: {0}
+    HttpCompressionError,  // Compression error: {0}
+    HttpStreamClientError, // http stream: client creation error: {0}
+    HttpStreamRequestFailed, // http stream: request failed: {0}
+    HttpStreamReadBytesFailed, // http stream: failed to read bytes: {0}
+    HttpStreamReadBodyFailed,  // http stream: failed to read body: {0}
+    HttpRequestUrlRequired,    // http/request: :url is required
+    HttpUnsupportedMethod,     // Unsupported HTTP method: {0}
+    HttpStreamError,           // http stream: HTTP {0}
+
+    // I/Oエラー（詳細）
+    IoFileError,              // {0}: {1}
+    IoFailedToDecodeUtf8,     // {0}: failed to decode as UTF-8 (invalid byte sequence)
+    IoFailedToCreateDir,      // {0}: failed to create directory: {1}
+    IoFailedToOpenForAppend,  // {0}: failed to open for append: {1}
+    IoFailedToAppend,         // {0}: failed to append: {1}
+    IoFailedToWrite,          // {0}: failed to write: {1}
+    FileStreamFailedToOpen,   // file-stream: failed to open '{0}': {1}
+    WriteStreamFailedToCreate,// write-stream: failed to create {0}: {1}
+    WriteStreamFailedToWrite, // write-stream: failed to write to {0}: {1}
+    IoListDirInvalidPattern,  // io/list-dir: invalid pattern '{0}': {1}
+    IoListDirFailedToRead,    // io/list-dir: failed to read entry: {0}
+    IoCreateDirFailed,        // io/create-dir: failed to create '{0}': {1}
+    IoDeleteFileFailed,       // io/delete-file: failed to delete '{0}': {1}
+    IoDeleteDirFailed,        // io/delete-dir: failed to delete '{0}': {1}
+    IoCopyFileFailed,         // io/copy-file: failed to copy '{0}' to '{1}': {2}
+    IoMoveFileFailed,         // io/move-file: failed to move '{0}' to '{1}': {2}
+    IoGetMetadataFailed,      // io/file-info: failed to get metadata for '{0}': {1}
 }
 
 /// UIメッセージキー
@@ -191,6 +264,48 @@ pub enum UiMsg {
     ReplGoodbye,
     ReplLoading,
     ReplLoaded,
+    ReplTypeHelp,
+    ReplAvailableCommands,
+    ReplNoVariables,
+    ReplDefinedVariables,
+    ReplNoFunctions,
+    ReplDefinedFunctions,
+    ReplNoBuiltinsMatching,
+    ReplBuiltinsMatching,
+    ReplBuiltinFunctions,
+    ReplBuiltinTotal,
+    ReplBuiltinTip,
+    ReplEnvCleared,
+    ReplLoadUsage,
+    ReplNoFileLoaded,
+    ReplUnknownCommand,
+    ReplTypeHelpForCommands,
+
+    // REPLコマンドヘルプ
+    ReplCommandHelp,
+    ReplCommandVars,
+    ReplCommandFuncs,
+    ReplCommandBuiltins,
+    ReplCommandClear,
+    ReplCommandLoad,
+    ReplCommandReload,
+    ReplCommandQuit,
+
+    // テスト
+    TestNoTests,
+    TestResults,
+    TestResultsSeparator,
+    TestSummary,
+    TestAssertEqFailed,
+    TestAssertTruthyFailed,
+    TestAssertFalsyFailed,
+
+    // プロファイラー
+    ProfileNoData,
+    ProfileUseStart,
+    ProfileReport,
+    ProfileTableHeader,
+    ProfileTotalTime,
 
     // ヘルプ
     HelpTitle,
@@ -279,6 +394,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::NeedExactlyNArgs), "{0} requires exactly {1} argument(s)");
         messages.insert((Lang::En, MsgKey::Need2Or3Args), "{0} requires 2 or 3 arguments");
         messages.insert((Lang::En, MsgKey::Need1Or2Args), "{0} requires 1 or 2 arguments");
+        messages.insert((Lang::En, MsgKey::Need0Or1Args), "{0} requires 0 or 1 argument");
         messages.insert((Lang::En, MsgKey::Need2Args), "{0} requires 2 arguments");
         messages.insert((Lang::En, MsgKey::Need1Arg), "{0} requires 1 argument");
         messages.insert((Lang::En, MsgKey::Need0Args), "{0} requires no arguments");
@@ -315,6 +431,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::FStringUnclosedBrace), "f-string: unclosed {");
         messages.insert((Lang::En, MsgKey::FStringUnclosed), "f-string: unclosed string");
         messages.insert((Lang::En, MsgKey::FStringCannotBeQuoted), "f-string cannot be quoted");
+        messages.insert((Lang::En, MsgKey::FStringCodeParseError), "f-string: code parse error: {0}");
 
         // 英語メッセージ - マクロ
         messages.insert((Lang::En, MsgKey::MacVarargNeedsSymbol), "mac: '&' requires a symbol");
@@ -364,6 +481,15 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::InvalidTimestamp), "{0}: invalid timestamp");
         messages.insert((Lang::En, MsgKey::InvalidDateFormat), "{0}: invalid date format: {1}");
         messages.insert((Lang::En, MsgKey::InvalidPercentile), "{0}: percentile must be between 0 and 100");
+        messages.insert((Lang::En, MsgKey::SystemTimeError), "{0}: system time error: {1}");
+        messages.insert((Lang::En, MsgKey::JsonParseError), "{0}: {1}");
+        messages.insert((Lang::En, MsgKey::JsonStringifyError2), "{0}: {1}");
+        messages.insert((Lang::En, MsgKey::CannotParseAsInt), "{0}: cannot parse '{1}' as integer");
+        messages.insert((Lang::En, MsgKey::CannotConvertToInt), "{0}: cannot convert {1} to integer");
+        messages.insert((Lang::En, MsgKey::CannotParseAsFloat), "{0}: cannot parse '{1}' as float");
+        messages.insert((Lang::En, MsgKey::CannotConvertToFloat), "{0}: cannot convert {1} to float");
+        messages.insert((Lang::En, MsgKey::CannotConvertToJson), "Cannot convert {0} to JSON");
+        messages.insert((Lang::En, MsgKey::InvalidRegex), "{0}: invalid regex: {1}");
 
         // 英語メッセージ - 警告
         messages.insert((Lang::En, MsgKey::RedefineBuiltin), "warning: redefining builtin function '{0}' ({1})");
@@ -374,6 +500,68 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::FileReadError), "{0}: file read error: {1}");
         messages.insert((Lang::En, MsgKey::CsvCannotSerialize), "csv/stringify: cannot serialize {0}");
         messages.insert((Lang::En, MsgKey::CsvRecordMustBeList), "csv/stringify: each record must be a list");
+
+        // 英語メッセージ - データ構造
+        messages.insert((Lang::En, MsgKey::MustBeQueue), "{0}: {1} must be a queue");
+        messages.insert((Lang::En, MsgKey::MustBeStack), "{0}: {1} must be a stack");
+        messages.insert((Lang::En, MsgKey::IsEmpty), "{0}: {1} is empty");
+
+        // 英語メッセージ - テスト
+        messages.insert((Lang::En, MsgKey::TestsFailed), "Some tests failed");
+        messages.insert((Lang::En, MsgKey::AssertExpectedException), "Assertion failed: expected exception but none was thrown");
+
+        // 英語メッセージ - パス
+        messages.insert((Lang::En, MsgKey::AllPathsMustBeStrings), "{0}: all paths must be strings");
+
+        // 英語メッセージ - サーバー
+        messages.insert((Lang::En, MsgKey::JsonStringifyError), "Failed to stringify JSON");
+        messages.insert((Lang::En, MsgKey::RequestMustHave), "{0}: request must have {1}");
+        messages.insert((Lang::En, MsgKey::RequestMustBe), "{0}: request must be {1}");
+        messages.insert((Lang::En, MsgKey::InvalidFilePath), "{0}: invalid file path (contains ..)");
+        messages.insert((Lang::En, MsgKey::FourthArgMustBe), "{0}'s fourth argument must be {1}");
+        messages.insert((Lang::En, MsgKey::Need3Args), "{0} requires 3 arguments");
+        messages.insert((Lang::En, MsgKey::Need1Or3Args), "{0}: requires 1 or 3 arguments");
+
+        // 英語メッセージ - 環境変数
+        messages.insert((Lang::En, MsgKey::ValueMustBeStringNumberBool), "{0}: value must be a string, number, or boolean");
+
+        // 英語メッセージ - I/O
+        messages.insert((Lang::En, MsgKey::BothArgsMustBeStrings), "{0}: both arguments must be strings");
+        messages.insert((Lang::En, MsgKey::UnsupportedEncoding), "Unsupported encoding: {0}");
+        messages.insert((Lang::En, MsgKey::KeywordRequiresValue), "Keyword :{0} requires a value");
+        messages.insert((Lang::En, MsgKey::ExpectedKeywordArg), "Expected keyword argument, got {0}");
+        messages.insert((Lang::En, MsgKey::FileAlreadyExists), "{0}: file already exists");
+        messages.insert((Lang::En, MsgKey::InvalidIfExistsOption), "Invalid :if-exists option: {0}");
+
+        // 英語メッセージ - HTTP
+        messages.insert((Lang::En, MsgKey::HttpClientError), "HTTP client error: {0}");
+        messages.insert((Lang::En, MsgKey::HttpCompressionError), "Compression error: {0}");
+        messages.insert((Lang::En, MsgKey::HttpStreamClientError), "http stream: client creation error: {0}");
+        messages.insert((Lang::En, MsgKey::HttpStreamRequestFailed), "http stream: request failed: {0}");
+        messages.insert((Lang::En, MsgKey::HttpStreamReadBytesFailed), "http stream: failed to read bytes: {0}");
+        messages.insert((Lang::En, MsgKey::HttpStreamReadBodyFailed), "http stream: failed to read body: {0}");
+        messages.insert((Lang::En, MsgKey::HttpRequestUrlRequired), "http/request: :url is required");
+        messages.insert((Lang::En, MsgKey::HttpUnsupportedMethod), "Unsupported HTTP method: {0}");
+        messages.insert((Lang::En, MsgKey::HttpStreamError), "http stream: HTTP {0}");
+
+        // 英語メッセージ - I/O（詳細）
+        messages.insert((Lang::En, MsgKey::IoFileError), "{0}: {1}");
+        messages.insert((Lang::En, MsgKey::IoFailedToDecodeUtf8), "{0}: failed to decode as UTF-8 (invalid byte sequence)");
+        messages.insert((Lang::En, MsgKey::IoFailedToCreateDir), "{0}: failed to create directory: {1}");
+        messages.insert((Lang::En, MsgKey::IoFailedToOpenForAppend), "{0}: failed to open for append: {1}");
+        messages.insert((Lang::En, MsgKey::IoFailedToAppend), "{0}: failed to append: {1}");
+        messages.insert((Lang::En, MsgKey::IoFailedToWrite), "{0}: failed to write: {1}");
+        messages.insert((Lang::En, MsgKey::FileStreamFailedToOpen), "file-stream: failed to open '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::WriteStreamFailedToCreate), "write-stream: failed to create {0}: {1}");
+        messages.insert((Lang::En, MsgKey::WriteStreamFailedToWrite), "write-stream: failed to write to {0}: {1}");
+        messages.insert((Lang::En, MsgKey::IoListDirInvalidPattern), "io/list-dir: invalid pattern '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::IoListDirFailedToRead), "io/list-dir: failed to read entry: {0}");
+        messages.insert((Lang::En, MsgKey::IoCreateDirFailed), "io/create-dir: failed to create '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::IoDeleteFileFailed), "io/delete-file: failed to delete '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::IoDeleteDirFailed), "io/delete-dir: failed to delete '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::IoCopyFileFailed), "io/copy-file: failed to copy '{0}' to '{1}': {2}");
+        messages.insert((Lang::En, MsgKey::IoMoveFileFailed), "io/move-file: failed to move '{0}' to '{1}': {2}");
+        messages.insert((Lang::En, MsgKey::IoGetMetadataFailed), "io/file-info: failed to get metadata for '{0}': {1}");
 
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
@@ -413,6 +601,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::NeedExactlyNArgs), "{0}には{1}個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Or3Args), "{0}には2または3個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need1Or2Args), "{0}には1または2個の引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need0Or1Args), "{0}には0または1個の引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need2Args), "{0}には2つの引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need1Arg), "{0}には1つの引数が必要です");
         messages.insert((Lang::Ja, MsgKey::Need0Args), "{0}には引数は不要です");
@@ -449,6 +638,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::FStringUnclosedBrace), "f-string: 閉じられていない { があります");
         messages.insert((Lang::Ja, MsgKey::FStringUnclosed), "f-string: 閉じられていない文字列です");
         messages.insert((Lang::Ja, MsgKey::FStringCannotBeQuoted), "f-string はquoteできません");
+        messages.insert((Lang::Ja, MsgKey::FStringCodeParseError), "f-string: コードのパースエラー: {0}");
 
         // 日本語メッセージ - マクロ
         messages.insert((Lang::Ja, MsgKey::MacVarargNeedsSymbol), "mac: &の後にシンボルが必要です");
@@ -498,6 +688,15 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::InvalidTimestamp), "{0}: 不正なタイムスタンプです");
         messages.insert((Lang::Ja, MsgKey::InvalidDateFormat), "{0}: 不正な日付フォーマットです: {1}");
         messages.insert((Lang::Ja, MsgKey::InvalidPercentile), "{0}: パーセンタイルは0から100の間である必要があります");
+        messages.insert((Lang::Ja, MsgKey::SystemTimeError), "{0}: システム時刻エラー: {1}");
+        messages.insert((Lang::Ja, MsgKey::JsonParseError), "{0}: {1}");
+        messages.insert((Lang::Ja, MsgKey::JsonStringifyError2), "{0}: {1}");
+        messages.insert((Lang::Ja, MsgKey::CannotParseAsInt), "{0}: '{1}' を整数としてパースできません");
+        messages.insert((Lang::Ja, MsgKey::CannotConvertToInt), "{0}: {1} を整数に変換できません");
+        messages.insert((Lang::Ja, MsgKey::CannotParseAsFloat), "{0}: '{1}' を浮動小数点数としてパースできません");
+        messages.insert((Lang::Ja, MsgKey::CannotConvertToFloat), "{0}: {1} を浮動小数点数に変換できません");
+        messages.insert((Lang::Ja, MsgKey::CannotConvertToJson), "{0} をJSONに変換できません");
+        messages.insert((Lang::Ja, MsgKey::InvalidRegex), "{0}: 不正な正規表現: {1}");
 
         // 日本語メッセージ - 警告
         messages.insert((Lang::Ja, MsgKey::RedefineBuiltin), "警告: ビルトイン関数を再定義しています: '{0}' ({1})");
@@ -509,15 +708,120 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::CsvCannotSerialize), "csv/stringify: シリアライズできません: {0}");
         messages.insert((Lang::Ja, MsgKey::CsvRecordMustBeList), "csv/stringify: 各レコードはリストである必要があります");
 
+        // 日本語メッセージ - データ構造
+        messages.insert((Lang::Ja, MsgKey::MustBeQueue), "{0}: {1}はキューである必要があります");
+        messages.insert((Lang::Ja, MsgKey::MustBeStack), "{0}: {1}はスタックである必要があります");
+        messages.insert((Lang::Ja, MsgKey::IsEmpty), "{0}: {1}は空です");
+
+        // 日本語メッセージ - テスト
+        messages.insert((Lang::Ja, MsgKey::TestsFailed), "いくつかのテストが失敗しました");
+        messages.insert((Lang::Ja, MsgKey::AssertExpectedException), "アサーション失敗: 例外が期待されましたが発生しませんでした");
+
+        // 日本語メッセージ - パス
+        messages.insert((Lang::Ja, MsgKey::AllPathsMustBeStrings), "{0}: すべてのパスは文字列である必要があります");
+
+        // 日本語メッセージ - サーバー
+        messages.insert((Lang::Ja, MsgKey::JsonStringifyError), "JSON文字列化に失敗しました");
+        messages.insert((Lang::Ja, MsgKey::RequestMustHave), "{0}: リクエストには{1}が必要です");
+        messages.insert((Lang::Ja, MsgKey::RequestMustBe), "{0}: リクエストは{1}である必要があります");
+        messages.insert((Lang::Ja, MsgKey::InvalidFilePath), "{0}: 不正なファイルパスです (.. が含まれています)");
+        messages.insert((Lang::Ja, MsgKey::FourthArgMustBe), "{0}の第4引数は{1}が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need3Args), "{0}には3つの引数が必要です");
+        messages.insert((Lang::Ja, MsgKey::Need1Or3Args), "{0}: 1または3個の引数が必要です");
+
+        // 日本語メッセージ - 環境変数
+        messages.insert((Lang::Ja, MsgKey::ValueMustBeStringNumberBool), "{0}: 値は文字列、数値、または真偽値である必要があります");
+
+        // 日本語メッセージ - I/O
+        messages.insert((Lang::Ja, MsgKey::BothArgsMustBeStrings), "{0}: 両方の引数は文字列である必要があります");
+        messages.insert((Lang::Ja, MsgKey::UnsupportedEncoding), "サポートされていないエンコーディングです: {0}");
+        messages.insert((Lang::Ja, MsgKey::KeywordRequiresValue), "キーワード :{0} には値が必要です");
+        messages.insert((Lang::Ja, MsgKey::ExpectedKeywordArg), "キーワード引数が必要です。実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::FileAlreadyExists), "{0}: ファイルが既に存在します");
+        messages.insert((Lang::Ja, MsgKey::InvalidIfExistsOption), "不正な :if-exists オプション: {0}");
+
+        // 日本語メッセージ - HTTP
+        messages.insert((Lang::Ja, MsgKey::HttpClientError), "HTTPクライアントエラー: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpCompressionError), "圧縮エラー: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpStreamClientError), "http stream: クライアント作成エラー: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpStreamRequestFailed), "http stream: リクエスト失敗: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpStreamReadBytesFailed), "http stream: バイト読み込み失敗: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpStreamReadBodyFailed), "http stream: ボディ読み込み失敗: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpRequestUrlRequired), "http/request: :url は必須です");
+        messages.insert((Lang::Ja, MsgKey::HttpUnsupportedMethod), "未サポートのHTTPメソッド: {0}");
+        messages.insert((Lang::Ja, MsgKey::HttpStreamError), "http stream: HTTP {0}");
+
+        // 日本語メッセージ - I/O（詳細）
+        messages.insert((Lang::Ja, MsgKey::IoFileError), "{0}: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoFailedToDecodeUtf8), "{0}: UTF-8としてデコードできませんでした (無効なバイト列)");
+        messages.insert((Lang::Ja, MsgKey::IoFailedToCreateDir), "{0}: ディレクトリの作成に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoFailedToOpenForAppend), "{0}: 追記用のオープンに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoFailedToAppend), "{0}: 追記に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoFailedToWrite), "{0}: 書き込みに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::FileStreamFailedToOpen), "file-stream: '{0}' のオープンに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::WriteStreamFailedToCreate), "write-stream: {0} の作成に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::WriteStreamFailedToWrite), "write-stream: {0} への書き込みに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoListDirInvalidPattern), "io/list-dir: 不正なパターン '{0}': {1}");
+        messages.insert((Lang::Ja, MsgKey::IoListDirFailedToRead), "io/list-dir: エントリの読み込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::IoCreateDirFailed), "io/create-dir: '{0}' の作成に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoDeleteFileFailed), "io/delete-file: '{0}' の削除に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoDeleteDirFailed), "io/delete-dir: '{0}' の削除に失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoCopyFileFailed), "io/copy-file: '{0}' から '{1}' へのコピーに失敗しました: {2}");
+        messages.insert((Lang::Ja, MsgKey::IoMoveFileFailed), "io/move-file: '{0}' から '{1}' への移動に失敗しました: {2}");
+        messages.insert((Lang::Ja, MsgKey::IoGetMetadataFailed), "io/file-info: '{0}' のメタデータ取得に失敗しました: {1}");
+
         // UIメッセージ
         let mut ui_messages = HashMap::new();
 
-        // 英語UI
+        // 英語UI - REPL基本
         ui_messages.insert((Lang::En, UiMsg::ReplWelcome), "Qi REPL v{0}");
         ui_messages.insert((Lang::En, UiMsg::ReplPressCtrlC), "Press Ctrl+C to exit");
         ui_messages.insert((Lang::En, UiMsg::ReplGoodbye), "Goodbye!");
         ui_messages.insert((Lang::En, UiMsg::ReplLoading), "Loading {0}...");
         ui_messages.insert((Lang::En, UiMsg::ReplLoaded), "Loaded.");
+        ui_messages.insert((Lang::En, UiMsg::ReplTypeHelp), "Type :help for REPL commands");
+        ui_messages.insert((Lang::En, UiMsg::ReplAvailableCommands), "Available REPL commands:");
+        ui_messages.insert((Lang::En, UiMsg::ReplNoVariables), "No variables defined");
+        ui_messages.insert((Lang::En, UiMsg::ReplDefinedVariables), "Defined variables:");
+        ui_messages.insert((Lang::En, UiMsg::ReplNoFunctions), "No user-defined functions");
+        ui_messages.insert((Lang::En, UiMsg::ReplDefinedFunctions), "User-defined functions:");
+        ui_messages.insert((Lang::En, UiMsg::ReplNoBuiltinsMatching), "No builtin functions matching '{0}'");
+        ui_messages.insert((Lang::En, UiMsg::ReplBuiltinsMatching), "Builtin functions matching '{0}':");
+        ui_messages.insert((Lang::En, UiMsg::ReplBuiltinFunctions), "Builtin functions:");
+        ui_messages.insert((Lang::En, UiMsg::ReplBuiltinTotal), "Total: {0} functions");
+        ui_messages.insert((Lang::En, UiMsg::ReplBuiltinTip), "Tip: Use ':builtins <pattern>' to filter (e.g., ':builtins str')");
+        ui_messages.insert((Lang::En, UiMsg::ReplEnvCleared), "Environment cleared");
+        ui_messages.insert((Lang::En, UiMsg::ReplLoadUsage), "Usage: :load <file>");
+        ui_messages.insert((Lang::En, UiMsg::ReplNoFileLoaded), "No file has been loaded yet");
+        ui_messages.insert((Lang::En, UiMsg::ReplUnknownCommand), "Unknown command: {0}");
+        ui_messages.insert((Lang::En, UiMsg::ReplTypeHelpForCommands), "Type :help for available commands");
+
+        // 英語UI - REPLコマンドヘルプ
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandHelp), ":help              - Show this help");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandVars), ":vars              - List all defined variables");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandFuncs), ":funcs             - List all defined functions");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandBuiltins), ":builtins [filter] - List all builtin functions (optional: filter by pattern)");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandClear), ":clear             - Clear environment");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandLoad), ":load <file>       - Load a file");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandReload), ":reload            - Reload the last loaded file");
+        ui_messages.insert((Lang::En, UiMsg::ReplCommandQuit), ":quit              - Exit REPL");
+
+        // 英語UI - テスト
+        ui_messages.insert((Lang::En, UiMsg::TestNoTests), "No tests to run");
+        ui_messages.insert((Lang::En, UiMsg::TestResults), "Test Results:");
+        ui_messages.insert((Lang::En, UiMsg::TestResultsSeparator), "=============");
+        ui_messages.insert((Lang::En, UiMsg::TestSummary), "{0} tests, {1} passed, {2} failed");
+        ui_messages.insert((Lang::En, UiMsg::TestAssertEqFailed), "Assertion failed:\n  Expected: {0}\n  Actual:   {1}");
+        ui_messages.insert((Lang::En, UiMsg::TestAssertTruthyFailed), "Assertion failed: expected truthy value, got {0}");
+        ui_messages.insert((Lang::En, UiMsg::TestAssertFalsyFailed), "Assertion failed: expected falsy value, got {0}");
+
+        // 英語UI - プロファイラー
+        ui_messages.insert((Lang::En, UiMsg::ProfileNoData), "No profile data available.");
+        ui_messages.insert((Lang::En, UiMsg::ProfileUseStart), "Use (profile/start) to begin profiling.");
+        ui_messages.insert((Lang::En, UiMsg::ProfileReport), "=== Profile Report ===");
+        ui_messages.insert((Lang::En, UiMsg::ProfileTableHeader), "Function                                     Calls      Total (ms)       Avg (μs)");
+        ui_messages.insert((Lang::En, UiMsg::ProfileTotalTime), "Total time: {0} ms");
+
         ui_messages.insert((Lang::En, UiMsg::HelpTitle), "Qi - A Lisp that flows");
         ui_messages.insert((Lang::En, UiMsg::HelpUsage), "USAGE:");
         ui_messages.insert((Lang::En, UiMsg::HelpOptions), "OPTIONS:");
@@ -544,12 +848,55 @@ impl Messages {
         ui_messages.insert((Lang::En, UiMsg::ErrorLexer), "Lexer error");
         ui_messages.insert((Lang::En, UiMsg::ErrorRuntime), "Error");
 
-        // 日本語UI
+        // 日本語UI - REPL基本
         ui_messages.insert((Lang::Ja, UiMsg::ReplWelcome), "Qi REPL v{0}");
         ui_messages.insert((Lang::Ja, UiMsg::ReplPressCtrlC), "終了するには Ctrl+C を押してください");
         ui_messages.insert((Lang::Ja, UiMsg::ReplGoodbye), "さようなら！");
         ui_messages.insert((Lang::Ja, UiMsg::ReplLoading), "{0} を読み込んでいます...");
         ui_messages.insert((Lang::Ja, UiMsg::ReplLoaded), "読み込み完了");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplTypeHelp), "REPLコマンドは :help で確認できます");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplAvailableCommands), "利用可能なREPLコマンド:");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplNoVariables), "変数は定義されていません");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplDefinedVariables), "定義済み変数:");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplNoFunctions), "ユーザー定義関数はありません");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplDefinedFunctions), "ユーザー定義関数:");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplNoBuiltinsMatching), "'{0}' に一致する組み込み関数はありません");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplBuiltinsMatching), "'{0}' に一致する組み込み関数:");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplBuiltinFunctions), "組み込み関数:");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplBuiltinTotal), "合計: {0} 個");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplBuiltinTip), "ヒント: ':builtins <パターン>' でフィルタできます (例: ':builtins str')");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplEnvCleared), "環境をクリアしました");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplLoadUsage), "使い方: :load <file>");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplNoFileLoaded), "まだファイルが読み込まれていません");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplUnknownCommand), "不明なコマンド: {0}");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplTypeHelpForCommands), "利用可能なコマンドは :help で確認してください");
+
+        // 日本語UI - REPLコマンドヘルプ
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandHelp), ":help              - このヘルプを表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandVars), ":vars              - 定義済み変数を一覧表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandFuncs), ":funcs             - 定義済み関数を一覧表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandBuiltins), ":builtins [filter] - 組み込み関数を一覧表示 (オプション: パターンでフィルタ)");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandClear), ":clear             - 環境をクリア");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandLoad), ":load <file>       - ファイルを読み込む");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandReload), ":reload            - 最後に読み込んだファイルを再読み込み");
+        ui_messages.insert((Lang::Ja, UiMsg::ReplCommandQuit), ":quit              - REPLを終了");
+
+        // 日本語UI - テスト
+        ui_messages.insert((Lang::Ja, UiMsg::TestNoTests), "実行するテストがありません");
+        ui_messages.insert((Lang::Ja, UiMsg::TestResults), "テスト結果:");
+        ui_messages.insert((Lang::Ja, UiMsg::TestResultsSeparator), "===========");
+        ui_messages.insert((Lang::Ja, UiMsg::TestSummary), "{0} テスト, {1} 成功, {2} 失敗");
+        ui_messages.insert((Lang::Ja, UiMsg::TestAssertEqFailed), "アサーション失敗:\n  期待値: {0}\n  実際値: {1}");
+        ui_messages.insert((Lang::Ja, UiMsg::TestAssertTruthyFailed), "アサーション失敗: 真の値が期待されましたが、実際は {0} でした");
+        ui_messages.insert((Lang::Ja, UiMsg::TestAssertFalsyFailed), "アサーション失敗: 偽の値が期待されましたが、実際は {0} でした");
+
+        // 日本語UI - プロファイラー
+        ui_messages.insert((Lang::Ja, UiMsg::ProfileNoData), "プロファイルデータがありません。");
+        ui_messages.insert((Lang::Ja, UiMsg::ProfileUseStart), "(profile/start) でプロファイリングを開始してください。");
+        ui_messages.insert((Lang::Ja, UiMsg::ProfileReport), "=== プロファイルレポート ===");
+        ui_messages.insert((Lang::Ja, UiMsg::ProfileTableHeader), "関数                                         呼出回数    合計時間(ms)     平均(μs)");
+        ui_messages.insert((Lang::Ja, UiMsg::ProfileTotalTime), "合計時間: {0} ms");
+
         ui_messages.insert((Lang::Ja, UiMsg::HelpTitle), "Qi - 流れるLisp");
         ui_messages.insert((Lang::Ja, UiMsg::HelpUsage), "使い方:");
         ui_messages.insert((Lang::Ja, UiMsg::HelpOptions), "オプション:");

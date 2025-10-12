@@ -1,5 +1,6 @@
 //! パス操作関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::path::{Path, PathBuf, Component};
 use std::env;
@@ -9,14 +10,14 @@ use std::env;
 /// 例: (path/join "dir" "subdir" "file.txt") => "dir/subdir/file.txt"
 pub fn native_path_join(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err("path/join: at least 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["path/join", "1"]));
     }
 
     let mut path = PathBuf::new();
     for arg in args {
         match arg {
             Value::String(s) => path.push(s),
-            _ => return Err(format!("path/join: all arguments must be strings, got {:?}", arg)),
+            _ => return Err(fmt_msg(MsgKey::AllPathsMustBeStrings, &["path/join"])),
         }
     }
 
@@ -28,7 +29,7 @@ pub fn native_path_join(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/basename "/path/to/file.txt") => "file.txt"
 pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/basename: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/basename", "1"]));
     }
 
     match &args[0] {
@@ -39,7 +40,7 @@ pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err("path/basename: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/basename", "a string"])),
     }
 }
 
@@ -48,7 +49,7 @@ pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/dirname "/path/to/file.txt") => "/path/to"
 pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/dirname: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/dirname", "1"]));
     }
 
     match &args[0] {
@@ -59,7 +60,7 @@ pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err("path/dirname: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/dirname", "a string"])),
     }
 }
 
@@ -68,7 +69,7 @@ pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/extension "file.txt") => "txt"
 pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/extension: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/extension", "1"]));
     }
 
     match &args[0] {
@@ -79,7 +80,7 @@ pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err("path/extension: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/extension", "a string"])),
     }
 }
 
@@ -88,7 +89,7 @@ pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/stem "file.txt") => "file"
 pub fn native_path_stem(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/stem: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/stem", "1"]));
     }
 
     match &args[0] {
@@ -99,7 +100,7 @@ pub fn native_path_stem(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err("path/stem: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/stem", "a string"])),
     }
 }
 
@@ -108,7 +109,7 @@ pub fn native_path_stem(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/absolute "relative/path") => "/current/dir/relative/path"
 pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/absolute: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/absolute", "1"]));
     }
 
     match &args[0] {
@@ -124,7 +125,7 @@ pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::String(abs_path.to_string_lossy().to_string()))
         }
-        _ => Err("path/absolute: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/absolute", "a string"])),
     }
 }
 
@@ -133,7 +134,7 @@ pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/normalize "a/./b/../c") => "a/c"
 pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/normalize: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/normalize", "1"]));
     }
 
     match &args[0] {
@@ -158,7 +159,7 @@ pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::String(normalized.to_string_lossy().to_string()))
         }
-        _ => Err("path/normalize: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/normalize", "a string"])),
     }
 }
 
@@ -167,7 +168,7 @@ pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/is-absolute? "/usr/bin") => true
 pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/is-absolute?: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/is-absolute?", "1"]));
     }
 
     match &args[0] {
@@ -175,7 +176,7 @@ pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
             let path = Path::new(s);
             Ok(Value::Bool(path.is_absolute()))
         }
-        _ => Err("path/is-absolute?: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/is-absolute?", "a string"])),
     }
 }
 
@@ -184,7 +185,7 @@ pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/is-relative? "data/file.txt") => true
 pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("path/is-relative?: exactly 1 argument required".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/is-relative?", "1"]));
     }
 
     match &args[0] {
@@ -192,6 +193,6 @@ pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
             let path = Path::new(s);
             Ok(Value::Bool(path.is_relative()))
         }
-        _ => Err("path/is-relative?: argument must be a string".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/is-relative?", "a string"])),
     }
 }

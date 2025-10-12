@@ -1,6 +1,7 @@
 //! テストフレームワーク
 
 use crate::eval::Evaluator;
+use crate::i18n::{fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
 use crate::value::Value;
 use parking_lot::Mutex;
 use std::sync::OnceLock;
@@ -22,7 +23,7 @@ fn test_registry() -> &'static Mutex<Vec<TestResult>> {
 /// test/assert-eq - 2つの値が等しいことをアサート
 pub fn native_assert_eq(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("test/assert-eq: requires 2 arguments (expected actual)".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["test/assert-eq"]));
     }
 
     let expected = &args[0];
@@ -31,9 +32,9 @@ pub fn native_assert_eq(args: &[Value]) -> Result<Value, String> {
     if expected == actual {
         Ok(Value::Bool(true))
     } else {
-        Err(format!(
-            "Assertion failed:\n  Expected: {}\n  Actual:   {}",
-            expected, actual
+        Err(fmt_ui_msg(
+            UiMsg::TestAssertEqFailed,
+            &[&expected.to_string(), &actual.to_string()],
         ))
     }
 }
@@ -41,33 +42,39 @@ pub fn native_assert_eq(args: &[Value]) -> Result<Value, String> {
 /// test/assert - 値が真であることをアサート
 pub fn native_assert(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("test/assert: requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert"]));
     }
 
     if args[0].is_truthy() {
         Ok(Value::Bool(true))
     } else {
-        Err(format!("Assertion failed: expected truthy value, got {}", args[0]))
+        Err(fmt_ui_msg(
+            UiMsg::TestAssertTruthyFailed,
+            &[&args[0].to_string()],
+        ))
     }
 }
 
 /// test/assert-not - 値が偽であることをアサート
 pub fn native_assert_not(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("test/assert-not: requires 1 argument".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-not"]));
     }
 
     if !args[0].is_truthy() {
         Ok(Value::Bool(true))
     } else {
-        Err(format!("Assertion failed: expected falsy value, got {}", args[0]))
+        Err(fmt_ui_msg(
+            UiMsg::TestAssertFalsyFailed,
+            &[&args[0].to_string()],
+        ))
     }
 }
 
 /// test/assert-throws - 式が例外を投げることをアサート
 pub fn native_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("test/assert-throws: requires 1 argument (function)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
     }
 
     // 関数を実行
@@ -77,22 +84,22 @@ pub fn native_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Val
             if result.is_err() {
                 Ok(Value::Bool(true))
             } else {
-                Err("Assertion failed: expected exception but none was thrown".to_string())
+                Err(fmt_msg(MsgKey::AssertExpectedException, &[]))
             }
         }
-        _ => Err("test/assert-throws: argument must be a function".to_string()),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["test/assert-throws", "a function"])),
     }
 }
 
 /// test/run - テストを実行して結果を記録
 pub fn native_test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("test/run: requires 2 arguments (name body)".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["test/run"]));
     }
 
     let name = match &args[0] {
         Value::String(s) => s.clone(),
-        _ => return Err("test/run: first argument must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["test/run", "a string"])),
     };
 
     let body = &args[1];
@@ -115,7 +122,7 @@ pub fn native_test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             }
         }
         _ => {
-            return Err("test/run: second argument must be a function".to_string());
+            return Err(fmt_msg(MsgKey::SecondArgMustBe, &["test/run", "a function"]));
         }
     };
 
@@ -130,7 +137,7 @@ pub fn native_run_all(_args: &[Value]) -> Result<Value, String> {
     let registry = test_registry().lock();
 
     if registry.is_empty() {
-        println!("No tests to run");
+        println!("{}", ui_msg(UiMsg::TestNoTests));
         return Ok(Value::Integer(0));
     }
 
@@ -138,8 +145,8 @@ pub fn native_run_all(_args: &[Value]) -> Result<Value, String> {
     let passed = registry.iter().filter(|t| t.passed).count();
     let failed = total - passed;
 
-    println!("\nTest Results:");
-    println!("=============");
+    println!("\n{}", ui_msg(UiMsg::TestResults));
+    println!("{}", ui_msg(UiMsg::TestResultsSeparator));
 
     for test in registry.iter() {
         if test.passed {
@@ -152,10 +159,16 @@ pub fn native_run_all(_args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    println!("\n{} tests, {} passed, {} failed", total, passed, failed);
+    println!(
+        "\n{}",
+        fmt_ui_msg(
+            UiMsg::TestSummary,
+            &[&total.to_string(), &passed.to_string(), &failed.to_string()],
+        )
+    );
 
     if failed > 0 {
-        Err("Some tests failed".to_string())
+        Err(fmt_msg(MsgKey::TestsFailed, &[]))
     } else {
         Ok(Value::Integer(passed as i64))
     }

@@ -13,7 +13,7 @@ pub fn native_now(args: &[Value]) -> Result<Value, String> {
 
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("now: system time error: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::SystemTimeError, &["now", &e.to_string()]))?;
 
     Ok(Value::Integer(duration.as_secs() as i64))
 }
@@ -26,7 +26,7 @@ pub fn native_timestamp(args: &[Value]) -> Result<Value, String> {
 
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("timestamp: system time error: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::SystemTimeError, &["timestamp", &e.to_string()]))?;
 
     Ok(Value::Integer(duration.as_millis() as i64))
 }
@@ -63,7 +63,7 @@ pub fn native_json_parse(args: &[Value]) -> Result<Value, String> {
     };
 
     let json_value: serde_json::Value = serde_json::from_str(json_str)
-        .map_err(|e| format!("json-parse: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::JsonParseError, &["json-parse", &e.to_string()]))?;
 
     json_to_value(&json_value)
 }
@@ -76,7 +76,7 @@ pub fn native_json_stringify(args: &[Value]) -> Result<Value, String> {
 
     let json_value = value_to_json(&args[0])?;
     let json_str = serde_json::to_string(&json_value)
-        .map_err(|e| format!("json-stringify: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::JsonStringifyError2, &["json-stringify", &e.to_string()]))?;
 
     Ok(Value::String(json_str))
 }
@@ -89,7 +89,7 @@ pub fn native_json_pretty(args: &[Value]) -> Result<Value, String> {
 
     let json_value = value_to_json(&args[0])?;
     let json_str = serde_json::to_string_pretty(&json_value)
-        .map_err(|e| format!("json-pretty: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::JsonStringifyError2, &["json-pretty", &e.to_string()]))?;
 
     Ok(Value::String(json_str))
 }
@@ -142,7 +142,7 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value, String> {
             }
             Ok(serde_json::Value::Object(obj))
         }
-        _ => Err(format!("Cannot convert {:?} to JSON", value)),
+        _ => Err(fmt_msg(MsgKey::CannotConvertToJson, &[&format!("{:?}", value)])),
     }
 }
 
@@ -158,10 +158,10 @@ pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
         Value::String(s) => {
             s.parse::<i64>()
                 .map(Value::Integer)
-                .map_err(|_| format!("to-int: cannot parse '{}' as integer", s))
+                .map_err(|_| fmt_msg(MsgKey::CannotParseAsInt, &["to-int", s]))
         }
         Value::Bool(b) => Ok(Value::Integer(if *b { 1 } else { 0 })),
-        _ => Err(format!("to-int: cannot convert {:?} to integer", args[0])),
+        _ => Err(fmt_msg(MsgKey::CannotConvertToInt, &["to-int", &format!("{:?}", args[0])])),
     }
 }
 
@@ -177,9 +177,9 @@ pub fn native_to_float(args: &[Value]) -> Result<Value, String> {
         Value::String(s) => {
             s.parse::<f64>()
                 .map(Value::Float)
-                .map_err(|_| format!("to-float: cannot parse '{}' as float", s))
+                .map_err(|_| fmt_msg(MsgKey::CannotParseAsFloat, &["to-float", s]))
         }
-        _ => Err(format!("to-float: cannot convert {:?} to float", args[0])),
+        _ => Err(fmt_msg(MsgKey::CannotConvertToFloat, &["to-float", &format!("{:?}", args[0])])),
     }
 }
 

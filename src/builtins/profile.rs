@@ -1,5 +1,6 @@
 //! プロファイラー - 実行時間測定とパフォーマンス分析
 
+use crate::i18n::{fmt_ui_msg, ui_msg, UiMsg};
 use crate::value::Value;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -56,10 +57,10 @@ pub fn native_profile_clear(_args: &[Value]) -> Result<Value, String> {
 /// プロファイル結果をレポート
 pub fn native_profile_report(_args: &[Value]) -> Result<Value, String> {
     let p = profiler().lock();
-    
+
     if p.data.is_empty() {
-        println!("No profile data available.");
-        println!("Use (profile/start) to begin profiling.");
+        println!("{}", ui_msg(UiMsg::ProfileNoData));
+        println!("{}", ui_msg(UiMsg::ProfileUseStart));
         return Ok(Value::Nil);
     }
 
@@ -67,8 +68,8 @@ pub fn native_profile_report(_args: &[Value]) -> Result<Value, String> {
     let mut entries: Vec<_> = p.data.iter().collect();
     entries.sort_by(|a, b| b.1.total_time.cmp(&a.1.total_time));
 
-    println!("\n=== Profile Report ===");
-    println!("{:<40} {:>10} {:>15} {:>15}", "Function", "Calls", "Total (ms)", "Avg (μs)");
+    println!("\n{}", ui_msg(UiMsg::ProfileReport));
+    println!("{}", ui_msg(UiMsg::ProfileTableHeader));
     println!("{}", "=".repeat(82));
 
     let mut total_time = Duration::ZERO;
@@ -78,7 +79,7 @@ pub fn native_profile_report(_args: &[Value]) -> Result<Value, String> {
         } else {
             0
         };
-        
+
         println!(
             "{:<40} {:>10} {:>15.3} {:>15}",
             name,
@@ -86,12 +87,18 @@ pub fn native_profile_report(_args: &[Value]) -> Result<Value, String> {
             data.total_time.as_secs_f64() * 1000.0,
             avg_micros
         );
-        
+
         total_time += data.total_time;
     }
 
     println!("{}", "=".repeat(82));
-    println!("Total time: {:.3} ms", total_time.as_secs_f64() * 1000.0);
+    println!(
+        "{}",
+        fmt_ui_msg(
+            UiMsg::ProfileTotalTime,
+            &[&format!("{:.3}", total_time.as_secs_f64() * 1000.0)],
+        )
+    );
 
     Ok(Value::Nil)
 }

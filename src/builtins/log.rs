@@ -1,5 +1,6 @@
 //! ログ関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use chrono::Local;
 use parking_lot::RwLock;
@@ -140,18 +141,18 @@ fn value_to_json_string(v: &Value) -> String {
 ///     (log/debug "ユーザー情報" {:user-id 123 :name "Alice"})
 pub fn native_log_debug(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("log/debug: 1 or 2 arguments required (message [context])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/debug"]));
     }
 
     let message = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/debug: message must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/debug", "a string"])),
     };
 
     let context = if args.len() == 2 {
         match &args[1] {
             Value::Map(m) => Some(m.clone()),
-            _ => return Err("log/debug: context must be a map".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/debug", "a map"])),
         }
     } else {
         None
@@ -166,18 +167,18 @@ pub fn native_log_debug(args: &[Value]) -> Result<Value, String> {
 /// 例: (log/info "サーバー起動" {:port 3000})
 pub fn native_log_info(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("log/info: 1 or 2 arguments required (message [context])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/info"]));
     }
 
     let message = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/info: message must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/info", "a string"])),
     };
 
     let context = if args.len() == 2 {
         match &args[1] {
             Value::Map(m) => Some(m.clone()),
-            _ => return Err("log/info: context must be a map".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/info", "a map"])),
         }
     } else {
         None
@@ -192,18 +193,18 @@ pub fn native_log_info(args: &[Value]) -> Result<Value, String> {
 /// 例: (log/warn "接続タイムアウト" {:timeout-ms 5000})
 pub fn native_log_warn(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("log/warn: 1 or 2 arguments required (message [context])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/warn"]));
     }
 
     let message = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/warn: message must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/warn", "a string"])),
     };
 
     let context = if args.len() == 2 {
         match &args[1] {
             Value::Map(m) => Some(m.clone()),
-            _ => return Err("log/warn: context must be a map".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/warn", "a map"])),
         }
     } else {
         None
@@ -218,18 +219,18 @@ pub fn native_log_warn(args: &[Value]) -> Result<Value, String> {
 /// 例: (log/error "データベース接続失敗" {:error "connection refused"})
 pub fn native_log_error(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("log/error: 1 or 2 arguments required (message [context])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/error"]));
     }
 
     let message = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/error: message must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/error", "a string"])),
     };
 
     let context = if args.len() == 2 {
         match &args[1] {
             Value::Map(m) => Some(m.clone()),
-            _ => return Err("log/error: context must be a map".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/error", "a map"])),
         }
     } else {
         None
@@ -244,12 +245,12 @@ pub fn native_log_error(args: &[Value]) -> Result<Value, String> {
 /// 例: (log/set-level "debug")
 pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("log/set-level: exactly 1 argument required (level)".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-level", "1"]));
     }
 
     let level_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/set-level: level must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/set-level", "a string"])),
     };
 
     let level = LogLevel::from_str(level_str)
@@ -264,12 +265,12 @@ pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
 /// 例: (log/set-format "json")
 pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("log/set-format: exactly 1 argument required (format)".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-format", "1"]));
     }
 
     let format_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("log/set-format: format must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/set-format", "a string"])),
     };
 
     let format = match format_str.to_lowercase().as_str() {

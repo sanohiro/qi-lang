@@ -1,5 +1,6 @@
 //! ZIP圧縮・解凍・gzip関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
@@ -16,12 +17,12 @@ use zip::{ZipArchive, ZipWriter};
 ///     (zip/create "archive.zip" "logs/")
 pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("zip/create: at least 2 arguments required (zip-path files...)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["zip/create", "2"]));
     }
 
     let zip_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/create: zip-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/create", "a string"])),
     };
 
     // ZIPファイル作成
@@ -37,7 +38,7 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
     for arg in &args[1..] {
         let path_str = match arg {
             Value::String(s) => s,
-            _ => return Err("zip/create: all file paths must be strings".to_string()),
+            _ => return Err(fmt_msg(MsgKey::AllPathsMustBeStrings, &["zip/create"])),
         };
 
         let path = Path::new(path_str);
@@ -117,18 +118,18 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
 ///     (zip/extract "archive.zip" "output/")
 pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("zip/extract: 1 or 2 arguments required (zip-path [dest-dir])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["zip/extract"]));
     }
 
     let zip_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/extract: zip-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/extract", "a string"])),
     };
 
     let dest_dir = if args.len() == 2 {
         match &args[1] {
             Value::String(s) => PathBuf::from(s),
-            _ => return Err("zip/extract: dest-dir must be a string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/extract", "a string"])),
         }
     } else {
         PathBuf::from(".")
@@ -174,12 +175,12 @@ pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
 /// 例: (zip/list "backup.zip")
 pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("zip/list: exactly 1 argument required (zip-path)".to_string());
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["zip/list", "1"]));
     }
 
     let zip_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/list: zip-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/list", "a string"])),
     };
 
     let file = File::open(zip_path)
@@ -209,12 +210,12 @@ pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
 /// 例: (zip/add "backup.zip" "new-file.txt")
 pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err("zip/add: at least 2 arguments required (zip-path files...)".to_string());
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["zip/add", "2"]));
     }
 
     let zip_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/add: zip-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/add", "a string"])),
     };
 
     // 既存ZIPを読み込み
@@ -252,7 +253,7 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
     for arg in &args[1..] {
         let path_str = match arg {
             Value::String(s) => s,
-            _ => return Err("zip/add: all file paths must be strings".to_string()),
+            _ => return Err(fmt_msg(MsgKey::AllPathsMustBeStrings, &["zip/add"])),
         };
 
         let path = Path::new(path_str);
@@ -285,18 +286,18 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
 ///     (zip/gzip "data.txt" "backup.gz")    ;; => "backup.gz"
 pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("zip/gzip: 1 or 2 arguments required (input-path [output-path])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["zip/gzip"]));
     }
 
     let input_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/gzip: input-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/gzip", "a string"])),
     };
 
     let output_path = if args.len() == 2 {
         match &args[1] {
             Value::String(s) => s.clone(),
-            _ => return Err("zip/gzip: output-path must be a string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/gzip", "a string"])),
         }
     } else {
         format!("{}.gz", input_path)
@@ -327,18 +328,18 @@ pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
 ///     (zip/gunzip "backup.gz" "data.txt")    ;; => "data.txt"
 pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
-        return Err("zip/gunzip: 1 or 2 arguments required (input-path [output-path])".to_string());
+        return Err(fmt_msg(MsgKey::Need1Or2Args, &["zip/gunzip"]));
     }
 
     let input_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err("zip/gunzip: input-path must be a string".to_string()),
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/gunzip", "a string"])),
     };
 
     let output_path = if args.len() == 2 {
         match &args[1] {
             Value::String(s) => s.clone(),
-            _ => return Err("zip/gunzip: output-path must be a string".to_string()),
+            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/gunzip", "a string"])),
         }
     } else {
         // .gz拡張子を除去

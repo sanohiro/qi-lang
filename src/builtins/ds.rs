@@ -1,5 +1,6 @@
 //! データ構造 - Queue, Stack等
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;
 
@@ -14,17 +15,17 @@ pub fn native_queue_new(_args: &[Value]) -> Result<Value, String> {
 /// queue/enqueue - 要素をキューに追加（末尾）
 pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("queue/enqueue: requires 2 arguments (queue item)".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["queue/enqueue"]));
     }
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("queue/enqueue: first argument must be a queue".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/enqueue", "first argument"])),
     };
 
     // キューであることを確認
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err("queue/enqueue: first argument must be a queue".to_string());
+        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/enqueue", "first argument"]));
     }
 
     let items = match queue.get("items") {
@@ -43,25 +44,25 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
 /// queue/dequeue - キューから要素を取り出し（先頭）
 pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("queue/dequeue: requires 1 argument (queue)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/dequeue"]));
     }
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("queue/dequeue: argument must be a queue".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"])),
     };
 
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err("queue/dequeue: argument must be a queue".to_string());
+        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"]));
     }
 
     let items = match queue.get("items") {
         Some(Value::List(lst)) => lst.clone(),
-        _ => return Err("queue/dequeue: queue is empty".to_string()),
+        _ => return Err(fmt_msg(MsgKey::IsEmpty, &["queue/dequeue", "queue"])),
     };
 
     if items.is_empty() {
-        return Err("queue/dequeue: queue is empty".to_string());
+        return Err(fmt_msg(MsgKey::IsEmpty, &["queue/dequeue", "queue"]));
     }
 
     let item = items[0].clone();
@@ -80,16 +81,16 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
 /// queue/peek - キューの先頭要素を見る（取り出さない）
 pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("queue/peek: requires 1 argument (queue)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/peek"]));
     }
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("queue/peek: argument must be a queue".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"])),
     };
 
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err("queue/peek: argument must be a queue".to_string());
+        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"]));
     }
 
     let items = match queue.get("items") {
@@ -97,22 +98,22 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Ok(Value::Nil),
     };
 
-    items.first().cloned().ok_or_else(|| "queue/peek: queue is empty".to_string())
+    items.first().cloned().ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["queue/peek", "queue"]))
 }
 
 /// queue/empty? - キューが空かチェック
 pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("queue/empty?: requires 1 argument (queue)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/empty?"]));
     }
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("queue/empty?: argument must be a queue".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"])),
     };
 
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err("queue/empty?: argument must be a queue".to_string());
+        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"]));
     }
 
     let items = match queue.get("items") {
@@ -126,16 +127,16 @@ pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
 /// queue/size - キューのサイズ
 pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("queue/size: requires 1 argument (queue)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/size"]));
     }
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("queue/size: argument must be a queue".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"])),
     };
 
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err("queue/size: argument must be a queue".to_string());
+        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"]));
     }
 
     let items = match queue.get("items") {
@@ -157,16 +158,16 @@ pub fn native_stack_new(_args: &[Value]) -> Result<Value, String> {
 /// stack/push - スタックに要素を追加
 pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err("stack/push: requires 2 arguments (stack item)".to_string());
+        return Err(fmt_msg(MsgKey::Need2Args, &["stack/push"]));
     }
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("stack/push: first argument must be a stack".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/push", "first argument"])),
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err("stack/push: first argument must be a stack".to_string());
+        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/push", "first argument"]));
     }
 
     let items = match stack.get("items") {
@@ -185,25 +186,25 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
 /// stack/pop - スタックから要素を取り出し
 pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("stack/pop: requires 1 argument (stack)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/pop"]));
     }
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("stack/pop: argument must be a stack".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"])),
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err("stack/pop: argument must be a stack".to_string());
+        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"]));
     }
 
     let items = match stack.get("items") {
         Some(Value::List(lst)) => lst.clone(),
-        _ => return Err("stack/pop: stack is empty".to_string()),
+        _ => return Err(fmt_msg(MsgKey::IsEmpty, &["stack/pop", "stack"])),
     };
 
     if items.is_empty() {
-        return Err("stack/pop: stack is empty".to_string());
+        return Err(fmt_msg(MsgKey::IsEmpty, &["stack/pop", "stack"]));
     }
 
     let item = items[0].clone();
@@ -221,16 +222,16 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
 /// stack/peek - スタックの先頭要素を見る
 pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("stack/peek: requires 1 argument (stack)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/peek"]));
     }
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("stack/peek: argument must be a stack".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"])),
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err("stack/peek: argument must be a stack".to_string());
+        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"]));
     }
 
     let items = match stack.get("items") {
@@ -238,22 +239,22 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Ok(Value::Nil),
     };
 
-    items.first().cloned().ok_or_else(|| "stack/peek: stack is empty".to_string())
+    items.first().cloned().ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["stack/peek", "stack"]))
 }
 
 /// stack/empty? - スタックが空かチェック
 pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("stack/empty?: requires 1 argument (stack)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/empty?"]));
     }
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("stack/empty?: argument must be a stack".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"])),
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err("stack/empty?: argument must be a stack".to_string());
+        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"]));
     }
 
     let items = match stack.get("items") {
@@ -267,16 +268,16 @@ pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
 /// stack/size - スタックのサイズ
 pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err("stack/size: requires 1 argument (stack)".to_string());
+        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/size"]));
     }
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err("stack/size: argument must be a stack".to_string()),
+        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"])),
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err("stack/size: argument must be a stack".to_string());
+        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"]));
     }
 
     let items = match stack.get("items") {

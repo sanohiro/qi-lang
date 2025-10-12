@@ -1204,7 +1204,7 @@ pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
     };
 
     let re = Regex::new(pattern)
-        .map_err(|e| format!("re-find: invalid regex: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-find", &e.to_string()]))?;
 
     match re.find(text) {
         Some(m) => Ok(Value::String(m.as_str().to_string())),
@@ -1229,7 +1229,7 @@ pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
     };
 
     let re = Regex::new(pattern)
-        .map_err(|e| format!("re-matches: invalid regex: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-matches", &e.to_string()]))?;
 
     let matches: Vec<Value> = re.find_iter(text)
         .map(|m| Value::String(m.as_str().to_string()))
@@ -1260,7 +1260,7 @@ pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
     };
 
     let re = Regex::new(pattern)
-        .map_err(|e| format!("re-replace: invalid regex: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-replace", &e.to_string()]))?;
 
     Ok(Value::String(re.replace_all(text, replacement).to_string()))
 }

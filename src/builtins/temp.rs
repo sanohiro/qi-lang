@@ -1,5 +1,6 @@
 //! 一時ファイル・ディレクトリ関数
 
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -23,7 +24,7 @@ fn temp_dirs() -> &'static Mutex<HashMap<String, TempDir>> {
 /// 例: (io/temp-file) => "/tmp/qi-12345.tmp"
 pub fn native_temp_file(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("io/temp-file: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-file"]));
     }
 
     let temp_file = NamedTempFile::new()
@@ -47,7 +48,7 @@ pub fn native_temp_file(args: &[Value]) -> Result<Value, String> {
 /// 例: (io/temp-file-keep) => "/tmp/qi-12345.tmp"
 pub fn native_temp_file_keep(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("io/temp-file-keep: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-file-keep"]));
     }
 
     let temp_file = NamedTempFile::new()
@@ -72,7 +73,7 @@ pub fn native_temp_file_keep(args: &[Value]) -> Result<Value, String> {
 /// 例: (io/temp-dir) => "/tmp/qi-dir-12345"
 pub fn native_temp_dir(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("io/temp-dir: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-dir"]));
     }
 
     let temp_dir = TempDir::new()
@@ -96,7 +97,7 @@ pub fn native_temp_dir(args: &[Value]) -> Result<Value, String> {
 /// 例: (io/temp-dir-keep) => "/tmp/qi-dir-12345"
 pub fn native_temp_dir_keep(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
-        return Err("io/temp-dir-keep: no arguments required".to_string());
+        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-dir-keep"]));
     }
 
     let temp_dir = TempDir::new()

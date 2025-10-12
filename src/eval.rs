@@ -839,7 +839,7 @@ impl Evaluator {
     /// test/run - テストを実行して結果を記録
     fn eval_test_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err("test/run: requires 2 arguments (name body)".to_string());
+            return Err(fmt_msg(MsgKey::Need2Args, &["test/run"]));
         }
         let name = self.eval_with_env(&args[0], env.clone())?;
         let body = self.eval_with_env(&args[1], env.clone())?;
@@ -849,7 +849,7 @@ impl Evaluator {
     /// test/assert-throws - 式が例外を投げることをアサート
     fn eval_test_assert_throws(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err("test/assert-throws: requires 1 argument (function)".to_string());
+            return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         builtins::test_assert_throws(&[func], self)
@@ -2203,9 +2203,9 @@ impl Evaluator {
                 FStringPart::Code(code) => {
                     // コードをパースして評価
                     let mut parser = crate::parser::Parser::new(code)
-                        .map_err(|e| format!("f-string: コードのパースエラー: {}", e))?;
+                        .map_err(|e| crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e]))?;
                     let expr = parser.parse()
-                        .map_err(|e| format!("f-string: コードのパースエラー: {}", e))?;
+                        .map_err(|e| crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e]))?;
                     let value = self.eval_with_env(&expr, env.clone())?;
 
                     // 値を文字列に変換

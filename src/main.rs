@@ -216,7 +216,7 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
 fn repl(preload: Option<&str>) {
     println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
     println!("{}", ui_msg(UiMsg::ReplPressCtrlC));
-    println!("Type :help for REPL commands");
+    println!("{}", ui_msg(UiMsg::ReplTypeHelp));
     println!();
 
     let mut evaluator = Evaluator::new();
@@ -377,15 +377,15 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
 
     match command {
         ":help" => {
-            println!("Available REPL commands:");
-            println!("  :help              - Show this help");
-            println!("  :vars              - List all defined variables");
-            println!("  :funcs             - List all defined functions");
-            println!("  :builtins [filter] - List all builtin functions (optional: filter by pattern)");
-            println!("  :clear             - Clear environment");
-            println!("  :load <file>       - Load a file");
-            println!("  :reload            - Reload the last loaded file");
-            println!("  :quit              - Exit REPL");
+            println!("{}", ui_msg(UiMsg::ReplAvailableCommands));
+            println!("  {}", ui_msg(UiMsg::ReplCommandHelp));
+            println!("  {}", ui_msg(UiMsg::ReplCommandVars));
+            println!("  {}", ui_msg(UiMsg::ReplCommandFuncs));
+            println!("  {}", ui_msg(UiMsg::ReplCommandBuiltins));
+            println!("  {}", ui_msg(UiMsg::ReplCommandClear));
+            println!("  {}", ui_msg(UiMsg::ReplCommandLoad));
+            println!("  {}", ui_msg(UiMsg::ReplCommandReload));
+            println!("  {}", ui_msg(UiMsg::ReplCommandQuit));
         }
         ":vars" => {
             if let Some(env) = evaluator.get_env() {
@@ -397,9 +397,9 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 vars.sort();
 
                 if vars.is_empty() {
-                    println!("No variables defined");
+                    println!("{}", ui_msg(UiMsg::ReplNoVariables));
                 } else {
-                    println!("Defined variables:");
+                    println!("{}", ui_msg(UiMsg::ReplDefinedVariables));
                     for var in vars {
                         println!("  {}", var);
                     }
@@ -416,9 +416,9 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 funcs.sort();
 
                 if funcs.is_empty() {
-                    println!("No user-defined functions");
+                    println!("{}", ui_msg(UiMsg::ReplNoFunctions));
                 } else {
-                    println!("User-defined functions:");
+                    println!("{}", ui_msg(UiMsg::ReplDefinedFunctions));
                     for func in funcs {
                         println!("  {}", func);
                     }
@@ -440,37 +440,37 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                     builtins.retain(|name| name.contains(filter));
 
                     if builtins.is_empty() {
-                        println!("No builtin functions matching '{}'", filter);
+                        println!("{}", fmt_ui_msg(UiMsg::ReplNoBuiltinsMatching, &[filter]));
                     } else {
-                        println!("Builtin functions matching '{}':", filter);
+                        println!("{}", fmt_ui_msg(UiMsg::ReplBuiltinsMatching, &[filter]));
                         for (i, name) in builtins.iter().enumerate() {
                             if i % 4 == 0 {
                                 print!("\n  ");
                             }
                             print!("{:<20}", name);
                         }
-                        println!("\n\nTotal: {} functions", builtins.len());
+                        println!("\n\n{}", fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()]));
                     }
                 } else {
                     // 全表示
-                    println!("Builtin functions:");
+                    println!("{}", ui_msg(UiMsg::ReplBuiltinFunctions));
                     for (i, name) in builtins.iter().enumerate() {
                         if i % 4 == 0 {
                             print!("\n  ");
                         }
                         print!("{:<20}", name);
                     }
-                    println!("\n\nTotal: {} functions", builtins.len());
-                    println!("\nTip: Use ':builtins <pattern>' to filter (e.g., ':builtins str')");
+                    println!("\n\n{}", fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()]));
+                    println!("\n{}", ui_msg(UiMsg::ReplBuiltinTip));
                 }
             }
         }
         ":clear" => {
-            println!("Environment cleared");
+            println!("{}", ui_msg(UiMsg::ReplEnvCleared));
         }
         ":load" => {
             if parts.len() < 2 {
-                eprintln!("Usage: :load <file>");
+                eprintln!("{}", ui_msg(UiMsg::ReplLoadUsage));
                 return;
             }
 
@@ -500,15 +500,15 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                     }
                 }
             } else {
-                eprintln!("No file has been loaded yet");
+                eprintln!("{}", ui_msg(UiMsg::ReplNoFileLoaded));
             }
         }
         ":quit" => {
             // handled in main loop
         }
         _ => {
-            eprintln!("Unknown command: {}", command);
-            eprintln!("Type :help for available commands");
+            eprintln!("{}", fmt_ui_msg(UiMsg::ReplUnknownCommand, &[command]));
+            eprintln!("{}", ui_msg(UiMsg::ReplTypeHelpForCommands));
         }
     }
 }

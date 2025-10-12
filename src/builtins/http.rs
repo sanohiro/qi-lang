@@ -151,7 +151,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
             Value::String(s) => Some(s.as_str()),
             _ => None,
         })
-        .ok_or("http/request: :url は必須です")?;
+        .ok_or_else(|| fmt_msg(MsgKey::HttpRequestUrlRequired, &[]))?;
 
     let body = opts.get("body");
 
@@ -262,7 +262,7 @@ fn http_request(
         .brotli(true)    // brotli自動解凍を有効化
         .timeout(Duration::from_millis(timeout_ms))
         .build()
-        .map_err(|e| format!("HTTPクライアントエラー: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
 
     let mut request = match method.to_uppercase().as_str() {
         "GET" => client.get(url),
@@ -272,7 +272,7 @@ fn http_request(
         "PATCH" => client.patch(url),
         "HEAD" => client.head(url),
         "OPTIONS" => client.request(reqwest::Method::OPTIONS, url),
-        _ => return Err(format!("未サポートのHTTPメソッド: {}", method)),
+        _ => return Err(fmt_msg(MsgKey::HttpUnsupportedMethod, &[method])),
     };
 
     // 圧縮が必要かチェック
@@ -301,7 +301,7 @@ fn http_request(
                 if should_compress {
                     // gzip圧縮して送信
                     let compressed = compress_gzip(s.as_bytes())
-                        .map_err(|e| format!("圧縮エラー: {}", e))?;
+                        .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
                     request = request.body(compressed);
                 } else {
                     request = request.body(s.clone());
@@ -315,7 +315,7 @@ fn http_request(
                         if should_compress {
                             // JSON を圧縮して送信
                             let compressed = compress_gzip(s.as_bytes())
-                                .map_err(|e| format!("圧縮エラー: {}", e))?;
+                                .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
                             request = request
                                 .header("Content-Type", "application/json")
                                 .body(compressed);
@@ -473,7 +473,7 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
         .brotli(true)    // brotli自動解凍を有効化
         .timeout(Duration::from_secs(30))
         .build()
-        .map_err(|e| format!("http stream: クライアント作成エラー: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::HttpStreamClientError, &[&e.to_string()]))?;
 
     let mut request = match method {
         "GET" => client.get(url),
@@ -481,7 +481,7 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
         "PUT" => client.put(url),
         "DELETE" => client.delete(url),
         "PATCH" => client.patch(url),
-        _ => return Err(format!("未サポートのHTTPメソッド: {}", method)),
+        _ => return Err(fmt_msg(MsgKey::HttpUnsupportedMethod, &[method])),
     };
 
     // ボディ追加
@@ -507,17 +507,17 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
     // リクエスト送信
     let response = request
         .send()
-        .map_err(|e| format!("http stream: リクエスト失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::HttpStreamRequestFailed, &[&e.to_string()]))?;
 
     if !response.status().is_success() {
-        return Err(format!("http stream: HTTP {}", response.status()));
+        return Err(fmt_msg(MsgKey::HttpStreamError, &[&response.status().to_string()]));
     }
 
     if is_bytes {
         // バイナリモード：バイト列として取得
         let bytes = response
             .bytes()
-            .map_err(|e| format!("http stream: バイト読み込み失敗: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::HttpStreamReadBytesFailed, &[&e.to_string()]))?;
 
         // 4KBチャンクに分割
         const CHUNK_SIZE: usize = 4096;
@@ -548,7 +548,7 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
         // テキストモード：行ごと
         let body = response
             .text()
-            .map_err(|e| format!("http stream: ボディ読み込み失敗: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::HttpStreamReadBodyFailed, &[&e.to_string()]))?;
 
         // 行ごとに分割してストリームに変換
         let lines: Vec<String> = body.lines().map(|s| s.to_string()).collect();
