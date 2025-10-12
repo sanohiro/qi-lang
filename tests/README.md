@@ -13,7 +13,77 @@
 
 ## テストファイル
 
-### 1. match_comprehensive.qi
+### 1. control_flow_comprehensive.qi
+
+**目的**: 制御フロー・パイプラインの包括的テスト
+
+**テスト数**: 58個
+
+**カバレッジ**:
+- ✅ if条件分岐
+  - 真偽値リテラル、nil/false判定
+  - 空のデータ構造（リスト、マップ、文字列）
+  - and/or/not条件
+  - 5層の深いネスト
+
+- ✅ do複数式実行
+  - 空、単一、複数式
+  - 副作用の順序確認
+  - 3層のネスト
+
+- ✅ loop/recur末尾再帰
+  - 基本パターン（カウントダウン、累積和）
+  - フィボナッチ数列、リスト処理
+  - 10000回の大量反復
+  - 複数の累積変数
+
+- ✅ パイプライン |>
+  - 単一・複数関数チェーン
+  - 数値・文字列・リスト処理
+  - map/filter/reduce組み合わせ
+  - 10段の長いパイプライン
+  - 関数の部分適用
+
+- ✅ Railway Pipeline |>?
+  - 成功チェーン、エラーでショートサーキット
+  - バリデーション（positive、even）
+  - 実用的なエラーハンドリング
+
+- ✅ 並列パイプライン ||>
+  - リストへの関数適用
+  - チェーン処理
+  - 複雑な関数
+
+- ✅ tryエラー処理
+  - 成功・エラーケース
+  - matchとの組み合わせ
+
+- ✅ 複合パターン
+  - if + loop、do + loop + if
+  - パイプライン + match
+  - loop + パイプライン
+
+- ✅ ストレステスト
+  - 10000回反復ループ
+  - 10段パイプライン
+  - フィボナッチ20
+  - 100要素リスト処理
+
+- ✅ エッジケース
+  - nil/false/0の真偽判定
+  - 空リスト処理
+  - パイプラインで空データ
+
+**実行方法**:
+```bash
+./target/release/qi tests/control_flow_comprehensive.qi
+```
+
+**期待される結果**: 58個のテストすべてが成功（成功率100%）
+
+---
+
+### 2. match_comprehensive.qi
 
 **目的**: matchパターンマッチングの包括的テスト
 
@@ -58,7 +128,7 @@
 
 ---
 
-### 2. macro_basic.qi
+### 3. macro_basic.qi
 
 **目的**: マクロシステムの基本機能テスト
 
@@ -97,9 +167,10 @@
 
 | テストスイート | テスト数 | 成功 | 失敗 | 成功率 |
 |---------------|---------|------|------|--------|
+| control_flow_comprehensive | 58 | 58 | 0 | 100% |
 | match_comprehensive | 82 | 82 | 0 | 100% |
 | macro_basic | 12 | 12 | 0 | 100% |
-| **合計** | **94** | **94** | **0** | **100%** |
+| **合計** | **152** | **152** | **0** | **100%** |
 
 ## 実装の注意点
 
@@ -150,13 +221,18 @@
 すべてのテストを一度に実行する場合：
 
 ```bash
+# 制御フロー・パイプラインテスト
+echo "=== Control Flow & Pipeline Comprehensive Test ==="
+./target/release/qi tests/control_flow_comprehensive.qi
+
+echo ""
 # matchテスト
 echo "=== Match Comprehensive Test ==="
 ./target/release/qi tests/match_comprehensive.qi
 
 echo ""
-echo "=== Macro Basic Test ==="
 # マクロテスト
+echo "=== Macro Basic Test ==="
 ./target/release/qi tests/macro_basic.qi
 ```
 

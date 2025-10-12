@@ -1,0 +1,352 @@
+;; =============================================================================
+;; Control Flow & Pipeline Comprehensive Test Suite (Extended)
+;; 制御フロー・パイプライン包括的テスト（拡張版）
+;; =============================================================================
+
+(def test-count (atom 0))
+(def pass-count (atom 0))
+
+(def test-fn (fn [name expected actual]
+  (do
+    (swap! test-count inc)
+    (if (= expected actual)
+      (do
+        (swap! pass-count inc)
+        (println (str "✓ " name)))
+      (do
+        (println (str "✗ " name))
+        (println (str "  Expected: " expected))
+        (println (str "  Actual:   " actual)))))))
+
+(println "=== 1. if - 様々なパターン ===")
+
+(test-fn "if - 真偽値リテラル（true）" "yes" (if true "yes" "no"))
+(test-fn "if - 真偽値リテラル（false）" "no" (if false "yes" "no"))
+(test-fn "if - nilはfalse扱い" "no" (if nil "yes" "no"))
+(test-fn "if - 0は真" "yes" (if 0 "yes" "no"))
+(test-fn "if - 空文字列は真" "yes" (if "" "yes" "no"))
+(test-fn "if - 空リストは真" "yes" (if [] "yes" "no"))
+(test-fn "if - 空マップは真" "yes" (if {} "yes" "no"))
+
+;; 複雑な条件
+(test-fn "if - and条件" "both" (if (and true true) "both" "not both"))
+(test-fn "if - or条件" "at least one" (if (or true false) "at least one" "none"))
+(test-fn "if - not条件" "not false" (if (not false) "not false" "false"))
+
+;; 深いネスト
+(test-fn "if - 5層ネスト"
+  5
+  (if true
+    (if true
+      (if true
+        (if true
+          (if true 5 4)
+          3)
+        2)
+      1)
+    0))
+
+(println "\n=== 2. do - 順次実行 ===")
+
+(test-fn "do - 空" nil (do))
+(test-fn "do - 1式" 42 (do 42))
+(test-fn "do - 2式" "second" (do "first" "second"))
+(test-fn "do - 5式" 5 (do 1 2 3 4 5))
+
+;; 副作用の確認
+(def side-effect-test (atom []))
+(test-fn "do - 副作用順序"
+  [1 2 3]
+  (do
+    (reset! side-effect-test [])
+    (swap! side-effect-test conj 1)
+    (swap! side-effect-test conj 2)
+    (swap! side-effect-test conj 3)
+    @side-effect-test))
+
+;; ネストしたdo
+(test-fn "do - ネスト3層"
+  "innermost"
+  (do
+    (do
+      (do
+        "innermost"))))
+
+(println "\n=== 3. loop/recur - 様々なパターン ===")
+
+;; 基本パターン
+(test-fn "loop/recur - カウントダウン"
+  0
+  (loop [i 10]
+    (if (= i 0)
+      i
+      (recur (- i 1)))))
+
+;; 累積計算
+(test-fn "loop/recur - 累積和"
+  5050
+  (loop [i 1 sum 0]
+    (if (> i 100)
+      sum
+      (recur (+ i 1) (+ sum i)))))
+
+;; 複数の累積変数
+(test-fn "loop/recur - フィボナッチ数列"
+  89
+  (loop [n 11 a 0 b 1]
+    (if (= n 0)
+      a
+      (recur (- n 1) b (+ a b)))))
+
+;; リスト処理
+(test-fn "loop/recur - リストの長さ"
+  5
+  (loop [lst [1 2 3 4 5] count 0]
+    (if (empty? lst)
+      count
+      (recur (rest lst) (+ count 1)))))
+
+;; リストの反転（条件なしの累積）
+(test-fn "loop/recur - リスト反転"
+  '(5 4 3 2 1)
+  (loop [lst [1 2 3 4 5] result []]
+    (if (empty? lst)
+      result
+      (recur (rest lst) (cons (first lst) result)))))
+
+(println "\n=== 4. パイプライン |> - 高度なパターン ===")
+
+;; 数値処理
+(test-fn "|> - 数値演算チェーン"
+  110
+  (1 |> inc |> (* 10) |> (+ 90)))
+
+;; 文字列処理
+(test-fn "|> - 文字列変換"
+  "HELLO WORLD"
+  ("  hello world  " |> str/trim |> str/upper))
+
+;; リスト変換
+(test-fn "|> - リスト変換チェーン"
+  24
+  ([1 2 3 4 5]
+   |> (map (fn [x] (* x 2)))
+   |> (filter (fn [x] (> x 5)))
+   |> sum))
+
+;; 高階関数の組み合わせ
+(test-fn "|> - map/filter/join"
+  "2,4,6,8,10"
+  ([1 2 3 4 5 6 7 8 9 10]
+   |> (filter (fn [x] (= (% x 2) 0)))
+   |> (map str)
+   |> (join ",")))
+
+;; 関数の部分適用
+(test-fn "|> - 部分適用"
+  15
+  (10 |> (+ 5)))
+
+;; ネストした関数
+(test-fn "|> - ネスト関数"
+  20
+  (5
+   |> (fn [x] (* x 2))
+   |> (fn [x] (+ x 10))))
+
+(println "\n=== 5. Railway Pipeline |>? - エラーハンドリング ===")
+
+;; 成功の連鎖
+(test-fn "|>? - 全て成功"
+  {:ok 16}
+  ({:ok 2}
+   |>? (fn [x] {:ok (* x 2)})
+   |>? (fn [x] {:ok (* x 2)})
+   |>? (fn [x] {:ok (* x 2)})))
+
+;; 途中でエラー
+(test-fn "|>? - 2番目でエラー"
+  {:error "step2"}
+  ({:ok 10}
+   |>? (fn [x] {:ok (* x 2)})
+   |>? (fn [x] {:error "step2"})
+   |>? (fn [x] {:ok (* x 2)})))
+
+;; 最初からエラー
+(test-fn "|>? - 最初からエラー"
+  {:error "initial"}
+  ({:error "initial"}
+   |>? (fn [x] {:ok (* x 2)})))
+
+;; 実用例：バリデーション
+(def validate-positive (fn [x]
+  (if (> x 0)
+    {:ok x}
+    {:error "not positive"})))
+
+(def validate-even (fn [x]
+  (if (= (% x 2) 0)
+    {:ok x}
+    {:error "not even"})))
+
+(test-fn "|>? - バリデーション成功"
+  {:ok 10}
+  ({:ok 10}
+   |>? validate-positive
+   |>? validate-even))
+
+(test-fn "|>? - バリデーション失敗（奇数）"
+  {:error "not even"}
+  ({:ok 5}
+   |>? validate-positive
+   |>? validate-even))
+
+(test-fn "|>? - バリデーション失敗（負数）"
+  {:error "not positive"}
+  ({:ok -10}
+   |>? validate-positive
+   |>? validate-even))
+
+(println "\n=== 6. 並列パイプライン ||> ===")
+
+(test-fn "||> - 単純なマップ" [2 4 6 8 10] ([1 2 3 4 5] ||> (fn [x] (* x 2))))
+(test-fn "||> - インクリメント" [2 3 4 5 6] ([1 2 3 4 5] ||> inc))
+(test-fn "||> - 複雑な関数" [1 4 9 16 25] ([1 2 3 4 5] ||> (fn [x] (* x x))))
+(test-fn "||> - チェーン" [3 4 5 6 7] ([1 2 3 4 5] ||> inc ||> (fn [x] (+ x 1))))
+
+(println "\n=== 7. try - エラー処理 ===")
+
+;; 成功
+(test-fn "try - 数値" {:ok 42} (try 42))
+(test-fn "try - 式" {:ok 10} (try (+ 5 5)))
+(test-fn "try - 複雑な式" {:ok 100} (try (* 10 10)))
+
+;; matchとの組み合わせ
+(test-fn "try + match - 成功"
+  42
+  (match (try 42)
+    {:ok v} -> v
+    {:error e} -> 0))
+
+(test-fn "try + match - エラー"
+  "error occurred"
+  (match (try (error "test"))
+    {:ok v} -> "success"
+    {:error e} -> "error occurred"))
+
+(println "\n=== 8. 複合パターン ===")
+
+;; if + loop
+(test-fn "if + loop"
+  120
+  (if true
+    (loop [i 5 acc 1]
+      (if (= i 0)
+        acc
+        (recur (- i 1) (* acc i))))
+    0))
+
+;; do + loop + if
+(test-fn "do + loop + if"
+  [0 1 2 3 4]
+  (do
+    (def result (atom []))
+    (loop [i 0]
+      (if (< i 5)
+        (do
+          (swap! result conj i)
+          (recur (+ i 1)))
+        @result))))
+
+;; パイプライン + match
+(test-fn "|> + match"
+  "large"
+  (100
+   |> (* 2)
+   |> (fn [x]
+        (match x
+          n when (> n 100) -> "large"
+          n when (> n 50) -> "medium"
+          _ -> "small"))))
+
+;; |>? + match
+(test-fn "|>? + match"
+  20
+  (match ({:ok 10} |>? (fn [x] {:ok (* x 2)}))
+    {:ok v} -> v
+    {:error e} -> 0))
+
+;; loop + |>
+(test-fn "loop + |>"
+  20
+  (loop [i 0 acc 0]
+    (if (= i 5)
+      (acc |> (* 2))
+      (recur (+ i 1) (+ acc i)))))
+
+(println "\n=== 9. ストレステスト ===")
+
+;; 大きな数値のループ
+(test-fn "loop - 10000回反復"
+  10000
+  (loop [i 0]
+    (if (= i 10000)
+      i
+      (recur (+ i 1)))))
+
+;; 長いパイプライン
+(test-fn "|> - 10段パイプライン"
+  768
+  (1 |> inc |> inc |> (* 2) |> (* 2) |> (* 2) |> (* 2) |> (* 2) |> (* 2) |> (* 2) |> (* 2)))
+
+;; 深い再帰的ループ
+(test-fn "loop - フィボナッチ20"
+  6765
+  (loop [n 20 a 0 b 1]
+    (if (= n 0)
+      a
+      (recur (- n 1) b (+ a b)))))
+
+;; 長いリスト処理 (0-99の合計)
+(test-fn "|> - 100要素リスト"
+  4950
+  ((range 100) |> sum))
+
+(println "\n=== 10. エッジケース ===")
+
+;; 境界値
+(test-fn "if - nil判定" "is nil" (if nil "not nil" "is nil"))
+(test-fn "if - false判定" "is false" (if false "not false" "is false"))
+(test-fn "if - 0は真" "is truthy" (if 0 "is truthy" "is falsy"))
+
+;; 空のデータ構造
+(test-fn "loop - 空リスト"
+  0
+  (loop [lst [] count 0]
+    (if (empty? lst)
+      count
+      (recur (rest lst) (+ count 1)))))
+
+;; パイプラインで空データ
+(test-fn "|> - 空リスト処理"
+  0
+  ([] |> sum))
+
+;; matchとパイプライン
+(test-fn "match + |>"
+  "found"
+  (match ({:ok 42} |>? (fn [x] {:ok x}))
+    {:ok v} -> "found"
+    _ -> "not found"))
+
+;; 結果の表示
+(println "\n" (str/repeat "=" 60))
+(println "テスト結果")
+(println (str/repeat "=" 60))
+(println (str "総テスト数: " @test-count))
+(println (str "成功: " @pass-count))
+(println (str "失敗: " (- @test-count @pass-count)))
+(if (> @test-count 0)
+  (println (str "成功率: " (/ (* @pass-count 100) @test-count) "%"))
+  (println "成功率: N/A"))
+(println (str/repeat "=" 60))
