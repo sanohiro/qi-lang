@@ -36,7 +36,7 @@
 //! - str: 文字列操作（62個）
 //! - json: JSON処理（3個）
 //! - csv: CSV処理（5個）
-//! - markdown: Markdown生成（8個）
+//! - markdown: Markdown生成・解析（11個）
 //! - http: HTTP通信（22個）
 //! - db: データベース（17個）
 
@@ -512,7 +512,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     // Feature-gated modules
     // ========================================
 
-    // Markdown生成（8個）
+    // Markdown生成・解析（11個）
     #[cfg(feature = "format-markdown")]
     register_native!(env.write(),
         "markdown/header" => markdown::native_markdown_header,
@@ -523,6 +523,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "markdown/join" => markdown::native_markdown_join,
         "markdown/link" => markdown::native_markdown_link,
         "markdown/image" => markdown::native_markdown_image,
+        "markdown/extract-code-blocks" => markdown::native_markdown_extract_code_blocks,
+        "markdown/parse" => markdown::native_markdown_parse,
+        "markdown/stringify" => markdown::native_markdown_stringify,
     );
 
     // 乱数関数（4個）

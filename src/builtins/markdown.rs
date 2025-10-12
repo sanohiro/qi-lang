@@ -2,6 +2,9 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use std::collections::HashMap;
 
 /// header - Markdownヘッダーを生成
 /// 引数: (level text) - レベル (1-6)、テキスト
@@ -252,4 +255,308 @@ pub fn native_markdown_image(args: &[Value]) -> Result<Value, String> {
     };
 
     Ok(Value::String(format!("![{}]({})", alt, src)))
+}
+
+// 正規表現パターン（遅延初期化）
+static CODE_BLOCK_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"```([^\n]*)\n([\s\S]*?)```").unwrap()
+});
+
+static HEADER_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^(#{1,6})\s+(.+)$").unwrap()
+});
+
+static LIST_ITEM_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^[-*+]\s+(.+)$").unwrap()
+});
+
+static ORDERED_LIST_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^\d+\.\s+(.+)$").unwrap()
+});
+
+/// extract-code-blocks - Markdownからコードブロックを抽出
+/// 引数: (text) - Markdown文字列
+/// 戻り値: [{:lang "qi" :code "(+ 1 2)"} ...] のリスト
+/// 例: (markdown/extract-code-blocks doc) → コードブロックのリスト
+pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["markdown/extract-code-blocks", "1"],
+        ));
+    }
+
+    let text = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(
+            MsgKey::FirstArgMustBe,
+            &["markdown/extract-code-blocks", "a string"],
+        )),
+    };
+
+    let mut blocks = Vec::new();
+
+    for cap in CODE_BLOCK_REGEX.captures_iter(text) {
+        let lang = cap.get(1).map(|m| m.as_str().trim()).unwrap_or("");
+        let code = cap.get(2).map(|m| m.as_str().trim_end()).unwrap_or("");
+
+        let mut block = HashMap::new();
+        block.insert(
+            "lang".to_string(),
+            if lang.is_empty() {
+                Value::Nil
+            } else {
+                Value::String(lang.to_string())
+            },
+        );
+        block.insert("code".to_string(), Value::String(code.to_string()));
+
+        blocks.push(Value::Map(block));
+    }
+
+    Ok(Value::List(blocks))
+}
+
+/// parse - Markdown文字列をASTに変換
+/// 引数: (text) - Markdown文字列
+/// 戻り値: ブロック要素のリスト
+/// 例: (markdown/parse "# Title\n\nHello") → [{:type "header" :level 1 :text "Title"} {:type "paragraph" :text "Hello"}]
+pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["markdown/parse", "1"],
+        ));
+    }
+
+    let text = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(
+            MsgKey::FirstArgMustBe,
+            &["markdown/parse", "a string"],
+        )),
+    };
+
+    let mut blocks = Vec::new();
+    let lines: Vec<&str> = text.lines().collect();
+    let mut i = 0;
+
+    while i < lines.len() {
+        let line = lines[i].trim();
+
+        // 空行をスキップ
+        if line.is_empty() {
+            i += 1;
+            continue;
+        }
+
+        // コードブロック
+        if line.starts_with("```") {
+            let lang = line.trim_start_matches("```").trim();
+            let mut code_lines = Vec::new();
+            i += 1;
+
+            while i < lines.len() && !lines[i].trim().starts_with("```") {
+                code_lines.push(lines[i]);
+                i += 1;
+            }
+
+            let mut block = HashMap::new();
+            block.insert("type".to_string(), Value::String("code-block".to_string()));
+            block.insert(
+                "lang".to_string(),
+                if lang.is_empty() {
+                    Value::Nil
+                } else {
+                    Value::String(lang.to_string())
+                },
+            );
+            block.insert("code".to_string(), Value::String(code_lines.join("\n")));
+            blocks.push(Value::Map(block));
+            i += 1;
+            continue;
+        }
+
+        // ヘッダー
+        if let Some(cap) = HEADER_REGEX.captures(line) {
+            let level = cap.get(1).map(|m| m.as_str().len()).unwrap_or(1);
+            let text = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+
+            let mut block = HashMap::new();
+            block.insert("type".to_string(), Value::String("header".to_string()));
+            block.insert("level".to_string(), Value::Integer(level as i64));
+            block.insert("text".to_string(), Value::String(text.to_string()));
+            blocks.push(Value::Map(block));
+            i += 1;
+            continue;
+        }
+
+        // リスト（順不同）
+        if LIST_ITEM_REGEX.is_match(line) {
+            let mut items = Vec::new();
+            while i < lines.len() {
+                let current = lines[i].trim();
+                if let Some(cap) = LIST_ITEM_REGEX.captures(current) {
+                    let item = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                    items.push(Value::String(item.to_string()));
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+
+            let mut block = HashMap::new();
+            block.insert("type".to_string(), Value::String("list".to_string()));
+            block.insert("ordered".to_string(), Value::Bool(false));
+            block.insert("items".to_string(), Value::List(items));
+            blocks.push(Value::Map(block));
+            continue;
+        }
+
+        // リスト（番号付き）
+        if ORDERED_LIST_REGEX.is_match(line) {
+            let mut items = Vec::new();
+            while i < lines.len() {
+                let current = lines[i].trim();
+                if let Some(cap) = ORDERED_LIST_REGEX.captures(current) {
+                    let item = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                    items.push(Value::String(item.to_string()));
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+
+            let mut block = HashMap::new();
+            block.insert("type".to_string(), Value::String("list".to_string()));
+            block.insert("ordered".to_string(), Value::Bool(true));
+            block.insert("items".to_string(), Value::List(items));
+            blocks.push(Value::Map(block));
+            continue;
+        }
+
+        // 段落（デフォルト）
+        let mut para_lines = Vec::new();
+        while i < lines.len() {
+            let current = lines[i].trim();
+            if current.is_empty()
+                || current.starts_with('#')
+                || current.starts_with("```")
+                || LIST_ITEM_REGEX.is_match(current)
+                || ORDERED_LIST_REGEX.is_match(current)
+            {
+                break;
+            }
+            para_lines.push(current);
+            i += 1;
+        }
+
+        if !para_lines.is_empty() {
+            let mut block = HashMap::new();
+            block.insert("type".to_string(), Value::String("paragraph".to_string()));
+            block.insert("text".to_string(), Value::String(para_lines.join(" ")));
+            blocks.push(Value::Map(block));
+        }
+    }
+
+    Ok(Value::List(blocks))
+}
+
+/// stringify - ASTをMarkdown文字列に変換
+/// 引数: (blocks) - ブロック要素のリスト
+/// 戻り値: Markdown文字列
+/// 例: (markdown/stringify ast) → Markdown文字列
+pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["markdown/stringify", "1"],
+        ));
+    }
+
+    let blocks = match &args[0] {
+        Value::List(blocks) | Value::Vector(blocks) => blocks,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/stringify", "a list or vector"],
+            ))
+        }
+    };
+
+    let mut result = Vec::new();
+
+    for block in blocks {
+        let map = match block {
+            Value::Map(m) => m,
+            _ => continue,
+        };
+
+        let block_type = match map.get("type") {
+            Some(Value::String(s)) => s.as_str(),
+            _ => continue,
+        };
+
+        match block_type {
+            "header" => {
+                let level = match map.get("level") {
+                    Some(Value::Integer(n)) => *n as usize,
+                    _ => 1,
+                };
+                let text = match map.get("text") {
+                    Some(Value::String(s)) => s.as_str(),
+                    _ => "",
+                };
+                result.push(format!("{} {}", "#".repeat(level), text));
+            }
+            "paragraph" => {
+                let text = match map.get("text") {
+                    Some(Value::String(s)) => s.as_str(),
+                    _ => "",
+                };
+                result.push(text.to_string());
+            }
+            "list" => {
+                let ordered = match map.get("ordered") {
+                    Some(Value::Bool(b)) => *b,
+                    _ => false,
+                };
+                let items = match map.get("items") {
+                    Some(Value::List(items)) | Some(Value::Vector(items)) => items,
+                    _ => continue,
+                };
+
+                for (i, item) in items.iter().enumerate() {
+                    let text = match item {
+                        Value::String(s) => s.as_str(),
+                        _ => continue,
+                    };
+                    if ordered {
+                        result.push(format!("{}. {}", i + 1, text));
+                    } else {
+                        result.push(format!("- {}", text));
+                    }
+                }
+            }
+            "code-block" => {
+                let lang = match map.get("lang") {
+                    Some(Value::String(s)) => s.as_str(),
+                    Some(Value::Nil) => "",
+                    _ => "",
+                };
+                let code = match map.get("code") {
+                    Some(Value::String(s)) => s.as_str(),
+                    _ => "",
+                };
+                if lang.is_empty() {
+                    result.push(format!("```\n{}\n```", code));
+                } else {
+                    result.push(format!("```{}\n{}\n```", lang, code));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(Value::String(result.join("\n\n")))
 }

@@ -4025,13 +4025,13 @@ db/rollback             ;; トランザクションロールバック
    |> (csv/write-file "users_processed.csv"))))  ;; 便利関数で保存
 ```
 
-#### ✅ markdown - Markdown生成（実装済み）
+#### ✅ markdown - Markdown生成・解析（実装済み）
 
 **Pure Rust実装 - 外部依存なし**
 
-Markdownドキュメントの生成・加工機能を提供。特にLLMへのプロンプト生成、レポート作成、ドキュメント自動生成に最適。HTML/PDF変換は`pandoc`など外部ツールに委任する設計で、軽量かつ保守しやすい実装。
+Markdownドキュメントの生成・加工・解析機能を提供。特にLLMへのプロンプト生成、レポート作成、ドキュメント自動生成、**Literate Programming**に最適。HTML/PDF変換は`pandoc`など外部ツールに委任する設計で、軽量かつ保守しやすい実装。
 
-**生成関数**:
+**生成関数（Phase 1）**:
 - `markdown/header` - 見出し生成（レベル1-6）
 - `markdown/list` - 箇条書きリスト
 - `markdown/ordered-list` - 番号付きリスト
@@ -4040,6 +4040,11 @@ Markdownドキュメントの生成・加工機能を提供。特にLLMへのプ
 - `markdown/link` - ハイパーリンク
 - `markdown/image` - 画像記法
 - `markdown/join` - 複数要素の結合
+
+**解析関数（Phase 2 - 新機能！）**:
+- `markdown/extract-code-blocks` - コードブロック抽出（**超重要！**）
+- `markdown/parse` - Markdown → AST
+- `markdown/stringify` - AST → Markdown
 
 ```lisp
 ;; 基本的な生成
@@ -4177,6 +4182,96 @@ Markdownドキュメントの生成・加工機能を提供。特にLLMへのプ
 
 ;; GitHub Flavored Markdown
 (cmd/sh "pandoc doc.md -f gfm -o doc.html")
+```
+
+**Phase 2実用例1: コードブロック抽出とフィルタ**
+```lisp
+;; Markdownドキュメントから特定言語のコードだけ抽出
+(defn extract-qi-code [md-file]
+  (md-file
+   |> io/read-file
+   |> markdown/extract-code-blocks
+   |> (filter (fn [b] (= (get b "lang") "qi")))
+   |> (map (fn [b] (get b "code")))))
+
+;; 使用例
+(extract-qi-code "README.md")
+;; => ["(def x 42)" "(println x)" ...]
+
+;; 複数ファイルから一括抽出
+(defn collect-all-examples []
+  (io/list-dir "docs"
+   |> (filter (fn [f] (str/ends-with? f ".md")))
+   |> (map extract-qi-code)
+   |> flatten))
+```
+
+**Phase 2実用例2: Literate Programming - ドキュメント駆動開発**
+```lisp
+;; Markdownドキュメントから自動テスト生成
+(defn run-doc-tests [md-file]
+  (let [blocks (md-file
+                |> io/read-file
+                |> markdown/extract-code-blocks
+                |> (filter (fn [b] (= (get b "lang") "qi"))))]
+    (map
+      (fn [block]
+        (let [code (get block "code")]
+          (println "Testing:" code)
+          (try
+            (do (eval code) (println "✓ Pass"))
+            (catch e (println "✗ Fail:" e)))))
+      blocks)))
+
+;; 使用例: ドキュメント内の全コード例をテスト
+(run-doc-tests "TUTORIAL.md")
+```
+
+**Phase 2実用例3: Markdown AST変換**
+```lisp
+;; Markdownの見出しレベルを一括調整
+(defn adjust-header-levels [md-text offset]
+  (md-text
+   |> markdown/parse
+   |> (map (fn [block]
+            (if (= (get block "type") "header")
+              (assoc block "level" (+ (get block "level") offset))
+              block)))
+   |> markdown/stringify))
+
+;; 使用例: 全ての見出しを1レベル下げる
+(adjust-header-levels "# Title\n## Subtitle" 1)
+;; => "## Title\n### Subtitle"
+
+;; Markdownのコードブロックだけ言語タグを変更
+(defn change-code-lang [md-text from-lang to-lang]
+  (md-text
+   |> markdown/parse
+   |> (map (fn [block]
+            (if (and (= (get block "type") "code-block")
+                     (= (get block "lang") from-lang))
+              (assoc block "lang" to-lang)
+              block)))
+   |> markdown/stringify))
+```
+
+**Phase 2実用例4: Markdown結合と整形**
+```lisp
+;; 複数のMarkdownファイルを統合してレポート生成
+(defn generate-combined-report [files]
+  (let [sections
+        (files
+         |> (map (fn [f]
+                  (let [ast (f |> io/read-file |> markdown/parse)]
+                    ;; ファイルごとにセクション区切りを追加
+                    (cons {:type "header" :level 1 :text f}
+                          ast))))
+         |> flatten)]
+    (markdown/stringify sections)))
+
+;; 使用例
+(generate-combined-report ["intro.md" "features.md" "api.md"]
+ |> (io/write-file "COMBINED_REPORT.md"))
 ```
 
 #### ✅ regex - 正規表現（基本実装）
