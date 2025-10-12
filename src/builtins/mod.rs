@@ -95,6 +95,7 @@ pub mod args;
 #[cfg(feature = "io-temp")]
 pub mod temp;
 
+#[cfg(feature = "cmd-exec")]
 pub mod cmd;
 
 pub mod test;
@@ -368,14 +369,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "args/get" => args::native_args_get,
         "args/parse" => args::native_args_parse,
         "args/count" => args::native_args_count,
-
-        // ========================================
-        // 専門モジュール: cmd（4個）
-        // ========================================
-        "cmd/exec" => cmd::native_exec,
-        "cmd/sh" => cmd::native_sh,
-        "cmd/pipe" => cmd::native_pipe,
-        "cmd/lines" => cmd::native_lines,
 
         // ========================================
         // 専門モジュール: test（5個）
@@ -681,6 +674,15 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     register_native!(env.write(),
         "str/hash" => string::native_hash,
         "str/uuid" => string::native_uuid,
+    );
+
+    // コマンド実行（4個）
+    #[cfg(feature = "cmd-exec")]
+    register_native!(env.write(),
+        "cmd/exec" => cmd::native_exec,
+        "cmd/sh" => cmd::native_sh,
+        "cmd/pipe" => cmd::native_pipe,
+        "cmd/lines" => cmd::native_lines,
     );
 }
 
