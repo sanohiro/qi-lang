@@ -103,8 +103,8 @@ mod tests {
     #[test]
     fn test_branch_basic() {
         let code = r#"
-        (def positive? (fn [x] (> x 0)))
-        (def negative? (fn [x] (< x 0)))
+        (defn positive? [x] (> x 0))
+        (defn negative? [x] (< x 0))
 
         (10 |> (branch
           [positive? (fn [x] "positive")]
@@ -118,8 +118,8 @@ mod tests {
     #[test]
     fn test_branch_negative() {
         let code = r#"
-        (def positive? (fn [x] (> x 0)))
-        (def negative? (fn [x] (< x 0)))
+        (defn positive? [x] (> x 0))
+        (defn negative? [x] (< x 0))
 
         (-5 |> (branch
           [positive? (fn [x] "positive")]
@@ -133,8 +133,8 @@ mod tests {
     #[test]
     fn test_branch_else() {
         let code = r#"
-        (def positive? (fn [x] (> x 0)))
-        (def negative? (fn [x] (< x 0)))
+        (defn positive? [x] (> x 0))
+        (defn negative? [x] (< x 0))
 
         (0 |> (branch
           [positive? (fn [x] "positive")]
@@ -148,8 +148,8 @@ mod tests {
     #[test]
     fn test_branch_with_pipeline() {
         let code = r#"
-        (def even? (fn [x] (= (% x 2) 0)))
-        (def odd? (fn [x] (!= (% x 2) 0)))
+        (defn even? [x] (= (% x 2) 0))
+        (defn odd? [x] (!= (% x 2) 0))
 
         (10 |> (branch
           [even? (fn [x] (x |> inc |> (* 2)))]
@@ -164,7 +164,7 @@ mod tests {
     #[test]
     fn test_branch_first_match() {
         let code = r#"
-        (def always-true (fn [x] true))
+        (defn always-true [x] true)
 
         (5 |> (branch
           [always-true (fn [x] "first")]

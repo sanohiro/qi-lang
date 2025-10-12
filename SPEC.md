@@ -52,24 +52,24 @@ Qiは段階的にFlow機能を強化していきます：
 - `|>` 基本パイプライン - 逐次処理
 - `match` 基本パターンマッチング - 構造分解と分岐
 
-**フェーズ2（🔜 近未来）**:
+**フェーズ2（✅ 完了）**:
 
 *パイプライン強化*:
-- `||>` 並列パイプライン - 自動的にpmap化
-- `tap>` 副作用タップ - デバッグ・ログ観察
-- `flow` DSL - 分岐・合流を含む複雑な流れ
+- ✅ `||>` 並列パイプライン - 自動的にpmap化（実装済み）
+- ✅ `tap>` 副作用タップ - デバッグ・ログ観察（実装済み）
+- 🚧 `flow` DSL - 分岐・合流を含む複雑な流れ（未実装）
 
 *match強化* ⭐ **Qi独自の差別化要素**:
 - ✅ `:as` 束縛 - 部分と全体を両方使える
 - ✅ `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
-- ✅ `or` パターン - 複数パターンで同じ処理（`1 | 2 | 3 -> "small"`）
+- 🚧 `or` パターン - 複数パターンで同じ処理（`1 | 2 | 3 -> "small"`）（未実装）
 
-**フェーズ3（🔜 進行中）**:
-- ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化
-- ✅ 並行処理 - go/chan、パイプライン、async/await
-- ✅ `~>` 非同期パイプライン - go/chan統合
-- ✅ `stream` 遅延評価ストリーム - 巨大データ処理（無限データ構造対応）
-- 再利用可能な「小パイプ」文化の確立
+**フェーズ3（✅ 完了）**:
+- ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化（実装済み）
+- ✅ 並行処理 - go/chan、パイプライン、async/await（実装済み）
+- ✅ `~>` 非同期パイプライン - go/chan統合（実装済み）
+- ✅ `stream` 遅延評価ストリーム - 巨大データ処理（無限データ構造対応）（実装済み）
+- 🔜 再利用可能な「小パイプ」文化の確立（進行中）
 
 ---
 
@@ -151,7 +151,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 | `\|>?` | Railway パイプ | ✅ 実装済み | エラーハンドリング、Result型の連鎖 |
 | `||>` | 並列パイプ | ✅ 実装済み | 自動的にpmap化、リスト処理の並列化 |
 | `tap>` | 副作用タップ | ✅ 実装済み | デバッグ、ログ、モニタリング（関数として） |
-| `~>` | 非同期パイプ | 🚧 将来 | go/chan統合、非同期IO |
+| `~>` | 非同期パイプ | ✅ 実装済み | go/chan統合、非同期IO |
 
 ---
 
@@ -783,9 +783,9 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
   _ -> (error "unexpected response"))
 ```
 
-#### 🔜 将来の拡張パターン
+#### 🚧 将来の拡張パターン
 
-**3. `or` パターン - 複数パターンで同じ処理** 🔜
+**3. `or` パターン - 複数パターンで同じ処理** 🚧
 ```lisp
 ;; 複数の値にマッチ
 (match status
@@ -988,7 +988,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
 - **map**: 高度なマップ操作（5個）- `map/select-keys`, `map/update-keys`, etc.
 - **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
-- **set**: 集合演算（4個）- `set/union`, `set/intersect`, etc.
+- **set**: 集合演算（7個）- `set/union`, `set/intersect`, `set/difference`, etc.
 - **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
 - **io**: ファイルI/O（19個）- `io/read-file`, `io/write-file`, `io/list-dir`, `io/temp-file`, etc.
 - **path**: パス操作（9個）- `path/join`, `path/basename`, `path/dirname`, etc.
@@ -1001,10 +1001,11 @@ Qiは**2層モジュール設計**を採用しています：
 - **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
 - **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
 - **http**: HTTPクライアント（11個）- `http/get`, `http/post`, `http/get-stream`, etc.
-- **server**: HTTPサーバー（11個）- `server/serve`, `server/router`, `server/ok`, `server/json`, etc.
+- **server**: HTTPサーバー（16個）- `server/serve`, `server/router`, `server/ok`, `server/json`, ミドルウェア、静的ファイル配信など
 - **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
 - **zip**: ZIP圧縮・解凍（6個）- `zip/create`, `zip/extract`, `zip/list`, `zip/gzip`, etc.
 - **args**: コマンドライン引数パース（4個）- `args/all`, `args/get`, `args/parse`, `args/count`
+- **db**: データベース（11個）- `db/connect`, `db/query`, `db/exec`, `db/begin`, `db/commit`, etc.
 
 **使用例**:
 ```lisp
@@ -2714,9 +2715,11 @@ map/update-keys map/update-vals
 fn/complement fn/juxt fn/tap>
 ```
 
-##### ✅ set - 集合演算（4個）
+##### ✅ set - 集合演算（7個）
 ```lisp
-set/union set/intersect set/difference set/subset?
+set/union set/intersect set/difference
+set/subset? set/superset? set/disjoint?
+set/symmetric-difference
 ```
 
 ##### ✅ math - 数学関数（10個）
@@ -3218,17 +3221,20 @@ db/close                ;; 接続を閉じる
 db/sanitize             ;; 値をサニタイズ
 db/sanitize-identifier  ;; 識別子をサニタイズ
 db/escape-like          ;; LIKE句のパターンをエスケープ
+db/begin                ;; トランザクション開始
+db/commit               ;; トランザクションコミット
+db/rollback             ;; トランザクションロールバック
 ```
 
-**Phase 2 機能** (TODO):
-- トランザクション: `db/transaction`, `db/begin`, `db/commit`, `db/rollback`
-- メタデータAPI: `db/tables`, `db/columns`, `db/indexes`, `db/foreign-keys`
-- ストアド実行: `db/call` (関数のRETURN値、プロシージャのOUT/INOUT/結果セット対応)
-- クエリ情報: `db/query-info`
-- 機能検出: `db/supports?`, `db/driver-info`
+**Phase 2 機能** (🚧 部分実装):
+- ✅ トランザクション: `db/begin`, `db/commit`, `db/rollback` - 実装済み
+- 🚧 メタデータAPI: `db/tables`, `db/columns`, `db/indexes`, `db/foreign-keys` - 未実装
+- 🚧 ストアド実行: `db/call` (関数のRETURN値、プロシージャのOUT/INOUT/結果セット対応) - 未実装
+- 🚧 クエリ情報: `db/query-info` - 未実装
+- 🚧 機能検出: `db/supports?`, `db/driver-info` - 未実装
 
-**Phase 3 機能** (TODO):
-- コネクションプーリング
+**Phase 3 機能** (🚧 未実装):
+- 🚧 コネクションプーリング - 未実装
 
 **基本的な使い方**:
 ```lisp
@@ -3444,7 +3450,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 
   ;; 高度な変換
   slugify      ;; ✅ "Hello World!" -> "hello-world"
-  unaccent     ;; 🚧 未実装 アクセント除去 "café" -> "cafe"
+  ;; unaccent  ;; 🚧 未実装 アクセント除去 "café" -> "cafe"
 
   ;; 生成 ✅
   hash uuid
@@ -4572,9 +4578,9 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 **モダンな機能を活用**:
 - ✅ f-string `f"..."` で文字列補間（実装済み）
 - マクロでは `uvar` で変数衝突を回避
-- 🔜 `match` の `:as` と `=> 変換` でmatch内に流れを埋め込む（近未来）
-- 🔜 `tap>` でデバッグ・モニタリング（近未来）
-- 🔜 `flow` で複雑な流れを構造化（近未来）
+- ✅ `match` の `:as` と `=> 変換` でmatch内に流れを埋め込む（実装済み）
+- ✅ `tap>` でデバッグ・モニタリング（実装済み）
+- 🚧 `flow` で複雑な流れを構造化（未実装）
 
 **シンプルに保つ**:
 - 短い変数名OK（スコープが短ければ）
