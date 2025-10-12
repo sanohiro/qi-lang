@@ -1008,7 +1008,7 @@ impl Evaluator {
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
-        builtins::chunk(&vals, self)
+        builtins::list::native_chunk(&vals)
     }
 
     /// count-by - 述語でカウント
@@ -1332,7 +1332,7 @@ impl Evaluator {
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
-        builtins::drop_last(&vals, self)
+        builtins::list::native_drop_last(&vals)
     }
 
     fn eval_split_at(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -1343,7 +1343,7 @@ impl Evaluator {
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect::<Result<Vec<_>, _>>()?;
-        builtins::split_at(&vals, self)
+        builtins::list::native_split_at(&vals)
     }
 
 }

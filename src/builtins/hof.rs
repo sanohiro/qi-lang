@@ -191,22 +191,6 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
     }
 }
 
-/// apply - 関数にリストを引数として適用（未使用だが将来のため残す）
-#[allow(dead_code)]
-pub fn native_apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["apply"]));
-    }
-
-    let func = &args[0];
-    match &args[1] {
-        Value::List(items) | Value::Vector(items) => {
-            evaluator.apply_function(func, items)
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["apply (2nd arg)", "lists or vectors"])),
-    }
-}
-
 /// partition - 述語でリストを2つに分割
 pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
@@ -385,101 +369,6 @@ fn update_in_helper(
         }
     }
     Ok(())
-}
-
-/// identity - 引数をそのまま返す
-pub fn native_identity(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["identity"]));
-    }
-    Ok(args[0].clone())
-}
-
-/// constantly - 常に同じ値を返す関数を生成
-pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
-    use std::sync::Arc;
-
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["constantly"]));
-    }
-    let value = args[0].clone();
-    // 単純に値を返すだけの関数を作る（評価時に特別処理）
-    Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec!["_".to_string()],
-        body: crate::value::Expr::Symbol("__constantly_value__".to_string()),
-        env: {
-            let mut env = crate::value::Env::new();
-            env.set("__constantly_value__".to_string(), value);
-            env
-        },
-        is_variadic: false,
-    })))
-}
-
-/// comp - 関数合成（右から左に適用）
-pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
-    use std::sync::Arc;
-
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["comp", "1"]));
-    }
-
-    // 1つの関数の場合はそのまま返す
-    if args.len() == 1 {
-        return Ok(args[0].clone());
-    }
-
-    // 複数の関数の場合は合成された関数を返す
-    let funcs = args.to_vec();
-    Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec!["x".to_string()],
-        body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
-        env: {
-            let mut env = crate::value::Env::new();
-            env.set("__comp_funcs__".to_string(), Value::List(funcs));
-            env
-        },
-        is_variadic: false,
-    })))
-}
-
-/// partial - 部分適用
-pub fn native_partial(args: &[Value]) -> Result<Value, String> {
-    use std::sync::Arc;
-
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["partial", "2+", "(function and at least 1 arg)"]));
-    }
-
-    let func = args[0].clone();
-    let partial_args: Vec<Value> = args[1..].to_vec();
-
-    Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec!["&rest".to_string()],
-        body: crate::value::Expr::Symbol("__partial_placeholder__".to_string()),
-        env: {
-            let mut env = crate::value::Env::new();
-            env.set("__partial_func__".to_string(), func);
-            env.set("__partial_args__".to_string(), Value::List(partial_args));
-            env
-        },
-        is_variadic: true,
-    })))
-}
-
-/// apply - リストを引数として関数適用（既存のものを公開用に再実装）
-pub fn native_apply_public(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["apply", "2", "(function and list)"]));
-    }
-
-    let func = &args[0];
-    match &args[1] {
-        Value::List(items) | Value::Vector(items) => {
-            evaluator.apply_function(func, items)
-        }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["apply (2nd arg)", "second argument"])),
-    }
 }
 
 /// count-by - 述語でカウント

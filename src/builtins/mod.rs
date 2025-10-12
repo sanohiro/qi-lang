@@ -735,20 +735,8 @@ pub fn keep(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_keep(args, evaluator)
 }
 
-pub fn split_at(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_split_at(args)
-}
-
-pub fn drop_last(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_drop_last(args)
-}
-
 pub fn sort_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     list::native_sort_by(args, evaluator)
-}
-
-pub fn chunk(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
-    list::native_chunk(args)
 }
 
 pub fn count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
