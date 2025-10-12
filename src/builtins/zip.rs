@@ -43,7 +43,7 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
 
         let path = Path::new(path_str);
         if !path.exists() {
-            return Err(format!("zip/create: path '{}' does not exist", path_str));
+            return Err(fmt_msg(MsgKey::ZipPathDoesNotExist, &["zip/create", path_str]));
         }
 
         if path.is_file() {
@@ -258,7 +258,7 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
 
         let path = Path::new(path_str);
         if !path.exists() {
-            return Err(format!("zip/add: path '{}' does not exist", path_str));
+            return Err(fmt_msg(MsgKey::ZipPathDoesNotExist, &["zip/add", path_str]));
         }
 
         if path.is_file() {

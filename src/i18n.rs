@@ -282,6 +282,9 @@ pub enum MsgKey {
 
     // 時刻エラー（詳細）
     TimeParseFailedToParse,      // time/parse: failed to parse '{0}' with format '{1}'
+
+    // ZIPエラー
+    ZipPathDoesNotExist,         // {0}: path '{1}' does not exist
 }
 
 /// UIメッセージキー
@@ -621,6 +624,9 @@ impl Messages {
         // 英語メッセージ - 時刻（詳細）
         messages.insert((Lang::En, MsgKey::TimeParseFailedToParse), "time/parse: failed to parse '{0}' with format '{1}'");
 
+        // 英語メッセージ - ZIP
+        messages.insert((Lang::En, MsgKey::ZipPathDoesNotExist), "{0}: path '{1}' does not exist");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -856,6 +862,9 @@ impl Messages {
 
         // 日本語メッセージ - 時刻（詳細）
         messages.insert((Lang::Ja, MsgKey::TimeParseFailedToParse), "time/parse: '{0}' をフォーマット '{1}' でパースできませんでした");
+
+        // 日本語メッセージ - ZIP
+        messages.insert((Lang::Ja, MsgKey::ZipPathDoesNotExist), "{0}: パス '{1}' が存在しません");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
