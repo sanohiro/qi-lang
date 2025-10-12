@@ -401,12 +401,20 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
 
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
-    // ドキュメントファイル一覧
-    let doc_files = [
-        "core.qi", "string.qi", "list.qi", "data.qi", "time.qi", "collections.qi",
-        "async.qi", "server.qi", "db.qi", "io.qi", "http.qi", "cmd.qi",
-        "path.qi", "math.qi", "stats.qi", "test.qi", "env.qi", "profile.qi", "stream.qi"
-    ];
+    // ドキュメントファイル一覧を動的に取得
+    let mut doc_files = Vec::new();
+    if let Ok(entries) = std::fs::read_dir("std/docs/en") {
+        for entry in entries.flatten() {
+            if let Some(filename) = entry.file_name().to_str() {
+                if filename.ends_with(".qi") {
+                    doc_files.push(filename.to_string());
+                }
+            }
+        }
+    }
+
+    // ファイル名でソート（読み込み順序を安定させる）
+    doc_files.sort();
 
     // 1. 英語版を先に読み込み
     for file in &doc_files {

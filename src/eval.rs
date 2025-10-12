@@ -209,17 +209,19 @@ impl Evaluator {
             }
 
             Expr::Def(name, value) => {
-                // 名前衝突チェック
-                if let Some(existing) = env.read().get(name) {
-                    match existing {
-                        Value::NativeFunc(nf) => {
-                            eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name]));
-                        }
-                        Value::Function(_) | Value::Macro(_) => {
-                            eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
-                        }
-                        _ => {
-                            eprintln!("{}", fmt_msg(MsgKey::RedefineVariable, &[name]));
+                // 名前衝突チェック（ただし__doc__で始まる変数は除外）
+                if !name.starts_with("__doc__") {
+                    if let Some(existing) = env.read().get(name) {
+                        match existing {
+                            Value::NativeFunc(nf) => {
+                                eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name]));
+                            }
+                            Value::Function(_) | Value::Macro(_) => {
+                                eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
+                            }
+                            _ => {
+                                eprintln!("{}", fmt_msg(MsgKey::RedefineVariable, &[name]));
+                            }
                         }
                     }
                 }
