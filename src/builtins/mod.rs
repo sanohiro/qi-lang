@@ -78,6 +78,7 @@ pub mod profile;
 pub mod ds;
 pub mod db;
 pub mod sqlite;
+pub mod server;
 
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
@@ -460,9 +461,8 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "json/pretty" => json::native_pretty,
 
         // ========================================
-        // 専門モジュール: http（22個）
+        // 専門モジュール: http（11個）- HTTPクライアント
         // ========================================
-        // HTTPクライアント
         "http/get" => http::native_get,
         "http/post" => http::native_post,
         "http/put" => http::native_put,
@@ -471,20 +471,31 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "http/head" => http::native_head,
         "http/options" => http::native_options,
         "http/request" => http::native_request,
-        // HTTPサーバー
-        "http/serve" => http::native_http_serve,
-        "http/router" => http::native_http_router,
-        "http/ok" => http::native_http_ok,
-        "http/json" => http::native_http_json,
-        "http/not-found" => http::native_http_not_found,
-        "http/no-content" => http::native_http_no_content,
-        // HTTPミドルウェア
-        "http/with-logging" => http::native_http_with_logging,
-        "http/with-cors" => http::native_http_with_cors,
-        "http/with-json-body" => http::native_http_with_json_body,
-        // HTTP静的ファイル配信
-        "http/static-file" => http::native_http_static_file,
-        "http/static-dir" => http::native_http_static_dir,
+        "http/get-stream" => http::native_get_stream,
+        "http/post-stream" => http::native_post_stream,
+        "http/request-stream" => http::native_request_stream,
+
+        // ========================================
+        // 専門モジュール: server（11個）- HTTPサーバー
+        // ========================================
+        "server/serve" => server::native_server_serve,
+        "server/router" => server::native_server_router,
+        "server/ok" => server::native_server_ok,
+        "server/json" => server::native_server_json,
+        "server/not-found" => server::native_server_not_found,
+        "server/no-content" => server::native_server_no_content,
+        // サーバーミドルウェア
+        "server/with-logging" => server::native_server_with_logging,
+        "server/with-cors" => server::native_server_with_cors,
+        "server/with-json-body" => server::native_server_with_json_body,
+        "server/with-compression" => server::native_server_with_compression,
+        "server/with-basic-auth" => server::native_server_with_basic_auth,
+        "server/with-bearer" => server::native_server_with_bearer,
+        "server/with-no-cache" => server::native_server_with_no_cache,
+        "server/with-cache-control" => server::native_server_with_cache_control,
+        // サーバー静的ファイル配信
+        "server/static-file" => server::native_server_static_file,
+        "server/static-dir" => server::native_server_static_dir,
 
         // ========================================
         // 専門モジュール: db（7個）

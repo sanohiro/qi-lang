@@ -1,25 +1,30 @@
-//! HTTPモジュール
+//! HTTPクライアントモジュール
 //!
 //! HTTP通信関数を提供:
 //! - get/post/put/delete/patch/head/options: 各HTTPメソッド
 //! - request: 詳細なリクエスト設定
 //! - get-async/post-async: 非同期版
 //! - get-stream/post-stream/request-stream: ストリーミング版
-//!
-//! HTTPサーバー機能（Flow-Oriented）:
-//! - serve: サーバー起動（ルーター対応）
-//! - ok/json/not-found/no-content: レスポンスヘルパー
-//! - router: ルーティング定義
 
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use parking_lot::RwLock;
 use reqwest::blocking::Client;
 use std::collections::HashMap;
+use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
+
+/// gzip圧縮ヘルパー関数
+fn compress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(data)?;
+    encoder.finish()
+}
 
 /// HTTP GETリクエスト
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
@@ -150,10 +155,35 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
 
     let body = opts.get("body");
 
-    let headers = opts.get("headers").and_then(|v| match v {
-        Value::Map(m) => Some(m),
-        _ => None,
-    });
+    let mut headers = opts.get("headers")
+        .and_then(|v| match v {
+            Value::Map(m) => Some(m.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    // Basic Auth処理
+    if let Some(basic_auth) = opts.get("basic-auth") {
+        if let Value::Vector(v) = basic_auth {
+            if v.len() == 2 {
+                if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
+                    use base64::{Engine as _, engine::general_purpose};
+                    let credentials = format!("{}:{}", user, pass);
+                    let encoded = general_purpose::STANDARD.encode(credentials);
+                    headers.insert("authorization".to_string(), Value::String(format!("Basic {}", encoded)));
+                }
+            }
+        }
+    }
+
+    // Bearer Token処理
+    if let Some(bearer) = opts.get("bearer-token") {
+        if let Value::String(token) = bearer {
+            headers.insert("authorization".to_string(), Value::String(format!("Bearer {}", token)));
+        }
+    }
+
+    let headers_ref = if headers.is_empty() { None } else { Some(&headers) };
 
     let timeout = opts
         .get("timeout")
@@ -163,7 +193,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         })
         .unwrap_or(30000);
 
-    http_request(method, url, body, headers, timeout)
+    http_request(method, url, body, headers_ref, timeout)
 }
 
 /// HTTP GETリクエスト (非同期)
@@ -227,6 +257,9 @@ fn http_request(
     timeout_ms: u64,
 ) -> Result<Value, String> {
     let client = Client::builder()
+        .gzip(true)      // gzip自動解凍を有効化
+        .deflate(true)   // deflate自動解凍を有効化
+        .brotli(true)    // brotli自動解凍を有効化
         .timeout(Duration::from_millis(timeout_ms))
         .build()
         .map_err(|e| format!("HTTPクライアントエラー: {}", e))?;
@@ -242,6 +275,16 @@ fn http_request(
         _ => return Err(format!("未サポートのHTTPメソッド: {}", method)),
     };
 
+    // 圧縮が必要かチェック
+    let should_compress = headers
+        .and_then(|h| h.get("content-encoding"))
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.to_lowercase()),
+            _ => None,
+        })
+        .map(|s| s == "gzip")
+        .unwrap_or(false);
+
     // ヘッダー追加
     if let Some(h) = headers {
         for (k, v) in h {
@@ -255,16 +298,32 @@ fn http_request(
     if let Some(b) = body {
         match b {
             Value::String(s) => {
-                request = request.body(s.clone());
+                if should_compress {
+                    // gzip圧縮して送信
+                    let compressed = compress_gzip(s.as_bytes())
+                        .map_err(|e| format!("圧縮エラー: {}", e))?;
+                    request = request.body(compressed);
+                } else {
+                    request = request.body(s.clone());
+                }
             }
             _ => {
                 // JSON自動変換
                 let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
                 if let Value::Map(m) = json_str {
                     if let Some(Value::String(s)) = m.get("ok") {
-                        request = request
-                            .header("Content-Type", "application/json")
-                            .body(s.clone());
+                        if should_compress {
+                            // JSON を圧縮して送信
+                            let compressed = compress_gzip(s.as_bytes())
+                                .map_err(|e| format!("圧縮エラー: {}", e))?;
+                            request = request
+                                .header("Content-Type", "application/json")
+                                .body(compressed);
+                        } else {
+                            request = request
+                                .header("Content-Type", "application/json")
+                                .body(s.clone());
+                        }
                     }
                 }
             }
@@ -409,6 +468,9 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 /// HTTPストリーミングの共通実装
 fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) -> Result<Value, String> {
     let client = Client::builder()
+        .gzip(true)      // gzip自動解凍を有効化
+        .deflate(true)   // deflate自動解凍を有効化
+        .brotli(true)    // brotli自動解凍を有効化
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| format!("http stream: クライアント作成エラー: {}", e))?;
@@ -507,888 +569,4 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
 
         Ok(Value::Stream(Arc::new(RwLock::new(stream))))
     }
-}
-
-// ========================================
-// HTTPサーバー機能（Flow-Oriented）
-// ========================================
-
-use http_body_util::{BodyExt, Full};
-use hyper::body::Bytes;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Request, Response};
-use hyper_util::rt::TokioIo;
-use std::convert::Infallible;
-use std::net::SocketAddr;
-use tokio::net::TcpListener;
-
-/// クエリパラメータをパース
-/// ?page=1&limit=10 → {"page": "1", "limit": "10"}
-/// ?tag=a&tag=b → {"tag": ["a", "b"]}
-fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
-    let mut params: HashMap<String, Vec<String>> = HashMap::new();
-
-    if query_str.is_empty() {
-        return HashMap::new();
-    }
-
-    // &で分割してkey=value形式をパース
-    for pair in query_str.split('&') {
-        if let Some((key, value)) = pair.split_once('=') {
-            // URLデコード
-            let decoded_key = urlencoding::decode(key).unwrap_or(std::borrow::Cow::Borrowed(key));
-            let decoded_value = urlencoding::decode(value).unwrap_or(std::borrow::Cow::Borrowed(value));
-
-            params.entry(decoded_key.to_string())
-                .or_insert_with(Vec::new)
-                .push(decoded_value.to_string());
-        } else {
-            // 値がない場合（?flag）は空文字列
-            let decoded_key = urlencoding::decode(pair).unwrap_or(std::borrow::Cow::Borrowed(pair));
-            params.entry(decoded_key.to_string())
-                .or_insert_with(Vec::new)
-                .push(String::new());
-        }
-    }
-
-    // 同じキーが複数ある場合は配列、1つの場合は文字列
-    params.into_iter()
-        .map(|(k, v)| {
-            let value = if v.len() == 1 {
-                Value::String(v[0].clone())
-            } else {
-                Value::Vector(v.into_iter().map(Value::String).collect())
-            };
-            (k, value)
-        })
-        .collect()
-}
-
-/// HTTPリクエストをQi値に変換
-async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value, String), String> {
-    let (parts, body) = req.into_parts();
-
-    // ボディを取得（非同期）
-    let body_bytes = body
-        .collect()
-        .await
-        .map_err(|e| format!("Failed to read request body: {}", e))?
-        .to_bytes();
-
-    let body_str = String::from_utf8_lossy(&body_bytes).to_string();
-
-    // メソッド
-    let method = parts.method.as_str().to_lowercase();
-
-    // パス
-    let path = parts.uri.path().to_string();
-
-    // クエリパラメータ
-    let query = parts.uri.query().unwrap_or("").to_string();
-    let query_params = parse_query_params(&query);
-
-    // ヘッダー
-    let mut headers = HashMap::new();
-    for (name, value) in parts.headers.iter() {
-        if let Ok(v) = value.to_str() {
-            headers.insert(
-                name.as_str().to_string(),
-                Value::String(v.to_string()),
-            );
-        }
-    }
-
-    // リクエストマップ
-    let mut req_map = HashMap::new();
-    req_map.insert("method".to_string(), Value::Keyword(method));
-    req_map.insert("path".to_string(), Value::String(path));
-    req_map.insert("query".to_string(), Value::String(query));
-    req_map.insert("query-params".to_string(), Value::Map(query_params));
-    req_map.insert("headers".to_string(), Value::Map(headers));
-    req_map.insert("body".to_string(), Value::String(body_str.clone()));
-
-    Ok((Value::Map(req_map), body_str))
-}
-
-/// Qi値をHTTPレスポンスに変換
-fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
-    match value {
-        Value::Map(m) => {
-            // {:status 200, :headers {...}, :body "..."}
-            let status = match m.get("status") {
-                Some(Value::Integer(s)) => *s as u16,
-                _ => 200,
-            };
-
-            let body_str = match m.get("body") {
-                Some(Value::String(s)) => s.clone(),
-                Some(v) => format!("{}", v),
-                None => String::new(),
-            };
-
-            // バイナリデータはlatin1としてStringに格納されているので、バイトに戻す
-            // latin1: 各char (0-255) を u8 にマッピング
-            let body_bytes: Vec<u8> = body_str.chars().map(|c| c as u8).collect();
-
-            let mut response = Response::builder().status(status);
-
-            // ヘッダー設定
-            if let Some(Value::Map(headers)) = m.get("headers") {
-                for (k, v) in headers {
-                    if let Value::String(val) = v {
-                        response = response.header(k.as_str(), val.as_str());
-                    }
-                }
-            }
-
-            response
-                .body(Full::new(Bytes::from(body_bytes)))
-                .map_err(|e| format!("Failed to build response: {}", e))
-        }
-        _ => Err(format!("Handler must return a map, got: {}", value.type_name())),
-    }
-}
-
-/// http/ok - 200 OKレスポンスを作成
-pub fn native_http_ok(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/ok: requires at least 1 argument (body)".to_string());
-    }
-
-    let body = match &args[0] {
-        Value::String(s) => s.clone(),
-        v => format!("{}", v),
-    };
-
-    let mut resp = HashMap::new();
-    resp.insert("status".to_string(), Value::Integer(200));
-    resp.insert("body".to_string(), Value::String(body));
-
-    let mut headers = HashMap::new();
-    headers.insert("Content-Type".to_string(), Value::String("text/plain; charset=utf-8".to_string()));
-    resp.insert("headers".to_string(), Value::Map(headers));
-
-    Ok(Value::Map(resp))
-}
-
-/// http/json - JSONレスポンスを作成
-pub fn native_http_json(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/json: requires at least 1 argument (data)".to_string());
-    }
-
-    // データをJSON文字列に変換
-    let json_result = crate::builtins::json::native_stringify(&[args[0].clone()])?;
-    let json_str = match json_result {
-        Value::Map(m) => match m.get("ok") {
-            Some(Value::String(s)) => s.clone(),
-            _ => return Err("Failed to stringify JSON".to_string()),
-        },
-        _ => return Err("Failed to stringify JSON".to_string()),
-    };
-
-    let status = if args.len() > 1 {
-        if let Value::Map(opts) = &args[1] {
-            match opts.get("status") {
-                Some(Value::Integer(s)) => *s,
-                _ => 200,
-            }
-        } else {
-            200
-        }
-    } else {
-        200
-    };
-
-    let mut resp = HashMap::new();
-    resp.insert("status".to_string(), Value::Integer(status));
-    resp.insert("body".to_string(), Value::String(json_str));
-
-    let mut headers = HashMap::new();
-    headers.insert("Content-Type".to_string(), Value::String("application/json; charset=utf-8".to_string()));
-    resp.insert("headers".to_string(), Value::Map(headers));
-
-    Ok(Value::Map(resp))
-}
-
-/// http/not-found - 404レスポンスを作成
-pub fn native_http_not_found(args: &[Value]) -> Result<Value, String> {
-    let body = if args.is_empty() {
-        "Not Found".to_string()
-    } else {
-        match &args[0] {
-            Value::String(s) => s.clone(),
-            v => format!("{}", v),
-        }
-    };
-
-    let mut resp = HashMap::new();
-    resp.insert("status".to_string(), Value::Integer(404));
-    resp.insert("body".to_string(), Value::String(body));
-
-    let mut headers = HashMap::new();
-    headers.insert("Content-Type".to_string(), Value::String("text/plain; charset=utf-8".to_string()));
-    resp.insert("headers".to_string(), Value::Map(headers));
-
-    Ok(Value::Map(resp))
-}
-
-/// http/no-content - 204 No Contentレスポンスを作成
-pub fn native_http_no_content(_args: &[Value]) -> Result<Value, String> {
-    let mut resp = HashMap::new();
-    resp.insert("status".to_string(), Value::Integer(204));
-    resp.insert("body".to_string(), Value::String(String::new()));
-    Ok(Value::Map(resp))
-}
-
-/// http/router - ルーターを作成
-pub fn native_http_router(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/router: requires at least 1 argument (routes)".to_string());
-    }
-
-    // ルート定義をそのまま返す（後でserveで使用）
-    // ルートは [[path {:get handler, :post handler}], ...] の形式
-    Ok(args[0].clone())
-}
-
-/// http/serve - HTTPサーバーを起動
-pub fn native_http_serve(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/serve: requires at least 1 argument (handler)".to_string());
-    }
-
-    let handler = args[0].clone();
-
-    // オプション引数
-    let opts = if args.len() > 1 {
-        match &args[1] {
-            Value::Map(m) => m.clone(),
-            _ => return Err("http/serve: second argument must be a map".to_string()),
-        }
-    } else {
-        HashMap::new()
-    };
-
-    let port = match opts.get("port") {
-        Some(Value::Integer(p)) => *p as u16,
-        _ => 3000,
-    };
-
-    let host = match opts.get("host") {
-        Some(Value::String(h)) => h.clone(),
-        _ => "127.0.0.1".to_string(),
-    };
-
-    let timeout_secs = match opts.get("timeout") {
-        Some(Value::Integer(t)) => *t as u64,
-        _ => 30,
-    };
-
-    // サーバーを別スレッドで起動
-    let host_clone = host.clone();
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async move {
-            if let Err(e) = run_server(&host_clone, port, handler, timeout_secs).await {
-                eprintln!("Server error: {}", e);
-            }
-        });
-    });
-
-    println!("HTTP server started on http://{}:{} (timeout: {}s)", host, port, timeout_secs);
-
-    Ok(Value::Nil)
-}
-
-/// サーバー実行
-async fn run_server(host: &str, port: u16, handler: Value, timeout_secs: u64) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
-    let listener = TcpListener::bind(addr).await?;
-
-    // ハンドラーをArcで共有
-    let handler = Arc::new(handler);
-    let timeout_duration = Duration::from_secs(timeout_secs);
-
-    loop {
-        let (stream, _) = listener.accept().await?;
-        let io = TokioIo::new(stream);
-        let handler = handler.clone();
-        let timeout = timeout_duration;
-
-        tokio::task::spawn(async move {
-            let service = service_fn(move |req| {
-                let handler = handler.clone();
-                let timeout = timeout;
-                async move {
-                    handle_request(req, handler, timeout).await
-                }
-            });
-
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service)
-                .await
-            {
-                eprintln!("Error serving connection: {:?}", err);
-            }
-        });
-    }
-}
-
-/// リクエスト処理
-async fn handle_request(
-    req: Request<hyper::body::Incoming>,
-    handler: Arc<Value>,
-    timeout: Duration,
-) -> Result<Response<Full<Bytes>>, Infallible> {
-    // タイムアウト付きで処理
-    let result = tokio::time::timeout(timeout, async {
-        // リクエストをQi値に変換
-        let (req_value, _body) = request_to_value(req).await?;
-
-        // ハンドラーがルーター（Vector）の場合、ルーティング処理
-        let resp_value = match handler.as_ref() {
-            Value::Vector(routes) => route_request(&req_value, routes),
-            Value::Function(_) => {
-                // 直接関数を呼び出す
-                let eval = Evaluator::new();
-                eval.apply_function(handler.as_ref(), &[req_value])
-            }
-            _ => Err(format!("Handler must be a function or router, got: {}", handler.type_name())),
-        };
-
-        // Qi値をHTTPレスポンスに変換
-        match resp_value {
-            Ok(v) => value_to_response(v),
-            Err(e) => {
-                eprintln!("Handler error: {}", e);
-                Err(format!("Handler error: {}", e))
-            }
-        }
-    }).await;
-
-    match result {
-        Ok(Ok(resp)) => Ok(resp),
-        Ok(Err(e)) => {
-            eprintln!("Error: {}", e);
-            Ok(error_response(500, "Internal Server Error"))
-        }
-        Err(_) => {
-            eprintln!("Request timeout");
-            Ok(error_response(408, "Request Timeout"))
-        }
-    }
-}
-
-/// ルーティング処理
-fn route_request(req: &Value, routes: &[Value]) -> Result<Value, String> {
-    let method = match req {
-        Value::Map(m) => match m.get("method") {
-            Some(Value::Keyword(k)) => k.clone(),
-            _ => return Err("Request must have :method keyword".to_string()),
-        },
-        _ => return Err("Request must be a map".to_string()),
-    };
-
-    let path = match req {
-        Value::Map(m) => match m.get("path") {
-            Some(Value::String(p)) => p.clone(),
-            _ => return Err("Request must have :path string".to_string()),
-        },
-        _ => return Err("Request must be a map".to_string()),
-    };
-
-    // ルートを探索
-    for route in routes {
-        if let Value::Vector(route_def) = route {
-            if route_def.len() == 2 {
-                if let (Value::String(pattern), Value::Map(handlers)) = (&route_def[0], &route_def[1]) {
-                    // メソッドに対応するハンドラーを取得
-                    if let Some(handler) = handlers.get(&method) {
-                        // 静的ファイルハンドラーの場合はプレフィックスマッチング
-                        if let Value::Map(m) = handler {
-                            if m.contains_key("__static_dir__") {
-                                // プレフィックスマッチング（パスがパターンで始まっているか）
-                                let pattern_normalized = if pattern == "/" { "/" } else { pattern.trim_end_matches('/') };
-                                let path_normalized = path.trim_end_matches('/');
-
-                                if path_normalized == pattern_normalized ||
-                                   (pattern_normalized == "/" && !path.is_empty()) ||
-                                   path.starts_with(&format!("{}/", pattern_normalized)) {
-                                    // 静的ファイルハンドラーを実行
-                                    let eval = Evaluator::new();
-                                    return apply_middleware(handler, req, &eval);
-                                }
-                                continue;
-                            }
-                        }
-
-                        // 通常のパスパラメータ対応のパターンマッチング
-                        if let Some(params) = match_route_pattern(pattern, &path) {
-                            // パラメータをリクエストに追加
-                            let mut req_with_params = match req {
-                                Value::Map(m) => m.clone(),
-                                _ => HashMap::new(),
-                            };
-                            req_with_params.insert("params".to_string(), Value::Map(params));
-
-                            // ミドルウェアを適用してハンドラーを実行
-                            let eval = Evaluator::new();
-                            return apply_middleware(handler, &Value::Map(req_with_params), &eval);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // ルートが見つからない
-    native_http_not_found(&[])
-}
-
-/// 静的ファイルを配信
-fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
-    let path = match req {
-        Value::Map(m) => match m.get("path") {
-            Some(Value::String(p)) => p,
-            _ => return Err("Request must have :path string".to_string()),
-        },
-        _ => return Err("Request must be a map".to_string()),
-    };
-
-    // セキュリティチェック
-    if !is_safe_path(path) {
-        return Err("Invalid file path (contains ..)".to_string());
-    }
-
-    // ファイルパスを構築
-    let file_path = std::path::Path::new(dir_path).join(path.trim_start_matches('/'));
-
-    // index.htmlの自動配信（ディレクトリの場合）
-    let file_path = if file_path.is_dir() {
-        file_path.join("index.html")
-    } else {
-        file_path
-    };
-
-    // ファイルサイズチェック
-    let metadata = std::fs::metadata(&file_path)
-        .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                return format!("File not found: {}", path);
-            }
-            format!("Failed to read file metadata: {}", e)
-        })?;
-
-    let file_size = metadata.len();
-    if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(format!(
-            "File too large: {} bytes (max: {} bytes / {} MB). Path: {}",
-            file_size, MAX_STATIC_FILE_SIZE, MAX_STATIC_FILE_SIZE / 1024 / 1024, path
-        ));
-    }
-
-    // ファイル読み込み
-    match std::fs::read(&file_path) {
-        Ok(bytes) => {
-            let content_type = get_content_type(file_path.to_str().unwrap_or(""));
-
-            // バイナリデータを latin1 として String に変換（データロスなし）
-            // 各バイト (0-255) を char にマッピング
-            let body = bytes.iter().map(|&b| b as char).collect::<String>();
-
-            let mut resp = HashMap::new();
-            resp.insert("status".to_string(), Value::Integer(200));
-            resp.insert("body".to_string(), Value::String(body));
-
-            let mut headers = HashMap::new();
-            headers.insert("Content-Type".to_string(), Value::String(content_type.to_string()));
-            resp.insert("headers".to_string(), Value::Map(headers));
-
-            Ok(Value::Map(resp))
-        }
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                native_http_not_found(&[Value::String(format!("File not found: {}", path))])
-            } else {
-                Err(format!("Failed to read file: {}", e))
-            }
-        }
-    }
-}
-
-/// ミドルウェアを適用してハンドラーを実行
-fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Value, String> {
-    // 静的ファイルハンドラーかチェック
-    if let Value::Map(m) = handler {
-        if let Some(Value::String(dir_path)) = m.get("__static_dir__") {
-            // 静的ファイル配信
-            return serve_static_file(dir_path, req);
-        }
-
-        if let Some(Value::String(middleware_type)) = m.get("__middleware__") {
-            // ミドルウェアの場合、内部のハンドラーを取得
-            if let Some(inner_handler) = m.get("__handler__") {
-                // リクエストを前処理（json-body）
-                let processed_req = match middleware_type.as_str() {
-                    "json-body" => {
-                        // リクエストボディをJSONパース
-                        if let Value::Map(req_map) = req {
-                            if let Some(Value::String(body)) = req_map.get("body") {
-                                if !body.is_empty() {
-                                    match crate::builtins::json::native_parse(&[Value::String(body.clone())]) {
-                                        Ok(Value::Map(result)) => {
-                                            if let Some(json_value) = result.get("ok") {
-                                                let mut new_req = req_map.clone();
-                                                new_req.insert("json".to_string(), json_value.clone());
-                                                Value::Map(new_req)
-                                            } else {
-                                                req.clone()
-                                            }
-                                        }
-                                        _ => req.clone(),
-                                    }
-                                } else {
-                                    req.clone()
-                                }
-                            } else {
-                                req.clone()
-                            }
-                        } else {
-                            req.clone()
-                        }
-                    }
-                    _ => req.clone(),
-                };
-
-                // ロギング（リクエスト）
-                if middleware_type == "logging" {
-                    if let Value::Map(req_map) = &processed_req {
-                        let method = req_map.get("method")
-                            .and_then(|v| match v {
-                                Value::Keyword(k) => Some(k.to_uppercase()),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "?".to_string());
-                        let path = req_map.get("path")
-                            .and_then(|v| match v {
-                                Value::String(s) => Some(s.clone()),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "?".to_string());
-                        println!("[HTTP] {} {}", method, path);
-                    }
-                }
-
-                // 内部ハンドラーを再帰的に実行（ネストしたミドルウェア対応）
-                let response = apply_middleware(inner_handler, &processed_req, eval)?;
-
-                // レスポンスを後処理（cors, logging）
-                let processed_resp = match middleware_type.as_str() {
-                    "cors" => {
-                        // CORSヘッダーを追加
-                        if let Value::Map(mut resp_map) = response.clone() {
-                            let origins = m.get("__origins__")
-                                .and_then(|v| match v {
-                                    Value::Vector(v) => Some(v.clone()),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| vec![Value::String("*".to_string())]);
-
-                            let origin = origins.first()
-                                .and_then(|v| match v {
-                                    Value::String(s) => Some(s.clone()),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| "*".to_string());
-
-                            let mut headers = match resp_map.get("headers") {
-                                Some(Value::Map(h)) => h.clone(),
-                                _ => HashMap::new(),
-                            };
-
-                            headers.insert("Access-Control-Allow-Origin".to_string(), Value::String(origin));
-                            headers.insert("Access-Control-Allow-Methods".to_string(),
-                                Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()));
-                            headers.insert("Access-Control-Allow-Headers".to_string(),
-                                Value::String("Content-Type, Authorization".to_string()));
-
-                            resp_map.insert("headers".to_string(), Value::Map(headers));
-                            Value::Map(resp_map)
-                        } else {
-                            response
-                        }
-                    }
-                    "logging" => {
-                        // レスポンスステータスをログ出力
-                        if let Value::Map(resp_map) = &response {
-                            let status = resp_map.get("status")
-                                .and_then(|v| match v {
-                                    Value::Integer(i) => Some(*i),
-                                    _ => None,
-                                })
-                                .unwrap_or(200);
-                            println!("[HTTP] -> {}", status);
-                        }
-                        response
-                    }
-                    _ => response,
-                };
-
-                return Ok(processed_resp);
-            }
-        }
-    }
-
-    // ミドルウェアでない場合、直接ハンドラーを実行
-    eval.apply_function(handler, &[req.clone()])
-}
-
-/// パスパターンマッチング - /users/:id のような形式をサポート
-/// 戻り値: マッチした場合はパラメータマップ、マッチしない場合はNone
-fn match_route_pattern(pattern: &str, path: &str) -> Option<HashMap<String, Value>> {
-    let pattern_parts: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
-    let path_parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-
-    // パート数が異なる場合はマッチしない
-    if pattern_parts.len() != path_parts.len() {
-        return None;
-    }
-
-    let mut params = HashMap::new();
-
-    // 各パートを比較
-    for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
-        if pattern_part.starts_with(':') {
-            // パラメータ部分 - パラメータ名を抽出
-            let param_name = &pattern_part[1..];  // ':' を除く
-            params.insert(param_name.to_string(), Value::String(path_part.to_string()));
-        } else if pattern_part != path_part {
-            // 固定部分が一致しない
-            return None;
-        }
-    }
-
-    Some(params)
-}
-
-/// エラーレスポンス生成
-fn error_response(status: u16, message: &str) -> Response<Full<Bytes>> {
-    Response::builder()
-        .status(status)
-        .header("Content-Type", "text/plain; charset=utf-8")
-        .body(Full::new(Bytes::from(message.to_string())))
-        .unwrap()
-}
-
-// ========================================
-// ミドルウェアシステム
-// ========================================
-
-/// http/with-logging - ロギングミドルウェア
-/// リクエスト/レスポンスをログ出力
-pub fn native_http_with_logging(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/with-logging: requires 1 argument (handler)".to_string());
-    }
-
-    let handler = args[0].clone();
-
-    // ロギングミドルウェアマーカー
-    let mut metadata = HashMap::new();
-    metadata.insert("__middleware__".to_string(), Value::String("logging".to_string()));
-    metadata.insert("__handler__".to_string(), handler);
-
-    Ok(Value::Map(metadata))
-}
-
-/// http/with-cors - CORSミドルウェア
-/// CORSヘッダーを追加
-pub fn native_http_with_cors(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/with-cors: requires 1 argument (handler)".to_string());
-    }
-
-    let handler = args[0].clone();
-
-    // オプション引数（CORS設定）
-    let origins = if args.len() > 1 {
-        match &args[1] {
-            Value::Map(m) => match m.get("origins") {
-                Some(Value::Vector(v)) => v.iter()
-                    .filter_map(|val| match val {
-                        Value::String(s) => Some(s.clone()),
-                        _ => None,
-                    })
-                    .collect(),
-                _ => vec!["*".to_string()],
-            },
-            _ => vec!["*".to_string()],
-        }
-    } else {
-        vec!["*".to_string()]
-    };
-
-    // CORSミドルウェアマーカーとして、マップにメタデータを埋め込む
-    let mut metadata = HashMap::new();
-    metadata.insert("__middleware__".to_string(), Value::String("cors".to_string()));
-    metadata.insert("__handler__".to_string(), handler);
-    metadata.insert("__origins__".to_string(), Value::Vector(
-        origins.iter().map(|s| Value::String(s.clone())).collect()
-    ));
-
-    Ok(Value::Map(metadata))
-}
-
-/// http/with-json-body - JSONボディ自動パースミドルウェア
-/// リクエストボディを自動的にJSONパース
-pub fn native_http_with_json_body(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/with-json-body: requires 1 argument (handler)".to_string());
-    }
-
-    let handler = args[0].clone();
-
-    // JSONボディパースミドルウェアマーカー
-    let mut metadata = HashMap::new();
-    metadata.insert("__middleware__".to_string(), Value::String("json-body".to_string()));
-    metadata.insert("__handler__".to_string(), handler);
-
-    Ok(Value::Map(metadata))
-}
-
-// ========================================
-// 静的ファイル配信
-// ========================================
-
-/// 拡張子からContent-Typeを判定
-fn get_content_type(path: &str) -> &'static str {
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-
-    match ext.to_lowercase().as_str() {
-        "html" | "htm" => "text/html; charset=utf-8",
-        "css" => "text/css; charset=utf-8",
-        "js" | "mjs" => "application/javascript; charset=utf-8",
-        "json" => "application/json; charset=utf-8",
-        "xml" => "application/xml; charset=utf-8",
-        "txt" => "text/plain; charset=utf-8",
-        "md" => "text/markdown; charset=utf-8",
-
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        "ico" => "image/x-icon",
-        "webp" => "image/webp",
-
-        "woff" => "font/woff",
-        "woff2" => "font/woff2",
-        "ttf" => "font/ttf",
-        "otf" => "font/otf",
-
-        "pdf" => "application/pdf",
-        "zip" => "application/zip",
-        "gz" => "application/gzip",
-
-        _ => "application/octet-stream",
-    }
-}
-
-/// パストラバーサル攻撃をチェック
-fn is_safe_path(path: &str) -> bool {
-    // .. を含むパスは拒否
-    !path.contains("..") && !path.contains("//")
-}
-
-/// 静的ファイルの最大サイズ（10MB）
-/// この制限は、ファイル全体をメモリに読み込むことによるOOM防止のため
-const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024;
-
-/// http/static-file - 単一ファイルを配信するレスポンスを生成
-pub fn native_http_static_file(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/static-file: requires 1 argument (file path)".to_string());
-    }
-
-    let file_path = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err("http/static-file: file path must be a string".to_string()),
-    };
-
-    // セキュリティチェック
-    if !is_safe_path(file_path) {
-        return Err("http/static-file: invalid file path (contains ..)".to_string());
-    }
-
-    // ファイルサイズチェック
-    let metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("http/static-file: failed to read file metadata: {}", e))?;
-
-    let file_size = metadata.len();
-    if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(format!(
-            "http/static-file: file too large: {} bytes (max: {} bytes / {} MB). Consider using streaming in the future.",
-            file_size, MAX_STATIC_FILE_SIZE, MAX_STATIC_FILE_SIZE / 1024 / 1024
-        ));
-    }
-
-    // ファイル読み込み
-    match std::fs::read(file_path) {
-        Ok(bytes) => {
-            let content_type = get_content_type(file_path);
-
-            // バイナリデータを latin1 として String に変換（データロスなし）
-            // 各バイト (0-255) を char にマッピング
-            let body = bytes.iter().map(|&b| b as char).collect::<String>();
-
-            let mut resp = HashMap::new();
-            resp.insert("status".to_string(), Value::Integer(200));
-            resp.insert("body".to_string(), Value::String(body));
-
-            let mut headers = HashMap::new();
-            headers.insert("Content-Type".to_string(), Value::String(content_type.to_string()));
-            resp.insert("headers".to_string(), Value::Map(headers));
-
-            Ok(Value::Map(resp))
-        }
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                native_http_not_found(&[Value::String(format!("File not found: {}", file_path))])
-            } else {
-                Err(format!("http/static-file: failed to read file: {}", e))
-            }
-        }
-    }
-}
-
-/// http/static-dir - ディレクトリから静的ファイルを配信するハンドラーを生成
-pub fn native_http_static_dir(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("http/static-dir: requires 1 argument (directory path)".to_string());
-    }
-
-    let dir_path = match &args[0] {
-        Value::String(s) => s.clone(),
-        _ => return Err("http/static-dir: directory path must be a string".to_string()),
-    };
-
-    // セキュリティチェック
-    if !is_safe_path(&dir_path) {
-        return Err("http/static-dir: invalid directory path (contains ..)".to_string());
-    }
-
-    // ディレクトリの存在チェック
-    if !std::path::Path::new(&dir_path).is_dir() {
-        return Err(format!("http/static-dir: {} is not a directory", dir_path));
-    }
-
-    // 静的ファイルハンドラーマーカー（ミドルウェアと同じパターン）
-    let mut metadata = HashMap::new();
-    metadata.insert("__static_dir__".to_string(), Value::String(dir_path));
-
-    Ok(Value::Map(metadata))
 }

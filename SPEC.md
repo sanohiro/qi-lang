@@ -1000,7 +1000,8 @@ Qiは**2層モジュール設計**を採用しています：
 - **stream**: ストリーム処理（11個）- `stream/stream`, `stream/map`, etc.
 - **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
 - **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
-- **http**: HTTP通信（11個）- `http/get`, `http/post`, etc.
+- **http**: HTTPクライアント（11個）- `http/get`, `http/post`, `http/get-stream`, etc.
+- **server**: HTTPサーバー（11個）- `server/serve`, `server/router`, `server/ok`, `server/json`, etc.
 - **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
 - **zip**: ZIP圧縮・解凍（6個）- `zip/create`, `zip/extract`, `zip/list`, `zip/gzip`, etc.
 - **args**: コマンドライン引数パース（4個）- `args/all`, `args/get`, `args/parse`, `args/count`
@@ -1450,6 +1451,55 @@ http/post-async         ;; 非同期POST: Channelを返す
 ;; => {:error {...}}
 ```
 
+**HTTPコンテンツ圧縮**:
+
+HTTPクライアント・サーバー共に、gzip/deflate/brotli圧縮をサポートしています。
+
+**クライアント側**:
+```lisp
+;; 自動解凍（デフォルトで有効）
+;; サーバーが gzip/deflate/brotli で圧縮したレスポンスを自動的に解凍
+(http/get "https://example.com/api")  ;; 圧縮されたレスポンスも自動解凍
+
+;; 送信時の圧縮（Content-Encodingヘッダーで指定）
+(http/post "https://example.com/api"
+  {:data "large payload"}
+  {:headers {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮して送信
+```
+
+**サーバー側**:
+```lisp
+;; リクエストボディの自動解凍
+;; クライアントが Content-Encoding: gzip で送信した場合、自動的に解凍
+(def handler
+  (fn [req]
+    (let [body (get req "body")]  ;; 既に解凍済み
+      (server/ok body))))
+
+;; レスポンス圧縮はserver/with-compressionミドルウェアで実現（後述）
+```
+
+**HTTP認証**:
+
+HTTP Basic AuthとBearer Token認証をサポートしています。
+
+**クライアント側**:
+```lisp
+;; Basic Auth
+(http/request {
+  "url" "https://api.example.com/data"
+  "basic-auth" ["username" "password"]})  ;; 自動的にAuthorizationヘッダーを設定
+
+;; Bearer Token
+(http/request {
+  "url" "https://api.example.com/data"
+  "bearer-token" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."})  ;; Authorization: Bearer ...
+```
+
+**サーバー側**（後述）:
+- `server/with-basic-auth`: Basic認証ミドルウェア
+- `server/with-bearer`: Bearer Token抽出ミドルウェア
+
 #### HTTP サーバー（✅ 実装済み - Phase 5）
 
 **Flow-Oriented な Web アプリケーション構築**
@@ -1459,19 +1509,26 @@ Qiの哲学（Flow-Oriented Programming）に沿った、ハンドラーはパ�
 **基本関数**:
 ```lisp
 ;; レスポンスヘルパー
-http/ok                 ;; 200 OKレスポンス: (http/ok "Hello!")
-http/json               ;; JSONレスポンス: (http/json {:message "hello"})
-http/not-found          ;; 404レスポンス: (http/not-found "Not Found")
-http/no-content         ;; 204 No Contentレスポンス
+server/ok                 ;; 200 OKレスポンス: (server/ok "Hello!")
+server/json               ;; JSONレスポンス: (server/json {:message "hello"})
+server/not-found          ;; 404レスポンス: (server/not-found "Not Found")
+server/no-content         ;; 204 No Contentレスポンス
 
 ;; ルーティング & サーバー
-http/router             ;; ルーター作成: (http/router routes)
-http/serve              ;; サーバー起動: (http/serve app {:port 3000})
+server/router             ;; ルーター作成: (server/router routes)
+server/serve              ;; サーバー起動: (server/serve app {:port 3000})
 
 ;; ミドルウェア
-http/with-logging       ;; ロギングミドルウェア
-http/with-cors          ;; CORSミドルウェア
-http/with-json-body     ;; JSONボディ自動パースミドルウェア
+server/with-logging       ;; ロギングミドルウェア
+server/with-cors          ;; CORSミドルウェア
+server/with-json-body     ;; JSONボディ自動パースミドルウェア
+server/with-compression   ;; レスポンス圧縮ミドルウェア（gzip）
+server/with-basic-auth    ;; Basic認証ミドルウェア
+server/with-bearer        ;; Bearer Token抽出ミドルウェア
+
+;; 静的ファイル配信
+server/static-file        ;; 単一ファイル配信: (server/static-file "path/to/file")
+server/static-dir         ;; ディレクトリ配信: (server/static-dir "public")
 ```
 
 **使用例 - シンプルなサーバー**:
@@ -1479,17 +1536,17 @@ http/with-json-body     ;; JSONボディ自動パースミドルウェア
 ;; ハンドラー（リクエスト -> レスポンス）
 (def hello-handler
   (fn [req]
-    (http/ok "Hello, World!")))
+    (server/ok "Hello, World!")))
 
 ;; ルート定義（データ駆動）
 (def routes
   [["/" (assoc {} "get" hello-handler)]])
 
 ;; ルーターを作成
-(def app (http/router routes))
+(def app (server/router routes))
 
 ;; サーバー起動
-(http/serve app {"port" 3000})
+(server/serve app {"port" 3000})
 ;; => HTTP server started on http://127.0.0.1:3000
 ```
 
@@ -1498,15 +1555,15 @@ http/with-json-body     ;; JSONボディ自動パースミドルウェア
 ;; ハンドラーはパイプラインで構成
 (def list-users
   (fn [req]
-    (http/json {"users" [{"id" 1 "name" "Alice"}
-                         {"id" 2 "name" "Bob"}]})))
+    (server/json {"users" [{"id" 1 "name" "Alice"}
+                           {"id" 2 "name" "Bob"}]})))
 
 ;; パスパラメータを使う（✅ 実装済み）
 (def get-user
   (fn [req]
     (let [params (get req "params")
           user-id (get params "id")]
-      (http/json {"id" user-id "name" "Alice"}))))
+      (server/json {"id" user-id "name" "Alice"}))))
 
 ;; 複数のパスパラメータ
 (def get-post
@@ -1514,12 +1571,12 @@ http/with-json-body     ;; JSONボディ自動パースミドルウェア
     (let [params (get req "params")
           user-id (get params "user_id")
           post-id (get params "post_id")]
-      (http/json {"user_id" user-id "post_id" post-id}))))
+      (server/json {"user_id" user-id "post_id" post-id}))))
 
 (def create-user
   (fn [req]
     ;; リクエストボディは req の "body" キーから取得
-    (http/json {"status" "created"} {"status" 201})))
+    (server/json {"status" "created"} {"status" 201})))
 
 ;; ルート定義 - データ構造なので検査・変換可能
 ;; ✅ パスパラメータ: /users/:id 形式をサポート
@@ -1529,8 +1586,8 @@ http/with-json-body     ;; JSONボディ自動パースミドルウェア
    ["/api/users/:user_id/posts/:post_id" (assoc {} "get" get-post)]])
 
 ;; アプリ起動（タイムアウト設定可能）
-(def app (http/router routes))
-(http/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+(def app (server/router routes))
+(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
 ;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
 ```
 
@@ -1574,7 +1631,7 @@ http/with-json-body     ;; JSONボディ自動パースミドルウェア
 
 **設定オプション**:
 ```lisp
-(http/serve app {
+(server/serve app {
   "port" 3000           ;; ポート番号（デフォルト: 3000）
   "host" "0.0.0.0"      ;; ホスト（デフォルト: "127.0.0.1"）
   "timeout" 30})        ;; タイムアウト秒数（デフォルト: 30）
@@ -1586,27 +1643,32 @@ Qiのミドルウェアは**ハンドラーをラップして機能を追加す�
 
 ```lisp
 ;; ミドルウェア関数
-http/with-logging       ;; リクエスト/レスポンスをログ出力
-http/with-cors          ;; CORSヘッダーを追加
-http/with-json-body     ;; リクエストボディを自動的にJSONパース
+server/with-logging       ;; リクエスト/レスポンスをログ出力
+server/with-cors          ;; CORSヘッダーを追加
+server/with-json-body     ;; リクエストボディを自動的にJSONパース
+server/with-compression   ;; レスポンスボディをgzip圧縮
+server/with-basic-auth    ;; Basic認証（ユーザー名・パスワード検証）
+server/with-bearer        ;; Bearer Token抽出（検証はユーザーコード）
+server/with-no-cache      ;; キャッシュ無効化ヘッダーを追加
+server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 ```
 
 **使用例 - ミドルウェアの基本**:
 ```lisp
 ;; 1. ロギングミドルウェア
 (def logging-handler
-  (http/with-logging
+  (server/with-logging
     (fn [req]
-      (http/ok "Hello!"))))
+      (server/ok "Hello!"))))
 
 ;; リクエスト時: [HTTP] GET /logging
 ;; レスポンス時: [HTTP] -> 200
 
 ;; 2. CORSミドルウェア
 (def cors-handler
-  (http/with-cors
+  (server/with-cors
     (fn [req]
-      (http/json {"message" "CORS enabled"}))))
+      (server/json {"message" "CORS enabled"}))))
 
 ;; レスポンスに自動的にCORSヘッダーが追加される:
 ;; Access-Control-Allow-Origin: *
@@ -1615,33 +1677,75 @@ http/with-json-body     ;; リクエストボディを自動的にJSONパース
 
 ;; 3. JSONボディパースミドルウェア
 (def json-handler
-  (http/with-json-body
+  (server/with-json-body
     (fn [req]
       (let [json-data (get req "json")]
-        (http/json {"received" json-data})))))
+        (server/json {"received" json-data})))))
 
 ;; リクエストボディが自動的にパースされ、req["json"]に格納される
 ;; curl -X POST ... -d '{"name":"alice"}'
 ;; => req["json"] = {"name" "alice"}
+
+;; 4. レスポンス圧縮ミドルウェア
+(def compressed-handler
+  (server/with-compression
+    (fn [req]
+      (server/ok "Large response body that will be compressed..."))))
+
+;; レスポンスが1KB以上の場合、自動的にgzip圧縮される
+;; レスポンスヘッダー: Content-Encoding: gzip
+
+;; 5. Basic認証ミドルウェア
+(def protected-handler
+  (server/with-basic-auth
+    (fn [req]
+      (server/ok "Protected content"))
+    {"users" {"admin" "secret123" "user" "pass456"}}))
+
+;; 認証が必要なエンドポイント
+;; 正しいユーザー名/パスワードがない場合、401 Unauthorizedを返す
+;; curl -u admin:secret123 http://localhost:3000/admin
+;; => "Protected content"
+
+;; ルーター全体に認証を適用
+(def protected-app
+  (server/with-basic-auth
+    (server/router routes)
+    {"users" {"admin" "secret"}}))
+
+;; 全てのルートが認証必須になる
+
+;; 6. Bearer Token抽出ミドルウェア
+(def api-handler
+  (server/with-bearer
+    (fn [req]
+      (let [token (get req "bearer-token")]
+        (if (= token "valid-token-12345")
+          (server/json {"status" "authenticated" "data" "..."})
+          (server/json {"status" "unauthorized"} {"status" 401}))))))
+
+;; Authorization: Bearer valid-token-12345 ヘッダーからトークンを抽出
+;; req["bearer-token"] にトークン文字列が格納される
+;; 検証はユーザーコードで実行（JWTライブラリ等を使用可能）
 ```
 
 **使用例 - ミドルウェアの組み合わせ**:
 ```lisp
 ;; 複数のミドルウェアを重ねて使用（外側から順に適用）
 (def api-handler
-  (http/with-logging        ;; 最外層: ログを出力
-    (http/with-cors         ;; 中層: CORSヘッダーを追加
-      (http/with-json-body  ;; 最内層: JSONを自動パース
+  (server/with-logging        ;; 最外層: ログを出力
+    (server/with-cors         ;; 中層: CORSヘッダーを追加
+      (server/with-json-body  ;; 最内層: JSONを自動パース
         (fn [req]
           (let [data (get req "json")
                 user (get data "user")]
-            (http/json {"message" (str "Hello, " user "!")})))))))
+            (server/json {"message" (str "Hello, " user "!")})))))))
 
 (def routes
   [["/api" (assoc {} "post" api-handler)]])
 
-(def app (http/router routes))
-(http/serve app {"port" 3000})
+(def app (server/router routes))
+(server/serve app {"port" 3000})
 
 ;; curl -X POST http://localhost:3000/api -d '{"user":"alice"}'
 ;; [HTTP] POST /api              <- ログ出力
@@ -1653,9 +1757,59 @@ http/with-json-body     ;; リクエストボディを自動的にJSONパース
 ```lisp
 ;; CORSのオリジンを指定
 (def cors-handler
-  (http/with-cors
-    (fn [req] (http/json {"data" "..."}))
+  (server/with-cors
+    (fn [req] (server/json {"data" "..."}))
     {"origins" ["https://example.com" "https://api.example.com"]}))
+
+;; 圧縮の最小サイズを指定（デフォルト: 1024バイト = 1KB）
+(def custom-compressed-handler
+  (server/with-compression
+    (fn [req] (server/ok "Response body..."))
+    {"min-size" 512}))  ;; 512バイト以上で圧縮
+
+;; 認証とJSON処理を組み合わせ
+(def secure-api-handler
+  (server/with-basic-auth
+    (server/with-json-body
+      (fn [req]
+        (let [data (get req "json")]
+          (server/json {"received" data "authenticated" true}))))
+    {"users" {"api-user" "api-pass"}}))
+
+;; Bearer認証でAPI保護
+(def bearer-api-handler
+  (server/with-bearer
+    (server/with-json-body
+      (fn [req]
+        (let [token (get req "bearer-token")
+              data (get req "json")]
+          (if (= token "secret-api-token")
+            (server/json {"data" data "status" "ok"})
+            (server/json {"error" "invalid token"} {"status" 401})))))))
+
+;; キャッシュ無効化（APIレスポンス等）
+(def no-cache-handler
+  (server/with-no-cache
+    (fn [req] (server/json {"data" "dynamic content" "timestamp" (now)}))))
+;; レスポンスヘッダー:
+;; Cache-Control: no-store, no-cache, must-revalidate, private
+;; Pragma: no-cache
+;; Expires: 0
+
+;; カスタムキャッシュ制御（静的コンテンツ等）
+(def cached-handler
+  (server/with-cache-control
+    (fn [req] (server/ok "Static content"))
+    {"max-age" 3600 "public" true}))
+;; レスポンスヘッダー: Cache-Control: max-age=3600, public
+
+;; 詳細なキャッシュ制御
+(def immutable-handler
+  (server/with-cache-control
+    (fn [req] (server/ok "Immutable content with hash in filename"))
+    {"max-age" 31536000 "public" true "immutable" true}))
+;; 1年間キャッシュ + immutable（バージョニングされたアセット用）
+;; Cache-Control: max-age=31536000, public, immutable
 ```
 
 **クエリパラメータの使用例**:
