@@ -4822,6 +4822,262 @@ Qiの並列・並行処理はスレッドセーフに設計されています:
 **メモリ使用量**: 効率的（参照カウント、無駄なコピーなし）
 **並列性能**: 優秀（スレッドセーフ設計、Rust並行処理基盤）
 
+## 16. モジュール構成とビルド戦略 ✅
+
+### 基本コンセプト
+
+Qiは **「全部入り + Lazy Init + カスタムビルド可能」** の方針を採用します。
+
+**設計思想**:
+- ✅ **デフォルトは全機能有効（Pure Rustのみ）** - 「この環境では動かない」を防ぐ
+- ✅ **Lazy Initialization** - 未使用機能はメモリ消費ゼロ
+- ✅ **カスタムビルド可能** - 用途に応じてサイズ最適化
+- ✅ **Pure Rust優先** - C依存を避け、クロスコンパイル容易に
+
+### なぜ「全部入り」か？
+
+Qiは**ライブラリではなく言語処理系**です：
+
+| 種別 | feature戦略 | 理由 |
+|------|-------------|------|
+| **ライブラリ** | 細かく分割 | 依存する側が必要な機能だけ選ぶ |
+| **言語処理系** | デフォルト全機能 | 「動かない」は最悪のUX |
+
+参考: Python, Ruby, Node.js, Deno等は全部入り単一バイナリを配布。
+
+### Feature階層構造
+
+#### Tier 1: Core（オフ不可）
+
+```rust
+// 言語機能
+parser, evaluator, value
+def, defn, let, do, if, match, try
+
+// 基本演算・データ構造
++, -, *, /, =, <, >
+list, vector, map
+
+// 並行処理基盤（Qiの核心）
+go, chan, send!, recv!, close!
+```
+
+**依存クレート（必須）**:
+- `parking_lot` - 高速Mutex/RwLock
+- `crossbeam-channel` - go/chan実装
+- `rayon` - pmap並列処理
+- `regex` - 言語機能（文字列パターン）
+- `once_cell` - Lazy Init基盤
+
+#### Tier 2: Default ON（Pure Rust、オプションでOFF可能）
+
+**データベース（Lazy Init）**:
+```toml
+db-sqlite    = ["rusqlite"]        # 組み込みDB、デフォルト推奨
+db-postgres  = ["tokio-postgres"]  # Pure Rust PostgreSQL
+db-mysql     = ["mysql_async"]     # Pure Rust MySQL
+```
+
+**Web通信（Lazy Init）**:
+```toml
+http-client  = ["reqwest"]         # HTTP client（rustls使用）
+http-server  = ["hyper", "tokio"]  # HTTP server（async runtime）
+```
+
+**データフォーマット**:
+```toml
+format-json  = ["serde_json"]      # JSON（必須級）
+format-csv   = []                   # CSV（自前実装、Pure Rust）
+```
+
+**文字列処理**:
+```toml
+string-encoding = ["base64", "urlencoding", "html-escape"]  # Web頻出
+string-crypto   = ["sha2", "uuid"]                          # ハッシュ・UUID
+encoding-extended = ["encoding_rs"]  # Shift_JIS等（サイズ中）
+```
+
+**ファイル・I/O**:
+```toml
+io-glob      = ["glob"]            # パターンマッチング
+io-temp      = ["tempfile"]        # 一時ファイル
+util-zip     = ["zip", "flate2"]   # 圧縮・解凍
+```
+
+**標準ライブラリ拡張**:
+```toml
+std-time     = ["chrono"]          # 日時処理（タイムゾーン含む）
+std-math     = ["rand"]            # 乱数生成
+std-stats    = []                   # 統計関数（自前実装）
+std-set      = []                   # 集合演算（自前実装）
+```
+
+**開発支援**:
+```toml
+repl         = ["rustyline", "dirs"]  # 対話環境
+dev-tools    = []                      # profile, test, dbg（自前実装）
+```
+
+#### Tier 3: Optional（デフォルトOFF、C依存等）
+
+```toml
+db-odbc      = ["odbc-api"]        # システムODBCドライバ依存
+db-duckdb    = ["duckdb"]          # C++依存、サイズ巨大（~50MB）
+```
+
+### Cargo.toml構成例
+
+```toml
+[features]
+# デフォルト: Pure Rust全部入り
+default = [
+    "db-sqlite", "db-postgres", "db-mysql",
+    "http-client", "http-server",
+    "format-json", "format-csv",
+    "string-encoding", "string-crypto", "encoding-extended",
+    "io-glob", "io-temp", "util-zip",
+    "std-time", "std-math", "std-stats", "std-set",
+    "repl", "dev-tools",
+]
+
+# プリセット構成
+minimal       = []                    # 最小構成（組み込み・WASM用）
+web-server    = ["http-server", "format-json", "db-sqlite"]
+cli-tool      = ["repl", "format-json", "io-glob", "util-zip"]
+data-processing = ["db-sqlite", "db-postgres", "format-json", "format-csv"]
+
+# C依存含むフル機能
+full = ["default", "db-odbc", "db-duckdb"]
+
+# 個別機能
+db-sqlite = ["dep:rusqlite"]
+db-postgres = ["dep:tokio-postgres", "dep:postgres-types"]
+# ... 以下略
+```
+
+### ビルド例
+
+```bash
+# デフォルト（Pure Rust全部入り）
+cargo build --release
+# サイズ: 15-20MB
+
+# 最小構成
+cargo build --release --no-default-features --features minimal
+# サイズ: 3-5MB
+
+# Webサーバー専用
+cargo build --release --no-default-features --features web-server
+# サイズ: 8-10MB
+
+# データ処理専用
+cargo build --release --no-default-features --features data-processing
+# サイズ: 10-12MB
+
+# フル機能（C依存含む）
+cargo build --release --features full
+# サイズ: 70-100MB（DuckDB含む）
+```
+
+### Lazy Initialization戦略
+
+**コンセプト**: 「コードは持っているが、必要になるまで起動しない」
+
+#### 即時初期化（軽量）
+- Core言語機能
+- 基本数学関数（math/*）
+- 集合演算（set/*）
+- 統計関数（stats/*）
+
+#### Lazy Init必須（重量）
+- **DBコネクションプール**: 初回 `db/connect` 時に初期化
+- **HTTP client**: 初回リクエスト時にクライアント構築
+- **HTTP server runtime**: `server/serve` 呼び出し時にtokio起動
+- **正規表現キャッシュ**: 初回使用時にコンパイル
+
+#### 実装例
+
+```rust
+// HTTP client のLazy Init
+use once_cell::sync::Lazy;
+
+static HTTP_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
+    reqwest::blocking::Client::builder()
+        .user_agent("qi-lang/0.1.0")
+        .build()
+        .expect("Failed to create HTTP client")
+});
+
+// 初回アクセス時のみ初期化、以降はキャッシュ使用
+pub fn http_get(url: &str) -> Result<Value> {
+    HTTP_CLIENT.get(url).send()  // 初回ここで初期化
+}
+```
+
+```rust
+// Server runtime のLazy Init
+use once_cell::sync::OnceCell;
+
+static SERVER_RUNTIME: OnceCell<tokio::runtime::Runtime> = OnceCell::new();
+
+pub fn serve(...) -> Result<Value> {
+    // server/serve が初めて呼ばれた時だけランタイム起動
+    let rt = SERVER_RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    });
+    // サーバー起動...
+}
+```
+
+### メモリフットプリント
+
+| 状態 | メモリ使用量 | 説明 |
+|------|--------------|------|
+| 起動直後 | 5-10MB | Core + 基本関数のみ |
+| DB使用時 | +10-20MB | コネクションプール確保 |
+| Server起動時 | +5-10MB | tokioランタイム起動 |
+| HTTP client使用時 | +2-5MB | reqwestクライアント |
+| 未使用機能 | 0MB | コードはあるがメモリ取らない |
+
+### エラーメッセージ（feature無効時）
+
+feature無効化でビルドした場合、実行時に分かりやすいエラーを表示：
+
+```lisp
+(db/connect "postgres://localhost/db")
+; エラー: PostgreSQL サポートは無効化されています。
+; feature 'db-postgres' を有効にしてビルドしてください:
+; cargo build --features db-postgres
+```
+
+### 配布戦略
+
+| バージョン | 用途 | サイズ | ビルド方法 |
+|------------|------|--------|------------|
+| **Qi Standard** | 通常配布版 | 15-20MB | `cargo build --release` |
+| **Qi Minimal** | 組み込み・WASM | 3-5MB | `--no-default-features --features minimal` |
+| **Qi Full** | 全機能（C依存含む） | 70-100MB | `--features full` |
+
+### 実装状況
+
+| 項目 | 状態 |
+|------|------|
+| Feature構造設計 | ✅ 完了 |
+| Core実装 | ✅ 完了 |
+| Lazy Init基盤 | 🚧 実装予定 |
+| PostgreSQL driver | 🚧 実装予定 |
+| MySQL driver | 🚧 実装予定 |
+| Feature-gated modules | 🚧 実装予定 |
+
+### 参考ドキュメント
+
+詳細設計は `BUILD-IDEA.md` を参照してください。
+
+---
+
 ## まとめ
 
 **名前**: Qi - A Lisp that flows
