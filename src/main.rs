@@ -462,13 +462,24 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 }
 
                 // ドキュメント取得（多言語対応）
+                // 優先順位:
+                // - LANG=ja: __doc__name_ja → __doc__name → __doc__name_en
+                // - LANG=en: __doc__name_en → __doc__name
+                // - LANG=fr: __doc__name_fr → __doc__name → __doc__name_en
                 let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
                 let doc_key_lang = format!("__doc__{}_{}", name, lang);
                 let doc_key = format!("__doc__{}", name);
 
                 let doc = env.get(&doc_key_lang)
                     .or_else(|| env.get(&doc_key))
-                    .or_else(|| env.get(&format!("__doc__{}_en", name)));
+                    .or_else(|| {
+                        // enの場合はenフォールバックをスキップ（既にチェック済み）
+                        if lang != "en" {
+                            env.get(&format!("__doc__{}_en", name))
+                        } else {
+                            None
+                        }
+                    });
 
                 match doc {
                     Some(Value::String(s)) => {
