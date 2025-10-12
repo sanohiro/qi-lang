@@ -23,15 +23,15 @@ pub struct Env {
 ```mermaid
 graph TB
     subgraph "Global Environment"
-        G["bindings: {<br/>  +: NativeFunc,<br/>  map: NativeFunc,<br/>  x: 10<br/>}<br/>parent: None"]
+        G["x: 10, +, map, ..."]
     end
 
     subgraph "Let Environment"
-        L["bindings: {<br/>  y: 20,<br/>  z: 30<br/>}<br/>parent: → Global"]
+        L["y: 20, z: 30"]
     end
 
     subgraph "Function Environment"
-        F["bindings: {<br/>  a: 1,<br/>  b: 2<br/>}<br/>parent: → Let"]
+        F["a: 1, b: 2"]
     end
 
     F --> L
@@ -93,9 +93,9 @@ pub fn get(&self, name: &str) -> Option<Value> {
 
 ```mermaid
 flowchart TD
-    Start([変数を検索]) --> Local{現在の環境に<br/>変数がある?}
+    Start([変数を検索]) --> Local{現在の環境に変数がある?}
     Local -->|Yes| Found[値を返す]
-    Local -->|No| HasParent{親環境が<br/>ある?}
+    Local -->|No| HasParent{親環境がある?}
     HasParent -->|Yes| Parent[親環境で検索]
     HasParent -->|No| NotFound[None を返す]
     Parent --> Local
@@ -215,19 +215,19 @@ fn apply_func(&self, func: &Value, args: Vec<Value>) -> Result<Value, String> {
 ```mermaid
 graph TD
     subgraph "1. グローバルスコープ"
-        G1["+ - * / map filter reduce<br/>ユーザー定義の変数"]
+        G1["組み込み関数 + ユーザー定義変数"]
     end
 
     subgraph "2. Letスコープ"
-        G2["let [x 10 y 20]<br/>→ ローカル変数 x, y"]
+        G2["let ローカル変数"]
     end
 
     subgraph "3. 関数スコープ"
-        G3["(fn [a b] ...)<br/>→ パラメータ a, b"]
+        G3["関数パラメータ"]
     end
 
     subgraph "4. ループスコープ"
-        G4["(loop [i 0 acc 1] ...)<br/>→ ループ変数 i, acc"]
+        G4["ループ変数"]
     end
 
     G2 --> G1

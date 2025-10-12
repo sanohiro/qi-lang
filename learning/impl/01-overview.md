@@ -6,13 +6,13 @@ Qi言語処理系は、典型的な**インタプリタ型言語**として実�
 
 ```mermaid
 flowchart TD
-    Source["ソースコード<br/><code>(+ 1 2 3)</code>"]
-    Lexer["字句解析器 (Lexer)<br/><code>src/lexer.rs</code><br/>文字列 → トークン列"]
-    Tokens["トークン列<br/>[LParen, Symbol(+), Integer(1), ...]"]
-    Parser["構文解析器 (Parser)<br/><code>src/parser.rs</code><br/>トークン列 → AST"]
-    AST["抽象構文木 (AST)<br/>Expr::Call &#123;<br/>  func: Symbol(+),<br/>  args: [Integer(1), ...]<br/>&#125;"]
-    Evaluator["評価器 (Evaluator)<br/><code>src/eval.rs</code><br/>AST → 実行結果"]
-    Result["実行結果<br/>Value::Integer(6)"]
+    Source["ソースコード: (+ 1 2 3)"]
+    Lexer["字句解析器 (src/lexer.rs)"]
+    Tokens["トークン列"]
+    Parser["構文解析器 (src/parser.rs)"]
+    AST["抽象構文木 (AST)"]
+    Evaluator["評価器 (src/eval.rs)"]
+    Result["実行結果: 6"]
 
     Source --> Lexer
     Lexer --> Tokens

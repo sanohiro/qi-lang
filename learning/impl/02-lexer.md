@@ -39,7 +39,7 @@ graph TD
     Lit --> Integer
     Lit --> Float
     Lit --> String
-    Lit --> FString[FString<br/>f-string補間]
+    Lit --> FString["FString (f-string補間)"]
     Lit --> Symbol
     Lit --> Keyword
     Lit --> Nil/True/False

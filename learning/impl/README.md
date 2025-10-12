@@ -18,11 +18,11 @@
 ```mermaid
 flowchart TD
     Source[ソースコード]
-    Lexer["字句解析器<br/>(lexer.rs)"]
+    Lexer["字句解析器 (lexer.rs)"]
     Tokens[トークン列]
-    Parser["構文解析器<br/>(parser.rs)"]
-    AST[抽象構文木<br/>(AST)]
-    Eval["評価器<br/>(eval.rs)"]
+    Parser["構文解析器 (parser.rs)"]
+    AST["抽象構文木 (AST)"]
+    Eval["評価器 (eval.rs)"]
     Result[実行結果]
 
     Source --> Lexer
