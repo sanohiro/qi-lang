@@ -59,19 +59,24 @@ impl Parser {
                     self.advance();
                     let right = self.parse_primary()?;
 
-                    // x |> f を (f x) に変換
-                    // x |> (f a b) を (f a b x) に変換
-                    expr = match right {
-                        // 右辺が関数呼び出しの場合、最後の引数に追加
-                        Expr::Call { func, mut args } => {
-                            args.push(expr);
-                            Expr::Call { func, args }
+                    // _プレースホルダーがある場合は置き換え、ない場合は末尾に追加
+                    // x |> (str "?" _ "=") → (str "?" x "=")
+                    // x |> (f a b) → (f a b x)
+                    expr = if Self::has_placeholder(&right) {
+                        Self::replace_placeholder(right, expr)
+                    } else {
+                        match right {
+                            // 右辺が関数呼び出しの場合、最後の引数に追加
+                            Expr::Call { func, mut args } => {
+                                args.push(expr);
+                                Expr::Call { func, args }
+                            }
+                            // それ以外は通常の呼び出し
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                            },
                         }
-                        // それ以外は通常の呼び出し
-                        _ => Expr::Call {
-                            func: Box::new(right),
-                            args: vec![expr],
-                        },
                     };
                 }
                 Some(Token::PipeRailway) => {
@@ -208,15 +213,19 @@ impl Parser {
                         self.advance();
                         let right = self.parse_primary()?;
 
-                        expr = match right {
-                            Expr::Call { func, mut args } => {
-                                args.push(expr);
-                                Expr::Call { func, args }
+                        expr = if Self::has_placeholder(&right) {
+                            Self::replace_placeholder(right, expr)
+                        } else {
+                            match right {
+                                Expr::Call { func, mut args } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                },
                             }
-                            _ => Expr::Call {
-                                func: Box::new(right),
-                                args: vec![expr],
-                            },
                         };
                     }
                     Some(Token::PipeRailway) => {
@@ -244,16 +253,20 @@ impl Parser {
                         self.advance();
                         let right = self.parse_primary()?;
 
-                        // パイプラインとして処理（通常のPipeと同じ）
-                        expr = match right {
-                            Expr::Call { func, mut args } => {
-                                args.push(expr);
-                                Expr::Call { func, args }
+                        // パイプラインとして処理（_プレースホルダー対応）
+                        expr = if Self::has_placeholder(&right) {
+                            Self::replace_placeholder(right, expr)
+                        } else {
+                            match right {
+                                Expr::Call { func, mut args } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                },
                             }
-                            _ => Expr::Call {
-                                func: Box::new(right),
-                                args: vec![expr],
-                            },
                         };
                     }
                     _ => break,
@@ -339,16 +352,19 @@ impl Parser {
                     self.advance();
                     is_variadic = true;
                     if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(vararg.clone());
+                        params.push(crate::value::FnParam::Simple(vararg.clone()));
                         self.advance();
                     } else {
                         return Err(msg(MsgKey::VarargNeedsName).to_string());
                     }
                     break;
                 } else {
-                    params.push(s.clone());
+                    params.push(crate::value::FnParam::Simple(s.clone()));
                     self.advance();
                 }
+            } else if let Some(Token::LBracket) = self.current() {
+                // ベクタの分解パターン
+                params.push(self.parse_fn_param_vector()?);
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string());
             }
@@ -393,16 +409,19 @@ impl Parser {
                     self.advance();
                     is_variadic = true;
                     if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(vararg.clone());
+                        params.push(crate::value::FnParam::Simple(vararg.clone()));
                         self.advance();
                     } else {
                         return Err(msg(MsgKey::VarargNeedsName).to_string());
                     }
                     break;
                 } else {
-                    params.push(s.clone());
+                    params.push(crate::value::FnParam::Simple(s.clone()));
                     self.advance();
                 }
+            } else if let Some(Token::LBracket) = self.current() {
+                // ベクタの分解パターン
+                params.push(self.parse_fn_param_vector()?);
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn"]).to_string());
             }
@@ -421,6 +440,29 @@ impl Parser {
         })
     }
 
+    /// ベクタの分解パターンをパース: [x y] or [[a b] c]
+    fn parse_fn_param_vector(&mut self) -> Result<crate::value::FnParam, String> {
+        self.expect(Token::LBracket)?;
+
+        let mut params = Vec::new();
+
+        while self.current() != Some(&Token::RBracket) {
+            if let Some(Token::Symbol(s)) = self.current() {
+                params.push(crate::value::FnParam::Simple(s.clone()));
+                self.advance();
+            } else if let Some(Token::LBracket) = self.current() {
+                // ネストしたベクタパターン
+                params.push(self.parse_fn_param_vector()?);
+            } else {
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn parameter"]).to_string());
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        Ok(crate::value::FnParam::Vector(params))
+    }
+
     fn parse_let(&mut self) -> Result<Expr, String> {
         self.advance(); // 'let'をスキップ
 
@@ -429,14 +471,19 @@ impl Parser {
         let mut bindings = Vec::new();
 
         while self.current() != Some(&Token::RBracket) {
-            let name = match self.current() {
-                Some(Token::Symbol(s)) => s.clone(),
-                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["let"]).to_string()),
+            // パターンをパース（シンボルまたはベクタ分解）
+            let pattern = if let Some(Token::Symbol(s)) = self.current() {
+                let name = s.clone();
+                self.advance();
+                crate::value::FnParam::Simple(name)
+            } else if let Some(Token::LBracket) = self.current() {
+                self.parse_fn_param_vector()?
+            } else {
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["let"]).to_string());
             };
-            self.advance();
 
             let value = self.parse_expr()?;
-            bindings.push((name, value));
+            bindings.push((pattern, value));
         }
 
         self.expect(Token::RBracket)?;
@@ -691,15 +738,19 @@ impl Parser {
                     Some(Token::Pipe) => {
                         self.advance();
                         let right = self.parse_primary()?;
-                        expr = match right {
-                            Expr::Call { func, mut args } => {
-                                args.push(expr);
-                                Expr::Call { func, args }
+                        expr = if Self::has_placeholder(&right) {
+                            Self::replace_placeholder(right, expr)
+                        } else {
+                            match right {
+                                Expr::Call { func, mut args } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                },
                             }
-                            _ => Expr::Call {
-                                func: Box::new(right),
-                                args: vec![expr],
-                            },
                         };
                     }
                     Some(Token::PipeRailway) => {
@@ -726,7 +777,7 @@ impl Parser {
 
             // ラムダでラップ
             Ok(Expr::Fn {
-                params: vec![var_name],
+                params: vec![crate::value::FnParam::Simple(var_name)],
                 body: Box::new(expr),
                 is_variadic: false,
             })
@@ -748,15 +799,19 @@ impl Parser {
                         Some(Token::Pipe) => {
                             self.advance();
                             let right = self.parse_primary()?;
-                            expr = match right {
-                                Expr::Call { func, mut args } => {
-                                    args.push(expr);
-                                    Expr::Call { func, args }
+                            expr = if Self::has_placeholder(&right) {
+                                Self::replace_placeholder(right, expr)
+                            } else {
+                                match right {
+                                    Expr::Call { func, mut args } => {
+                                        args.push(expr);
+                                        Expr::Call { func, args }
+                                    }
+                                    _ => Expr::Call {
+                                        func: Box::new(right),
+                                        args: vec![expr],
+                                    },
                                 }
-                                _ => Expr::Call {
-                                    func: Box::new(right),
-                                    args: vec![expr],
-                                },
                             };
                         }
                         Some(Token::PipeRailway) => {
@@ -1073,6 +1128,43 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Use { module, mode })
+    }
+
+    /// 式の中に_プレースホルダーがあるかチェック
+    fn has_placeholder(expr: &Expr) -> bool {
+        match expr {
+            Expr::Symbol(s) if s == "_" => true,
+            Expr::Call { args, .. } => args.iter().any(|arg| Self::has_placeholder(arg)),
+            Expr::Vector(items) => items.iter().any(|item| Self::has_placeholder(item)),
+            Expr::List(items) => items.iter().any(|item| Self::has_placeholder(item)),
+            _ => false,
+        }
+    }
+
+    /// 式の中の_プレースホルダーを値で置き換え
+    fn replace_placeholder(expr: Expr, value: Expr) -> Expr {
+        match expr {
+            Expr::Symbol(s) if s == "_" => value,
+            Expr::Call { func, args } => {
+                let new_args = args.into_iter()
+                    .map(|arg| Self::replace_placeholder(arg, value.clone()))
+                    .collect();
+                Expr::Call { func, args: new_args }
+            }
+            Expr::Vector(items) => {
+                let new_items = items.into_iter()
+                    .map(|item| Self::replace_placeholder(item, value.clone()))
+                    .collect();
+                Expr::Vector(new_items)
+            }
+            Expr::List(items) => {
+                let new_items = items.into_iter()
+                    .map(|item| Self::replace_placeholder(item, value.clone()))
+                    .collect();
+                Expr::List(new_items)
+            }
+            _ => expr,
+        }
     }
 }
 

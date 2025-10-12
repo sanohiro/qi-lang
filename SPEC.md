@@ -170,7 +170,7 @@ cat automation.json | jq -r '.tasks.cleanup.script' | qi -
 
 ### 名前空間
 **Lisp-1（Scheme派）** - 変数と関数は同じ名前空間
-```lisp
+```qi
 (def add (fn [x y] (+ x y)))
 (def op add)           ;; 関数を変数に代入
 (op 1 2)               ;; 3
@@ -178,7 +178,7 @@ cat automation.json | jq -r '.tasks.cleanup.script' | qi -
 
 ### nil と bool
 **nil と bool は別物、ただし条件式では nil も falsy**
-```lisp
+```qi
 nil false true          ;; 3つの異なる値
 (if nil "yes" "no")     ;; "no" (nilはfalsy)
 (if false "yes" "no")   ;; "no" (falseはfalsy)
@@ -192,7 +192,7 @@ nil false true          ;; 3つの異なる値
 
 ### 名前空間の優先順位
 **core が最優先（先勝）**
-```lisp
+```qi
 ;; coreの関数が優先
 (get {:a 1} :a)         ;; マップのget
 
@@ -227,7 +227,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 **左から右へデータを流す**
 
-```lisp
+```qi
 ;; 基本
 (data |> parse |> transform |> save)
 
@@ -239,6 +239,10 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ;; 引数付き関数
 (10 |> (+ 5) |> (* 2))  ;; (+ 10 5) |> (* 2) => 30
+
+;; _プレースホルダー: 任意の位置に値を挿入
+(42 |> (+ 10 _ 3))  ;; (+ 10 42 3) => 55
+("world" |> (str "Hello, " _))  ;; (str "Hello, " "world") => "Hello, world"
 
 ;; 実用例: URL構築
 (params
@@ -253,11 +257,11 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 **自動的にpmapに展開**
 
-```lisp
+```qi
 ;; 並列処理
-(urls ||> http-get ||> parse-json)
+(urls ||> http/get ||> json/parse)
 ;; ↓ 展開
-(urls |> (pmap http-get) |> (pmap parse-json))
+(urls |> (pmap http/get) |> (pmap json/parse))
 
 ;; 基本的な使い方
 ([1 2 3 4 5] ||> inc)  ;; (2 3 4 5 6)
@@ -281,8 +285,6 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 **実装**:
 - lexer: `||>`を`Token::ParallelPipe`として認識
 - parser: `x ||> f` → `(pmap f x)`に展開
-- 現在はシングルスレッド版pmapを使用
-- 将来的にEvaluatorをスレッドセーフ化すれば真の並列化が可能
 
 ---
 
@@ -290,7 +292,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 **エラーハンドリングを流れの中に組み込む** - Railway Oriented Programming
 
-```lisp
+```qi
 ;; Result型: {:ok value} または {:error message}
 ;; |>? は {:ok value} なら次の関数に値を渡し、{:error e} ならショートサーキット
 
@@ -352,7 +354,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 **流れを止めずに観察**（Unix `tee`相当）
 
-```lisp
+```qi
 ;; tap>は関数として実装
 (def tap> (fn [f]
   (fn [x]
@@ -392,7 +394,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 **分岐・合流を含む複雑なパイプライン**
 
-```lisp
+```qi
 ;; 基本的なflow
 (flow data
   |> parse
@@ -417,7 +419,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ;; 再利用可能な小パイプ
 (def normalize-text
-  (flow |> trim |> lower |> (replace #"\\s+" " ")))
+  (flow |> trim |> lower |> (replace "\\s+" " ")))
 
 (texts |> normalize-text |> unique)
 ```
@@ -430,7 +432,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 `~>` 演算子はパイプラインをgoroutineで自動実行し、結果をチャネルで返します。
 
-```lisp
+```qi
 ;; 基本的な非同期パイプライン
 (def result (data ~> transform ~> process))  ; 即座にチャネルを返す
 (recv! result)  ; 結果を受信
@@ -456,7 +458,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 #### Stream作成
 
-```lisp
+```qi
 ;; コレクションからストリーム作成
 (stream [1 2 3 4 5])
 
@@ -475,7 +477,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 #### Stream変換
 
-```lisp
+```qi
 ;; map: 各要素に関数を適用
 (def s (range-stream 1 6))
 (def s2 (stream-map (fn [x] (* x 2)) s))
@@ -499,7 +501,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 #### Stream実行
 
-```lisp
+```qi
 ;; realize: ストリームをリストに変換（全要素を計算）
 (realize (stream [1 2 3]))  ;; (1 2 3)
 
@@ -512,7 +514,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 #### パイプラインとの統合
 
-```lisp
+```qi
 ;; 既存の |> パイプライン演算子で使える
 [1 2 3 4 5]
   |> stream
@@ -539,7 +541,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 #### 実用例
 
-```lisp
+```qi
 ;; 素数の無限ストリーム（概念）
 (def primes
   (2
@@ -574,7 +576,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ##### テキストモード（行ベース）
 
-```lisp
+```qi
 ;; file-stream: ファイルを行ごとに遅延読み込み（io.rs）
 (file-stream "large.log")
   |> (stream-filter error-line?)
@@ -603,7 +605,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ##### バイナリモード（バイトチャンク）
 
-```lisp
+```qi
 ;; file-stream :bytes - ファイルを4KBチャンクで読み込み
 (file-stream "image.png" :bytes)
   |> (stream-take 10)
@@ -651,7 +653,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 **実用例: ログファイル解析**
 
-```lisp
+```qi
 ;; 大きなログファイルをメモリ効率的に処理
 (defn analyze-logs [file]
   (file-stream file
@@ -671,7 +673,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 **Unix哲学 × 関数型 × Lisp**
 
-```lisp
+```qi
 ;; 小さなパイプを定義
 (def clean-text
   (flow |> trim |> lower |> remove-punctuation))
@@ -695,14 +697,14 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ## 3. 特殊形式（9つ）✅
 
 ### ✅ `def` - グローバル定義
-```lisp
+```qi
 (def x 42)
 (def greet (fn [name] (str "Hello, " name)))
 (def ops [+ - * /])
 ```
 
 ### ✅ `defn` - 関数定義（糖衣構文）
-```lisp
+```qi
 ;; 基本形式
 (defn greet [name]
   (str "Hello, " name))
@@ -710,6 +712,13 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; 可変長引数
 (defn sum [& nums]
   (reduce + 0 nums))
+
+;; ベクタの分解（Destructuring）
+(defn add-pair [[x y]]
+  (+ x y))
+
+(defn format-kv [[k v]]
+  f"{k}={v}")
 
 ;; ドキュメント付き（将来サポート予定）
 (defn greet "挨拶する" [name]
@@ -724,20 +733,24 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 **Note**: `defn`は`def + fn`の糖衣構文です。ドキュメント文字列/マップは認識されますが、現在は無視されます（将来のドキュメントシステムで活用予定）。
 
 ### ✅ `fn` - 関数定義
-```lisp
+```qi
 (fn [x] (* x 2))
 (fn [x y] (+ x y))
-(fn [] (log "no args"))
+(fn [] (println "no args"))
 
 ;; 可変長引数
-(fn [& args] (apply + args))
+(fn [& args] (reduce + 0 args))
 
-;; 分解
-(fn [(x . y)] (list x y))
+;; ベクタの分解（Destructuring）
+(fn [[x y]] (+ x y))  ;; 2要素のベクタを受け取る
+(fn [[k v]] f"{k}={v}")  ;; キーと値のペア
+
+;; ネストした分解
+(fn [[[a b] c]] (+ a b c))  ;; [[1 2] 3] => 6
 ```
 
 ### ✅ `let` - ローカル束縛
-```lisp
+```qi
 (let [x 10 y 20]
   (+ x y))
 
@@ -746,21 +759,33 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
   (let [b 2]
     (+ a b)))
 
-;; 分解
-(let [(x . y) '(a b c)]
-  (list x y))  ;; (a (b c))
+;; ベクタの分解（Destructuring）
+(let [[x y] [10 20]]
+  (+ x y))  ;; => 30
+
+(let [[k v] ["name" "Alice"]]
+  f"{k}={v}")  ;; => "name=Alice"
+
+;; ネストした分解
+(let [[[a b] c] [[1 2] 3]]
+  (+ a b c))  ;; => 6
+
+;; シンプルな束縛と分解の混在
+(let [x 10
+      [y z] [20 30]]
+  (+ x y z))  ;; => 60
 ```
 
 ### ✅ `do` - 順次実行
-```lisp
+```qi
 (do
-  (log "first")
-  (log "second")
+  (println "first")
+  (println "second")
   42)  ;; 最後の式の値を返す
 ```
 
 ### ✅ `if` - 条件分岐
-```lisp
+```qi
 ;; 基本形
 (if test then else)
 
@@ -783,7 +808,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 
 #### ✅ 基本パターン（実装済み）
 
-```lisp
+```qi
 ;; 値のマッチ
 (match x
   0 -> "zero"
@@ -819,7 +844,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 #### ✅ 拡張パターン（実装済み - Flow強化）
 
 **1. `:as` 束縛 - 部分と全体の両方を使う** ✅
-```lisp
+```qi
 ;; パターンマッチした全体を変数に束縛
 (match data
   {:user {:name n :age a} :as u} -> (do
@@ -832,8 +857,10 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
   {:error e :as err} -> (log err))
 ```
 
-**2. `=> 変換` - マッチ時にデータを流す** ✅ ⭐ **Qi独自の強力な機能**
-```lisp
+#### 🚧 将来の拡張パターン
+
+**2. `=> 変換` - マッチ時にデータを流す** 🚧
+```qi
 ;; 束縛と同時に変換関数を適用（パイプライン的）
 (match data
   {:price p => parse-float} -> (calc-tax p)
@@ -851,10 +878,8 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
   _ -> (error "unexpected response"))
 ```
 
-#### 🚧 将来の拡張パターン
-
 **3. `or` パターン - 複数パターンで同じ処理** 🚧
-```lisp
+```qi
 ;; 複数の値にマッチ
 (match status
   (200 or 201 or 204) -> "success"
@@ -869,7 +894,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ```
 
 **4. ネスト + ガード - 構造的な条件分岐**
-```lisp
+```qi
 ;; 深いネストでも読みやすい
 (match request
   {:user {:age a :country c}} when (and (>= a 18) (= c "JP")) -> (allow)
@@ -880,7 +905,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ```
 
 **5. ワイルドカード `_` - 関心のある部分だけ抽出**
-```lisp
+```qi
 ;; 一部のフィールドだけ使う
 (match data
   {:user {:name _ :age a :city c}} -> (process-location a c)
@@ -893,7 +918,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ```
 
 **6. 配列の複数束縛**
-```lisp
+```qi
 ;; 複数要素を同時に束縛
 (match data
   [{:id id1} {:id id2}] -> (compare id1 id2)
@@ -908,7 +933,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 #### 🚧 将来検討
 
 **`and` 条件** - 複雑な論理式（必要性を見極め中）
-```lisp
+```qi
 (match x
   (> 0 and < 100) -> "in range"
   _ -> "out of range")
@@ -922,7 +947,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 4. **段階的開示**: 基本パターンから始めて、必要に応じて拡張機能を使う
 
 ### ✅ `try` - エラー処理
-```lisp
+```qi
 ;; {:ok result} または {:error e} を返す
 (match (try (risky-operation))
   {:ok result} -> result
@@ -939,7 +964,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ```
 
 ### ✅ `defer` - 遅延実行
-```lisp
+```qi
 ;; スコープ終了時に実行
 (defn process-file [path]
   (let [f (open path)]
@@ -965,7 +990,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ## 4. 演算子
 
 ### ✅ `|>` - パイプライン
-```lisp
+```qi
 ;; 左から右へデータを流す
 (x |> f |> g |> h)
 ;; (h (g (f x))) と同じ
@@ -991,15 +1016,15 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ## 5. データ構造
 
 ### リスト
-```lisp
-(1 2 3)
-()  ;; 空リスト
-(first (1 2 3))  ;; 1
-(rest (1 2 3))   ;; (2 3)
+```qi
+'(1 2 3)
+'()  ;; 空リスト
+(first '(1 2 3))  ;; 1
+(rest '(1 2 3))   ;; (2 3)
 ```
 
 ### マップ
-```lisp
+```qi
 {:name "Alice" :age 30}
 {}  ;; 空マップ
 
@@ -1013,16 +1038,16 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ```
 
 ### ベクタ
-```lisp
+```qi
 [1 2 3]
-(get [10 20 30] 1)  ;; 20
+(nth [10 20 30] 1)  ;; 20
 ```
 
 ### 関数
-```lisp
+```qi
 ;; 関数もデータ
 (def ops [+ - * /])
-((get ops 0) 1 2)  ;; 3
+((nth ops 0) 1 2)  ;; 3
 
 ;; 関数のマップ
 (def handlers {:get handle-get :post handle-post})
@@ -1077,7 +1102,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **db**: データベース（11個）- `db/connect`, `db/query`, `db/exec`, `db/begin`, `db/commit`, etc.
 
 **使用例**:
-```lisp
+```qi
 ;; Core関数はそのまま使える
 (data |> filter valid? |> map transform |> sort)
 
@@ -1094,7 +1119,7 @@ Qiは**2層モジュール設計**を採用しています：
 ### リスト操作
 
 #### 基本操作（✅ 実装済み）
-```lisp
+```qi
 ;; アクセス
 first rest last         ;; 最初、残り、最後
 nth                     ;; n番目の要素取得
@@ -1112,14 +1137,14 @@ reverse                 ;; 反転
 ```
 
 #### 高階関数（✅ 実装済み）
-```lisp
+```qi
 map filter reduce       ;; 基本の高階関数
 pmap                    ;; 並列map（現在はシングルスレッド実装）
 tap                     ;; 副作用タップ（値を返しつつ副作用実行）
 ```
 
 **tapの使用例**:
-```lisp
+```qi
 ;; パイプライン内でのデバッグ
 ([1 2 3]
  |> (map inc)
@@ -1134,7 +1159,7 @@ tap                     ;; 副作用タップ（値を返しつつ副作用実�
 ```
 
 #### コレクション検索・述語（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ Phase 4.5で実装
 find                    ;; 条件を満たす最初の要素: (find (fn [x] (> x 5)) [1 7 3]) => 7
 find-index              ;; 条件を満たす最初のインデックス: (find-index (fn [x] (> x 5)) [1 7 3]) => 1
@@ -1143,7 +1168,7 @@ some?                   ;; いずれかが条件を満たすか: (some? (fn [x] 
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; ユーザーを探す
 (def users [{:name "Alice" :age 30} {:name "Bob" :age 25}])
 (find (fn [u] (= (get u :name) "Bob")) users)  ;; {:name "Bob" :age 25}
@@ -1158,7 +1183,7 @@ some?                   ;; いずれかが条件を満たすか: (some? (fn [x] 
 ```
 
 #### ソート・集約（✅ 実装済み）
-```lisp
+```qi
 sort                    ;; ソート（整数・浮動小数点・文字列対応）
 sort-by                 ;; キー指定ソート: (sort-by :age users)
 distinct                ;; 重複排除
@@ -1169,7 +1194,7 @@ count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => 
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; ソート
 (sort [3 1 4 1 5])  ;; (1 1 3 4 5)
 (sort ["zebra" "apple" "banana"])  ;; ("apple" "banana" "zebra")
@@ -1185,7 +1210,7 @@ count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => 
 ```
 
 #### 集約・分析（✅ 全て実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み
 sort-by                 ;; キー指定ソート: (sort-by :age users)
 frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
@@ -1197,7 +1222,7 @@ sum-by                  ;; キー関数で合計
 **設計メモ**: `frequencies`と`count-by`はデータ分析でよく使う。`group-by`と組み合わせると強力。
 
 #### 集合演算（✅ 実装済み）
-```lisp
+```qi
 ;; set/モジュールで実装済み
 set/union                   ;; 和集合: (set/union [1 2] [2 3]) => [1 2 3]
 set/intersect               ;; 積集合: (set/intersect [1 2 3] [2 3 4]) => [2 3]
@@ -1211,7 +1236,7 @@ set/disjoint?               ;; 互いに素判定
 **Flow哲学との関係**: 集合演算はデータフィルタリングで頻出。パイプラインと相性が良い。
 
 #### チャンク・分割（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み
 chunk                   ;; 固定サイズで分割: (chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
 take-while drop-while   ;; 述語が真の間取得/削除
@@ -1223,7 +1248,7 @@ partition-all           ;; partitionの全要素版
 ### 数値・比較
 
 #### 算術演算（✅ 実装済み）
-```lisp
+```qi
 + - * / %               ;; 基本演算
 inc dec                 ;; インクリメント/デクリメント
 sum                     ;; 合計
@@ -1232,12 +1257,12 @@ min max                 ;; 最小/最大
 ```
 
 #### 比較（✅ 実装済み）
-```lisp
+```qi
 = != < > <= >=          ;; 比較演算子
 ```
 
 #### 数学関数（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み（coreに含まれる）
 pow                     ;; べき乗: (pow 2 8) => 256
 sqrt                    ;; 平方根: (sqrt 16) => 4
@@ -1254,7 +1279,7 @@ log exp                 ;; 対数・指数
 **設計方針**: `pow`/`sqrt`/`round`/`clamp`/`rand`はcoreに。三角関数などは将来`math`モジュールへ。
 
 #### 統計（✅ 実装済み）
-```lisp
+```qi
 ;; stats/モジュールで実装済み
 stats/mean              ;; 平均
 stats/median            ;; 中央値
@@ -1265,14 +1290,14 @@ stats/percentile        ;; パーセンタイル
 ```
 
 ### 論理（✅ 全て実装済み）
-```lisp
+```qi
 and or not
 ```
 
 ### マップ操作
 
 #### 基本操作（✅ 実装済み）
-```lisp
+```qi
 get keys vals           ;; アクセス
 assoc dissoc            ;; キーの追加・削除
 merge                   ;; マージ: (merge {:a 1} {:b 2}) => {:a 1 :b 2}
@@ -1280,7 +1305,7 @@ select-keys             ;; キー選択: (select-keys {:a 1 :b 2 :c 3} [:a :c]) 
 ```
 
 #### ネスト操作（✅ 実装済み）⭐ **Flow哲学の核心**
-```lisp
+```qi
 ;; ✅ 実装済み（JSON/Web処理で必須）
 update                  ;; 値を関数で更新
 update-in               ;; ネスト更新: (update-in m [:user :age] inc)
@@ -1290,7 +1315,7 @@ dissoc-in               ;; ネスト削除
 ```
 
 #### マップ一括変換（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ Phase 4.5で実装
 update-keys             ;; 全キーに関数適用: (update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
 update-vals             ;; 全値に関数適用: (update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
@@ -1298,7 +1323,7 @@ zipmap                  ;; キーと値のリストからマップ生成: (zipma
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; すべてのキーを大文字に
 (update-keys upper {:name "Alice" :age 30})  ;; {"NAME" "Alice" "AGE" 30}
 
@@ -1313,7 +1338,7 @@ zipmap                  ;; キーと値のリストからマップ生成: (zipma
 ```
 
 **ネスト操作の使用例**:
-```lisp
+```qi
 ;; update: 値を関数で変換
 (def user {:name "Alice" :age 30})
 (update user :age inc)  ;; {:name "Alice" :age 31}
@@ -1338,7 +1363,7 @@ zipmap                  ;; キーと値のリストからマップ生成: (zipma
 ### 関数型プログラミング基礎
 
 #### 基本ツール（✅ 全て実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み（関数型の必須ツール）
 identity                ;; 引数をそのまま返す: (identity 42) => 42
 constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) => 42
@@ -1350,7 +1375,7 @@ juxt                    ;; 複数関数を並列適用: ((juxt inc dec) 5) => [6
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; identity: フィルタや変換のデフォルト
 (filter identity [1 false nil 2 3])  ;; (1 2 3)
 
@@ -1367,7 +1392,7 @@ juxt                    ;; 複数関数を並列適用: ((juxt inc dec) 5) => [6
 ### 文字列操作
 
 #### Core関数（✅ 実装済み）
-```lisp
+```qi
 str                     ;; 連結
 split join              ;; 分割・結合
 upper lower trim        ;; 変換
@@ -1379,7 +1404,7 @@ map-lines               ;; 各行に関数適用
 SPEC.mdの「標準ライブラリ > str」セクション参照。60以上の文字列関数を提供予定。
 
 ### 述語関数（✅ 全て実装済み）
-```lisp
+```qi
 ;; 型判定
 nil? list? vector? map? string? keyword?
 integer? float? number? fn?
@@ -1402,7 +1427,7 @@ positive? negative? zero?
 ### IO・ファイル操作
 
 #### 基本I/O（✅ 実装済み）
-```lisp
+```qi
 print                   ;; 標準出力
 println                 ;; 改行付き出力
 read-file               ;; ファイル読み込み
@@ -1413,7 +1438,7 @@ file-exists?            ;; ファイル存在確認
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; ファイル読み書き
 (write-file "/tmp/test.txt" "Hello, Qi!")
 (def content (read-file "/tmp/test.txt"))
@@ -1430,7 +1455,7 @@ file-exists?            ;; ファイル存在確認
 ```
 
 #### 拡張I/O（全て実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み（上記の基本I/Oに含まれる）
 ```
 
@@ -1448,7 +1473,7 @@ file-exists?            ;; ファイル存在確認
 - **パイプが使いにくい、データの流れが見えない**
 
 **Qiの解決策**:
-```lisp
+```qi
 ;; データをコマンドへ流すだけ！
 (data |> (cmd/pipe "jq") |> (cmd/pipe "sort") |> process)
 
@@ -1461,7 +1486,7 @@ file-exists?            ;; ファイル存在確認
 ```
 
 #### 基本関数（✅ 実装済み）
-```lisp
+```qi
 ;; 基本実行
 cmd/exec           ;; コマンド実行（結果を返す）
 cmd/sh             ;; シェル経由で実行（パイプ、リダイレクト可）
@@ -1484,7 +1509,7 @@ cmd/wait           ;; プロセス終了を待つ
 #### 💎 かっこいい実用例
 
 **例1: ログ分析パイプライン**
-```lisp
+```qi
 ;; エラーログを抽出して集計（Lisp + Unix完全統合）
 ("access.log"
  |> read-file
@@ -1500,7 +1525,7 @@ cmd/wait           ;; プロセス終了を待つ
 ```
 
 **例2: API + jq + データ加工**
-```lisp
+```qi
 ;; GitHub APIから取得→jqで整形→Qiで集計
 (defn get-user-repos [username]
   (cmd/sh (str "curl -s https://api.github.com/users/" username "/repos")
@@ -1517,7 +1542,7 @@ cmd/wait           ;; プロセス終了を待つ
 ```
 
 **例3: CSVデータの数値ソート（awk不要）**
-```lisp
+```qi
 ;; 複雑なCSVソート（売上データを金額でソート）
 (def sales-data "apple,10,150\nbanana,5,80\ncherry,15,300\n")
 
@@ -1539,7 +1564,7 @@ cmd/wait           ;; プロセス終了を待つ
 ```
 
 **例4: 並列処理 + コマンド**
-```lisp
+```qi
 ;; 複数ファイルを並列で処理
 (["data1.json" "data2.json" "data3.json"]
  ||> read-file                    ;; 並列読み込み
@@ -1554,7 +1579,7 @@ cmd/wait           ;; プロセス終了を待つ
 ```
 
 **例5: リアルタイム監視 & ストリーム処理 (✅ 実装済み)**
-```lisp
+```qi
 ;; ✅ 実装済み: cmd/stream-lines - 行単位ストリーム
 ;; tail -f のようなストリーム処理
 (def log-stream (cmd/stream-lines "tail -f /var/log/app.log"))
@@ -1579,7 +1604,7 @@ cmd/wait           ;; プロセス終了を待つ
 > **tar、巨大ログ、動画ダウンロードも！メモリに載せずにストリーミング処理**
 
 #### ストリーム関数（✅ 実装済み）
-```lisp
+```qi
 cmd/stream-lines    ;; コマンド出力を行単位でストリーム化
 cmd/stream-bytes    ;; コマンド出力をバイト単位でストリーム化
 cmd/interactive     ;; 双方向インタラクティブプロセス
@@ -1593,7 +1618,7 @@ cmd/wait            ;; プロセスの終了を待つ
 #### 💎 ストリーム実用例
 
 **例1: 100GBのログファイルをメモリに載せずに処理**
-```lisp
+```qi
 ;; 巨大ログファイルから特定パターンを抽出（メモリ効率◎）
 (def huge-log-stream (cmd/stream-lines "cat /var/log/huge-access.log"))
 
@@ -1609,7 +1634,7 @@ cmd/wait            ;; プロセスの終了を待つ
 ```
 
 **例2: tar圧縮・展開のストリーミング処理**
-```lisp
+```qi
 ;; 巨大ディレクトリをtar圧縮（進捗表示付き）
 (def tar-stream (cmd/stream-bytes "tar czf - /data/huge-directory" 8192))
 
@@ -1627,7 +1652,7 @@ cmd/wait            ;; プロセスの終了を待つ
 ```
 
 **例3: 動画ダウンロードの進捗表示**
-```lisp
+```qi
 ;; 大容量ファイルのダウンロード（リアルタイム進捗）
 (def download-stream
   (cmd/stream-bytes "curl -L https://example.com/large-video.mp4" 8192))
@@ -1648,7 +1673,7 @@ cmd/wait            ;; プロセスの終了を待つ
 ```
 
 **例4: Pythonインタープリタとの対話**
-```lisp
+```qi
 ;; Python REPLと対話的にやりとり
 (def py (cmd/interactive "python3 -i"))
 
@@ -1666,7 +1691,7 @@ cmd/wait            ;; プロセスの終了を待つ
 ```
 
 **例5: リアルタイムログ監視 & フィルタリング**
-```lisp
+```qi
 ;; システムログをリアルタイム監視
 (def log-stream (cmd/stream-lines "tail -f /var/log/system.log"))
 
@@ -1725,7 +1750,7 @@ cmd/wait            ;; プロセスの終了を待つ
 ### Web開発・ユーティリティ ⭐ **Phase 4.5新機能**
 
 #### JSON処理（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ Phase 4.5で実装
 json/parse              ;; JSON文字列をパース: "{\"a\":1}" => {:ok {:a 1}}
 json/stringify          ;; 値をJSON化（コンパクト）
@@ -1733,7 +1758,7 @@ json/pretty             ;; 値を整形JSON化
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; JSONパース
 (def json-str "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"dev\",\"lisp\"]}")
 (json/parse json-str)
@@ -1755,14 +1780,14 @@ json/pretty             ;; 値を整形JSON化
 
 **Pure Rust実装 - serde_yaml使用**
 
-```lisp
+```qi
 yaml/parse              ;; YAML文字列をパース: "name: Alice" => {:ok {:name "Alice"}}
 yaml/stringify          ;; 値をYAML化
 yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; YAMLパース
 (def yaml-str "name: Alice\nage: 30\ntags:\n  - dev\n  - ops")
 (yaml/parse yaml-str)
@@ -1809,7 +1834,7 @@ yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
 - エラーハンドリング: `{:ok ...}` または `{:error "..."}`
 
 #### HTTP クライアント（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ Phase 4.5で完全実装
 http/get                ;; HTTP GET: (http/get "https://...") => {:ok {:status 200 :body "..."}}
 http/post               ;; HTTP POST: (http/post "url" {:key "value"})
@@ -1826,7 +1851,7 @@ http/post-async         ;; 非同期POST: Channelを返す
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; 基本的なGET
 (http/get "https://httpbin.org/get")
 ;; => {:ok {:status 200 :headers {...} :body "..."}}
@@ -1858,7 +1883,7 @@ http/post-async         ;; 非同期POST: Channelを返す
 ```
 
 **エラーハンドリング**:
-```lisp
+```qi
 ;; エラー時は {:error {...}} を返す
 (http/get "https://invalid-domain-12345.com")
 ;; => {:error {:type "connection" :message "..."}}
@@ -1876,7 +1901,7 @@ http/post-async         ;; 非同期POST: Channelを返す
 HTTPクライアント・サーバー共に、gzip/deflate/brotli圧縮をサポートしています。
 
 **クライアント側**:
-```lisp
+```qi
 ;; 自動解凍（デフォルトで有効）
 ;; サーバーが gzip/deflate/brotli で圧縮したレスポンスを自動的に解凍
 (http/get "https://example.com/api")  ;; 圧縮されたレスポンスも自動解凍
@@ -1888,7 +1913,7 @@ HTTPクライアント・サーバー共に、gzip/deflate/brotli圧縮をサポ
 ```
 
 **サーバー側**:
-```lisp
+```qi
 ;; リクエストボディの自動解凍
 ;; クライアントが Content-Encoding: gzip で送信した場合、自動的に解凍
 (def handler
@@ -1904,7 +1929,7 @@ HTTPクライアント・サーバー共に、gzip/deflate/brotli圧縮をサポ
 HTTP Basic AuthとBearer Token認証をサポートしています。
 
 **クライアント側**:
-```lisp
+```qi
 ;; Basic Auth
 (http/request {
   "url" "https://api.example.com/data"
@@ -1927,7 +1952,7 @@ HTTP Basic AuthとBearer Token認証をサポートしています。
 Qiの哲学（Flow-Oriented Programming）に沿った、ハンドラーはパイプライン、ルーティングはデータという設計です。
 
 **基本関数**:
-```lisp
+```qi
 ;; レスポンスヘルパー
 server/ok                 ;; 200 OKレスポンス: (server/ok "Hello!")
 server/json               ;; JSONレスポンス: (server/json {:message "hello"})
@@ -1952,7 +1977,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 ```
 
 **使用例 - シンプルなサーバー**:
-```lisp
+```qi
 ;; ハンドラー（リクエスト -> レスポンス）
 (def hello-handler
   (fn [req]
@@ -1971,7 +1996,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 ```
 
 **使用例 - JSON API with パスパラメータ**:
-```lisp
+```qi
 ;; ハンドラーはパイプラインで構成
 (def list-users
   (fn [req]
@@ -2012,7 +2037,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 ```
 
 **リクエストオブジェクト**:
-```lisp
+```qi
 ;; リクエストは以下の構造のマップ:
 {:method "get"                    ;; HTTPメソッド（小文字）
  :path "/api/users/123"           ;; リクエストパス
@@ -2025,7 +2050,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 ```
 
 **レスポンスオブジェクト**:
-```lisp
+```qi
 ;; ハンドラーは以下の構造のマップを返す:
 {:status 200                ;; HTTPステータスコード
  :headers {"Content-Type" "text/plain; charset=utf-8" ...}
@@ -2050,7 +2075,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 - 長時間実行サービスに適した設計（SPEC.md「14. メモリ管理」参照）
 
 **設定オプション**:
-```lisp
+```qi
 (server/serve app {
   "port" 3000           ;; ポート番号（デフォルト: 3000）
   "host" "0.0.0.0"      ;; ホスト（デフォルト: "127.0.0.1"）
@@ -2061,7 +2086,7 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 
 Qiのミドルウェアは**ハンドラーをラップして機能を追加する高階関数**です。複数のミドルウェアを重ねることで、横断的な関心事を分離できます。
 
-```lisp
+```qi
 ;; ミドルウェア関数
 server/with-logging       ;; リクエスト/レスポンスをログ出力
 server/with-cors          ;; CORSヘッダーを追加
@@ -2074,7 +2099,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 ```
 
 **使用例 - ミドルウェアの基本**:
-```lisp
+```qi
 ;; 1. ロギングミドルウェア
 (def logging-handler
   (server/with-logging
@@ -2150,7 +2175,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 ```
 
 **使用例 - ミドルウェアの組み合わせ**:
-```lisp
+```qi
 ;; 複数のミドルウェアを重ねて使用（外側から順に適用）
 (def api-handler
   (server/with-logging        ;; 最外層: ログを出力
@@ -2174,7 +2199,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 ```
 
 **ミドルウェアのカスタマイズ**:
-```lisp
+```qi
 ;; CORSのオリジンを指定
 (def cors-handler
   (server/with-cors
@@ -2233,7 +2258,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 ```
 
 **クエリパラメータの使用例**:
-```lisp
+```qi
 ;; 基本的なクエリパラメータ
 (def search-handler
   (fn [req]
@@ -2265,14 +2290,14 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
 
 Qiは静的ファイル（HTML、CSS、JavaScript、画像、フォントなど）の配信をネイティブサポートします。バイナリファイルも正しく処理されます。
 
-```lisp
+```qi
 ;; ミドルウェア関数
 server/static-file        ;; 単一ファイルを配信するレスポンスを生成
 server/static-dir         ;; ディレクトリから静的ファイルを配信するハンドラーを生成
 ```
 
 **使用例 - ディレクトリ配信**:
-```lisp
+```qi
 ;; publicディレクトリ配下の静的ファイルを配信
 (def routes
   [["/" (assoc {} "get" (server/static-dir "./public"))]])
@@ -2287,7 +2312,7 @@ server/static-dir         ;; ディレクトリから静的ファイルを配信
 ```
 
 **使用例 - 単一ファイル配信**:
-```lisp
+```qi
 ;; 特定のファイルを直接配信
 (def favicon-handler
   (fn [req]
@@ -2298,7 +2323,7 @@ server/static-dir         ;; ディレクトリから静的ファイルを配信
 ```
 
 **使用例 - APIと静的ファイルの組み合わせ**:
-```lisp
+```qi
 ;; APIエンドポイントと静的ファイルを同時に提供
 (def routes
   [["/api/users" (assoc {} "get" list-users "post" create-user)]
@@ -2340,19 +2365,10 @@ server/static-dir         ;; ディレクトリから静的ファイルを配信
   - **推奨**: 大きなファイル（動画、大きなPDFなど）は別のCDNやリバースプロキシで配信
 
 **メモリ使用量の例**:
-```lisp
-;; 小さいファイル（推奨）
-GET /logo.png (100KB) × 10同時リクエスト = 1MB メモリ
-
-;; 中規模ファイル（許容範囲）
-GET /document.pdf (5MB) × 10同時リクエスト = 50MB メモリ
-
-;; 大きいファイル（制限あり）
-GET /large.pdf (10MB) × 10同時リクエスト = 100MB メモリ
-
-;; 大きすぎるファイル（エラー）
-GET /video.mp4 (50MB) → エラー: "file too large: 52428800 bytes (max: 10485760 bytes / 10 MB)"
-```
+- 小さいファイル（推奨）: GET /logo.png (100KB) × 10同時リクエスト = 1MB メモリ
+- 中規模ファイル（許容範囲）: GET /document.pdf (5MB) × 10同時リクエスト = 50MB メモリ
+- 大きいファイル（制限あり）: GET /large.pdf (10MB) × 10同時リクエスト = 100MB メモリ
+- 大きすぎるファイル（エラー）: GET /video.mp4 (50MB) → エラー: "file too large: 52428800 bytes (max: 10485760 bytes / 10 MB)"
 
 **将来の拡張予定** 🚧:
 - **ストリーミングレスポンス** 🎯 優先度高
@@ -2367,14 +2383,14 @@ GET /video.mp4 (50MB) → エラー: "file too large: 52428800 bytes (max: 10485
 - グレースフルシャットダウン
 
 #### デバッグ・計測（✅ 実装済み）
-```lisp
+```qi
 ;; ✅ Phase 4.5で実装
 inspect                 ;; 値を整形表示してそのまま返す（パイプライン用）
 time                    ;; 関数実行時間を計測
 ```
 
 **使用例**:
-```lisp
+```qi
 ;; inspect: データフローを観察
 (def data {"name" "Alice" "scores" [95 87 92]})
 (data
@@ -2437,32 +2453,36 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 - ✅ Layer 3: async/await完全実装
 
 **Layer 1: go/chan（基盤）** - Go風の並行処理 ✅
-```lisp
-;; チャネル作成 ✅
-(chan)                  ;; 無制限バッファ
-(chan 10)               ;; バッファサイズ10
 
-;; 送受信 ✅
-(send! ch value)        ;; チャネルに送信
-(recv! ch)              ;; ブロッキング受信
-(recv! ch :timeout 1000) ;; タイムアウト付き受信（ミリ秒） ✅
-(try-recv! ch)          ;; 非ブロッキング受信（nilまたは値）
-(close! ch)             ;; チャネルクローズ
+チャネル作成:
+```qi
+(chan)       ;; 無制限バッファ
+(chan 10)    ;; バッファサイズ10
+```
 
-;; 複数チャネル待ち合わせ ✅
-(select!
-  [[ch1 (fn [v] (handle-ch1 v))]
-   [ch2 (fn [v] (handle-ch2 v))]
-   [:timeout 1000 (fn [] (handle-timeout))]])
+送受信:
+```qi
+;; チャネルへの送信と受信（chは事前に作成されたチャネル）
+(def ch (chan))
+(def value 42)
 
-;; goroutine風 ✅
+(send! ch value)              ;; チャネルに送信
+(recv! ch)                    ;; ブロッキング受信
+(recv! ch :timeout 1000)      ;; タイムアウト付き受信（ミリ秒）
+(close! ch)                   ;; チャネルクローズ
+```
+
+goroutine:
+```qi
 (go (println "async!"))
-(go (send! ch (expensive-calc)))
 
-;; futureとしても使える ✅
-(def result (go (expensive-calc)))
-(deref result)          ;; 結果待ち
+(def result-ch (chan))
+(go (send! result-ch (* 2 3)))
+(recv! result-ch)  ;; 6
+```
 
+Structured Concurrency（構造化並行処理）:
+```qi
 ;; Structured Concurrency（構造化並行処理） ✅
 (def ctx (make-scope))  ;; スコープ作成
 (scope-go ctx (fn []    ;; スコープ内でgoroutine起動
@@ -2577,7 +2597,7 @@ Qiの状態管理は**Atom**（アトム）を使います。Atomは参照透過
 
 #### 基本操作
 
-```lisp
+```qi
 ;; ✅ 実装済み
 atom                    ;; アトム作成
 deref                   ;; 値取得
@@ -2588,7 +2608,7 @@ reset!                  ;; 値を直接セット
 
 #### アトムの作成と参照
 
-```lisp
+```qi
 ;; カウンター
 (def counter (atom 0))
 
@@ -2609,7 +2629,7 @@ reset!                  ;; 値を直接セット
 
 #### 実用例1: カウンター
 
-```lisp
+```qi
 ;; リクエストカウンター
 (def request-count (atom 0))
 
@@ -2624,7 +2644,7 @@ reset!                  ;; 値を直接セット
 
 #### 実用例2: 状態を持つキャッシュ
 
-```lisp
+```qi
 ;; キャッシュ
 (def cache (atom {}))
 
@@ -2643,7 +2663,7 @@ reset!                  ;; 値を直接セット
 
 #### 実用例3: 接続管理（deferと組み合わせ）
 
-```lisp
+```qi
 ;; アクティブな接続を管理
 (def clients (atom #{}))
 
@@ -2659,7 +2679,7 @@ reset!                  ;; 値を直接セット
 
 #### 実用例4: 複雑な状態更新
 
-```lisp
+```qi
 ;; アプリケーション状態
 (def app-state (atom {
   :users {}
@@ -2691,7 +2711,7 @@ reset!                  ;; 値を直接セット
 
 #### ✅ @ 構文（実装済み）
 
-```lisp
+```qi
 ;; derefの短縮形
 (deref counter)  ;; 従来
 @counter         ;; 短縮形
@@ -2711,7 +2731,7 @@ reset!                  ;; 値を直接セット
 ```
 
 ### ✅ エラー処理（全て実装済み）
-```lisp
+```qi
 ;; ✅ 実装済み
 try                     ;; エラーを {:ok ...} / {:error ...} に変換
 error                   ;; 例外を投げる（回復不能）
@@ -2736,7 +2756,7 @@ eval                    ;; 式を評価
 
 末尾再帰最適化を実現するための特殊形式です。
 
-```lisp
+```qi
 ;; 基本形
 (loop [var1 val1 var2 val2 ...]
   body
@@ -2793,7 +2813,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 **用途**: API、ファイルIO、パース等の失敗が予想される処理
 
-```lisp
+```qi
 ;; Result型を返す関数
 (defn divide [x y]
   (if (= y 0)
@@ -2822,7 +2842,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 **用途**: 予期しないエラーのキャッチ、サードパーティコードの呼び出し
 
-```lisp
+```qi
 ;; try-catchブロック
 (match (try (risky-operation))
   {:ok result} -> result
@@ -2844,7 +2864,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 **用途**: ファイル、接続、ロックなどのリソース管理
 
-```lisp
+```qi
 ;; deferで確実にクリーンアップ
 (defn process-file [path]
   (let f (open-file path))
@@ -2884,7 +2904,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ---
 
 ### 回復可能 - {:ok/:error}
-```lisp
+```qi
 ;; 関数が結果を返す
 (defn divide [x y]
   (if (= y 0)
@@ -2902,7 +2922,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```
 
 ### 回復不能 - error
-```lisp
+```qi
 ;; 致命的エラーは error で投げる
 (def critical-init (fn []
   (if (not (file-exists? "config.qi"))
@@ -2926,7 +2946,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ## 9. ユニーク変数（uvars）
 
 ### 基本
-```lisp
+```qi
 ;; 一意な変数を生成
 (def uvar ()
   (join))  ;; 新しいペアを返す
@@ -2941,7 +2961,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```
 
 ### マクロでの使用
-```lisp
+```qi
 ;; 変数名の衝突を避ける
 (mac when (test & body)
   (let [g (uvar)]
@@ -2962,7 +2982,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```
 
 ### 安全なマクロ
-```lisp
+```qi
 ;; aif マクロ
 (mac aif (test then & else)
   (let [it (uvar)]
@@ -3010,7 +3030,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ## 10. モジュールシステム（✅ 基本機能実装済み）
 
 ### ✅ モジュール定義
-```lisp
+```qi
 ;; http.qi
 (module http)
 
@@ -3021,7 +3041,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```
 
 ### インポート
-```lisp
+```qi
 ;; ✅ パターン1: 特定の関数のみ（推奨・実装済み）
 (use http :only [get post])
 (get url)
@@ -3051,7 +3071,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 #### ✅ core（自動インポート・87個）
 Coreモジュールは自動的にグローバル名前空間にインポートされます。
 
-```lisp
+```qi
 ;; 特殊形式・演算子（11個）
 def fn let do if match try defer
 |> ||> |>?
@@ -3108,7 +3128,7 @@ time
 #### 専門モジュール
 
 ##### ✅ list - 高度なリスト操作（18個）
-```lisp
+```qi
 list/frequencies list/sort-by list/count-by
 list/max-by list/min-by list/sum-by list/find-index
 list/partition list/partition-by list/group-by list/keep
@@ -3118,33 +3138,33 @@ list/split-at list/drop-last
 ```
 
 ##### ✅ map - 高度なマップ操作（5個）
-```lisp
+```qi
 map/select-keys
 map/assoc-in map/dissoc-in
 map/update-keys map/update-vals
 ```
 
 ##### ✅ fn - 高階関数（3個）
-```lisp
+```qi
 fn/complement fn/juxt fn/tap>
 ```
 
 ##### ✅ set - 集合演算（7個）
-```lisp
+```qi
 set/union set/intersect set/difference
 set/subset? set/superset? set/disjoint?
 set/symmetric-difference
 ```
 
 ##### ✅ math - 数学関数（10個）
-```lisp
+```qi
 math/pow math/sqrt
 math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
 ##### ✅ time - 日付・時刻（25個）
-```lisp
+```qi
 time/now-iso time/today
 time/from-unix time/to-unix time/format time/parse
 time/add-days time/add-hours time/add-minutes
@@ -3206,7 +3226,7 @@ time/hour time/minute time/second time/weekday
 **自動検出**:
 - `:auto` (BOM検出 → UTF-8 → 各地域エンコーディングを順次試行)
 
-```lisp
+```qi
 ;; ============================================
 ;; 基本的な読み書き
 ;; ============================================
@@ -3344,7 +3364,7 @@ time/hour time/minute time/second time/weekday
 - `io/temp-dir` - 一時ディレクトリ作成（自動削除）
 - `io/temp-dir-keep` - 一時ディレクトリ作成（削除しない）
 
-```lisp
+```qi
 ;; ============================================
 ;; 一時ファイル（自動削除）
 ;; ============================================
@@ -3446,7 +3466,7 @@ time/hour time/minute time/second time/weekday
 - `path/is-absolute?` - 絶対パス判定
 - `path/is-relative?` - 相対パス判定
 
-```lisp
+```qi
 ;; パス結合
 (path/join "dir" "subdir" "file.txt")            ;; "dir/subdir/file.txt"
 (path/join "/usr" "local" "bin")                 ;; "/usr/local/bin"
@@ -3489,7 +3509,7 @@ time/hour time/minute time/second time/weekday
 - `env/all` - 全環境変数をマップで取得
 - `env/load-dotenv` - .envファイルを読み込み
 
-```lisp
+```qi
 ;; 環境変数取得
 (env/get "HOME")                                 ;; "/Users/username"
 (env/get "PORT" "3000")                          ;; デフォルト値付き
@@ -3536,7 +3556,7 @@ time/hour time/minute time/second time/weekday
 - `log/set-level` - ログレベル設定（debug/info/warn/error）
 - `log/set-format` - 出力形式設定（text/json）
 
-```lisp
+```qi
 ;; 基本的なログ出力
 (log/info "サーバー起動")
 ;; => [2025-10-11T21:40:37.312+0900] INFO サーバー起動
@@ -3573,12 +3593,12 @@ time/hour time/minute time/second time/weekday
 ```
 
 ##### ✅ dbg - デバッグ（2個）
-```lisp
+```qi
 dbg/inspect dbg/time
 ```
 
 ##### ✅ async - 並行処理（高度）（16個）
-```lisp
+```qi
 ;; チャネル拡張
 async/try-recv! async/select!
 
@@ -3594,26 +3614,26 @@ async/await async/then async/catch async/all async/race
 ```
 
 ##### ✅ pipeline - パイプライン処理（5個）
-```lisp
+```qi
 pipeline/pipeline pipeline/map pipeline/filter
 pipeline/fan-out pipeline/fan-in
 ```
 
 ##### ✅ stream - ストリーム処理（11個）
-```lisp
+```qi
 stream/stream stream/range stream/repeat stream/cycle
 stream/take stream/drop stream/realize stream/iterate
 stream/map stream/filter stream/file
 ```
 
 ##### ✅ zip - ZIP圧縮・解凍（6個）
-```lisp
+```qi
 zip/create zip/extract zip/list zip/add
 zip/gzip zip/gunzip
 ```
 
 ##### ✅ args - コマンドライン引数パース（4個）
-```lisp
+```qi
 args/all args/get args/parse args/count
 ```
 
@@ -3626,7 +3646,7 @@ args/all args/get args/parse args/count
 - **セキュアAPI**: プレースホルダー + サニタイズ機能
 
 **Phase 1 機能** (✅ 実装済み):
-```lisp
+```qi
 db/connect              ;; データベースに接続
 db/query                ;; SQLクエリを実行（複数行）
 db/query-one            ;; SQLクエリを実行（1行のみ）
@@ -3651,7 +3671,7 @@ db/rollback             ;; トランザクションロールバック
 - 🚧 コネクションプーリング - 未実装
 
 **基本的な使い方**:
-```lisp
+```qi
 ;; 接続（SQLite）
 (def conn (db/connect "sqlite:app.db"))
 (def conn (db/connect "sqlite::memory:"))  ;; インメモリDB
@@ -3690,7 +3710,7 @@ db/rollback             ;; トランザクションロールバック
 ```
 
 **クエリオプション**:
-```lisp
+```qi
 ;; タイムアウト、limit、offset指定
 (db/query conn "SELECT * FROM users" [] {
   "timeout" 5000    ;; タイムアウト(ms)
@@ -3700,7 +3720,7 @@ db/rollback             ;; トランザクションロールバック
 ```
 
 **サニタイズ（動的SQL用）**:
-```lisp
+```qi
 ;; ⚠️ 基本的にプレースホルダー(?)を使用すべき
 ;; サニタイズは動的SQL構築時のみ使用
 
@@ -3718,7 +3738,7 @@ db/rollback             ;; トランザクションロールバック
 ```
 
 **安全なクエリ例**:
-```lisp
+```qi
 ;; ✅ 推奨: プレースホルダー使用
 (db/query conn "SELECT * FROM users WHERE age > ?" [min-age])
 
@@ -3734,7 +3754,7 @@ db/rollback             ;; トランザクションロールバック
 ```
 
 **パイプラインとの組み合わせ**:
-```lisp
+```qi
 ;; データ処理パイプライン
 (db/query conn "SELECT * FROM users WHERE age > ?" [25])
   |> (filter (fn [u] (starts-with? (get u "name") "A")))
@@ -3751,7 +3771,7 @@ db/rollback             ;; トランザクションロールバック
 ```
 
 **将来の拡張（Phase 2+）**:
-```lisp
+```qi
 ;; トランザクション（Phase 2）
 (db/transaction conn
   (fn []
@@ -3807,7 +3827,7 @@ db/rollback             ;; トランザクションロールバック
 - **Phase分け**: Phase 1(基本), Phase 2(メタデータ), Phase 3(プーリング)
 
 #### ✅ str - 文字列操作（ほぼ完全実装）
-```lisp
+```qi
 (use str :only [
   ;; 検索 ✅
   contains? starts-with? ends-with?
@@ -4041,7 +4061,7 @@ db/rollback             ;; トランザクションロールバック
 - `csv/write-file` - ファイルに直接書き込み（`csv/stringify` + `io/write-file`と同等）
 - `csv/read-stream` - ストリームとして読み込み
 
-```lisp
+```qi
 ;; 基本的な使い方（RFC 4180準拠、ダブルクォートエスケープ対応）
 (csv/parse "name,age\n\"Alice\",30\n\"Bob\",25")
 ;; => (("name" "age") ("Alice" "30") ("Bob" "25"))
@@ -4111,7 +4131,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 - `markdown/parse` - Markdown → AST
 - `markdown/stringify` - AST → Markdown
 
-```lisp
+```qi
 ;; 基本的な生成
 (markdown/header 1 "Title")
 ;; => "# Title"
@@ -4143,7 +4163,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **実用例1: LLMへのプロンプト生成**
-```lisp
+```qi
 ;; コードレビュー依頼のプロンプト生成
 (defn create-review-prompt [code questions]
   (markdown/join
@@ -4164,7 +4184,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **実用例2: データレポート生成**
-```lisp
+```qi
 ;; CSVデータからMarkdownレポートを生成
 (defn generate-sales-report [csv-file]
   (let [data (csv/read-file csv-file)
@@ -4192,7 +4212,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **実用例3: ドキュメント生成パイプライン**
-```lisp
+```qi
 ;; APIドキュメント生成
 (defn document-api [endpoints]
   (let [sections
@@ -4238,7 +4258,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 - **拡張性**: 基本機能に集中、複雑な処理は外部ツールに委任
 
 **外部ツール連携**:
-```lisp
+```qi
 ;; HTML変換
 (cmd/sh "pandoc doc.md -o doc.html")
 
@@ -4250,7 +4270,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **Phase 2実用例1: コードブロック抽出とフィルタ**
-```lisp
+```qi
 ;; Markdownドキュメントから特定言語のコードだけ抽出
 (defn extract-qi-code [md-file]
   (md-file
@@ -4272,7 +4292,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **Phase 2実用例2: Literate Programming - ドキュメント駆動開発**
-```lisp
+```qi
 ;; Markdownドキュメントから自動テスト生成
 (defn run-doc-tests [md-file]
   (let [blocks (md-file
@@ -4293,7 +4313,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **Phase 2実用例3: Markdown AST変換**
-```lisp
+```qi
 ;; Markdownの見出しレベルを一括調整
 (defn adjust-header-levels [md-text offset]
   (md-text
@@ -4321,7 +4341,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **Phase 2実用例4: Markdown結合と整形**
-```lisp
+```qi
 ;; 複数のMarkdownファイルを統合してレポート生成
 (defn generate-combined-report [files]
   (let [sections
@@ -4346,7 +4366,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 - `str/re-matches` - 完全マッチチェック（文字列全体がパターンに一致するか）
 - `str/re-replace` - 正規表現による置換
 
-```lisp
+```qi
 (use str :as s)
 
 ;; パターンマッチ - 最初の一致を検索
@@ -4395,7 +4415,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 
 **設計方針**: Flow-orientedに合わせ、パイプラインで使いやすく。
 
-```lisp
+```qi
 (use math :only [
   ;; 🔥 最優先（coreに含めても良い）
   pow sqrt                    ;; べき乗・平方根
@@ -4479,7 +4499,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 
 **データ分析のための統計モジュール**
 
-```lisp
+```qi
 (use stats :only [
   mean              ;; 平均値
   median            ;; 中央値
@@ -4522,7 +4542,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 
 **ZIP圧縮・解凍のための汎用モジュール**
 
-```lisp
+```qi
 (use zip :only [
   create            ;; ZIPファイルを作成
   extract           ;; ZIPファイルを解凍
@@ -4653,7 +4673,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 
 **CLI/サーバーアプリケーションのための引数パース**
 
-```lisp
+```qi
 (use args :only [
   all               ;; 全コマンドライン引数を取得
   get               ;; 指定位置の引数を取得
@@ -4799,7 +4819,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 
 **設計方針**: ISO 8601準拠。Flow-orientedな変換・操作。
 
-```lisp
+```qi
 (use time :only [
   ;; 🔥 最優先（現在時刻取得）
   now                         ;; 現在時刻（Unixタイムスタンプ）
@@ -4911,7 +4931,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 - タイムゾーンはデフォルトUTC、必要に応じてローカルに変換
 
 #### 🚧 その他（全て未実装）
-```lisp
+```qi
 http      ;; HTTPクライアント
 json      ;; JSONパース
 db        ;; データベース
@@ -4922,7 +4942,7 @@ test      ;; テストフレームワーク
 ## 11. 文字列リテラル
 
 ### ✅ 基本（実装済み）
-```lisp
+```qi
 "hello"
 "hello\nworld"
 "say \"hello\""
@@ -4932,7 +4952,7 @@ test      ;; テストフレームワーク
 
 Python風の`"""`を使った複数行文字列をサポートしています。
 
-```lisp
+```qi
 ;; 基本的な複数行文字列
 """
 This is a
@@ -4966,7 +4986,7 @@ string
 
 f-stringでも複数行が使えます。`f"""..."""`の形式です。
 
-```lisp
+```qi
 ;; 変数を含む複数行文字列
 (def name "Alice")
 (def age 30)
@@ -4997,7 +5017,7 @@ Status: Active
 
 f-stringは`f"...{expr}..."`の形式で、`{}`内に変数や式を埋め込むことができます。
 
-```lisp
+```qi
 ;; 基本的な使い方
 f"Hello, World!"  ;; => "Hello, World!"
 
@@ -5047,7 +5067,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ## 12. 実用例
 
 ### Webスクレイパー
-```lisp
+```qi
 (use http :only [get])
 
 (defn scrape-prices [url]
@@ -5070,7 +5090,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### 安全なマクロ（uvars使用）
-```lisp
+```qi
 ;; 衝突しないaif
 (mac aif (test then & else)
   (let [it (uvar)]
@@ -5095,7 +5115,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### CSV処理
-```lisp
+```qi
 (use csv)
 (use str :as s)
 
@@ -5114,7 +5134,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### ログ解析
-```lisp
+```qi
 (use regex :as re)
 (use str :as s)
 
@@ -5137,7 +5157,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### チャットサーバー
-```lisp
+```qi
 (def clients (atom #{}))
 
 (defn broadcast [msg]
@@ -5159,7 +5179,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### データパイプライン
-```lisp
+```qi
 (use str :as s)
 (use csv)
 
@@ -5184,7 +5204,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### URL構築
-```lisp
+```qi
 (use str :as s)
 
 (defn build-url [base path params]
@@ -5199,7 +5219,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```
 
 ### テキスト処理
-```lisp
+```qi
 (use str :as s)
 (use regex :as re)
 
@@ -5243,7 +5263,7 @@ Qiは「短く、わかりやすく、美しいコード」を目指します。
 - **defnを優先**: 関数定義には `defn` を使う（`def` + `fn` より簡潔）
 
 **例**:
-```lisp
+```qi
 ;; ❌ 冗長
 (def calculate-sum-of-numbers (fn [list-of-numbers]
   (let [result (reduce (fn [accumulator current-value]
@@ -5292,7 +5312,7 @@ Qiは**並行・並列処理を第一級市民**として扱います。
 - 全てのコアデータ構造はイミュータブル
 
 **例**:
-```lisp
+```qi
 ;; チャネルを使った並行処理
 (defn worker [ch]
   (loop []
@@ -5321,7 +5341,7 @@ Qiは**並行・並列処理を第一級市民**として扱います。
 - 複雑なロジックにはコメントを追加
 
 **例**:
-```lisp
+```qi
 (defn factorial [n]
   "nの階乗を計算する
    例: (factorial 5) => 120"
@@ -5421,7 +5441,7 @@ Qiは**GC（ガベージコレクション）不要**の設計です。Rustの�
 APIサーバーやHTTPサーバーなど、長時間実行するサービスを構築する場合の推奨事項:
 
 **メモリ管理のベストプラクティス:**
-```lisp
+```qi
 ; ✅ リクエストごとにクリーンな環境を使う
 (defn handle-request [req]
   (let [session (new-session req)]
@@ -5449,18 +5469,18 @@ APIサーバーやHTTPサーバーなど、長時間実行するサービスを�
 現在の実装は小〜中規模アプリケーションに最適化されています。大規模・高負荷なサービスを構築する場合、以下の最適化を検討できます:
 
 **1. Copy-on-Write (CoW):**
-```lisp
+```qi
 ; データをArcで共有し、変更時のみコピー
 ```
 
 **2. 構造共有（Persistent Data Structures）:**
-```lisp
+```qi
 ; Clojureスタイルの永続データ構造
 ; 変更時も既存データを共有
 ```
 
 **3. 環境の最適化:**
-```lisp
+```qi
 ; 環境全体ではなく、使用する変数のみキャプチャ
 ```
 
@@ -5475,7 +5495,7 @@ Qiの並列・並行処理はスレッドセーフに設計されています:
 - ✅ Channel: crossbeam-channelによるスレッドセーフ通信
 
 **並列処理の例:**
-```lisp
+```qi
 ; pmapは自動的に並列実行（スレッドセーフ）
 (pmap expensive-computation large-dataset)
 
@@ -5716,7 +5736,7 @@ pub fn serve(...) -> Result<Value> {
 
 feature無効化でビルドした場合、実行時に分かりやすいエラーを表示：
 
-```lisp
+```qi
 (db/connect "postgres://localhost/db")
 ; エラー: PostgreSQL サポートは無効化されています。
 ; feature 'db-postgres' を有効にしてビルドしてください:
@@ -5765,41 +5785,41 @@ Qiの**Flow-oriented**哲学と実用性を考慮した実装優先順位：
 **✅ 完了した機能**:
 
 **1. ネスト操作** - JSON/Web処理の核心
-```lisp
+```qi
 update update-in get-in assoc-in dissoc-in
 ```
 
 **2. 関数型基礎** - 高階関数を書くための標準ツール
-```lisp
+```qi
 identity constantly comp apply partial
 ```
 
 **3. 集合演算** - データ分析・フィルタリング
-```lisp
+```qi
 union intersect difference subset?
 ```
 
 **4. 数値基本** - 計算の基礎
-```lisp
+```qi
 pow sqrt round floor ceil clamp rand rand-int
 ```
 
 #### ⚡ 高優先（コアを充実させる）
 
 **5. ソート・集約拡張**
-```lisp
+```qi
 sort-by frequencies count-by
 ```
 理由: データ分析で頻出。`group-by`との相性良い。
 
 **6. リスト分割**
-```lisp
+```qi
 chunk take-while drop-while
 ```
 理由: バッチ処理・ストリーム処理で便利。
 
 **7. I/O拡張**
-```lisp
+```qi
 println read-lines file-exists?
 ```
 理由: ユーザビリティ向上。
@@ -5807,17 +5827,17 @@ println read-lines file-exists?
 #### 🎯 中優先（必要になったら）
 
 **8. 集約関数**
-```lisp
+```qi
 max-by min-by sum-by
 ```
 
 **9. 高階関数拡張**
-```lisp
+```qi
 partial complement juxt
 ```
 
 **10. 統計**
-```lisp
+```qi
 mean median stddev
 ```
 
@@ -6062,7 +6082,7 @@ mean median stddev
 `def` で既存の変数、関数、ビルトイン関数を再定義しようとすると、警告を表示します。
 エラーではないため、処理は継続されます。
 
-```lisp
+```qi
 ;; ビルトイン関数の再定義
 (def inc (fn [x] (* x 2)))
 ;; 警告: ビルトイン関数を再定義しています: 'inc' (inc)
@@ -6091,7 +6111,7 @@ mean median stddev
 現在のQiはグローバル名前空間のみ。大規模開発では名前衝突が問題になる可能性。
 
 **検討事項**:
-```lisp
+```qi
 ;; 案1: Clojure風
 (ns myapp.core)
 (def map {...})  ;; myapp.core/map
@@ -6128,7 +6148,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 最もシンプルな形式。関数の簡単な説明のみ。
 
 **defn使用（推奨）：**
-```lisp
+```qi
 (defn greet
   "指定された名前で挨拶する"
   [name]
@@ -6136,7 +6156,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 ```
 
 **def使用（手動設定）：**
-```lisp
+```qi
 (def __doc__greet "指定された名前で挨拶する")
 (def greet
   (fn [name]
@@ -6144,7 +6164,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 ```
 
 多言語対応：
-```lisp
+```qi
 ;; defnで多言語ドキュメント
 (defn greet
   {:en "Greets with the given name"
@@ -6164,7 +6184,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 詳細なドキュメントを記述する場合。
 
 **defn使用（推奨）：**
-```lisp
+```qi
 (defn greet
   {:desc "指定された名前で挨拶する"
    :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
@@ -6178,7 +6198,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 ```
 
 **def使用（手動設定）：**
-```lisp
+```qi
 (def __doc__greet
   {:desc "指定された名前で挨拶する"
    :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
@@ -6193,7 +6213,7 @@ Qiは柔軟なドキュメントシステムを提供します：
 ```
 
 多言語対応：
-```lisp
+```qi
 ;; defnで多言語構造化ドキュメント
 (defn greet
   {:en {:desc "Greets with the given name"
@@ -6249,7 +6269,7 @@ qi-lang/
 
 標準的なQi構文で記述します：
 
-```lisp
+```qi
 ;; std/docs/ja/core.qi
 
 (def __doc__map
@@ -6333,7 +6353,7 @@ qi repl
 
 多言語対応が不要な場合は、`_ja`や`_en`などの言語サフィックスを付けずに記述してください：
 
-```lisp
+```qi
 ;; 日本語プロジェクトの場合
 (defn greet
   "指定された名前で挨拶する"
@@ -6359,7 +6379,7 @@ qi repl
 
 国際的なライブラリやツールで多言語ドキュメントが必要な場合のみ、言語サフィックスを使います：
 
-```lisp
+```qi
 ;; 英語版
 (def __doc__greet_en
   {:desc "Greets with the given name"
@@ -6389,7 +6409,7 @@ qi repl
 
 言語指定なし版と言語版を併用することも可能です：
 
-```lisp
+```qi
 ;; デフォルト（言語指定なし）- 日本語で記述
 (def __doc__count
   {:desc "コレクションの要素数を数える"
@@ -6491,7 +6511,7 @@ qi -l file.qi   # ファイルをロードしてREPL起動
 
 すべてのコマンドは `:` で始まります：
 
-```lisp
+```qi
 :help           ; コマンド一覧表示
 :vars           ; 定義済み変数一覧
 :funcs          ; ユーザー定義関数一覧
@@ -6504,7 +6524,7 @@ qi -l file.qi   # ファイルをロードしてREPL起動
 
 ### 使用例
 
-```lisp
+```qi
 qi:1> (defn double [x] (* x 2))
 #<function>
 
@@ -6533,7 +6553,7 @@ qi:7> :quit
 
 括弧が閉じていない場合、自動的に複数行モードになります：
 
-```lisp
+```qi
 qi:1> (defn sum [& nums]
      ...   (reduce + 0 nums))
 #<function>
@@ -6546,7 +6566,7 @@ qi:2> (sum 1 2 3 4 5)
 
 関数名、変数名、REPLコマンドを補完できます：
 
-```lisp
+```qi
 qi:1> :h<TAB>
 :help
 
@@ -6724,7 +6744,7 @@ cargo build --no-default-features --features db-sqlite,std-stats
 
 プログラム内で機能の有無を確認したい場合：
 
-```lisp
+```qi
 ;; 実行時にエラーで判断
 (try
   (parse-json "{\"key\": \"value\"}")

@@ -245,9 +245,9 @@ impl Evaluator {
 
             Expr::Let { bindings, body } => {
                 let mut new_env = Env::with_parent(env.clone());
-                for (name, expr) in bindings {
+                for (pattern, expr) in bindings {
                     let value = self.eval_with_env(expr, Arc::new(RwLock::new(new_env.clone())))?;
-                    new_env.set(name.clone(), value);
+                    self.bind_fn_param(pattern, &value, &mut new_env)?;
                 }
                 self.eval_with_env(body, Arc::new(RwLock::new(new_env)))
             }
@@ -790,9 +790,13 @@ impl Evaluator {
             Box::new(Expr::Do(body_exprs))
         };
 
-        // fnの本体を構築
+        // fnの本体を構築（Vec<String>をVec<FnParam>に変換）
+        let fn_params: Vec<crate::value::FnParam> = params
+            .into_iter()
+            .map(|s| crate::value::FnParam::Simple(s))
+            .collect();
         let fn_expr = Expr::Fn {
-            params,
+            params: fn_params,
             body,
             is_variadic: false,
         };
@@ -973,6 +977,48 @@ impl Evaluator {
         None
     }
 
+    /// FnParamパターンを値にマッチさせて環境にバインド
+    fn bind_fn_param(
+        &self,
+        param: &crate::value::FnParam,
+        value: &Value,
+        env: &mut Env,
+    ) -> Result<(), String> {
+        use crate::value::FnParam;
+
+        match param {
+            FnParam::Simple(name) => {
+                env.set(name.clone(), value.clone());
+                Ok(())
+            }
+            FnParam::Vector(params) => {
+                // 値がリストまたはベクタであることを確認
+                let values = match value {
+                    Value::List(v) | Value::Vector(v) => v,
+                    _ => {
+                        return Err(format!(
+                            "型エラー: ベクタパターンに対して{}を渡すことはできません",
+                            value.type_name()
+                        ));
+                    }
+                };
+
+                if values.len() != params.len() {
+                    return Err(format!(
+                        "引数エラー: ベクタパターンは{}個の要素を期待しましたが、{}個が渡されました",
+                        params.len(),
+                        values.len()
+                    ));
+                }
+
+                for (p, v) in params.iter().zip(values.iter()) {
+                    self.bind_fn_param(p, v, env)?;
+                }
+                Ok(())
+            }
+        }
+    }
+
     /// 関数を適用するヘルパー（内部用）
     fn apply_func(&self, func: &Value, args: Vec<Value>) -> Result<Value, String> {
         match func {
@@ -1013,7 +1059,12 @@ impl Evaluator {
                     if f.params.len() != 1 {
                         return Err(fmt_msg(MsgKey::VariadicFnNeedsOneParam, &[]));
                     }
-                    new_env.set(f.params[0].clone(), Value::List(args));
+                    // variadic引数は常にSimpleパターンのはず
+                    if let crate::value::FnParam::Simple(name) = &f.params[0] {
+                        new_env.set(name.clone(), Value::List(args));
+                    } else {
+                        return Err("内部エラー: variadic引数がSimpleパターンではありません".to_string());
+                    }
                 } else {
                     if f.params.len() != args.len() {
                         return Err(fmt_msg(
@@ -1022,7 +1073,7 @@ impl Evaluator {
                         ));
                     }
                     for (param, arg) in f.params.iter().zip(args.iter()) {
-                        new_env.set(param.clone(), arg.clone());
+                        self.bind_fn_param(param, arg, &mut new_env)?;
                     }
                 }
 
@@ -2562,6 +2613,17 @@ impl Evaluator {
         }
     }
 
+    /// FnParamをValueに変換（マクロ展開/quote用）
+    fn fn_param_to_value(&self, param: &crate::value::FnParam) -> Value {
+        use crate::value::FnParam;
+        match param {
+            FnParam::Simple(name) => Value::Symbol(name.clone()),
+            FnParam::Vector(params) => {
+                Value::Vector(params.iter().map(|p| self.fn_param_to_value(p)).collect())
+            }
+        }
+    }
+
     /// ExprをValueに変換（データとして扱う）
     fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
         match expr {
@@ -2628,8 +2690,8 @@ impl Evaluator {
             Expr::Let { bindings, body } => {
                 let mut items = vec![Value::Symbol("let".to_string())];
                 let mut binding_vec = Vec::new();
-                for (name, expr) in bindings {
-                    binding_vec.push(Value::Symbol(name.clone()));
+                for (pattern, expr) in bindings {
+                    binding_vec.push(self.fn_param_to_value(pattern));
                     binding_vec.push(self.expr_to_value(expr)?);
                 }
                 items.push(Value::Vector(binding_vec));
@@ -2639,17 +2701,17 @@ impl Evaluator {
             Expr::Fn { params, body, is_variadic } => {
                 let mut items = vec![Value::Symbol("fn".to_string())];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
-                    vec![Value::Symbol("&".to_string()), Value::Symbol(params[0].clone())]
+                    vec![Value::Symbol("&".to_string()), self.fn_param_to_value(&params[0])]
                 } else if *is_variadic {
                     let mut v: Vec<Value> = params[..params.len()-1]
                         .iter()
-                        .map(|p| Value::Symbol(p.clone()))
+                        .map(|p| self.fn_param_to_value(p))
                         .collect();
                     v.push(Value::Symbol("&".to_string()));
-                    v.push(Value::Symbol(params[params.len()-1].clone()));
+                    v.push(self.fn_param_to_value(&params[params.len()-1]));
                     v
                 } else {
-                    params.iter().map(|p| Value::Symbol(p.clone())).collect()
+                    params.iter().map(|p| self.fn_param_to_value(p)).collect()
                 };
                 items.push(Value::Vector(param_vals));
                 items.push(self.expr_to_value(body)?);

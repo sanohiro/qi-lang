@@ -287,3 +287,13 @@
    :returns {:type "nil" :desc "nil"}
    :examples ["(print \"Hello\") ;; 出力: Hello（改行なし）"
               "(print 1 2 3) ;; 出力: 1 2 3"]})
+
+;; 高階関数
+(def __doc__apply
+  {:desc "リスト（またはベクタ）の要素を関数の引数として展開する"
+   :params [{:name "f" :type "function" :desc "適用する関数"}
+            {:name "args" :type "list/vector" :desc "引数として展開するリストまたはベクタ"}]
+   :returns {:type "any" :desc "関数の実行結果"}
+   :examples ["(apply + [1 2 3]) ;=> 6"
+              "(apply max [3 7 2 9 4]) ;=> 9"
+              "(apply str [\"Hello\" \" \" \"World\"]) ;=> \"Hello World\""]})

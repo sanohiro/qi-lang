@@ -164,7 +164,7 @@ impl PartialEq for Value {
 /// 関数の定義
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub params: Vec<String>,
+    pub params: Vec<FnParam>,
     pub body: Expr,
     pub env: Env,
     pub is_variadic: bool, // &argsに対応
@@ -274,6 +274,16 @@ impl Env {
     }
 }
 
+/// 関数のパラメータパターン
+#[derive(Debug, Clone, PartialEq)]
+pub enum FnParam {
+    /// シンプルなシンボル: x
+    Simple(String),
+    /// ベクタの分解: [x y] or [[a b] c]
+    Vector(Vec<FnParam>),
+    // 将来の拡張: Map(MapPattern)
+}
+
 /// AST（抽象構文木）の式
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -295,12 +305,12 @@ pub enum Expr {
     // 特殊形式
     Def(String, Box<Expr>),
     Fn {
-        params: Vec<String>,
+        params: Vec<FnParam>,
         body: Box<Expr>,
         is_variadic: bool,
     },
     Let {
-        bindings: Vec<(String, Expr)>,
+        bindings: Vec<(FnParam, Expr)>,
         body: Box<Expr>,
     },
     If {

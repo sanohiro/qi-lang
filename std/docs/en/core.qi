@@ -287,3 +287,13 @@
    :returns {:type "nil" :desc "nil"}
    :examples ["(print \"Hello\") ;; prints: Hello (no newline)"
               "(print 1 2 3) ;; prints: 1 2 3"]})
+
+;; Higher-order functions
+(def __doc__apply
+  {:desc "Apply a function to a list (or vector) of arguments"
+   :params [{:name "f" :type "function" :desc "Function to apply"}
+            {:name "args" :type "list/vector" :desc "List or vector of arguments to expand"}]
+   :returns {:type "any" :desc "Result of function application"}
+   :examples ["(apply + [1 2 3]) ;=> 6"
+              "(apply max [3 7 2 9 4]) ;=> 9"
+              "(apply str [\"Hello\" \" \" \"World\"]) ;=> \"Hello World\""]})
