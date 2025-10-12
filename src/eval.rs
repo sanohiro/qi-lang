@@ -641,24 +641,33 @@ impl Evaluator {
                     Ok(false)
                 }
             }
-            Pattern::List(patterns, _rest) => {
-                if let Value::List(values) = value {
-                    if patterns.len() > values.len() {
-                        return Ok(false);
-                    }
-                    for (pat, val) in patterns.iter().zip(values.iter()) {
-                        if !self.match_pattern(pat, val, bindings)? {
-                            return Ok(false);
-                        }
-                    }
-                    // TODO: ...restのサポート
-                    if patterns.len() != values.len() {
-                        return Ok(false);
-                    }
-                    Ok(true)
-                } else {
-                    Ok(false)
+            Pattern::List(patterns, rest) => {
+                // ListパターンはListとVectorの両方にマッチ
+                let values = match value {
+                    Value::List(v) => v,
+                    Value::Vector(v) => v,
+                    _ => return Ok(false),
+                };
+
+                if patterns.len() > values.len() {
+                    return Ok(false);
                 }
+                for (pat, val) in patterns.iter().zip(values.iter()) {
+                    if !self.match_pattern(pat, val, bindings)? {
+                        return Ok(false);
+                    }
+                }
+
+                // restパターンがある場合は残りの要素を束縛
+                if let Some(rest_pattern) = rest {
+                    let rest_values: Vec<Value> = values.iter().skip(patterns.len()).cloned().collect();
+                    self.match_pattern(rest_pattern, &Value::List(rest_values), bindings)?;
+                } else if patterns.len() != values.len() {
+                    // restパターンがない場合は要素数が一致しなければマッチ失敗
+                    return Ok(false);
+                }
+
+                Ok(true)
             }
             Pattern::Map(pattern_pairs) => {
                 if let Value::Map(map) = value {
@@ -1510,6 +1519,35 @@ mod tests {
         assert_eq!(
             eval_str("(match [1 2] [x y] -> (+ x y))").unwrap(),
             Value::Integer(3)
+        );
+    }
+
+    #[test]
+    fn test_match_rest() {
+        // ...restパターンのテスト
+        assert_eq!(
+            eval_str("(match [1 2 3 4 5] [x ...rest] -> rest)").unwrap(),
+            Value::List(vec![Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)])
+        );
+        // 1要素の場合
+        assert_eq!(
+            eval_str("(match [1] [x ...rest] -> rest)").unwrap(),
+            Value::List(vec![])
+        );
+        // 空リストの場合
+        assert_eq!(
+            eval_str("(match [] [...rest] -> rest)").unwrap(),
+            Value::List(vec![])
+        );
+        // 複数要素を取得してからrest
+        assert_eq!(
+            eval_str("(match [10 20 30] [a b ...rest] -> rest)").unwrap(),
+            Value::List(vec![Value::Integer(30)])
+        );
+        // リストでも動作
+        assert_eq!(
+            eval_str("(match (list 1 2 3) [x ...rest] -> rest)").unwrap(),
+            Value::List(vec![Value::Integer(2), Value::Integer(3)])
         );
     }
 

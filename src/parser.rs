@@ -883,13 +883,35 @@ impl Parser {
         self.expect(Token::LBracket)?;
 
         let mut patterns = Vec::new();
+        let mut rest = None;
+
         while self.current() != Some(&Token::RBracket) {
-            patterns.push(self.parse_pattern()?);
+            // ...rest パターンのチェック
+            if self.current() == Some(&Token::Ellipsis) {
+                self.advance(); // ...
+                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(s)) => {
+                        rest = Some(Box::new(Pattern::Var(s.clone())));
+                        self.advance();
+                        // ...rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(msg(MsgKey::RestNeedsVar).to_string()),
+                }
+            } else {
+                patterns.push(self.parse_pattern()?);
+            }
         }
 
         self.expect(Token::RBracket)?;
 
-        Ok(Pattern::Vector(patterns))
+        // restがある場合はListパターン、ない場合はVectorパターン
+        if rest.is_some() {
+            Ok(Pattern::List(patterns, rest))
+        } else {
+            Ok(Pattern::Vector(patterns))
+        }
     }
 
     fn parse_map_pattern(&mut self) -> Result<Pattern, String> {

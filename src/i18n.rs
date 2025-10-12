@@ -52,6 +52,7 @@ pub enum MsgKey {
     NeedsSymbol,        // 共通化: Def/Let/Fn等で使用
     VarargNeedsName,
     UnexpectedPattern,
+    RestNeedsVar,       // ...rest の後に変数名が必要
 
     // レキサーエラー
     UnexpectedChar,
@@ -419,6 +420,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::NeedsSymbol), "{0} requires a symbol");
         messages.insert((Lang::En, MsgKey::VarargNeedsName), "'&' requires a variable name");
         messages.insert((Lang::En, MsgKey::UnexpectedPattern), "unexpected pattern: {0}");
+        messages.insert((Lang::En, MsgKey::RestNeedsVar), "'...' requires a variable name");
         messages.insert((Lang::En, MsgKey::UnexpectedChar), "unexpected character: {0}");
         messages.insert((Lang::En, MsgKey::UnclosedString), "unclosed string");
 
@@ -682,6 +684,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::NeedsSymbol), "{0}にはシンボルが必要です");
         messages.insert((Lang::Ja, MsgKey::VarargNeedsName), "&の後には変数名が必要です");
         messages.insert((Lang::Ja, MsgKey::UnexpectedPattern), "予期しないパターン: {0}");
+        messages.insert((Lang::Ja, MsgKey::RestNeedsVar), "...の後には変数名が必要です");
         messages.insert((Lang::Ja, MsgKey::UnexpectedChar), "予期しない文字: {0}");
         messages.insert((Lang::Ja, MsgKey::UnclosedString), "文字列が閉じられていません");
 

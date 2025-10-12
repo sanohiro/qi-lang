@@ -50,6 +50,7 @@ pub enum Token {
     PipeRailway,  // |>?
     ParallelPipe,  // ||>
     AsyncPipe,  // ~>
+    Ellipsis,  // ...
 
     // ファイル終端
     Eof,
@@ -507,6 +508,12 @@ impl Lexer {
                 }
                 Some('-') if self.peek(1).map_or(false, |c| c.is_numeric()) => {
                     return Ok(self.read_number());
+                }
+                Some('.') if self.peek(1) == Some('.') && self.peek(2) == Some('.') => {
+                    self.advance(); // .
+                    self.advance(); // .
+                    self.advance(); // .
+                    return Ok(Token::Ellipsis);
                 }
                 // 複数行f-string: f"""..."""
                 Some('f') if self.peek(1) == Some('"') && self.peek(2) == Some('"') && self.peek(3) == Some('"') => {
