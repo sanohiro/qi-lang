@@ -44,12 +44,12 @@ graph TD
     Lit --> Keyword
     Lit --> Nil/True/False
 
-    Paren --> LParen["( ) [ ] { }"]
+    Paren --> LParen[括弧記号]
 
-    Other --> Quote["'クォート"]
-    Other --> Backquote["`バッククォート"]
-    Other --> Pipe["|> パイプ"]
-    Other --> Arrow["-> 矢印"]
+    Other --> Quote[クォート]
+    Other --> Backquote[バッククォート]
+    Other --> Pipe[パイプ演算子]
+    Other --> Arrow[矢印]
 ```
 
 ### トークンの種類
