@@ -92,7 +92,7 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
     };
 
     let content = fs::read_to_string(path)
-        .map_err(|e| format!("env/load-dotenv: failed to read file '{}': {}", path, e))?;
+        .map_err(|e| fmt_msg(MsgKey::EnvLoadDotenvFailedToRead, &[path, &e.to_string()]))?;
 
     let mut loaded_count = 0;
     for (line_num, line) in content.lines().enumerate() {
@@ -119,10 +119,9 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
                 loaded_count += 1;
             }
         } else {
-            return Err(format!(
-                "env/load-dotenv: invalid format at line {}: '{}'",
-                line_num + 1,
-                line
+            return Err(fmt_msg(
+                MsgKey::EnvLoadDotenvInvalidFormat,
+                &[&(line_num + 1).to_string(), line]
             ));
         }
     }

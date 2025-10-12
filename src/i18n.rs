@@ -267,6 +267,14 @@ pub enum MsgKey {
     SqliteFailedToPrepare,    // Failed to prepare statement: {0}
     SqliteFailedToExecuteQuery, // Failed to execute query: {0}
     SqliteFailedToExecuteStatement, // Failed to execute statement: {0}
+
+    // 環境変数エラー（詳細）
+    EnvLoadDotenvFailedToRead, // env/load-dotenv: failed to read file '{0}': {1}
+    EnvLoadDotenvInvalidFormat, // env/load-dotenv: invalid format at line {0}: '{1}'
+
+    // CSVエラー（詳細）
+    CsvWriteFileStringifyFailed, // csv/write-file: stringify failed
+    CsvWriteFileFailedToWrite,   // csv/write-file: failed to write '{0}': {1}
 }
 
 /// UIメッセージキー
@@ -591,6 +599,14 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteQuery), "Failed to execute query: {0}");
         messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteStatement), "Failed to execute statement: {0}");
 
+        // 英語メッセージ - 環境変数（詳細）
+        messages.insert((Lang::En, MsgKey::EnvLoadDotenvFailedToRead), "env/load-dotenv: failed to read file '{0}': {1}");
+        messages.insert((Lang::En, MsgKey::EnvLoadDotenvInvalidFormat), "env/load-dotenv: invalid format at line {0}: '{1}'");
+
+        // 英語メッセージ - CSV（詳細）
+        messages.insert((Lang::En, MsgKey::CsvWriteFileStringifyFailed), "csv/write-file: stringify failed");
+        messages.insert((Lang::En, MsgKey::CsvWriteFileFailedToWrite), "csv/write-file: failed to write '{0}': {1}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -811,6 +827,14 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToPrepare), "ステートメントの準備に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteQuery), "クエリの実行に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteStatement), "ステートメントの実行に失敗しました: {0}");
+
+        // 日本語メッセージ - 環境変数（詳細）
+        messages.insert((Lang::Ja, MsgKey::EnvLoadDotenvFailedToRead), "env/load-dotenv: ファイル '{0}' の読み込みに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::EnvLoadDotenvInvalidFormat), "env/load-dotenv: {0}行目のフォーマットが不正です: '{1}'");
+
+        // 日本語メッセージ - CSV（詳細）
+        messages.insert((Lang::Ja, MsgKey::CsvWriteFileStringifyFailed), "csv/write-file: 文字列化に失敗しました");
+        messages.insert((Lang::Ja, MsgKey::CsvWriteFileFailedToWrite), "csv/write-file: '{0}' への書き込みに失敗しました: {1}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

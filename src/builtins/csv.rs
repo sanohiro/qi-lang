@@ -162,9 +162,9 @@ pub fn native_csv_write_file(args: &[Value]) -> Result<Value, String> {
 
     std::fs::write(path, match csv_str {
         Value::String(s) => s,
-        _ => return Err(format!("csv/write-file: stringify failed")),
+        _ => return Err(fmt_msg(MsgKey::CsvWriteFileStringifyFailed, &[])),
     })
-    .map_err(|e| format!("csv/write-file: failed to write {}: {}", path, e))?;
+    .map_err(|e| fmt_msg(MsgKey::CsvWriteFileFailedToWrite, &[path, &e.to_string()]))?;
 
     Ok(Value::Nil)
 }
