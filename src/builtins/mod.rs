@@ -39,6 +39,9 @@
 //! - http: HTTP通信（22個）
 //! - db: データベース（17個）
 
+// Lazy初期化サポート
+pub mod lazy_init;
+
 // Coreモジュール
 pub mod core_numeric;
 pub mod core_collections;

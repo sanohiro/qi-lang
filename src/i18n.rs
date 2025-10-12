@@ -316,6 +316,10 @@ pub enum MsgKey {
     IoAppendFileFailedToWrite,   // append-file: failed to write {0}: {1}
     IoAppendFileFailedToOpen,    // append-file: failed to open {0}: {1}
     IoReadLinesFailedToRead,     // read-lines: failed to read {0}: {1}
+
+    // Featureエラー
+    FeatureDisabled,             // {0} support is disabled. Build with feature '{1}': {2}
+    DbUnsupportedDriver,         // Unsupported database driver: {0}
 }
 
 /// UIメッセージキー
@@ -689,6 +693,10 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::IoAppendFileFailedToOpen), "append-file: failed to open {0}: {1}");
         messages.insert((Lang::En, MsgKey::IoReadLinesFailedToRead), "read-lines: failed to read {0}: {1}");
 
+        // 英語メッセージ - Feature
+        messages.insert((Lang::En, MsgKey::FeatureDisabled), "{0} support is disabled. Build with feature '{1}': {2}");
+        messages.insert((Lang::En, MsgKey::DbUnsupportedDriver), "Unsupported database driver: {0}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -958,6 +966,10 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::IoAppendFileFailedToWrite), "append-file: {0} への書き込みに失敗しました: {1}");
         messages.insert((Lang::Ja, MsgKey::IoAppendFileFailedToOpen), "append-file: {0} のオープンに失敗しました: {1}");
         messages.insert((Lang::Ja, MsgKey::IoReadLinesFailedToRead), "read-lines: {0} の読み込みに失敗しました: {1}");
+
+        // 日本語メッセージ - Feature
+        messages.insert((Lang::Ja, MsgKey::FeatureDisabled), "{0} サポートは無効化されています。feature '{1}' を有効にしてビルドしてください: {2}");
+        messages.insert((Lang::Ja, MsgKey::DbUnsupportedDriver), "サポートされていないデータベースドライバー: {0}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
