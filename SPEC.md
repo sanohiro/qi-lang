@@ -1062,7 +1062,7 @@ Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流�
 
 Qiは**2層モジュール設計**を採用しています：
 
-**Core（90個）** - グローバル名前空間、自動インポート
+**Core（88個）** - グローバル名前空間、自動インポート
 - 特殊形式・演算子（11個）: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`
 - リスト操作（29個）: `first`, `rest`, `last`, `nth`, `take`, `drop`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every`, `some`, etc.
 - マップ操作（9個）: `get`, `keys`, `vals`, `assoc`, `dissoc`, `merge`, `get-in`, `update-in`, `update`
@@ -1075,6 +1075,7 @@ Qiは**2層モジュール設計**を採用しています：
 - メタプログラミング（4個）: `eval`, `uvar`, `variable`, `macro?`
 - 型変換（3個）: `to-int`, `to-float`, `to-string`
 - 日時（3個）: `now`, `timestamp`, `sleep`
+- デバッグ（2個）: `time`, `inspect`
 
 **専門モジュール** - 明示的インポートまたは `module/function` 形式で使用
 - **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
@@ -1086,7 +1087,6 @@ Qiは**2層モジュール設計**を採用しています：
 - **path**: パス操作（9個）- `path/join`, `path/basename`, `path/dirname`, etc.
 - **env**: 環境変数（4個）- `env/get`, `env/set`, `env/load-dotenv`, etc.
 - **log**: 構造化ログ（6個）- `log/info`, `log/warn`, `log/error`, `log/set-level`, etc.
-- **dbg**: デバッグ（2個）- `dbg/inspect`, `dbg/time`
 - **async**: 並行処理（高度）（16個）- `async/await`, `async/then`, `async/pfilter`, etc.
 - **pipeline**: パイプライン処理（5個）- `pipeline/pipeline`, `pipeline/map`, etc.
 - **stream**: ストリーム処理（11個）- `stream/stream`, `stream/map`, etc.
@@ -3586,11 +3586,6 @@ time/hour time/minute time/second time/weekday
               {:method (get request :method)
                :path (get request :path)
                :ip (get request :ip)})))
-```
-
-##### ✅ dbg - デバッグ（2個）
-```qi
-dbg/inspect dbg/time
 ```
 
 ##### ✅ async - 並行処理（高度）（16個）

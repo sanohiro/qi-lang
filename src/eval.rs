@@ -415,7 +415,7 @@ impl Evaluator {
                     match name.as_str() {
                         "defn" => return self.eval_defn(args, env),
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
-                        "dbg/time" => return self.eval_time(args, env),
+                        "time" => return self.eval_time(args, env),
                         "tap" => return self.eval_tap(args, env),
                         "branch" => return self.eval_branch(args, env),
                         "map" => return self.eval_map(args, env),

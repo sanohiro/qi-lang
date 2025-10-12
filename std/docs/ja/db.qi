@@ -126,10 +126,3 @@
             {:name "feature" :type "keyword" :desc "チェックする機能"}]
    :returns {:type "boolean" :desc "サポートしている場合true"}
    :examples ["(db/supports? conn :transactions)"]})
-
-;; デバッグ関数
-(def __doc__dbg/inspect
-  {:desc "デバッグのために値を検査して出力する"
-   :params [{:name "value" :type "any" :desc "検査する値"}]
-   :returns {:type "any" :desc "値をそのまま返す"}
-   :examples ["(dbg/inspect {:a 1 :b 2})"]})

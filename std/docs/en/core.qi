@@ -297,3 +297,18 @@
    :examples ["(apply + [1 2 3]) ;=> 6"
               "(apply max [3 7 2 9 4]) ;=> 9"
               "(apply str [\"Hello\" \" \" \"World\"]) ;=> \"Hello World\""]})
+
+;; Debug Functions
+(def __doc__time
+  {:desc "Measure execution time of a function"
+   :params [{:name "f" :type "function" :desc "Function to measure"}]
+   :returns {:type "any" :desc "Result of function execution"}
+   :examples ["(time (fn [] (+ 1 2 3)))"
+              "(time (fn [] (sleep 1000)))"]})
+
+(def __doc__inspect
+  {:desc "Inspect and print value for debugging"
+   :params [{:name "value" :type "any" :desc "Value to inspect"}]
+   :returns {:type "any" :desc "Returns the value unchanged"}
+   :examples ["(inspect {:a 1 :b 2})"
+              "(inspect [1 2 3])"]})

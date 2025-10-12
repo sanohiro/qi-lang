@@ -129,7 +129,6 @@ Qiは**2層モジュール設計**を採用しています：
 - **math**: 数学関数 - `math/pow`, `math/sqrt`, `math/round`, `math/random-range`
 - **stats**: 統計関数（6個）- `stats/mean`, `stats/median`, `stats/stddev`, `stats/percentile` ⭐ NEW
 - **io**: ファイルI/O - `io/read-file`, `io/write-file`
-- **dbg**: デバッグ - `dbg/inspect`, `dbg/time`
 - **json**: JSON処理 - `json/parse`, `json/stringify`
 - **http**: HTTP通信 - `http/get`, `http/post`
 - **stream**: ストリーム処理 - `stream/map`, `stream/filter`
@@ -200,11 +199,11 @@ Qiは**2層モジュール設計**を採用しています：
 ;; 整形表示
 (data
  |> transform
- |> dbg/inspect          ;; 整形表示してそのまま返す
+ |> inspect          ;; 整形表示してそのまま返す
  |> validate)
 
 ;; パフォーマンス計測
-(dbg/time (fn [] (reduce + (range 1000000))))
+(time (fn [] (reduce + (range 1000000))))
 ;; Elapsed: 0.234s
 ```
 

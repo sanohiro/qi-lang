@@ -126,10 +126,3 @@
             {:name "feature" :type "keyword" :desc "Feature to check"}]
    :returns {:type "boolean" :desc "true if supported"}
    :examples ["(db/supports? conn :transactions)"]})
-
-;; Debug Function
-(def __doc__dbg/inspect
-  {:desc "Inspect and print value for debugging"
-   :params [{:name "value" :type "any" :desc "Value to inspect"}]
-   :returns {:type "any" :desc "Returns the value unchanged"}
-   :examples ["(dbg/inspect {:a 1 :b 2})"]})

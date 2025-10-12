@@ -2,7 +2,7 @@
 //!
 //! Qi-langは**2層モジュール設計**を採用しています：
 //!
-//! ## Core（90個）- グローバル名前空間、自動インポート
+//! ## Core（88個）- グローバル名前空間、自動インポート
 //! - 特殊形式・演算子（11個）: def, fn, let, do, if, match, try, defer, |>, ||>, |>?
 //! - リスト操作（29個）: first, rest, last, nth, take, drop, map, filter, reduce, pmap, tap, etc.
 //! - マップ操作（9個）: get, keys, vals, assoc, dissoc, merge, get-in, update-in, update
@@ -15,7 +15,7 @@
 //! - メタプログラミング（4個）: eval, uvar, variable, macro?
 //! - 型変換（3個）: to-int, to-float, to-string
 //! - 日時（3個）: now, timestamp, sleep
-//! - デバッグ（1個）: time (dbg/time)
+//! - デバッグ（2個）: time, inspect
 //!
 //! ## 専門モジュール - `module/function` 形式で使用
 //! - list: 高度なリスト操作（18個）
@@ -29,7 +29,6 @@
 //! - path: パス操作（9個）
 //! - env: 環境変数（4個）
 //! - log: 構造化ログ（6個）
-//! - dbg: デバッグ（2個）
 //! - async: 並行処理（高度）（16個）
 //! - pipeline: パイプライン処理（5個）
 //! - stream: ストリーム処理（11個）
@@ -415,9 +414,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "stack/size" => ds::native_stack_size,
 
         // ========================================
-        // 専門モジュール: dbg（2個）
+        // Core: デバッグ（1個）
         // ========================================
-        "dbg/inspect" => util::native_inspect,
+        "inspect" => util::native_inspect,
 
         // ========================================
         // 専門モジュール: stream（11個）
@@ -807,7 +806,7 @@ pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_concurrency::native_go(args, evaluator)
 }
 
-/// time - 関数実行時間を計測（dbg/time）
+/// time - 関数実行時間を計測
 pub fn time(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     util::native_time(args, evaluator)
 }
