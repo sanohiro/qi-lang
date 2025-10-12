@@ -1075,7 +1075,6 @@ Qiは**2層モジュール設計**を採用しています：
 - メタプログラミング（4個）: `eval`, `uvar`, `variable`, `macro?`
 - 型変換（3個）: `to-int`, `to-float`, `to-string`
 - 日時（3個）: `now`, `timestamp`, `sleep`
-- デバッグ（1個）: `time` (dbg/time)
 
 **専門モジュール** - 明示的インポートまたは `module/function` 形式で使用
 - **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
@@ -3068,7 +3067,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ### 標準モジュール
 
-#### ✅ core（自動インポート・87個）
+#### ✅ core（自動インポート・86個）
 Coreモジュールは自動的にグローバル名前空間にインポートされます。
 
 ```qi
@@ -3120,9 +3119,6 @@ to-int to-float to-string
 
 ;; 日時（3個）
 now timestamp sleep
-
-;; デバッグ（1個）
-time
 ```
 
 #### 専門モジュール
