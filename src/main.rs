@@ -401,24 +401,47 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
 
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
-    // ドキュメントファイル一覧を動的に取得
-    let mut doc_files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir("std/docs/en") {
-        for entry in entries.flatten() {
-            if let Some(filename) = entry.file_name().to_str() {
-                if filename.ends_with(".qi") {
-                    doc_files.push(filename.to_string());
-                }
-            }
+    // ドキュメントディレクトリの候補パスを取得
+    // 1. カレントディレクトリ
+    // 2. 実行ファイルのあるディレクトリ
+    let mut doc_base_paths = vec!["std/docs".to_string()];
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            doc_base_paths.push(exe_dir.join("std/docs").to_string_lossy().to_string());
         }
     }
+
+    // 最初に見つかったディレクトリからドキュメントファイル一覧を取得
+    let mut doc_files = Vec::new();
+    let mut found_base = None;
+    for base_path in &doc_base_paths {
+        let en_path = format!("{}/en", base_path);
+        if let Ok(entries) = std::fs::read_dir(&en_path) {
+            for entry in entries.flatten() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    if filename.ends_with(".qi") {
+                        doc_files.push(filename.to_string());
+                    }
+                }
+            }
+            found_base = Some(base_path.clone());
+            break;
+        }
+    }
+
+    // ドキュメントが見つからなければ終了
+    if found_base.is_none() {
+        DOCS_LOADED.store(true, Ordering::Relaxed);
+        return;
+    }
+    let base_path = found_base.unwrap();
 
     // ファイル名でソート（読み込み順序を安定させる）
     doc_files.sort();
 
     // 1. 英語版を先に読み込み
     for file in &doc_files {
-        let en_doc_path = format!("std/docs/en/{}", file);
+        let en_doc_path = format!("{}/en/{}", base_path, file);
         if let Ok(content) = std::fs::read_to_string(&en_doc_path) {
             eval_repl_code(evaluator, &content, Some(&en_doc_path));
         }
@@ -427,7 +450,7 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
     // 2. 指定言語版を読み込み（enと同じ場合はスキップ）
     if lang != "en" {
         for file in &doc_files {
-            let lang_doc_path = format!("std/docs/{}/{}", lang, file);
+            let lang_doc_path = format!("{}/{}/{}", base_path, lang, file);
             if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
                 eval_repl_code(evaluator, &content, Some(&lang_doc_path));
             }
