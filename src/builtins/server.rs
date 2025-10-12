@@ -628,7 +628,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                             if let Some(auth) = auth_header {
                                 if auth.starts_with("Basic ") {
                                     use base64::{Engine as _, engine::general_purpose};
-                                    let encoded = &auth[6..];  // "Basic " を除く
+                                    let encoded = auth.strip_prefix("Basic ").unwrap();  // "Basic " を除く
                                     if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(encoded) {
                                         if let Ok(decoded) = String::from_utf8(decoded_bytes) {
                                             if let Some((user, pass)) = decoded.split_once(':') {
@@ -715,7 +715,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                                 })
                                 .and_then(|auth| {
                                     if auth.starts_with("Bearer ") {
-                                        Some(auth[7..].to_string())  // "Bearer " を除く
+                                        Some(auth.strip_prefix("Bearer ").unwrap().to_string())  // "Bearer " を除く
                                     } else {
                                         None
                                     }
@@ -943,7 +943,7 @@ fn match_route_pattern(pattern: &str, path: &str) -> Option<HashMap<String, Valu
     for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
         if pattern_part.starts_with(':') {
             // パラメータ部分 - パラメータ名を抽出
-            let param_name = &pattern_part[1..];  // ':' を除く
+            let param_name = pattern_part.strip_prefix(':').unwrap();  // ':' を除く
             params.insert(param_name.to_string(), Value::String(path_part.to_string()));
         } else if pattern_part != path_part {
             // 固定部分が一致しない

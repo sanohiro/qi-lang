@@ -78,7 +78,7 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 
         if arg.starts_with("--") {
             // 長いオプション --key=value または --key value
-            let arg_trimmed = &arg[2..];
+            let arg_trimmed = arg.strip_prefix("--").unwrap();
 
             if let Some(eq_pos) = arg_trimmed.find('=') {
                 // --key=value形式
