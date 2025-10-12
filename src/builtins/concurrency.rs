@@ -248,7 +248,7 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
         if let Ok(value) = promise.receiver.recv() {
             // 関数を適用
             let result = eval.apply_function(&f, &[value]);
-            let _ = sender.send(result.unwrap_or_else(|e| Value::String(e)));
+            let _ = sender.send(result.unwrap_or_else(Value::String));
         }
     });
 
@@ -455,7 +455,7 @@ pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
         };
 
         // 結果をチャネルに送信
-        let _ = sender.send(result.unwrap_or_else(|e| Value::String(e)));
+        let _ = sender.send(result.unwrap_or_else(Value::String));
     });
 
     Ok(Value::Channel(result_channel))

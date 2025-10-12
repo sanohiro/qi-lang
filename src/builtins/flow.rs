@@ -47,7 +47,7 @@ pub fn native_branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
                     // 関数の場合、値を渡して評価
                     Value::Function(_) | Value::NativeFunc(_) => {
-                        let cond_result = evaluator.apply_function(condition, &[value.clone()])?;
+                        let cond_result = evaluator.apply_function(condition, std::slice::from_ref(value))?;
                         is_truthy(&cond_result)
                     }
 
@@ -62,7 +62,7 @@ pub fn native_branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
                 // マッチしたら handler を実行
                 if is_match {
-                    return evaluator.apply_function(handler, &[value.clone()]);
+                    return evaluator.apply_function(handler, std::slice::from_ref(value));
                 }
             }
             _ => {

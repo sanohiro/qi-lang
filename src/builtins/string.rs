@@ -565,7 +565,7 @@ pub fn native_squish(args: &[Value]) -> Result<Value, String> {
 
 /// expand-tabs - タブをスペースに変換
 pub fn native_expand_tabs(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["expand-tabs"]));
     }
     match &args[0] {
@@ -1138,7 +1138,7 @@ pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
 
 /// hash - ハッシュ生成
 pub fn native_hash(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["hash"]));
     }
     match &args[0] {
@@ -1381,7 +1381,7 @@ pub fn native_format_comma(args: &[Value]) -> Result<Value, String> {
 /// format-percent - パーセント表示でフォーマット
 /// 使い方: (str/format-percent number [decimals]) または number |> (str/format-percent [decimals])
 pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["format-percent"]));
     }
 

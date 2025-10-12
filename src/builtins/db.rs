@@ -297,7 +297,7 @@ fn gen_conn_id() -> String {
 
 /// db/connect - データベースに接続
 pub fn native_connect(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["db/connect"]));
     }
 
