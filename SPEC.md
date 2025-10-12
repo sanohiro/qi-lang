@@ -98,6 +98,74 @@ Qiは段階的にFlow機能を強化していきます：
 .qi
 ```
 
+---
+
+## 使い方 - Qiの実行方法
+
+Qiは3つの実行モード + 標準入力をサポート：
+
+### 1. REPL（対話モード）
+```bash
+qi
+# または
+qi -l utils.qi  # ファイルをプリロードしてREPL起動
+```
+
+### 2. スクリプトファイル実行
+```bash
+qi script.qi
+qi examples/hello.qi
+```
+
+### 3. ワンライナー実行
+```bash
+qi -e '(println "Hello!")'
+qi -e '(range 1 10 |> (map (fn [x] (* x x))) |> sum)'
+```
+
+### 4. 標準入力から実行（✅ NEW!）
+**Unix哲学に準拠 - パイプラインとの統合**
+
+```bash
+# echoから
+echo '(println "Hello from stdin!")' | qi -
+
+# heredocで複数行スクリプト
+qi - <<'EOF'
+(def data [1 2 3 4 5])
+(def result (data |> (map (fn [x] (* x x))) |> sum))
+(println (str "Sum of squares: " result))
+EOF
+
+# 他のコマンドからQiスクリプトを生成
+jq -r '.script' config.json | qi -
+curl -s https://example.com/script.qi | qi -
+
+# 一時ファイル不要（セキュリティ向上）
+echo "$SECRET_SCRIPT" | qi -
+
+# CI/CDでの動的スクリプト実行
+cat automation.qi | qi -
+```
+
+#### なぜ標準入力実行が重要か？
+
+1. **Unix哲学** - 他のツール（python/node/ruby）も `-` をサポート
+2. **パイプライン統合** - コマンドの出力を直接実行
+3. **セキュリティ** - 機密スクリプトをファイルに残さない
+4. **動的生成** - 他のツールがQiコードを生成→即実行
+5. **CI/CD対応** - GitHub Secretsからスクリプト注入可能
+
+```bash
+# 実用例：JSONからQiスクリプトを抽出して実行
+cat automation.json | jq -r '.tasks.cleanup.script' | qi -
+
+# 実用例：動的にデータ処理スクリプトを生成
+./generate-processor.sh --type=csv --columns=3 | qi -
+```
+
+---
+
 ## 1. 基本設計
 
 ### 名前空間

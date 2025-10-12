@@ -398,6 +398,7 @@ pub enum UiMsg {
 
     // オプション説明
     OptExecute,
+    OptStdin,
     OptLoad,
     OptHelp,
     OptVersion,
@@ -406,6 +407,7 @@ pub enum UiMsg {
     ExampleStartRepl,
     ExampleRunScript,
     ExampleExecuteCode,
+    ExampleStdin,
     ExampleLoadFile,
 
     // 環境変数説明
@@ -417,6 +419,7 @@ pub enum UiMsg {
 
     // エラー
     ErrorFailedToRead,
+    ErrorFailedToReadStdin,
     ErrorRequiresArg,
     ErrorRequiresFile,
     ErrorUnknownOption,
@@ -1074,17 +1077,20 @@ impl Messages {
         ui_messages.insert((Lang::En, UiMsg::HelpExamples), "EXAMPLES:");
         ui_messages.insert((Lang::En, UiMsg::HelpEnvVars), "ENVIRONMENT VARIABLES:");
         ui_messages.insert((Lang::En, UiMsg::OptExecute), "Execute code string and exit");
+        ui_messages.insert((Lang::En, UiMsg::OptStdin), "Read and execute script from stdin");
         ui_messages.insert((Lang::En, UiMsg::OptLoad), "Load file and start REPL");
         ui_messages.insert((Lang::En, UiMsg::OptHelp), "Print help information");
         ui_messages.insert((Lang::En, UiMsg::OptVersion), "Print version information");
         ui_messages.insert((Lang::En, UiMsg::ExampleStartRepl), "Start REPL");
         ui_messages.insert((Lang::En, UiMsg::ExampleRunScript), "Run script file");
         ui_messages.insert((Lang::En, UiMsg::ExampleExecuteCode), "Execute code and print result");
+        ui_messages.insert((Lang::En, UiMsg::ExampleStdin), "Read from stdin");
         ui_messages.insert((Lang::En, UiMsg::ExampleLoadFile), "Load file and start REPL");
         ui_messages.insert((Lang::En, UiMsg::EnvLangQi), "Set language (ja, en)");
         ui_messages.insert((Lang::En, UiMsg::EnvLangSystem), "System locale (auto-detected)");
         ui_messages.insert((Lang::En, UiMsg::VersionString), "Qi version {0}");
         ui_messages.insert((Lang::En, UiMsg::ErrorFailedToRead), "Failed to read file");
+        ui_messages.insert((Lang::En, UiMsg::ErrorFailedToReadStdin), "Failed to read from stdin");
         ui_messages.insert((Lang::En, UiMsg::ErrorRequiresArg), "{0} requires an argument");
         ui_messages.insert((Lang::En, UiMsg::ErrorRequiresFile), "{0} requires a file path");
         ui_messages.insert((Lang::En, UiMsg::ErrorUnknownOption), "Unknown option: {0}");
@@ -1149,17 +1155,20 @@ impl Messages {
         ui_messages.insert((Lang::Ja, UiMsg::HelpExamples), "例:");
         ui_messages.insert((Lang::Ja, UiMsg::HelpEnvVars), "環境変数:");
         ui_messages.insert((Lang::Ja, UiMsg::OptExecute), "コード文字列を実行して終了");
+        ui_messages.insert((Lang::Ja, UiMsg::OptStdin), "標準入力からスクリプトを読み込んで実行");
         ui_messages.insert((Lang::Ja, UiMsg::OptLoad), "ファイルを読み込んでREPLを起動");
         ui_messages.insert((Lang::Ja, UiMsg::OptHelp), "ヘルプ情報を表示");
         ui_messages.insert((Lang::Ja, UiMsg::OptVersion), "バージョン情報を表示");
         ui_messages.insert((Lang::Ja, UiMsg::ExampleStartRepl), "REPLを起動");
         ui_messages.insert((Lang::Ja, UiMsg::ExampleRunScript), "スクリプトファイルを実行");
         ui_messages.insert((Lang::Ja, UiMsg::ExampleExecuteCode), "コードを実行して結果を表示");
+        ui_messages.insert((Lang::Ja, UiMsg::ExampleStdin), "標準入力から読み込み");
         ui_messages.insert((Lang::Ja, UiMsg::ExampleLoadFile), "ファイルを読み込んでREPLを起動");
         ui_messages.insert((Lang::Ja, UiMsg::EnvLangQi), "言語を設定 (ja, en)");
         ui_messages.insert((Lang::Ja, UiMsg::EnvLangSystem), "システムロケール (自動検出)");
         ui_messages.insert((Lang::Ja, UiMsg::VersionString), "Qi バージョン {0}");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorFailedToRead), "ファイルの読み込みに失敗しました");
+        ui_messages.insert((Lang::Ja, UiMsg::ErrorFailedToReadStdin), "標準入力の読み込みに失敗しました");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresArg), "{0} には引数が必要です");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorRequiresFile), "{0} にはファイルパスが必要です");
         ui_messages.insert((Lang::Ja, UiMsg::ErrorUnknownOption), "不明なオプション: {0}");

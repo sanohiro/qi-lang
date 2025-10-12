@@ -2,6 +2,7 @@ use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::value::Value;
+use std::io::Read;
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
@@ -112,6 +113,10 @@ fn main() {
             }
             run_code(&args[2]);
         }
+        "-" => {
+            // 標準入力からスクリプト実行
+            run_stdin();
+        }
         "-l" | "--load" => {
             // REPLでファイルをロード
             if args.len() < 3 {
@@ -140,6 +145,7 @@ fn print_help() {
     println!();
     println!("{}:", ui_msg(UiMsg::HelpOptions));
     println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
+    println!("    -                   {}", ui_msg(UiMsg::OptStdin));
     println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
     println!("    -h, --help          {}", ui_msg(UiMsg::OptHelp));
     println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
@@ -148,6 +154,7 @@ fn print_help() {
     println!("    qi                       {}", ui_msg(UiMsg::ExampleStartRepl));
     println!("    qi script.qi             {}", ui_msg(UiMsg::ExampleRunScript));
     println!("    qi -e '(+ 1 2 3)'        {}", ui_msg(UiMsg::ExampleExecuteCode));
+    println!("    echo '(println 42)' | qi -    {}", ui_msg(UiMsg::ExampleStdin));
     println!("    qi -l utils.qi           {}", ui_msg(UiMsg::ExampleLoadFile));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpEnvVars));
@@ -168,6 +175,17 @@ fn run_file(path: &str) {
 fn run_code(code: &str) {
     let mut evaluator = Evaluator::new();
     eval_code(&mut evaluator, code, true, None);
+}
+
+fn run_stdin() {
+    let mut input = String::new();
+    if let Err(e) = std::io::stdin().read_to_string(&mut input) {
+        eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToReadStdin), e);
+        std::process::exit(1);
+    }
+
+    let mut evaluator = Evaluator::new();
+    eval_code(&mut evaluator, &input, false, Some("<stdin>"));
 }
 
 fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename: Option<&str>) {
