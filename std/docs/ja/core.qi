@@ -1,6 +1,7 @@
 ;; 標準ライブラリドキュメント (日本語)
 ;; 基本関数
 
+;; 算術演算
 (def __doc__+
   {:desc "数値を加算する"
    :params [{:name "& args" :type "number" :desc "加算する数値"}]
@@ -8,6 +9,185 @@
    :examples ["(+ 1 2 3) ;=> 6"
               "(+ 10 20) ;=> 30"]})
 
+(def __doc__-
+  {:desc "数値を減算する"
+   :params [{:name "& args" :type "number" :desc "減算する数値"}]
+   :returns {:type "number" :desc "減算結果"}
+   :examples ["(- 10 3) ;=> 7"
+              "(- 20 5 2) ;=> 13"]})
+
+(def __doc__*
+  {:desc "数値を乗算する"
+   :params [{:name "& args" :type "number" :desc "乗算する数値"}]
+   :returns {:type "number" :desc "全引数の積"}
+   :examples ["(* 2 3 4) ;=> 24"
+              "(* 5 10) ;=> 50"]})
+
+(def __doc__/
+  {:desc "数値を除算する"
+   :params [{:name "& args" :type "number" :desc "除算する数値"}]
+   :returns {:type "number" :desc "除算結果"}
+   :examples ["(/ 10 2) ;=> 5"
+              "(/ 20 4 2) ;=> 2.5"]})
+
+(def __doc__%
+  {:desc "剰余を計算する"
+   :params [{:name "a" :type "number" :desc "被除数"}
+            {:name "b" :type "number" :desc "除数"}]
+   :returns {:type "number" :desc "剰余"}
+   :examples ["(% 10 3) ;=> 1"
+              "(% 17 5) ;=> 2"]})
+
+;; 比較演算
+(def __doc__=
+  {:desc "全引数が等しいかチェックする"
+   :params [{:name "& args" :type "any" :desc "比較する値"}]
+   :returns {:type "boolean" :desc "全て等しければtrue、そうでなければfalse"}
+   :examples ["(= 1 1) ;=> true"
+              "(= 1 2) ;=> false"
+              "(= \"hello\" \"hello\") ;=> true"]})
+
+(def __doc__!=
+  {:desc "引数が等しくないかチェックする"
+   :params [{:name "a" :type "any" :desc "第1の値"}
+            {:name "b" :type "any" :desc "第2の値"}]
+   :returns {:type "boolean" :desc "等しくなければtrue、そうでなければfalse"}
+   :examples ["(!= 1 2) ;=> true"
+              "(!= 1 1) ;=> false"]})
+
+(def __doc__<
+  {:desc "引数が昇順かチェックする"
+   :params [{:name "& args" :type "number" :desc "比較する数値"}]
+   :returns {:type "boolean" :desc "昇順ならtrue、そうでなければfalse"}
+   :examples ["(< 1 2 3) ;=> true"
+              "(< 1 3 2) ;=> false"]})
+
+(def __doc__>
+  {:desc "引数が降順かチェックする"
+   :params [{:name "& args" :type "number" :desc "比較する数値"}]
+   :returns {:type "boolean" :desc "降順ならtrue、そうでなければfalse"}
+   :examples ["(> 3 2 1) ;=> true"
+              "(> 3 1 2) ;=> false"]})
+
+(def __doc__<=
+  {:desc "引数が非減少順かチェックする"
+   :params [{:name "& args" :type "number" :desc "比較する数値"}]
+   :returns {:type "boolean" :desc "非減少順ならtrue、そうでなければfalse"}
+   :examples ["(<= 1 2 2 3) ;=> true"
+              "(<= 1 3 2) ;=> false"]})
+
+(def __doc__>=
+  {:desc "引数が非増加順かチェックする"
+   :params [{:name "& args" :type "number" :desc "比較する数値"}]
+   :returns {:type "boolean" :desc "非増加順ならtrue、そうでなければfalse"}
+   :examples ["(>= 3 2 2 1) ;=> true"
+              "(>= 3 1 2) ;=> false"]})
+
+;; リスト操作
+(def __doc__first
+  {:desc "コレクションの最初の要素を返す"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "any" :desc "最初の要素、空の場合はnil"}
+   :examples ["(first [1 2 3]) ;=> 1"
+              "(first []) ;=> nil"]})
+
+(def __doc__rest
+  {:desc "最初の要素以外の全要素を返す"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "残りのコレクション"}
+   :examples ["(rest [1 2 3 4]) ;=> (2 3 4)"
+              "(rest [1]) ;=> ()"]})
+
+(def __doc__cons
+  {:desc "コレクションの先頭に要素を追加する"
+   :params [{:name "elem" :type "any" :desc "追加する要素"}
+            {:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "要素が先頭に追加された新しいリスト"}
+   :examples ["(cons 1 [2 3]) ;=> (1 2 3)"
+              "(cons 'a []) ;=> (a)"]})
+
+(def __doc__conj
+  {:desc "コレクションに要素を追加する"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}
+            {:name "elem" :type "any" :desc "追加する要素"}]
+   :returns {:type "collection" :desc "要素が追加されたコレクション"}
+   :examples ["(conj [1 2] 3) ;=> [1 2 3]"
+              "(conj [] 1) ;=> [1]"]})
+
+(def __doc__nth
+  {:desc "インデックスnの要素を取得する"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}
+            {:name "n" :type "number" :desc "インデックス（0始まり）"}]
+   :returns {:type "any" :desc "インデックスnの要素"}
+   :examples ["(nth [10 20 30] 0) ;=> 10"
+              "(nth [10 20 30] 2) ;=> 30"]})
+
+(def __doc__take
+  {:desc "コレクションから最初のn個の要素を取得"
+   :params [{:name "n" :type "number" :desc "要素数"}
+            {:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "n個の要素を持つリスト"}
+   :examples ["(take 3 [1 2 3 4 5]) ;=> (1 2 3)"
+              "(take 2 \"hello\") ;=> (\"h\" \"e\")"]})
+
+(def __doc__reverse
+  {:desc "コレクションの要素の順序を逆にする"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "逆順にしたコレクション"}
+   :examples ["(reverse [1 2 3]) ;=> (3 2 1)"
+              "(reverse \"abc\") ;=> (\"c\" \"b\" \"a\")"]})
+
+(def __doc__sort
+  {:desc "コレクションを昇順にソートする"
+   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
+   :returns {:type "list" :desc "ソート済みのコレクション"}
+   :examples ["(sort [3 1 4 1 5]) ;=> (1 1 3 4 5)"
+              "(sort [\"z\" \"a\" \"m\"]) ;=> (\"a\" \"m\" \"z\")"]})
+
+;; 型チェック
+(def __doc__nil?
+  {:desc "値がnilかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "nilならtrue、そうでなければfalse"}
+   :examples ["(nil? nil) ;=> true"
+              "(nil? 0) ;=> false"]})
+
+(def __doc__list?
+  {:desc "値がリストかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "リストならtrue、そうでなければfalse"}
+   :examples ["(list? '(1 2 3)) ;=> true"
+              "(list? [1 2 3]) ;=> false"]})
+
+(def __doc__vector?
+  {:desc "値がベクタかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "ベクタならtrue、そうでなければfalse"}
+   :examples ["(vector? [1 2 3]) ;=> true"
+              "(vector? '(1 2 3)) ;=> false"]})
+
+(def __doc__map?
+  {:desc "値がマップかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "マップならtrue、そうでなければfalse"}
+   :examples ["(map? {:a 1 :b 2}) ;=> true"
+              "(map? [1 2]) ;=> false"]})
+
+(def __doc__string?
+  {:desc "値が文字列かチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "文字列ならtrue、そうでなければfalse"}
+   :examples ["(string? \"hello\") ;=> true"
+              "(string? 123) ;=> false"]})
+
+(def __doc__number?
+  {:desc "値が数値かチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "数値ならtrue、そうでなければfalse"}
+   :examples ["(number? 42) ;=> true"
+              "(number? \"42\") ;=> false"]})
+
+;; 文字列操作
 (def __doc__str
   {:desc "値を文字列に変換して連結する"
    :params [{:name "& args" :type "any" :desc "文字列化する値"}]
@@ -36,3 +216,74 @@
    :returns {:type "list" :desc "連結されたリスト"}
    :examples ["(concat [1 2] [3 4] [5 6]) ;=> (1 2 3 4 5 6)"
               "(concat \"ab\" \"cd\") ;=> (\"a\" \"b\" \"c\" \"d\")"]})
+
+(def __doc__split
+  {:desc "デリミタで文字列を分割する"
+   :params [{:name "s" :type "string" :desc "分割する文字列"}
+            {:name "delim" :type "string" :desc "デリミタ"}]
+   :returns {:type "list" :desc "部分文字列のリスト"}
+   :examples ["(split \"a,b,c\" \",\") ;=> (\"a\" \"b\" \"c\")"
+              "(split \"hello world\" \" \") ;=> (\"hello\" \"world\")"]})
+
+(def __doc__join
+  {:desc "コレクション要素をセパレータで連結する"
+   :params [{:name "sep" :type "string" :desc "セパレータ"}
+            {:name "coll" :type "collection" :desc "連結するコレクション"}]
+   :returns {:type "string" :desc "連結された文字列"}
+   :examples ["(join \",\" [1 2 3]) ;=> \"1,2,3\""
+              "(join \" \" [\"hello\" \"world\"]) ;=> \"hello world\""]})
+
+;; マップ操作
+(def __doc__get
+  {:desc "キーでマップから値を取得する"
+   :params [{:name "m" :type "map" :desc "クエリするマップ"}
+            {:name "key" :type "any" :desc "検索するキー"}]
+   :returns {:type "any" :desc "キーの値、存在しなければnil"}
+   :examples ["(get {:a 1 :b 2} :a) ;=> 1"
+              "(get {:x 10} :y) ;=> nil"]})
+
+(def __doc__assoc
+  {:desc "マップにキーと値を関連付ける"
+   :params [{:name "m" :type "map" :desc "更新するマップ"}
+            {:name "key" :type "any" :desc "キー"}
+            {:name "val" :type "any" :desc "値"}]
+   :returns {:type "map" :desc "更新されたマップ"}
+   :examples ["(assoc {:a 1} :b 2) ;=> {:a 1 :b 2}"
+              "(assoc {} :x 10) ;=> {:x 10}"]})
+
+(def __doc__dissoc
+  {:desc "マップからキーを削除する"
+   :params [{:name "m" :type "map" :desc "更新するマップ"}
+            {:name "key" :type "any" :desc "削除するキー"}]
+   :returns {:type "map" :desc "キーが削除されたマップ"}
+   :examples ["(dissoc {:a 1 :b 2} :b) ;=> {:a 1}"
+              "(dissoc {:x 10} :y) ;=> {:x 10}"]})
+
+(def __doc__keys
+  {:desc "マップから全キーを取得する"
+   :params [{:name "m" :type "map" :desc "クエリするマップ"}]
+   :returns {:type "list" :desc "キーのリスト"}
+   :examples ["(keys {:a 1 :b 2 :c 3}) ;=> (:a :b :c)"
+              "(keys {}) ;=> ()"]})
+
+(def __doc__vals
+  {:desc "マップから全値を取得する"
+   :params [{:name "m" :type "map" :desc "クエリするマップ"}]
+   :returns {:type "list" :desc "値のリスト"}
+   :examples ["(vals {:a 1 :b 2 :c 3}) ;=> (1 2 3)"
+              "(vals {}) ;=> ()"]})
+
+;; IO関数
+(def __doc__println
+  {:desc "値を改行付きで出力する"
+   :params [{:name "& args" :type "any" :desc "出力する値"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(println \"Hello\" \"world\") ;; 出力: Hello world"
+              "(println 42) ;; 出力: 42"]})
+
+(def __doc__print
+  {:desc "値を改行なしで出力する"
+   :params [{:name "& args" :type "any" :desc "出力する値"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(print \"Hello\") ;; 出力: Hello（改行なし）"
+              "(print 1 2 3) ;; 出力: 1 2 3"]})

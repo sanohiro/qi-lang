@@ -1,6 +1,7 @@
 ;; Standard Library Documentation (English)
 ;; Core Functions
 
+;; Arithmetic Operations
 (def __doc__+
   {:desc "Add numbers together"
    :params [{:name "& args" :type "number" :desc "Numbers to add"}]
@@ -8,6 +9,185 @@
    :examples ["(+ 1 2 3) ;=> 6"
               "(+ 10 20) ;=> 30"]})
 
+(def __doc__-
+  {:desc "Subtract numbers"
+   :params [{:name "& args" :type "number" :desc "Numbers to subtract"}]
+   :returns {:type "number" :desc "Result of subtraction"}
+   :examples ["(- 10 3) ;=> 7"
+              "(- 20 5 2) ;=> 13"]})
+
+(def __doc__*
+  {:desc "Multiply numbers together"
+   :params [{:name "& args" :type "number" :desc "Numbers to multiply"}]
+   :returns {:type "number" :desc "Product of all arguments"}
+   :examples ["(* 2 3 4) ;=> 24"
+              "(* 5 10) ;=> 50"]})
+
+(def __doc__/
+  {:desc "Divide numbers"
+   :params [{:name "& args" :type "number" :desc "Numbers to divide"}]
+   :returns {:type "number" :desc "Result of division"}
+   :examples ["(/ 10 2) ;=> 5"
+              "(/ 20 4 2) ;=> 2.5"]})
+
+(def __doc__%
+  {:desc "Calculate remainder (modulo)"
+   :params [{:name "a" :type "number" :desc "Dividend"}
+            {:name "b" :type "number" :desc "Divisor"}]
+   :returns {:type "number" :desc "Remainder"}
+   :examples ["(% 10 3) ;=> 1"
+              "(% 17 5) ;=> 2"]})
+
+;; Comparison Operations
+(def __doc__=
+  {:desc "Check if all arguments are equal"
+   :params [{:name "& args" :type "any" :desc "Values to compare"}]
+   :returns {:type "boolean" :desc "true if all equal, false otherwise"}
+   :examples ["(= 1 1) ;=> true"
+              "(= 1 2) ;=> false"
+              "(= \"hello\" \"hello\") ;=> true"]})
+
+(def __doc__!=
+  {:desc "Check if arguments are not equal"
+   :params [{:name "a" :type "any" :desc "First value"}
+            {:name "b" :type "any" :desc "Second value"}]
+   :returns {:type "boolean" :desc "true if not equal, false otherwise"}
+   :examples ["(!= 1 2) ;=> true"
+              "(!= 1 1) ;=> false"]})
+
+(def __doc__<
+  {:desc "Check if arguments are in ascending order"
+   :params [{:name "& args" :type "number" :desc "Numbers to compare"}]
+   :returns {:type "boolean" :desc "true if ascending, false otherwise"}
+   :examples ["(< 1 2 3) ;=> true"
+              "(< 1 3 2) ;=> false"]})
+
+(def __doc__>
+  {:desc "Check if arguments are in descending order"
+   :params [{:name "& args" :type "number" :desc "Numbers to compare"}]
+   :returns {:type "boolean" :desc "true if descending, false otherwise"}
+   :examples ["(> 3 2 1) ;=> true"
+              "(> 3 1 2) ;=> false"]})
+
+(def __doc__<=
+  {:desc "Check if arguments are in non-descending order"
+   :params [{:name "& args" :type "number" :desc "Numbers to compare"}]
+   :returns {:type "boolean" :desc "true if non-descending, false otherwise"}
+   :examples ["(<= 1 2 2 3) ;=> true"
+              "(<= 1 3 2) ;=> false"]})
+
+(def __doc__>=
+  {:desc "Check if arguments are in non-ascending order"
+   :params [{:name "& args" :type "number" :desc "Numbers to compare"}]
+   :returns {:type "boolean" :desc "true if non-ascending, false otherwise"}
+   :examples ["(>= 3 2 2 1) ;=> true"
+              "(>= 3 1 2) ;=> false"]})
+
+;; List Operations
+(def __doc__first
+  {:desc "Return the first element of a collection"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "any" :desc "First element, or nil if empty"}
+   :examples ["(first [1 2 3]) ;=> 1"
+              "(first []) ;=> nil"]})
+
+(def __doc__rest
+  {:desc "Return all elements except the first"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "Rest of the collection"}
+   :examples ["(rest [1 2 3 4]) ;=> (2 3 4)"
+              "(rest [1]) ;=> ()"]})
+
+(def __doc__cons
+  {:desc "Prepend an element to a collection"
+   :params [{:name "elem" :type "any" :desc "Element to prepend"}
+            {:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "New list with element prepended"}
+   :examples ["(cons 1 [2 3]) ;=> (1 2 3)"
+              "(cons 'a []) ;=> (a)"]})
+
+(def __doc__conj
+  {:desc "Add an element to a collection"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}
+            {:name "elem" :type "any" :desc "Element to add"}]
+   :returns {:type "collection" :desc "Collection with element added"}
+   :examples ["(conj [1 2] 3) ;=> [1 2 3]"
+              "(conj [] 1) ;=> [1]"]})
+
+(def __doc__nth
+  {:desc "Get the element at index n"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}
+            {:name "n" :type "number" :desc "Index (0-based)"}]
+   :returns {:type "any" :desc "Element at index n"}
+   :examples ["(nth [10 20 30] 0) ;=> 10"
+              "(nth [10 20 30] 2) ;=> 30"]})
+
+(def __doc__take
+  {:desc "Take first n elements from a collection"
+   :params [{:name "n" :type "number" :desc "Number of elements"}
+            {:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "List with n elements"}
+   :examples ["(take 3 [1 2 3 4 5]) ;=> (1 2 3)"
+              "(take 2 \"hello\") ;=> (\"h\" \"e\")"]})
+
+(def __doc__reverse
+  {:desc "Reverse the order of elements in a collection"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "Reversed collection"}
+   :examples ["(reverse [1 2 3]) ;=> (3 2 1)"
+              "(reverse \"abc\") ;=> (\"c\" \"b\" \"a\")"]})
+
+(def __doc__sort
+  {:desc "Sort a collection in ascending order"
+   :params [{:name "coll" :type "collection" :desc "Target collection"}]
+   :returns {:type "list" :desc "Sorted collection"}
+   :examples ["(sort [3 1 4 1 5]) ;=> (1 1 3 4 5)"
+              "(sort [\"z\" \"a\" \"m\"]) ;=> (\"a\" \"m\" \"z\")"]})
+
+;; Type Checking
+(def __doc__nil?
+  {:desc "Check if value is nil"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if nil, false otherwise"}
+   :examples ["(nil? nil) ;=> true"
+              "(nil? 0) ;=> false"]})
+
+(def __doc__list?
+  {:desc "Check if value is a list"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if list, false otherwise"}
+   :examples ["(list? '(1 2 3)) ;=> true"
+              "(list? [1 2 3]) ;=> false"]})
+
+(def __doc__vector?
+  {:desc "Check if value is a vector"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if vector, false otherwise"}
+   :examples ["(vector? [1 2 3]) ;=> true"
+              "(vector? '(1 2 3)) ;=> false"]})
+
+(def __doc__map?
+  {:desc "Check if value is a map"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if map, false otherwise"}
+   :examples ["(map? {:a 1 :b 2}) ;=> true"
+              "(map? [1 2]) ;=> false"]})
+
+(def __doc__string?
+  {:desc "Check if value is a string"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if string, false otherwise"}
+   :examples ["(string? \"hello\") ;=> true"
+              "(string? 123) ;=> false"]})
+
+(def __doc__number?
+  {:desc "Check if value is a number"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if number, false otherwise"}
+   :examples ["(number? 42) ;=> true"
+              "(number? \"42\") ;=> false"]})
+
+;; String Operations
 (def __doc__str
   {:desc "Convert values to strings and concatenate them"
    :params [{:name "& args" :type "any" :desc "Values to stringify"}]
@@ -36,3 +216,74 @@
    :returns {:type "list" :desc "Concatenated list"}
    :examples ["(concat [1 2] [3 4] [5 6]) ;=> (1 2 3 4 5 6)"
               "(concat \"ab\" \"cd\") ;=> (\"a\" \"b\" \"c\" \"d\")"]})
+
+(def __doc__split
+  {:desc "Split a string by delimiter"
+   :params [{:name "s" :type "string" :desc "String to split"}
+            {:name "delim" :type "string" :desc "Delimiter"}]
+   :returns {:type "list" :desc "List of substrings"}
+   :examples ["(split \"a,b,c\" \",\") ;=> (\"a\" \"b\" \"c\")"
+              "(split \"hello world\" \" \") ;=> (\"hello\" \"world\")"]})
+
+(def __doc__join
+  {:desc "Join collection elements with separator"
+   :params [{:name "sep" :type "string" :desc "Separator"}
+            {:name "coll" :type "collection" :desc "Collection to join"}]
+   :returns {:type "string" :desc "Joined string"}
+   :examples ["(join \",\" [1 2 3]) ;=> \"1,2,3\""
+              "(join \" \" [\"hello\" \"world\"]) ;=> \"hello world\""]})
+
+;; Map Operations
+(def __doc__get
+  {:desc "Get value from a map by key"
+   :params [{:name "m" :type "map" :desc "Map to query"}
+            {:name "key" :type "any" :desc "Key to look up"}]
+   :returns {:type "any" :desc "Value at key, or nil"}
+   :examples ["(get {:a 1 :b 2} :a) ;=> 1"
+              "(get {:x 10} :y) ;=> nil"]})
+
+(def __doc__assoc
+  {:desc "Associate a key with a value in a map"
+   :params [{:name "m" :type "map" :desc "Map to update"}
+            {:name "key" :type "any" :desc "Key"}
+            {:name "val" :type "any" :desc "Value"}]
+   :returns {:type "map" :desc "Updated map"}
+   :examples ["(assoc {:a 1} :b 2) ;=> {:a 1 :b 2}"
+              "(assoc {} :x 10) ;=> {:x 10}"]})
+
+(def __doc__dissoc
+  {:desc "Remove a key from a map"
+   :params [{:name "m" :type "map" :desc "Map to update"}
+            {:name "key" :type "any" :desc "Key to remove"}]
+   :returns {:type "map" :desc "Map without the key"}
+   :examples ["(dissoc {:a 1 :b 2} :b) ;=> {:a 1}"
+              "(dissoc {:x 10} :y) ;=> {:x 10}"]})
+
+(def __doc__keys
+  {:desc "Get all keys from a map"
+   :params [{:name "m" :type "map" :desc "Map to query"}]
+   :returns {:type "list" :desc "List of keys"}
+   :examples ["(keys {:a 1 :b 2 :c 3}) ;=> (:a :b :c)"
+              "(keys {}) ;=> ()"]})
+
+(def __doc__vals
+  {:desc "Get all values from a map"
+   :params [{:name "m" :type "map" :desc "Map to query"}]
+   :returns {:type "list" :desc "List of values"}
+   :examples ["(vals {:a 1 :b 2 :c 3}) ;=> (1 2 3)"
+              "(vals {}) ;=> ()"]})
+
+;; IO Functions
+(def __doc__println
+  {:desc "Print values followed by a newline"
+   :params [{:name "& args" :type "any" :desc "Values to print"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(println \"Hello\" \"world\") ;; prints: Hello world"
+              "(println 42) ;; prints: 42"]})
+
+(def __doc__print
+  {:desc "Print values without a newline"
+   :params [{:name "& args" :type "any" :desc "Values to print"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(print \"Hello\") ;; prints: Hello (no newline)"
+              "(print 1 2 3) ;; prints: 1 2 3"]})
