@@ -1,0 +1,157 @@
+;; =============================================================================
+;; Macro Basic Test Suite
+;; マクロの基本機能テスト（最小限）
+;; =============================================================================
+
+(def test-count 0)
+(def pass-count 0)
+
+(println "=== マクロの基本テスト ===\n")
+
+;; Test 1: when マクロ
+(mac when [test & body]
+  `(if ,test
+     (do ,@body)
+     nil))
+
+(def result1 (when true "ok"))
+(def test-count (+ test-count 1))
+(if (= result1 "ok")
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ when - 条件が真"))
+  (println "✗ when - 条件が真"))
+
+(def result2 (when false "ng"))
+(def test-count (+ test-count 1))
+(if (= result2 nil)
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ when - 条件が偽"))
+  (println "✗ when - 条件が偽"))
+
+;; Test 2: unless マクロ
+(mac unless [test & body]
+  `(if ,test
+     nil
+     (do ,@body)))
+
+(def result3 (unless false "ok"))
+(def test-count (+ test-count 1))
+(if (= result3 "ok")
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ unless - 条件が偽"))
+  (println "✗ unless - 条件が偽"))
+
+(def result4 (unless true "ng"))
+(def test-count (+ test-count 1))
+(if (= result4 nil)
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ unless - 条件が真"))
+  (println "✗ unless - 条件が真"))
+
+;; Test 3: quasiquote と unquote
+(def x 10)
+(def result5 `(+ ,x 5))
+(def test-count (+ test-count 1))
+(if (and (list? result5) (= (first result5) '+) (= (first (rest result5)) 10))
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ quasiquote - 値の埋め込み"))
+  (println "✗ quasiquote - 値の埋め込み"))
+
+;; Test 4: unquote-splice
+(def nums '(1 2 3))
+(def result6 `(+ ,@nums))
+(def test-count (+ test-count 1))
+(if (and (list? result6) (= (len result6) 4))
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ unquote-splice - リストの展開"))
+  (println "✗ unquote-splice - リストの展開"))
+
+;; Test 5: eval と quasiquote の組み合わせ
+(def a 5)
+(def b 10)
+(def result7 (eval `(+ ,a ,b)))
+(def test-count (+ test-count 1))
+(if (= result7 15)
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ eval と quasiquote"))
+  (println "✗ eval と quasiquote"))
+
+;; Test 6: ネストした when
+(def result8 (when true (when true "nested")))
+(def test-count (+ test-count 1))
+(if (= result8 "nested")
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ ネストしたマクロ"))
+  (println "✗ ネストしたマクロ"))
+
+;; Test 7: 再帰的マクロ
+(mac simple-cond [& clauses]
+  (if (empty? clauses)
+    nil
+    `(if ,(first clauses)
+       ,(first (rest clauses))
+       (simple-cond ,@(rest (rest clauses))))))
+
+(def n 5)
+(def result9 (simple-cond
+               (> n 10) "large"
+               (> n 0) "positive"
+               true "zero or negative"))
+
+(def test-count (+ test-count 1))
+(if (= result9 "positive")
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ 再帰的マクロ (simple-cond)"))
+  (println "✗ 再帰的マクロ (simple-cond)"))
+
+;; Test 8: マクロと関数の組み合わせ
+(def my-func (fn [x] (+ x 10)))
+(def result10 (when true (my-func 5)))
+(def test-count (+ test-count 1))
+(if (= result10 15)
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ マクロと関数の組み合わせ"))
+  (println "✗ マクロと関数の組み合わせ"))
+
+;; Test 9: quasiquote のネスト
+(def x 1)
+(def y 2)
+(def result11 `(+ ,x (+ ,y 3)))
+(def test-count (+ test-count 1))
+(if (and (list? result11) (= (first result11) '+))
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ quasiquote のネスト"))
+  (println "✗ quasiquote のネスト"))
+
+;; Test 10: マクロの複数の body 式
+(def result12 (when true
+                (def tmp1 5)
+                (def tmp2 10)
+                (+ tmp1 tmp2)))
+(def test-count (+ test-count 1))
+(if (= result12 15)
+  (do
+    (def pass-count (+ pass-count 1))
+    (println "✓ マクロの複数の body 式"))
+  (println "✗ マクロの複数の body 式"))
+
+;; 結果の表示
+(println "\n" (str/repeat "=" 50))
+(println "テスト結果")
+(println (str/repeat "=" 50))
+(println (str "総テスト数: " test-count))
+(println (str "成功: " pass-count))
+(println (str "失敗: " (- test-count pass-count)))
+(println (str "成功率: " (/ (* pass-count 100) test-count) "%"))
+(println (str/repeat "=" 50))

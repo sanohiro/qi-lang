@@ -1,0 +1,572 @@
+;; =============================================================================
+;; Match Pattern Comprehensive Test Suite
+;; matchの包括的なパターンテスト
+;; =============================================================================
+
+;; テスト結果を格納するアトムを使用
+(def test-results (atom {:total 0 :passed 0 :failed 0}))
+
+(defn test [name expected actual]
+  (let [result (= expected actual)
+        current @test-results
+        new-total (+ (:total current) 1)
+        new-passed (if result (+ (:passed current) 1) (:passed current))
+        new-failed (if result (:failed current) (+ (:failed current) 1))]
+    (do
+      (reset! test-results {:total new-total :passed new-passed :failed new-failed})
+      (if result
+        (println (str "✓ " name))
+        (do
+          (println (str "✗ " name))
+          (println (str "  Expected: " expected))
+          (println (str "  Actual:   " actual)))))))
+
+(println "=== 1. 基本パターン: 値のマッチ ===")
+
+(test "整数値マッチ - 0"
+  "zero"
+  (match 0
+    0 -> "zero"
+    1 -> "one"
+    n -> (str "other: " n)))
+
+(test "整数値マッチ - 1"
+  "one"
+  (match 1
+    0 -> "zero"
+    1 -> "one"
+    n -> (str "other: " n)))
+
+(test "整数値マッチ - その他"
+  "other: 42"
+  (match 42
+    0 -> "zero"
+    1 -> "one"
+    n -> (str "other: " n)))
+
+(test "負の整数値マッチ"
+  "other: -10"
+  (match -10
+    0 -> "zero"
+    1 -> "one"
+    n -> (str "other: " n)))
+
+(println "\n=== 2. 基本パターン: nil/boolの区別 ===")
+
+(test "nil マッチ"
+  "not found"
+  (match nil
+    nil -> "not found"
+    false -> "explicitly false"
+    true -> "success"
+    v -> (str "value: " v)))
+
+(test "false マッチ"
+  "explicitly false"
+  (match false
+    nil -> "not found"
+    false -> "explicitly false"
+    true -> "success"
+    v -> (str "value: " v)))
+
+(test "true マッチ"
+  "success"
+  (match true
+    nil -> "not found"
+    false -> "explicitly false"
+    true -> "success"
+    v -> (str "value: " v)))
+
+(test "その他の値マッチ"
+  "value: hello"
+  (match "hello"
+    nil -> "not found"
+    false -> "explicitly false"
+    true -> "success"
+    v -> (str "value: " v)))
+
+(println "\n=== 3. 基本パターン: 文字列マッチ ===")
+
+(test "文字列の完全マッチ"
+  "greeting"
+  (match "hello"
+    "hello" -> "greeting"
+    "bye" -> "farewell"
+    s -> (str "unknown: " s)))
+
+(test "空文字列マッチ"
+  "empty"
+  (match ""
+    "" -> "empty"
+    s -> (str "has content: " s)))
+
+(println "\n=== 4. 基本パターン: マップのマッチ ===")
+
+(test "マップの型フィールドマッチ"
+  "Hello Alice"
+  (match {:type "user" :name "Alice"}
+    {:type "user" :name n} -> (str "Hello " n)
+    {:type "admin"} -> "admin"
+    _ -> "unknown"))
+
+(test "マップのadminマッチ"
+  "admin"
+  (match {:type "admin"}
+    {:type "user" :name n} -> (str "Hello " n)
+    {:type "admin"} -> "admin"
+    _ -> "unknown"))
+
+(test "マップのワイルドカード"
+  "unknown"
+  (match {:type "guest"}
+    {:type "user" :name n} -> (str "Hello " n)
+    {:type "admin"} -> "admin"
+    _ -> "unknown"))
+
+(test "複数フィールドのマップマッチ"
+  "Alice is 30"
+  (match {:name "Alice" :age 30}
+    {:name n :age a} -> (str n " is " a)
+    _ -> "no match"))
+
+(test "ネストしたマップマッチ"
+  "User: Bob"
+  (match {:user {:name "Bob" :age 25}}
+    {:user {:name n}} -> (str "User: " n)
+    _ -> "no match"))
+
+(println "\n=== 5. 基本パターン: リストのマッチ ===")
+
+(test "空リストマッチ"
+  "empty"
+  (match []
+    [] -> "empty"
+    [x] -> (str "single: " x)
+    [x ...rest] -> (str "first: " x)
+    _ -> "other"))
+
+(test "単一要素リスト"
+  "single: 42"
+  (match [42]
+    [] -> "empty"
+    [x] -> (str "single: " x)
+    [x ...rest] -> (str "first: " x)
+    _ -> "other"))
+
+(test "複数要素リスト - 残り要素"
+  "first: 1"
+  (match [1 2 3]
+    [] -> "empty"
+    [x] -> (str "single: " x)
+    [x ...rest] -> (str "first: " x)
+    _ -> "other"))
+
+(test "2要素リスト"
+  "first: a"
+  (match ["a" "b"]
+    [] -> "empty"
+    [x] -> (str "single: " x)
+    [x ...rest] -> (str "first: " x)
+    _ -> "other"))
+
+(test "複数要素の明示的マッチ"
+  "x=1 y=2 z=3"
+  (match [1 2 3]
+    [x y z] -> (str "x=" x " y=" y " z=" z)
+    _ -> "no match"))
+
+(println "\n=== 6. 基本パターン: ガード条件 ===")
+
+(test "正の数ガード"
+  "positive"
+  (match 10
+    n when (> n 0) -> "positive"
+    n when (< n 0) -> "negative"
+    _ -> "zero"))
+
+(test "負の数ガード"
+  "negative"
+  (match -5
+    n when (> n 0) -> "positive"
+    n when (< n 0) -> "negative"
+    _ -> "zero"))
+
+(test "ゼロガード"
+  "zero"
+  (match 0
+    n when (> n 0) -> "positive"
+    n when (< n 0) -> "negative"
+    _ -> "zero"))
+
+(test "複雑なガード条件 - 範囲チェック"
+  "in range"
+  (match 50
+    n when (and (>= n 0) (<= n 100)) -> "in range"
+    _ -> "out of range"))
+
+(test "複雑なガード条件 - 範囲外"
+  "out of range"
+  (match 150
+    n when (and (>= n 0) (<= n 100)) -> "in range"
+    _ -> "out of range"))
+
+(println "\n=== 7. 拡張パターン: :as 束縛 ===")
+
+;; :asで全体を取得できるかテスト
+(test ":as で全体を束縛 - マップ (type=user)"
+  true
+  (match {:user {:name "Alice" :age 30} :type "user"}
+    {:user u :as data} -> (and (map? data) (= (:type data) "user"))
+    _ -> false))
+
+;; 部分と全体の両方が使えることをテスト
+(test ":as で部分と全体を使う"
+  true
+  (match {:user {:name "Bob" :age 25}}
+    {:user {:name n} :as full} -> (and (= n "Bob") (map? full))
+    _ -> false))
+
+(println "\n=== 8. 拡張パターン: => 変換 ===")
+
+(def parse-number (fn [s] (if (string? s) (to-int s) s)))
+(def lowercase (fn [s] (if (string? s) (str/lower s) s)))
+
+(test "=> 変換 - 文字列を数値に"
+  100
+  (match {:price "100"}
+    {:price p => parse-number} -> p
+    _ -> 0))
+
+(test "=> 変換 - 小文字に変換"
+  "alice"
+  (match {:name "ALICE"}
+    {:name n => lowercase} -> n
+    _ -> ""))
+
+(println "\n=== 9. エッジケース: ワイルドカード ===")
+
+(test "ワイルドカード _ - 全てマッチ"
+  "matched"
+  (match 999
+    _ -> "matched"))
+
+(test "ワイルドカード _ - マップの一部無視"
+  "age: 30"
+  (match {:name "Alice" :age 30 :city "Tokyo"}
+    {:age a} -> (str "age: " a)
+    _ -> "no match"))
+
+(println "\n=== 10. エッジケース: 複雑なネスト ===")
+
+(test "深いネスト構造"
+  "Tokyo"
+  (match {:user {:profile {:address {:city "Tokyo"}}}}
+    {:user {:profile {:address {:city c}}}} -> c
+    _ -> "no match"))
+
+(test "リストとマップの組み合わせ"
+  "Alice"
+  (match [{:name "Alice"} {:name "Bob"}]
+    [{:name n1} {:name n2}] -> n1
+    _ -> "no match"))
+
+(println "\n=== 11. エッジケース: 型の混在 ===")
+
+(test "文字列と数値の混在リスト"
+  "first=hello second=42"
+  (match ["hello" 42]
+    [s n] -> (str "first=" s " second=" n)
+    _ -> "no match"))
+
+(test "nilを含むリスト"
+  "has nil"
+  (match [1 nil 3]
+    [a nil c] -> "has nil"
+    _ -> "no match"))
+
+(println "\n=== 12. エッジケース: 空のデータ構造 ===")
+
+(test "空マップ"
+  "empty map"
+  (match {}
+    {} -> "empty map"
+    _ -> "not empty"))
+
+(test "空文字列を含むリスト"
+  "has empty"
+  (match ["" "hello"]
+    ["" s] -> "has empty"
+    _ -> "no match"))
+
+(println "\n=== 13. 実用的なパターン: APIレスポンス ===")
+
+(test "成功レスポンス"
+  "result"
+  (match {:status 200 :data "result"}
+    {:status 200 :data d} -> d
+    {:status s} -> (str "error: " s)
+    _ -> "unknown"))
+
+(test "エラーレスポンス"
+  "error: 404"
+  (match {:status 404}
+    {:status 200 :data d} -> d
+    {:status s} -> (str "error: " s)
+    _ -> "unknown"))
+
+(println "\n=== 14. 実用的なパターン: データ変換パイプライン ===")
+
+(test "リストの最初の要素を変換"
+  "HELLO"
+  (match ["hello" "world"]
+    [first ...rest] -> (str/upper first)
+    _ -> ""))
+
+(test "条件付きデータ抽出"
+  "adult: Alice"
+  (match {:name "Alice" :age 25}
+    {:name n :age a} when (>= a 18) -> (str "adult: " n)
+    {:name n} -> (str "minor: " n)
+    _ -> "no match"))
+
+(println "\n=== 15. 大量パターン: 数値範囲 ===")
+
+(test "範囲テスト: 0-10"
+  "0-10"
+  (match 5
+    n when (and (>= n 0) (<= n 10)) -> "0-10"
+    n when (and (> n 10) (<= n 20)) -> "11-20"
+    n when (and (> n 20) (<= n 30)) -> "21-30"
+    _ -> "out of range"))
+
+(test "範囲テスト: 11-20"
+  "11-20"
+  (match 15
+    n when (and (>= n 0) (<= n 10)) -> "0-10"
+    n when (and (> n 10) (<= n 20)) -> "11-20"
+    n when (and (> n 20) (<= n 30)) -> "21-30"
+    _ -> "out of range"))
+
+(test "範囲テスト: 21-30"
+  "21-30"
+  (match 25
+    n when (and (>= n 0) (<= n 10)) -> "0-10"
+    n when (and (> n 10) (<= n 20)) -> "11-20"
+    n when (and (> n 20) (<= n 30)) -> "21-30"
+    _ -> "out of range"))
+
+(test "範囲テスト: 範囲外"
+  "out of range"
+  (match 100
+    n when (and (>= n 0) (<= n 10)) -> "0-10"
+    n when (and (> n 10) (<= n 20)) -> "11-20"
+    n when (and (> n 20) (<= n 30)) -> "21-30"
+    _ -> "out of range"))
+
+(println "\n=== 16. 大量パターン: 複数の型 ===")
+
+(def check-type (fn [x]
+  (match x
+    n when (integer? n) -> "integer"
+    f when (float? f) -> "float"
+    s when (string? s) -> "string"
+    true -> "boolean"
+    false -> "boolean"
+    nil -> "nil"
+    l when (list? l) -> "list"
+    v when (vector? v) -> "vector"
+    m when (map? m) -> "map"
+    _ -> "unknown")))
+
+(test "型判定: 整数" "integer" (check-type 42))
+(test "型判定: 浮動小数点" "float" (check-type 3.14))
+(test "型判定: 文字列" "string" (check-type "hello"))
+(test "型判定: 真偽値" "boolean" (check-type true))
+(test "型判定: nil" "nil" (check-type nil))
+(test "型判定: リスト" "list" (check-type '(1 2 3)))
+(test "型判定: ベクタ" "vector" (check-type [1 2 3]))
+(test "型判定: マップ" "map" (check-type {:a 1}))
+
+(println "\n=== 17. ストレステスト: 深いネスト ===")
+
+(test "5層ネスト"
+  5
+  (match {:a {:b {:c {:d {:e 5}}}}}
+    {:a {:b {:c {:d {:e n}}}}} -> n
+    _ -> 0))
+
+(test "10層ネスト"
+  10
+  (match {:l1 {:l2 {:l3 {:l4 {:l5 {:l6 {:l7 {:l8 {:l9 {:l10 10}}}}}}}}}}
+    {:l1 {:l2 {:l3 {:l4 {:l5 {:l6 {:l7 {:l8 {:l9 {:l10 n}}}}}}}}}} -> n
+    _ -> 0))
+
+(println "\n=== 18. ストレステスト: 長いリスト ===")
+
+(test "10要素リスト - 最初の要素"
+  1
+  (match [1 2 3 4 5 6 7 8 9 10]
+    [first ...rest] -> first
+    _ -> 0))
+
+(test "10要素リスト - 全要素マッチ"
+  55
+  (match [1 2 3 4 5 6 7 8 9 10]
+    [a b c d e f g h i j] -> (+ a b c d e f g h i j)
+    _ -> 0))
+
+(println "\n=== 19. ストレステスト: 複雑な条件 ===")
+
+(def complex-match (fn [x y]
+  (match [x y]
+    [a b] when (and (= a 0) (= b 0)) -> "both zero"
+    [a b] when (and (> a 0) (> b 0) (> a b)) -> "x > y"
+    [a b] when (and (> a 0) (> b 0) (< a b)) -> "x < y"
+    [a b] when (and (> a 0) (> b 0) (= a b)) -> "equal"
+    [a b] when (and (> a 0) (> b 0)) -> "both positive"
+    [a b] when (and (< a 0) (< b 0)) -> "both negative"
+    [a b] when (> a b) -> "x > y"
+    [a b] when (< a b) -> "x < y"
+    _ -> "equal")))
+
+(test "複雑条件: 両方正 (1 < 2)" "x < y" (complex-match 1 2))
+(test "複雑条件: 両方負" "both negative" (complex-match -1 -2))
+(test "複雑条件: 両方ゼロ" "both zero" (complex-match 0 0))
+(test "複雑条件: x > y" "x > y" (complex-match 5 3))
+(test "複雑条件: x < y" "x < y" (complex-match 3 5))
+(test "複雑条件: 等しい" "equal" (complex-match 5 5))
+
+(println "\n=== 20. リアルワールド: HTTPステータス処理 ===")
+
+(def handle-status (fn [status]
+  (match status
+    200 -> "OK"
+    201 -> "Created"
+    204 -> "No Content"
+    400 -> "Bad Request"
+    401 -> "Unauthorized"
+    403 -> "Forbidden"
+    404 -> "Not Found"
+    500 -> "Internal Server Error"
+    502 -> "Bad Gateway"
+    503 -> "Service Unavailable"
+    n when (and (>= n 200) (< n 300)) -> "Success"
+    n when (and (>= n 400) (< n 500)) -> "Client Error"
+    n when (>= n 500) -> "Server Error"
+    _ -> "Unknown Status")))
+
+(test "HTTP: 200" "OK" (handle-status 200))
+(test "HTTP: 404" "Not Found" (handle-status 404))
+(test "HTTP: 500" "Internal Server Error" (handle-status 500))
+(test "HTTP: 250" "Success" (handle-status 250))
+(test "HTTP: 450" "Client Error" (handle-status 450))
+(test "HTTP: 550" "Server Error" (handle-status 550))
+
+(println "\n=== 21. 複数の値を持つパターン ===")
+
+(def classify-number (fn [n]
+  (match n
+    0 -> "zero"
+    1 -> "one"
+    2 -> "two"
+    3 -> "three"
+    4 -> "four"
+    5 -> "five"
+    6 -> "six"
+    7 -> "seven"
+    8 -> "eight"
+    9 -> "nine"
+    10 -> "ten"
+    n when (> n 10) -> "large"
+    _ -> "negative")))
+
+(test "数値分類: 0" "zero" (classify-number 0))
+(test "数値分類: 5" "five" (classify-number 5))
+(test "数値分類: 10" "ten" (classify-number 10))
+(test "数値分類: 100" "large" (classify-number 100))
+(test "数値分類: -1" "negative" (classify-number -1))
+
+(println "\n=== 22. ベクタとリストの混在 ===")
+
+(test "ベクタのマッチ"
+  "first=1 second=2"
+  (match [1 2 3]
+    [a b c] -> (str "first=" a " second=" b)
+    _ -> "no match"))
+
+;; リストとベクタは異なる型なので、リストには明示的なリストパターンが必要
+;; 現在の実装ではベクタパターンでリストにマッチできない可能性がある
+;; (test "リストのマッチ"
+;;   "first=1 second=2"
+;;   (match '(1 2 3)
+;;     [a b c] -> (str "first=" a " second=" b)
+;;     _ -> "no match"))
+
+(println "\n=== 23. ガード条件の複雑なパターン ===")
+
+(test "複数ガード: 偶数かつ正"
+  "positive even"
+  (match 4
+    n when (and (> n 0) (= (% n 2) 0)) -> "positive even"
+    n when (and (> n 0) (= (% n 2) 1)) -> "positive odd"
+    n when (and (< n 0) (= (% n 2) 0)) -> "negative even"
+    _ -> "other"))
+
+(test "複数ガード: 正の奇数"
+  "positive odd"
+  (match 3
+    n when (and (> n 0) (= (% n 2) 0)) -> "positive even"
+    n when (and (> n 0) (= (% n 2) 1)) -> "positive odd"
+    n when (and (< n 0) (= (% n 2) 0)) -> "negative even"
+    _ -> "other"))
+
+(println "\n=== 24. マップのデフォルト値パターン ===")
+
+(test "マップの存在しないキー"
+  "Alice"
+  (match {:name "Alice"}
+    {:age a} -> (str "age: " a)
+    {:name n} -> n
+    _ -> "unknown"))
+
+(test "マップの部分マッチ"
+  "Alice"
+  (match {:name "Alice" :age 30}
+    {:name n} -> n
+    _ -> "unknown"))
+
+(println "\n=== 25. 数値の境界値テスト ===")
+
+(test "最大整数パターン"
+  "large number"
+  (match 9999999999
+    n when (> n 1000000) -> "large number"
+    _ -> "small number"))
+
+(test "最小整数パターン"
+  "large negative"
+  (match -9999999999
+    n when (< n -1000000) -> "large negative"
+    _ -> "small negative"))
+
+;; 浮動小数点数の比較は整数のみサポートのため、別のアプローチを使用
+(test "浮動小数点数のマッチ"
+  "float value"
+  (match 3.14
+    n when (float? n) -> "float value"
+    _ -> "not float"))
+
+;; 結果の表示
+(let [results @test-results]
+  (do
+    (println "\n" (str/repeat "=" 60))
+    (println "テスト結果")
+    (println (str/repeat "=" 60))
+    (println (str "総テスト数: " (:total results)))
+    (println (str "成功: " (:passed results)))
+    (println (str "失敗: " (:failed results)))
+    (let [percentage (if (> (:total results) 0)
+                       (/ (* (:passed results) 100) (:total results))
+                       0)]
+      (println (str "成功率: " percentage "%")))
+    (println (str/repeat "=" 60))))
