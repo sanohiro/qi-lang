@@ -6127,28 +6127,45 @@ Qiは柔軟なドキュメントシステムを提供します：
 
 最もシンプルな形式。関数の簡単な説明のみ。
 
+**defn使用（推奨）：**
 ```lisp
-(def greet
+(defn greet
   "指定された名前で挨拶する"
+  [name]
+  (str "Hello, " name "!"))
+```
+
+**def使用（手動設定）：**
+```lisp
+(def __doc__greet "指定された名前で挨拶する")
+(def greet
   (fn [name]
     (str "Hello, " name "!")))
 ```
 
 多言語対応：
 ```lisp
-(def greet
+;; defnで多言語ドキュメント
+(defn greet
   {:en "Greets with the given name"
    :ja "指定された名前で挨拶する"}
+  [name]
+  (str "Hello, " name "!"))
+
+;; または手動で言語別に設定
+(def __doc__greet_en "Greets with the given name")
+(def __doc__greet_ja "指定された名前で挨拶する")
+(def greet
   (fn [name]
     (str "Hello, " name "!")))
-```
 
 #### 2. 構造化形式（詳細）
 
 詳細なドキュメントを記述する場合。
 
+**defn使用（推奨）：**
 ```lisp
-(def greet
+(defn greet
   {:desc "指定された名前で挨拶する"
    :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
    :returns {:type "string" :desc "挨拶メッセージ"}
@@ -6156,13 +6173,29 @@ Qiは柔軟なドキュメントシステムを提供します：
      "(greet \"Alice\") ;=> \"Hello, Alice!\""
      "(greet \"Bob\")   ;=> \"Hello, Bob!\""
    ]}
+  [name]
+  (str "Hello, " name "!"))
+```
+
+**def使用（手動設定）：**
+```lisp
+(def __doc__greet
+  {:desc "指定された名前で挨拶する"
+   :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
+   :returns {:type "string" :desc "挨拶メッセージ"}
+   :examples [
+     "(greet \"Alice\") ;=> \"Hello, Alice!\""
+     "(greet \"Bob\")   ;=> \"Hello, Bob!\""
+   ]})
+(def greet
   (fn [name]
     (str "Hello, " name "!")))
 ```
 
 多言語対応：
 ```lisp
-(def greet
+;; defnで多言語構造化ドキュメント
+(defn greet
   {:en {:desc "Greets with the given name"
         :params [{:name "name" :type "string" :desc "Name to greet"}]
         :returns {:type "string" :desc "Greeting message"}
@@ -6171,11 +6204,26 @@ Qiは柔軟なドキュメントシステムを提供します：
         :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
         :returns {:type "string" :desc "挨拶メッセージ"}
         :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]}}
+  [name]
+  (str "Hello, " name "!"))
+
+;; または手動で言語別に設定
+(def __doc__greet_en
+  {:desc "Greets with the given name"
+   :params [{:name "name" :type "string" :desc "Name to greet"}]
+   :returns {:type "string" :desc "Greeting message"}
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]})
+(def __doc__greet_ja
+  {:desc "指定された名前で挨拶する"
+   :params [{:name "name" :type "string" :desc "挨拶する相手の名前"}]
+   :returns {:type "string" :desc "挨拶メッセージ"}
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]})
+(def greet
   (fn [name]
     (str "Hello, " name "!")))
 ```
 
-#### 3. 外部参照形式（大規模）
+#### 3. 外部参照形式（大規模）**【未実装】**
 
 複雑な関数や大量のドキュメントを外部ファイルで管理。
 
@@ -6188,7 +6236,9 @@ Qiは柔軟なドキュメントシステムを提供します：
     ))
 ```
 
-### 外部ファイル形式
+**注意**: この機能は将来実装予定です。現在は文字列形式と構造化形式のみサポートしています。
+
+### 外部ファイル形式 **【未実装】**
 
 #### ディレクトリ構造
 
@@ -6263,21 +6313,46 @@ std/
 
 ### 言語フォールバック
 
-ドキュメント表示時の優先順位：
+ドキュメント表示時の優先順位は言語設定によって異なります：
 
-1. **現在の言語**（環境変数 `QI_LANG`）
-2. **英語**（`en`）
-3. **表示なし**
+#### 日本語環境 (`QI_LANG=ja`)
+1. `__doc__<name>_ja` - 日本語版ドキュメント
+2. `__doc__<name>` - 言語指定なし（共通版）
+3. `__doc__<name>_en` - 英語版（最後のフォールバック）
+4. 表示なし
+
+#### 英語環境 (`QI_LANG=en`)
+1. `__doc__<name>_en` - 英語版ドキュメント
+2. `__doc__<name>` - 言語指定なし（共通版）
+3. 表示なし
+
+#### その他の言語 (`QI_LANG=fr`等)
+1. `__doc__<name>_<lang>` - 該当言語版ドキュメント
+2. `__doc__<name>` - 言語指定なし（共通版）
+3. `__doc__<name>_en` - 英語版（最後のフォールバック）
+4. 表示なし
+
+#### 設計思想
+- **言語指定なし** (`__doc__<name>`): 全言語共通の特別枠。簡単な一言ドキュメント向け
+- **en**: デフォルト言語として最後のフォールバック（プログラミング文化に合致）
+- **他言語の混在防止**: frユーザーにjaドキュメントは表示しない（読めない言語より「なし」の方がマシ）
 
 例：
 ```bash
+# 日本語環境
 export QI_LANG=ja
 qi repl
-> :doc greet   # 日本語で表示
+> :doc greet   # __doc__greet_ja → __doc__greet → __doc__greet_en の順で探索
 
+# 英語環境
+export QI_LANG=en
+qi repl
+> :doc greet   # __doc__greet_en → __doc__greet の順で探索（他言語は探さない）
+
+# フランス語環境
 export QI_LANG=fr
 qi repl
-> :doc greet   # フランス語が未定義なら英語で表示
+> :doc greet   # __doc__greet_fr → __doc__greet → __doc__greet_en の順で探索
 ```
 
 ### ドキュメント読み込み優先順位
