@@ -7,9 +7,11 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// csv/parse - CSV文字列をパースして Vec<Vec<String>> に変換
+/// 引数: (text [:delimiter delim])
+/// 例: (csv/parse text :delimiter "\t")  ;; TSV
 pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["csv/parse"]));
+    if args.is_empty() || args.len() > 3 {
+        return Err(fmt_msg(MsgKey::CsvParseNeed1Or3Args, &[]));
     }
 
     let csv_str = match &args[0] {
@@ -17,7 +19,23 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::TypeOnly, &["csv/parse", "string"])),
     };
 
-    let records = parse_csv(csv_str)?;
+    // オプショナル delimiter引数
+    let delimiter = if args.len() == 3 {
+        // :delimiter "\t" 形式
+        match (&args[1], &args[2]) {
+            (Value::Keyword(k), Value::String(d)) if k == "delimiter" => {
+                if d.chars().count() != 1 {
+                    return Err(fmt_msg(MsgKey::CsvDelimiterMustBeSingleChar, &[]));
+                }
+                d.chars().next().unwrap()
+            }
+            _ => return Err(fmt_msg(MsgKey::CsvInvalidDelimiterArg, &[])),
+        }
+    } else {
+        ','  // デフォルト
+    };
+
+    let records = parse_csv_with_delimiter(csv_str, delimiter)?;
 
     // Vec<Vec<String>> を Value::List(Vec<Value::List(Vec<Value::String>)>) に変換
     let result = records
@@ -171,6 +189,11 @@ pub fn native_csv_write_file(args: &[Value]) -> Result<Value, String> {
 
 /// CSV文字列をパースする（RFC 4180準拠）
 fn parse_csv(input: &str) -> Result<Vec<Vec<String>>, String> {
+    parse_csv_with_delimiter(input, ',')
+}
+
+/// CSV文字列を指定されたdelimiterでパースする
+fn parse_csv_with_delimiter(input: &str, delimiter: char) -> Result<Vec<Vec<String>>, String> {
     let mut records = Vec::new();
     let mut current_record = Vec::new();
     let mut current_field = String::new();
@@ -194,7 +217,7 @@ fn parse_csv(input: &str) -> Result<Vec<Vec<String>>, String> {
                 // フィールドの開始クォート
                 in_quotes = true;
             }
-            ',' if !in_quotes => {
+            ch if ch == delimiter && !in_quotes => {
                 // フィールド区切り
                 current_record.push(current_field.clone());
                 current_field.clear();
@@ -241,12 +264,17 @@ fn parse_csv(input: &str) -> Result<Vec<Vec<String>>, String> {
 
 /// Vec<Vec<String>> を CSV文字列に変換（RFC 4180準拠）
 fn stringify_csv(records: &[Vec<String>]) -> String {
+    stringify_csv_with_delimiter(records, ',')
+}
+
+/// Vec<Vec<String>> を指定されたdelimiterでCSV文字列に変換
+fn stringify_csv_with_delimiter(records: &[Vec<String>], delimiter: char) -> String {
     let mut result = String::new();
 
     for (i, record) in records.iter().enumerate() {
         for (j, field) in record.iter().enumerate() {
-            // フィールドにカンマ、ダブルクォート、改行が含まれている場合はクォートで囲む
-            let needs_quoting = field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r');
+            // フィールドにdelimiter、ダブルクォート、改行が含まれている場合はクォートで囲む
+            let needs_quoting = field.contains(delimiter) || field.contains('"') || field.contains('\n') || field.contains('\r');
 
             if needs_quoting {
                 result.push('"');
@@ -266,7 +294,7 @@ fn stringify_csv(records: &[Vec<String>]) -> String {
 
             // フィールド区切り
             if j < record.len() - 1 {
-                result.push(',');
+                result.push(delimiter);
             }
         }
 

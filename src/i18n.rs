@@ -195,6 +195,9 @@ pub enum MsgKey {
     FileReadError,       // {0}: file read error: {1}
     CsvCannotSerialize,  // csv/stringify: cannot serialize {0}
     CsvRecordMustBeList, // csv/stringify: each record must be a list
+    CsvParseNeed1Or3Args,        // csv/parse requires 1 or 3 arguments
+    CsvDelimiterMustBeSingleChar, // csv/parse: delimiter must be a single character
+    CsvInvalidDelimiterArg,      // csv/parse: invalid delimiter argument (use :delimiter "char")
 
     // コマンド実行エラー
     CmdEmptyCommand,         // Command cannot be empty
@@ -595,6 +598,9 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::FileReadError), "{0}: file read error: {1}");
         messages.insert((Lang::En, MsgKey::CsvCannotSerialize), "csv/stringify: cannot serialize {0}");
         messages.insert((Lang::En, MsgKey::CsvRecordMustBeList), "csv/stringify: each record must be a list");
+        messages.insert((Lang::En, MsgKey::CsvParseNeed1Or3Args), "csv/parse requires 1 or 3 arguments");
+        messages.insert((Lang::En, MsgKey::CsvDelimiterMustBeSingleChar), "csv/parse: delimiter must be a single character");
+        messages.insert((Lang::En, MsgKey::CsvInvalidDelimiterArg), "csv/parse: invalid delimiter argument (use :delimiter \"char\")");
 
         // 英語メッセージ - コマンド実行
         messages.insert((Lang::En, MsgKey::CmdEmptyCommand), "Command cannot be empty");
@@ -890,6 +896,9 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::FileReadError), "{0}: ファイル読み込みエラー: {1}");
         messages.insert((Lang::Ja, MsgKey::CsvCannotSerialize), "csv/stringify: シリアライズできません: {0}");
         messages.insert((Lang::Ja, MsgKey::CsvRecordMustBeList), "csv/stringify: 各レコードはリストである必要があります");
+        messages.insert((Lang::Ja, MsgKey::CsvParseNeed1Or3Args), "csv/parse: 引数は1個または3個必要です");
+        messages.insert((Lang::Ja, MsgKey::CsvDelimiterMustBeSingleChar), "csv/parse: デリミタは1文字である必要があります");
+        messages.insert((Lang::Ja, MsgKey::CsvInvalidDelimiterArg), "csv/parse: デリミタ引数が不正です (:delimiter \"文字\" の形式で指定してください)");
 
         // 日本語メッセージ - コマンド実行
         messages.insert((Lang::Ja, MsgKey::CmdEmptyCommand), "コマンドが空です");

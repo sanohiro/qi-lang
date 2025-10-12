@@ -3975,7 +3975,7 @@ db/rollback             ;; トランザクションロールバック
 #### ✅ csv - CSV処理（実装済み）
 
 **コア関数（パイプライン対応）**:
-- `csv/parse` - CSV文字列をパース
+- `csv/parse` - CSV文字列をパース（TSV/PSV対応）
 - `csv/stringify` - データをCSV文字列に変換
 
 **便利関数**:
@@ -3990,6 +3990,13 @@ db/rollback             ;; トランザクションロールバック
 
 (csv/stringify '(("name" "age") ("Alice" "30")))
 ;; => "name,age\nAlice,30\n"
+
+;; ✨ TSV（タブ区切り）/ PSV（パイプ区切り）対応
+(csv/parse "name\tage\tcity\nAlice\t30\tTokyo" :delimiter "\t")  ;; TSV
+;; => (("name" "age" "city") ("Alice" "30" "Tokyo"))
+
+(csv/parse "name|age|city\nAlice|30|Tokyo" :delimiter "|")  ;; PSV
+;; => (("name" "age" "city") ("Alice" "30" "Tokyo"))
 
 ;; ✨ パイプライン推奨パターン - データが左から右へ流れる
 ("data.csv"
