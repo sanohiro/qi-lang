@@ -265,7 +265,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
     match DateTime::parse_from_str(&format!("{} +0000", date_str), &format!("{} %z", format_str)) {
         Ok(dt) => Ok(Value::Integer(dt.timestamp())),
-        Err(_) => Err(format!("time/parse: failed to parse '{}' with format '{}'", date_str, format_str)),
+        Err(_) => Err(fmt_msg(MsgKey::TimeParseFailedToParse, &[date_str, format_str])),
     }
 }
 

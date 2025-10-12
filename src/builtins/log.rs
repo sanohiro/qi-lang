@@ -254,7 +254,7 @@ pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
     };
 
     let level = LogLevel::from_str(level_str)
-        .ok_or_else(|| format!("log/set-level: invalid level '{}' (valid: debug, info, warn, error)", level_str))?;
+        .ok_or_else(|| fmt_msg(MsgKey::LogSetLevelInvalidLevel, &[level_str]))?;
 
     LOG_CONFIG.write().level = level;
     Ok(Value::Nil)
@@ -276,7 +276,7 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
     let format = match format_str.to_lowercase().as_str() {
         "text" | "plain" => LogFormat::Text,
         "json" => LogFormat::Json,
-        _ => return Err(format!("log/set-format: invalid format '{}' (valid: text, json)", format_str)),
+        _ => return Err(fmt_msg(MsgKey::LogSetFormatInvalidFormat, &[format_str])),
     };
 
     LOG_CONFIG.write().format = format;

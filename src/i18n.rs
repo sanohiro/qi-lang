@@ -275,6 +275,13 @@ pub enum MsgKey {
     // CSVエラー（詳細）
     CsvWriteFileStringifyFailed, // csv/write-file: stringify failed
     CsvWriteFileFailedToWrite,   // csv/write-file: failed to write '{0}': {1}
+
+    // ログエラー
+    LogSetLevelInvalidLevel,     // log/set-level: invalid level '{0}' (valid: debug, info, warn, error)
+    LogSetFormatInvalidFormat,   // log/set-format: invalid format '{0}' (valid: text, json)
+
+    // 時刻エラー（詳細）
+    TimeParseFailedToParse,      // time/parse: failed to parse '{0}' with format '{1}'
 }
 
 /// UIメッセージキー
@@ -607,6 +614,13 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::CsvWriteFileStringifyFailed), "csv/write-file: stringify failed");
         messages.insert((Lang::En, MsgKey::CsvWriteFileFailedToWrite), "csv/write-file: failed to write '{0}': {1}");
 
+        // 英語メッセージ - ログ
+        messages.insert((Lang::En, MsgKey::LogSetLevelInvalidLevel), "log/set-level: invalid level '{0}' (valid: debug, info, warn, error)");
+        messages.insert((Lang::En, MsgKey::LogSetFormatInvalidFormat), "log/set-format: invalid format '{0}' (valid: text, json)");
+
+        // 英語メッセージ - 時刻（詳細）
+        messages.insert((Lang::En, MsgKey::TimeParseFailedToParse), "time/parse: failed to parse '{0}' with format '{1}'");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -835,6 +849,13 @@ impl Messages {
         // 日本語メッセージ - CSV（詳細）
         messages.insert((Lang::Ja, MsgKey::CsvWriteFileStringifyFailed), "csv/write-file: 文字列化に失敗しました");
         messages.insert((Lang::Ja, MsgKey::CsvWriteFileFailedToWrite), "csv/write-file: '{0}' への書き込みに失敗しました: {1}");
+
+        // 日本語メッセージ - ログ
+        messages.insert((Lang::Ja, MsgKey::LogSetLevelInvalidLevel), "log/set-level: 不正なレベル '{0}' です (有効な値: debug, info, warn, error)");
+        messages.insert((Lang::Ja, MsgKey::LogSetFormatInvalidFormat), "log/set-format: 不正なフォーマット '{0}' です (有効な値: text, json)");
+
+        // 日本語メッセージ - 時刻（詳細）
+        messages.insert((Lang::Ja, MsgKey::TimeParseFailedToParse), "time/parse: '{0}' をフォーマット '{1}' でパースできませんでした");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();
