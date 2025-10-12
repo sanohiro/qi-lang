@@ -94,11 +94,11 @@ flowchart TD
     Start([next_token開始]) --> Skip[空白・コメントをスキップ]
     Skip --> Check{現在文字は?}
 
-    Check -->|"(, ), [, ], {, }"| Paren[括弧トークン返却]
-    Check -->|"数字"| Num[read_number]
-    Check -->|"\""| Str[read_string]
-    Check -->|f"| FStr[read_fstring]
-    Check -->|:| Kwd[read_keyword]
+    Check -->|括弧| Paren[括弧トークン返却]
+    Check -->|数字| Num[read_number]
+    Check -->|ダブルクォート| Str[read_string]
+    Check -->|f文字列| FStr[read_fstring]
+    Check -->|コロン| Kwd[read_keyword]
     Check -->|文字| Sym[read_symbol]
     Check -->|特殊文字| Special[演算子・記号]
     Check -->|EOF| End([Eof返却])
