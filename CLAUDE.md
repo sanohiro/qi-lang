@@ -169,7 +169,6 @@ db-sqlite = ["dep:rusqlite"]
 - SPEC.mdにかかれている言語の文化は守ること
 - SPEC.md はソースコードが変わった場合、更新が必要なら更新すること
 - README.md はソースコードが変わった場合、更新が必要なら更新すること
-- TUTORIAL.md はソースコードが変わった場合、更新が必要なら更新すること
 
 ### 標準ライブラリドキュメント（std/docs）の更新
 
@@ -247,11 +246,6 @@ Err("File not found".to_string())
 Err(fmt_msg(MsgKey::FileNotFound, &[path]))
 .map_err(|e| fmt_msg(MsgKey::FailedToRead, &[&e.to_string()]))
 ```
-
-## ドキュメント
-
-- TUTORIAL.md は Rust、プログラミング言語実装、Lisp系初心者向けに書くこと。これらの学習ドキュメントでもある。qi-langを通じてこれらも学習する
-- TUTORIAL.md は qiの実装されている内容を理解できるようにする。またqi言語に対しても覚えられるようにする
 
 ## チャット
 

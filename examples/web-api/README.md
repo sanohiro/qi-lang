@@ -54,7 +54,7 @@ cargo run -- -l examples/web-api/json_transform.qi
 ## 学習ポイント
 
 ### Railway Pipeline パターン
-```qi
+```lisp
 (data
  |> http/get              ;; {:ok {...}} または {:error ...}
  |>? (fn [resp] ...)      ;; :okなら実行、:errorならスキップ
@@ -64,7 +64,7 @@ cargo run -- -l examples/web-api/json_transform.qi
 ```
 
 ### データ変換パイプライン
-```qi
+```lisp
 (users
  |> (filter active?)
  |> (map transform)
@@ -73,7 +73,7 @@ cargo run -- -l examples/web-api/json_transform.qi
 ```
 
 ### 並列処理 + エラーハンドリング
-```qi
+```lisp
 (urls
  ||> http/get             ;; 並列リクエスト
  |> (map extract-data)
