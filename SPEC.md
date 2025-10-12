@@ -6325,6 +6325,100 @@ qi repl
 > :doc greet   # __doc__greet_fr → __doc__greet → __doc__greet_en の順で探索
 ```
 
+### 一般的な使い方
+
+ほとんどの開発者は**言語指定なし**（`__doc__<name>`）で書くだけで十分です。
+
+#### 単一言語プロジェクト（推奨）
+
+多言語対応が不要な場合は、`_ja`や`_en`などの言語サフィックスを付けずに記述してください：
+
+```lisp
+;; 日本語プロジェクトの場合
+(defn greet
+  "指定された名前で挨拶する"
+  [name]
+  (str "Hello, " name "!"))
+
+;; または構造化形式
+(def __doc__add
+  {:desc "2つの数値を加算する"
+   :params [{:name "a" :type "number"}
+            {:name "b" :type "number"}]
+   :returns {:type "number"}
+   :examples ["(add 1 2) ;=> 3"]})
+(defn add [a b] (+ a b))
+```
+
+**動作：**
+- どの言語環境（`QI_LANG=ja`、`QI_LANG=en`、`QI_LANG=fr`等）でも、同じドキュメントが表示されます
+- 言語サフィックスがないため、自分たちの母語で自由に書けます
+- 小規模プロジェクトや個人プロジェクトに最適です
+
+#### 多言語対応プロジェクト（オプション）
+
+国際的なライブラリやツールで多言語ドキュメントが必要な場合のみ、言語サフィックスを使います：
+
+```lisp
+;; 英語版
+(def __doc__greet_en
+  {:desc "Greets with the given name"
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]})
+
+;; 日本語版
+(def __doc__greet_ja
+  {:desc "指定された名前で挨拶する"
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]})
+
+;; フランス語版
+(def __doc__greet_fr
+  {:desc "Salue avec le nom donné"
+   :examples ["(greet \"Alice\") ;=> \"Hello, Alice!\""]})
+
+(defn greet [name]
+  (str "Hello, " name "!"))
+```
+
+**動作：**
+- `QI_LANG=en` → 英語版を表示
+- `QI_LANG=ja` → 日本語版を表示
+- `QI_LANG=fr` → フランス語版を表示
+- `QI_LANG=de` → 言語指定なし版（`__doc__greet`）があればそれを表示、なければ英語版にフォールバック
+
+#### 言語指定なしとの併用
+
+言語指定なし版と言語版を併用することも可能です：
+
+```lisp
+;; デフォルト（言語指定なし）- 日本語で記述
+(def __doc__count
+  {:desc "コレクションの要素数を数える"
+   :examples ["(count [1 2 3]) ;=> 3"]})
+
+;; 英語版のみ追加
+(def __doc__count_en
+  {:desc "Count elements in a collection"
+   :examples ["(count [1 2 3]) ;=> 3"]})
+```
+
+**動作：**
+- `QI_LANG=ja` → `__doc__count`（日本語）を表示
+- `QI_LANG=en` → `__doc__count_en`（英語）を表示
+- `QI_LANG=fr` → `__doc__count`（日本語）を表示 ← デフォルトにフォールバック
+
+この場合、フランス語ユーザーには日本語が表示されますが、何も表示されないよりは有益です。
+
+#### まとめ
+
+| ケース | 推奨方法 | 理由 |
+|--------|----------|------|
+| 個人プロジェクト | 言語指定なし | シンプルで十分 |
+| 社内ツール | 言語指定なし | 組織内で統一言語があるはず |
+| OSSライブラリ | 言語指定あり | 国際的なユーザー向け |
+| 標準ライブラリ | 言語指定あり | 多言語サポート必須 |
+
+**原則：必要なければ言語サフィックスを付けないでください。**
+
 
 ### 実装方針
 
