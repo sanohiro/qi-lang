@@ -193,7 +193,7 @@ fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
                 .body(Full::new(Bytes::from(body_bytes)))
                 .map_err(|e| fmt_msg(MsgKey::ServerFailedToBuildResponse, &[&e.to_string()]))
         }
-        _ => Err(format!("Handler must return a map, got: {}", value.type_name())),
+        _ => Err(fmt_msg(MsgKey::ServerHandlerMustReturnMap, &[value.type_name()])),
     }
 }
 
@@ -429,7 +429,7 @@ async fn handle_request(
                 let eval = Evaluator::new();
                 eval.apply_function(handler.as_ref(), &[req_value])
             }
-            _ => Err(format!("Handler must be a function or router, got: {}", handler.type_name())),
+            _ => Err(fmt_msg(MsgKey::ServerHandlerMustBeFunction, &[handler.type_name()])),
         };
 
         // Qi値をHTTPレスポンスに変換
@@ -437,7 +437,7 @@ async fn handle_request(
             Ok(v) => value_to_response(v),
             Err(e) => {
                 eprintln!("Handler error: {}", e);
-                Err(format!("Handler error: {}", e))
+                Err(fmt_msg(MsgKey::ServerHandlerError, &[&e]))
             }
         }
     }).await;
@@ -557,9 +557,14 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
 
     let file_size = metadata.len();
     if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(format!(
-            "File too large: {} bytes (max: {} bytes / {} MB). Path: {}",
-            file_size, MAX_STATIC_FILE_SIZE, MAX_STATIC_FILE_SIZE / 1024 / 1024, path
+        return Err(fmt_msg(
+            MsgKey::ServerFileTooLarge,
+            &[
+                &file_size.to_string(),
+                &MAX_STATIC_FILE_SIZE.to_string(),
+                &(MAX_STATIC_FILE_SIZE / 1024 / 1024).to_string(),
+                path
+            ]
         ));
     }
 
@@ -586,7 +591,7 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
             if e.kind() == std::io::ErrorKind::NotFound {
                 native_server_not_found(&[Value::String(format!("File not found: {}", path))])
             } else {
-                Err(format!("Failed to read file: {}", e))
+                Err(fmt_msg(MsgKey::ServerFailedToReadFile, &[&e.to_string()]))
             }
         }
     }
@@ -1137,9 +1142,13 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
 
     let file_size = metadata.len();
     if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(format!(
-            "server/static-file: file too large: {} bytes (max: {} bytes / {} MB). Consider using streaming in the future.",
-            file_size, MAX_STATIC_FILE_SIZE, MAX_STATIC_FILE_SIZE / 1024 / 1024
+        return Err(fmt_msg(
+            MsgKey::ServerStaticFileTooLarge,
+            &[
+                &file_size.to_string(),
+                &MAX_STATIC_FILE_SIZE.to_string(),
+                &(MAX_STATIC_FILE_SIZE / 1024 / 1024).to_string()
+            ]
         ));
     }
 
@@ -1166,7 +1175,7 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
             if e.kind() == std::io::ErrorKind::NotFound {
                 native_server_not_found(&[Value::String(format!("File not found: {}", file_path))])
             } else {
-                Err(format!("server/static-file: failed to read file: {}", e))
+                Err(fmt_msg(MsgKey::ServerStaticFileFailedToRead, &[&e.to_string()]))
             }
         }
     }
@@ -1190,7 +1199,7 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
 
     // ディレクトリの存在チェック
     if !std::path::Path::new(&dir_path).is_dir() {
-        return Err(format!("server/static-dir: {} is not a directory", dir_path));
+        return Err(fmt_msg(MsgKey::ServerStaticDirNotDirectory, &[&dir_path]));
     }
 
     // 静的ファイルハンドラーマーカー（ミドルウェアと同じパターン）

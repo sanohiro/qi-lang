@@ -259,6 +259,14 @@ pub enum MsgKey {
     ServerFailedToDecompressGzip, // Failed to decompress gzip body: {0}
     ServerFailedToBuildResponse,  // Failed to build response: {0}
     ServerStaticFileMetadataFailed, // server/static-file: failed to read file metadata: {0}
+    ServerHandlerMustReturnMap,     // Handler must return a map, got: {0}
+    ServerHandlerMustBeFunction,    // Handler must be a function or router, got: {0}
+    ServerHandlerError,             // Handler error: {0}
+    ServerFileTooLarge,             // File too large: {0} bytes (max: {1} bytes / {2} MB). Path: {3}
+    ServerFailedToReadFile,         // Failed to read file: {0}
+    ServerStaticFileTooLarge,       // server/static-file: file too large: {0} bytes (max: {1} bytes / {2} MB). Consider using streaming in the future.
+    ServerStaticFileFailedToRead,   // server/static-file: failed to read file: {0}
+    ServerStaticDirNotDirectory,    // server/static-dir: {0} is not a directory
 
     // SQLiteエラー
     SqliteFailedToOpen,       // Failed to open SQLite database: {0}
@@ -613,6 +621,14 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::ServerFailedToDecompressGzip), "Failed to decompress gzip body: {0}");
         messages.insert((Lang::En, MsgKey::ServerFailedToBuildResponse), "Failed to build response: {0}");
         messages.insert((Lang::En, MsgKey::ServerStaticFileMetadataFailed), "server/static-file: failed to read file metadata: {0}");
+        messages.insert((Lang::En, MsgKey::ServerHandlerMustReturnMap), "Handler must return a map, got: {0}");
+        messages.insert((Lang::En, MsgKey::ServerHandlerMustBeFunction), "Handler must be a function or router, got: {0}");
+        messages.insert((Lang::En, MsgKey::ServerHandlerError), "Handler error: {0}");
+        messages.insert((Lang::En, MsgKey::ServerFileTooLarge), "File too large: {0} bytes (max: {1} bytes / {2} MB). Path: {3}");
+        messages.insert((Lang::En, MsgKey::ServerFailedToReadFile), "Failed to read file: {0}");
+        messages.insert((Lang::En, MsgKey::ServerStaticFileTooLarge), "server/static-file: file too large: {0} bytes (max: {1} bytes / {2} MB). Consider using streaming in the future.");
+        messages.insert((Lang::En, MsgKey::ServerStaticFileFailedToRead), "server/static-file: failed to read file: {0}");
+        messages.insert((Lang::En, MsgKey::ServerStaticDirNotDirectory), "server/static-dir: {0} is not a directory");
 
         // 英語メッセージ - SQLite
         messages.insert((Lang::En, MsgKey::SqliteFailedToOpen), "Failed to open SQLite database: {0}");
@@ -865,6 +881,14 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::ServerFailedToDecompressGzip), "gzipボディの解凍に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::ServerFailedToBuildResponse), "レスポンスの構築に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::ServerStaticFileMetadataFailed), "server/static-file: ファイルメタデータの読み込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerHandlerMustReturnMap), "ハンドラーはマップを返す必要があります。実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerHandlerMustBeFunction), "ハンドラーは関数またはルーターである必要があります。実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerHandlerError), "ハンドラーエラー: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerFileTooLarge), "ファイルが大きすぎます: {0} バイト (最大: {1} バイト / {2} MB)。パス: {3}");
+        messages.insert((Lang::Ja, MsgKey::ServerFailedToReadFile), "ファイルの読み込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerStaticFileTooLarge), "server/static-file: ファイルが大きすぎます: {0} バイト (最大: {1} バイト / {2} MB)。今後ストリーミングの使用を検討してください。");
+        messages.insert((Lang::Ja, MsgKey::ServerStaticFileFailedToRead), "server/static-file: ファイルの読み込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerStaticDirNotDirectory), "server/static-dir: {0} はディレクトリではありません");
 
         // 日本語メッセージ - SQLite
         messages.insert((Lang::Ja, MsgKey::SqliteFailedToOpen), "SQLiteデータベースのオープンに失敗しました: {0}");
