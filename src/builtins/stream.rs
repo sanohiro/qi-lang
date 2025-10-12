@@ -83,7 +83,7 @@ pub fn native_iterate(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
     let stream = Stream {
         next_fn: Box::new(move || {
             let val = current.read().clone();
-            if let Ok(next) = evaluator.apply_function(&func, &[val.clone()]) {
+            if let Ok(next) = evaluator.apply_function(&func, std::slice::from_ref(&val)) {
                 *current.write() = next;
             }
             Some(val)
@@ -187,7 +187,7 @@ pub fn native_stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Val
             match next_val {
                 None => return None,
                 Some(v) => {
-                    if let Ok(result) = evaluator.apply_function(&pred, &[v.clone()]) {
+                    if let Ok(result) = evaluator.apply_function(&pred, std::slice::from_ref(&v)) {
                         if result.is_truthy() {
                             return Some(v);
                         }

@@ -184,7 +184,7 @@ pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) ->
         Value::Map(m) => {
             let mut result = std::collections::HashMap::new();
             for (k, v) in m {
-                let new_val = evaluator.apply_function(val_fn, &[v.clone()])?;
+                let new_val = evaluator.apply_function(val_fn, std::slice::from_ref(v))?;
                 result.insert(k.clone(), new_val);
             }
             Ok(Value::Map(result))

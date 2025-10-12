@@ -477,11 +477,10 @@ pub fn native_partition_by(args: &[Value], evaluator: &crate::eval::Evaluator) -
 
                 if let Some(ref last) = last_pred_result {
                     // 述語の結果が変わったら新しいグループを開始
-                    if !values_equal(last, &pred_result) {
-                        if !current_group.is_empty() {
-                            result.push(Value::List(current_group.clone()));
-                            current_group.clear();
-                        }
+                    if !values_equal(last, &pred_result)
+                        && !current_group.is_empty() {
+                        result.push(Value::List(current_group.clone()));
+                        current_group.clear();
                     }
                 }
 
