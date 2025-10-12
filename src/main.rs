@@ -401,17 +401,24 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
 
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
+    // ドキュメントファイル一覧
+    let doc_files = ["core.qi", "string.qi"];
+
     // 1. 英語版を先に読み込み
-    let en_doc_path = "std/docs/en/core.qi";
-    if let Ok(content) = std::fs::read_to_string(en_doc_path) {
-        eval_repl_code(evaluator, &content, Some(en_doc_path));
+    for file in &doc_files {
+        let en_doc_path = format!("std/docs/en/{}", file);
+        if let Ok(content) = std::fs::read_to_string(&en_doc_path) {
+            eval_repl_code(evaluator, &content, Some(&en_doc_path));
+        }
     }
 
     // 2. 指定言語版を読み込み（enと同じ場合はスキップ）
     if lang != "en" {
-        let lang_doc_path = format!("std/docs/{}/core.qi", lang);
-        if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
-            eval_repl_code(evaluator, &content, Some(&lang_doc_path));
+        for file in &doc_files {
+            let lang_doc_path = format!("std/docs/{}/{}", lang, file);
+            if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
+                eval_repl_code(evaluator, &content, Some(&lang_doc_path));
+            }
         }
     }
 
