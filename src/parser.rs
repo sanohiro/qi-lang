@@ -310,7 +310,7 @@ impl Parser {
 
     /// defn を def + fn に展開
     /// (defn name [params] body) -> (def name (fn [params] body))
-    /// (defn name doc [params] body) -> (def name (fn [params] body))  // docは将来サポート予定
+    /// (defn name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body)))
     fn parse_defn(&mut self) -> Result<Expr, String> {
         self.advance(); // 'defn'をスキップ
 
@@ -320,11 +320,13 @@ impl Parser {
         };
         self.advance();
 
-        // ドキュメント文字列/マップをスキップ（将来サポート予定）
-        if !matches!(self.current(), Some(Token::LBracket)) {
+        // ドキュメント文字列/マップの処理
+        let doc_expr = if !matches!(self.current(), Some(Token::LBracket)) {
             // パラメータリストでない場合はドキュメント
-            self.parse_expr()?; // 読み飛ばす
-        }
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
 
         // パラメータリストのパース
         self.expect(Token::LBracket)?;
@@ -365,8 +367,16 @@ impl Parser {
             is_variadic,
         };
 
-        // (def name (fn ...)) に変換
-        Ok(Expr::Def(name, Box::new(fn_expr)))
+        // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...)))
+        // ない場合は (def name (fn ...))
+        if let Some(doc) = doc_expr {
+            let doc_key = format!("__doc__{}", name);
+            let doc_def = Expr::Def(doc_key, Box::new(doc));
+            let fn_def = Expr::Def(name, Box::new(fn_expr));
+            Ok(Expr::Do(vec![doc_def, fn_def]))
+        } else {
+            Ok(Expr::Def(name, Box::new(fn_expr)))
+        }
     }
 
     fn parse_fn(&mut self) -> Result<Expr, String> {

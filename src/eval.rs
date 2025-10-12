@@ -411,6 +411,7 @@ impl Evaluator {
                 // 高階関数と論理演算子、quoteの特別処理
                 if let Expr::Symbol(name) = func.as_ref() {
                     match name.as_str() {
+                        "defn" => return self.eval_defn(args, env),
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
                         "time" | "dbg/time" | "debug/time" => return self.eval_time(args, env),
                         "tap" => return self.eval_tap(args, env),
@@ -713,6 +714,92 @@ impl Evaluator {
                 unreachable!("Transform pattern should be handled in match_pattern_with_transforms")
             }
         }
+    }
+
+    /// defn関数の実装: (defn name [params] body...) または (defn name "doc" [params] body...)
+    fn eval_defn(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        // 最低3つの引数が必要: name, params, body
+        if args.len() < 3 {
+            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "3"]));
+        }
+
+        // 名前を取得
+        let name = match &args[0] {
+            Expr::Symbol(s) => s.clone(),
+            _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn", "a symbol"])),
+        };
+
+        // ドキュメント文字列の有無を判定
+        let (doc_opt, params_idx) = match &args[1] {
+            Expr::Vector(_) => (None, 1), // パラメータリストが2番目
+            _ => {
+                // ドキュメントを評価して取得
+                let doc_val = self.eval_with_env(&args[1], env.clone())?;
+                let doc_str = match doc_val {
+                    Value::String(s) => Some(s),
+                    Value::Map(ref m) => {
+                        // 構造化ドキュメント
+                        m.get("desc").and_then(|v| match v {
+                            Value::String(s) => Some(s.clone()),
+                            _ => None,
+                        })
+                    }
+                    _ => None,
+                };
+                (doc_str, 2) // パラメータリストが3番目
+            }
+        };
+
+        // パラメータリストと本体を確認
+        if params_idx >= args.len() {
+            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "parameter list"]));
+        }
+
+        // ドキュメントを保存
+        if let Some(doc) = doc_opt {
+            let doc_key = format!("__doc__{}", name);
+            self.global_env.write().set(doc_key, Value::String(doc));
+        }
+
+        // パラメータリストからパラメータ名を抽出
+        let params = match &args[params_idx] {
+            Expr::Vector(params_exprs) => {
+                let mut param_names = Vec::new();
+                for param_expr in params_exprs {
+                    match param_expr {
+                        Expr::Symbol(s) => param_names.push(s.clone()),
+                        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "symbols"])),
+                    }
+                }
+                param_names
+            }
+            _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "a vector"])),
+        };
+
+        // 本体を取得
+        let body_exprs: Vec<Expr> = args[params_idx + 1..].to_vec();
+
+        // 本体が複数ある場合はdoでラップ、1つの場合はそのまま
+        let body = if body_exprs.len() == 1 {
+            Box::new(body_exprs[0].clone())
+        } else if body_exprs.is_empty() {
+            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "body"]));
+        } else {
+            Box::new(Expr::Do(body_exprs))
+        };
+
+        // fnの本体を構築
+        let fn_expr = Expr::Fn {
+            params,
+            body,
+            is_variadic: false,
+        };
+
+        // defに展開
+        let def_expr = Expr::Def(name, Box::new(fn_expr));
+
+        // 評価
+        self.eval_with_env(&def_expr, env)
     }
 
     /// map関数の実装: (map f coll)
@@ -2683,25 +2770,62 @@ impl Evaluator {
                             let exprs: Result<Vec<_>, _> = items[1..].iter().map(|v| self.value_to_expr(v)).collect();
                             return Ok(Expr::Do(exprs?));
                         }
-                        "def" if items.len() == 3 => {
+                        "def" if items.len() == 3 || items.len() == 4 => {
                             if let Value::Symbol(name) = &items[1] {
-                                return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[2])?)));
+                                // 4要素の場合: (def name "doc" value)
+                                if items.len() == 4 {
+                                    // items[2]がドキュメント文字列
+                                    if let Value::String(doc) = &items[2] {
+                                        let doc_key = format!("__doc__{}", name);
+                                        self.global_env.write().set(doc_key, Value::String(doc.clone()));
+                                    } else if let Value::Map(doc_map) = &items[2] {
+                                        // 構造化ドキュメント（マップ）
+                                        if let Some(Value::String(desc)) = doc_map.get("desc") {
+                                            let doc_key = format!("__doc__{}", name);
+                                            self.global_env.write().set(doc_key, Value::String(desc.clone()));
+                                        }
+                                    }
+                                    // 値はitems[3]
+                                    return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[3])?)));
+                                } else {
+                                    // 3要素の場合: (def name value)
+                                    return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[2])?)));
+                                }
                             }
                         }
                         "defn" if items.len() >= 4 => {
                             // defn展開: (defn name [params] body) -> (def name (fn [params] body))
-                            // NOTE: ドキュメント文字列/マップは現在未サポート（将来の拡張用に位置は認識）
+                            // ドキュメント文字列があれば __doc__<name> に保存
                             if let Value::Symbol(name) = &items[1] {
                                 // パラメータリスト（Vector）の位置を探す
                                 let mut params_idx = 2;
+                                let mut doc_string: Option<String> = None;
 
-                                // items[2]がVectorでなければドキュメント（今は無視）
+                                // items[2]がVectorでなければドキュメント
                                 if !matches!(&items[2], Value::Vector(_)) {
+                                    // ドキュメント文字列を抽出
+                                    if let Value::String(doc) = &items[2] {
+                                        doc_string = Some(doc.clone());
+                                    } else if let Value::Map(doc_map) = &items[2] {
+                                        // 構造化ドキュメント（マップ）もサポート
+                                        // 後で実装予定。今は文字列のみ
+                                        doc_string = doc_map.get("desc")
+                                            .and_then(|v| match v {
+                                                Value::String(s) => Some(s.clone()),
+                                                _ => None,
+                                            });
+                                    }
                                     params_idx = 3;
                                 }
 
                                 // パラメータリストと本体を確認
                                 if params_idx < items.len() && matches!(&items[params_idx], Value::Vector(_)) {
+                                    // ドキュメント文字列を保存
+                                    if let Some(doc) = doc_string {
+                                        let doc_key = format!("__doc__{}", name);
+                                        self.global_env.write().set(doc_key, Value::String(doc));
+                                    }
+
                                     let params = items[params_idx].clone();
                                     let body: Vec<Value> = items[params_idx + 1..].to_vec();
 

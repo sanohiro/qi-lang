@@ -24,6 +24,7 @@ impl QiHelper {
 
         // REPLコマンド
         completions.insert(":help".to_string());
+        completions.insert(":doc".to_string());
         completions.insert(":vars".to_string());
         completions.insert(":funcs".to_string());
         completions.insert(":builtins".to_string());
@@ -397,6 +398,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
         ":help" => {
             println!("{}", ui_msg(UiMsg::ReplAvailableCommands));
             println!("  {}", ui_msg(UiMsg::ReplCommandHelp));
+            println!("  :doc <name>              Show documentation for a function");
             println!("  {}", ui_msg(UiMsg::ReplCommandVars));
             println!("  {}", ui_msg(UiMsg::ReplCommandFuncs));
             println!("  {}", ui_msg(UiMsg::ReplCommandBuiltins));
@@ -439,6 +441,68 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                     println!("{}", ui_msg(UiMsg::ReplDefinedFunctions));
                     for func in funcs {
                         println!("  {}", func);
+                    }
+                }
+            }
+        }
+        ":doc" => {
+            if parts.len() < 2 {
+                eprintln!("Usage: :doc <name>");
+                return;
+            }
+
+            let name = parts[1];
+            if let Some(env) = evaluator.get_env() {
+                let env = env.read();
+
+                // 関数/変数の存在確認
+                if env.get(name).is_none() {
+                    eprintln!("No such function or variable: {}", name);
+                    return;
+                }
+
+                // ドキュメント取得（多言語対応）
+                let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
+                let doc_key_lang = format!("__doc__{}_{}", name, lang);
+                let doc_key = format!("__doc__{}", name);
+
+                let doc = env.get(&doc_key_lang)
+                    .or_else(|| env.get(&doc_key))
+                    .or_else(|| env.get(&format!("__doc__{}_en", name)));
+
+                match doc {
+                    Some(Value::String(s)) => {
+                        println!("\n{}: {}\n", name, s);
+                    }
+                    Some(Value::Map(m)) => {
+                        // 構造化ドキュメント
+                        println!("\n{}:", name);
+                        if let Some(Value::String(desc)) = m.get("desc") {
+                            println!("  {}", desc);
+                        }
+                        if let Some(Value::Vector(params)) = m.get("params") {
+                            println!("\nParameters:");
+                            for param in params {
+                                if let Value::Map(pm) = param {
+                                    if let (Some(Value::String(pname)), Some(Value::String(pdesc))) =
+                                        (pm.get("name"), pm.get("desc")) {
+                                        println!("  {} - {}", pname, pdesc);
+                                    }
+                                }
+                            }
+                        }
+                        if let Some(Value::Vector(examples)) = m.get("examples") {
+                            println!("\nExamples:");
+                            for ex in examples {
+                                if let Value::String(s) = ex {
+                                    println!("  {}", s);
+                                }
+                            }
+                        }
+                        println!();
+                    }
+                    _ => {
+                        println!("\n{}: (no documentation available)\n", name);
                     }
                 }
             }
