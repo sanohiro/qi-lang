@@ -35,6 +35,7 @@
 //! - stream: ストリーム処理（11個）
 //! - str: 文字列操作（62個）
 //! - json: JSON処理（3個）
+//! - yaml: YAML処理（3個）
 //! - csv: CSV処理（5個）
 //! - markdown: Markdown生成・解析（11個）
 //! - http: HTTP通信（22個）
@@ -64,6 +65,8 @@ pub mod io;
 
 #[cfg(feature = "format-json")]
 pub mod json;
+#[cfg(feature = "format-yaml")]
+pub mod yaml;
 pub mod list;
 pub mod map;
 pub mod math;
@@ -543,6 +546,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "json/parse" => json::native_parse,
         "json/stringify" => json::native_stringify,
         "json/pretty" => json::native_pretty,
+    );
+
+    // YAML処理（3個）
+    #[cfg(feature = "format-yaml")]
+    register_native!(env.write(),
+        "yaml/parse" => yaml::native_parse,
+        "yaml/stringify" => yaml::native_stringify,
+        "yaml/pretty" => yaml::native_pretty,
     );
 
     // HTTPクライアント（11個）

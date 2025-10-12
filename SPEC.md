@@ -1068,6 +1068,7 @@ Qiは**2層モジュール設計**を採用しています：
 - **stream**: ストリーム処理（11個）- `stream/stream`, `stream/map`, etc.
 - **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
 - **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
+- **yaml**: YAML処理（3個）- `yaml/parse`, `yaml/stringify`, `yaml/pretty`
 - **http**: HTTPクライアント（11個）- `http/get`, `http/post`, `http/get-stream`, etc.
 - **server**: HTTPサーバー（16個）- `server/serve`, `server/router`, `server/ok`, `server/json`, ミドルウェア、静的ファイル配信など
 - **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
@@ -1749,6 +1750,63 @@ json/pretty             ;; 値を整形JSON化
  |> json/pretty
  |>? (fn [json] {:ok (write-file "output.json" json)}))
 ```
+
+#### YAML処理（✅ 実装済み）
+
+**Pure Rust実装 - serde_yaml使用**
+
+```lisp
+yaml/parse              ;; YAML文字列をパース: "name: Alice" => {:ok {:name "Alice"}}
+yaml/stringify          ;; 値をYAML化
+yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
+```
+
+**使用例**:
+```lisp
+;; YAMLパース
+(def yaml-str "name: Alice\nage: 30\ntags:\n  - dev\n  - ops")
+(yaml/parse yaml-str)
+;; => {:ok {"name" "Alice" "age" 30 "tags" ["dev" "ops"]}}
+
+;; YAML生成
+(def data {"name" "Bob" "age" 25 "tags" ["backend" "devops"]})
+(yaml/stringify data)
+;; => {:ok "name: Bob\nage: 25\ntags:\n- backend\n- devops\n"}
+
+;; 複雑なネスト構造
+(def config {
+  "server" {
+    "host" "localhost"
+    "port" 8080
+  }
+  "database" {
+    "url" "sqlite://db.sqlite"
+    "pool_size" 10
+  }
+})
+(yaml/pretty config)
+;; => {:ok "server:\n  host: localhost\n  port: 8080\n..."}
+
+;; 設定ファイルパイプライン
+("config.yaml"
+ |> io/read-file
+ |> yaml/parse
+ |>? (fn [conf] {:ok (get-in conf ["server" "port"])}))
+;; => {:ok 8080}
+
+;; データ変換パイプライン（JSON → YAML）
+("data.json"
+ |> io/read-file
+ |> json/parse
+ |>? (fn [data] (yaml/stringify (get data "ok")))
+ |>? (fn [yaml] {:ok (io/write-file "data.yaml" yaml)}))
+```
+
+**YAMLの特徴**:
+- 設定ファイルに最適（JSON/TOMLより読みやすい）
+- インデント自動整形
+- JSON互換（YAMLはJSONのスーパーセット）
+- エラーハンドリング: `{:ok ...}` または `{:error "..."}`
 
 #### HTTP クライアント（✅ 実装済み）
 ```lisp

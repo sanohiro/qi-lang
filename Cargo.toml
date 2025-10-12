@@ -31,6 +31,7 @@ default = [
     "format-json",
     "format-csv",
     "format-markdown",
+    "format-yaml",
 
     # 文字列処理
     "string-encoding",
@@ -78,6 +79,7 @@ http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio",
 format-json = ["dep:serde_json"]
 format-csv = []  # Pure Rust自前実装
 format-markdown = []  # Pure Rust自前実装
+format-yaml = ["dep:serde_yaml"]
 
 string-encoding = ["dep:base64", "dep:urlencoding", "dep:html-escape"]
 string-crypto = ["dep:sha2", "dep:uuid"]
@@ -123,6 +125,7 @@ hyper-util = { version = "0.1", features = ["tokio"], optional = true }
 http-body-util = { version = "0.1", optional = true }
 
 serde_json = { version = "1.0", optional = true }
+serde_yaml = { version = "0.9", optional = true }
 
 base64 = { version = "0.21", optional = true }
 urlencoding = { version = "2.1", optional = true }
