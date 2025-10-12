@@ -2,9 +2,16 @@
 
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
+
+#[cfg(feature = "string-encoding")]
 use base64::{Engine as _, engine::general_purpose};
+
+#[cfg(feature = "string-crypto")]
 use sha2::{Sha256, Digest};
+
+#[cfg(feature = "string-crypto")]
 use uuid::Uuid;
+
 use regex::Regex;
 
 /// str - 値を文字列に変換して連結
@@ -1047,6 +1054,7 @@ pub fn native_word_count(args: &[Value]) -> Result<Value, String> {
 }
 
 /// to-base64 - Base64エンコード
+#[cfg(feature = "string-encoding")]
 pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["to-base64"]));
@@ -1061,6 +1069,7 @@ pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
 }
 
 /// from-base64 - Base64デコード
+#[cfg(feature = "string-encoding")]
 pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["from-base64"]));
@@ -1082,6 +1091,7 @@ pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
 }
 
 /// url-encode - URLエンコード
+#[cfg(feature = "string-encoding")]
 pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["url-encode"]));
@@ -1095,6 +1105,7 @@ pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
 }
 
 /// url-decode - URLデコード
+#[cfg(feature = "string-encoding")]
 pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["url-decode"]));
@@ -1111,6 +1122,7 @@ pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
 }
 
 /// html-encode - HTMLエンコード
+#[cfg(feature = "string-encoding")]
 pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["html-encode"]));
@@ -1124,6 +1136,7 @@ pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
 }
 
 /// html-decode - HTMLデコード
+#[cfg(feature = "string-encoding")]
 pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["html-decode"]));
@@ -1137,6 +1150,7 @@ pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
 }
 
 /// hash - ハッシュ生成
+#[cfg(feature = "string-crypto")]
 pub fn native_hash(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["hash"]));
@@ -1167,6 +1181,7 @@ pub fn native_hash(args: &[Value]) -> Result<Value, String> {
 }
 
 /// uuid - UUID生成
+#[cfg(feature = "string-crypto")]
 pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
     if args.len() > 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["uuid"]));

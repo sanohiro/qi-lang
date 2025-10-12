@@ -5,6 +5,10 @@
 //! - request: 詳細なリクエスト設定
 //! - get-async/post-async: 非同期版
 //! - get-stream/post-stream/request-stream: ストリーミング版
+//!
+//! このモジュールは `http-client` feature でコンパイルされます。
+
+#![cfg(feature = "http-client")]
 
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};

@@ -2,6 +2,8 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+
+#[cfg(feature = "std-math")]
 use rand::Rng;
 
 /// pow - べき乗
@@ -118,6 +120,7 @@ pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
 }
 
 /// rand - 0.0以上1.0未満の乱数
+#[cfg(feature = "std-math")]
 pub fn native_rand(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
         return Err(fmt_msg(MsgKey::Need0Args, &["rand"]));
@@ -128,6 +131,7 @@ pub fn native_rand(args: &[Value]) -> Result<Value, String> {
 }
 
 /// rand-int - 0以上n未満の整数乱数
+#[cfg(feature = "std-math")]
 pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["rand-int", "1", "(upper bound)"]));
@@ -146,6 +150,7 @@ pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
 }
 
 /// random-range - min以上max未満の整数乱数
+#[cfg(feature = "std-math")]
 pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["random-range", "2", "(min, max)"]));
@@ -164,6 +169,7 @@ pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
 }
 
 /// shuffle - リストをシャッフル
+#[cfg(feature = "std-math")]
 pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
     use rand::seq::SliceRandom;
 

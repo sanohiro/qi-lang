@@ -2,10 +2,10 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use chrono::Local;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::LazyLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// ログレベル
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -57,6 +57,58 @@ static LOG_CONFIG: LazyLock<RwLock<LogConfig>> = LazyLock::new(|| {
     })
 });
 
+/// Unix秒をISO8601風の文字列にフォーマット（簡易版）
+fn format_unix_timestamp(secs: u64, millis: u32) -> String {
+    // 簡易的な日時計算（うるう秒は考慮しない）
+    const SECS_PER_DAY: u64 = 86400;
+    const DAYS_IN_MONTH: [u64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+    let days_since_epoch = secs / SECS_PER_DAY;
+    let time_of_day = secs % SECS_PER_DAY;
+
+    let hours = time_of_day / 3600;
+    let minutes = (time_of_day % 3600) / 60;
+    let seconds = time_of_day % 60;
+
+    // 1970年からの年数計算（簡易版）
+    let mut year = 1970;
+    let mut remaining_days = days_since_epoch;
+
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if remaining_days < days_in_year {
+            break;
+        }
+        remaining_days -= days_in_year;
+        year += 1;
+    }
+
+    // 月と日の計算
+    let mut month = 1;
+    for &days_in_month in &DAYS_IN_MONTH {
+        let adjusted_days = if month == 2 && is_leap_year(year) {
+            days_in_month + 1
+        } else {
+            days_in_month
+        };
+
+        if remaining_days < adjusted_days {
+            break;
+        }
+        remaining_days -= adjusted_days;
+        month += 1;
+    }
+    let day = remaining_days + 1;
+
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
+        year, month, day, hours, minutes, seconds, millis)
+}
+
+/// うるう年判定
+fn is_leap_year(year: u64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
 /// ログ出力の内部実装
 fn log_internal(level: LogLevel, message: &str, context: Option<HashMap<String, Value>>) {
     let config = LOG_CONFIG.read();
@@ -66,7 +118,16 @@ fn log_internal(level: LogLevel, message: &str, context: Option<HashMap<String, 
         return;
     }
 
-    let timestamp = Local::now().format("%Y-%m-%dT%H:%M:%S%.3f%z");
+    // 標準ライブラリでタイムスタンプを生成（ISO8601風）
+    let timestamp = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => {
+            let secs = duration.as_secs();
+            let millis = duration.subsec_millis();
+            // 簡易的なISO8601フォーマット（UTC）
+            format!("{}+0000", format_unix_timestamp(secs, millis))
+        }
+        Err(_) => "1970-01-01T00:00:00.000+0000".to_string(),
+    };
 
     match config.format {
         LogFormat::Text => {

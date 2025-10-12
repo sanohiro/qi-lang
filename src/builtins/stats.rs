@@ -1,4 +1,8 @@
 //! 統計関数
+//!
+//! このモジュールは `std-stats` feature でコンパイルされます。
+
+#![cfg(feature = "std-stats")]
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;

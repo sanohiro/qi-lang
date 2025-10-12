@@ -2126,8 +2126,10 @@ impl Evaluator {
         paths.push(format!("./qi_packages/{}/mod.qi", name));
 
         // 2. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
-        if let Some(home) = dirs::home_dir() {
-            let packages_dir = home.join(".qi").join("packages").join(name);
+        #[cfg(feature = "repl")]
+        {
+            if let Some(home) = dirs::home_dir() {
+                let packages_dir = home.join(".qi").join("packages").join(name);
 
             // バージョンディレクトリを探す（最新版を使用）
             if let Ok(entries) = std::fs::read_dir(&packages_dir) {
@@ -2148,6 +2150,7 @@ impl Evaluator {
                 if let Some(latest) = versions.first() {
                     paths.push(packages_dir.join(latest).join("mod.qi").to_string_lossy().to_string());
                 }
+            }
             }
         }
 

@@ -1,4 +1,8 @@
 //! ZIP圧縮・解凍・gzip関数
+//!
+//! このモジュールは `util-zip` feature でコンパイルされます。
+
+#![cfg(feature = "util-zip")]
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;

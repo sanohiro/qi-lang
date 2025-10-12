@@ -4,6 +4,10 @@
 //! - 埋め込み型データベース
 //! - 外部依存なし
 //! - ACID準拠のトランザクション
+//!
+//! このモジュールは `db-sqlite` feature でコンパイルされます。
+
+#![cfg(feature = "db-sqlite")]
 
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};

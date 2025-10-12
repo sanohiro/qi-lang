@@ -7,6 +7,8 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Arc;
+
+#[cfg(feature = "encoding-extended")]
 use encoding_rs::{
     Encoding, UTF_8, UTF_16LE, UTF_16BE,
     SHIFT_JIS, EUC_JP, ISO_2022_JP,  // 日本語
@@ -20,6 +22,7 @@ use encoding_rs::{
 // ============================================
 
 /// エンコーディングを解決
+#[cfg(feature = "encoding-extended")]
 fn resolve_encoding(keyword: &str) -> Result<&'static Encoding, String> {
     match keyword {
         // Unicode
@@ -50,6 +53,7 @@ fn resolve_encoding(keyword: &str) -> Result<&'static Encoding, String> {
 }
 
 /// BOMをチェックして除去（エンコーディングも返す）
+#[cfg(feature = "encoding-extended")]
 fn strip_bom(bytes: &[u8]) -> (&[u8], Option<&'static Encoding>) {
     // UTF-8 BOM
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -67,6 +71,7 @@ fn strip_bom(bytes: &[u8]) -> (&[u8], Option<&'static Encoding>) {
 }
 
 /// バイト列をUTF-8文字列にデコード
+#[cfg(feature = "encoding-extended")]
 fn decode_bytes(bytes: &[u8], encoding: &'static Encoding, path: &str) -> Result<String, String> {
     let (decoded, _, had_errors) = encoding.decode(bytes);
     if had_errors {
@@ -77,6 +82,7 @@ fn decode_bytes(bytes: &[u8], encoding: &'static Encoding, path: &str) -> Result
 }
 
 /// 自動エンコーディング検出（ベストエフォート）
+#[cfg(feature = "encoding-extended")]
 fn auto_detect_encoding(bytes: &[u8], path: &str) -> Result<String, String> {
     // BOMチェック（UTF-8/UTF-16LE/UTF-16BE）
     let (bytes_without_bom, detected_encoding) = strip_bom(bytes);
@@ -122,6 +128,7 @@ fn auto_detect_encoding(bytes: &[u8], path: &str) -> Result<String, String> {
 }
 
 /// 文字列をバイト列にエンコード
+#[cfg(feature = "encoding-extended")]
 fn encode_string(content: &str, encoding: &'static Encoding, add_bom: bool) -> Vec<u8> {
     let mut result = Vec::new();
 
@@ -216,6 +223,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
         .map_err(|e| fmt_msg(MsgKey::IoFileError, &[path, &e.to_string()]))?;
 
     // エンコーディングに応じてデコード
+    #[cfg(feature = "encoding-extended")]
     let content = if encoding_keyword == "auto" {
         auto_detect_encoding(&bytes, path)?
     } else {
@@ -229,6 +237,16 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
             let encoding = resolve_encoding(encoding_keyword)?;
             decode_bytes(bytes_to_decode, encoding, path)?
         }
+    };
+
+    #[cfg(not(feature = "encoding-extended"))]
+    let content = {
+        // encoding-extendedがない場合はUTF-8のみサポート
+        if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" && encoding_keyword != "auto" {
+            return Err(format!("Encoding '{}' is not supported. Only UTF-8 is available in minimal build. Enable 'encoding-extended' feature for more encodings.", encoding_keyword));
+        }
+        String::from_utf8(bytes)
+            .map_err(|_| fmt_msg(MsgKey::IoFailedToDecodeUtf8, &[path]))?
     };
 
     Ok(Value::String(content))
@@ -319,9 +337,20 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
             }
             "append" => {
                 // 追記モード
-                let add_bom = encoding_keyword == "utf-8-bom";
-                let encoding = resolve_encoding(encoding_keyword)?;
-                let bytes = encode_string(content, encoding, add_bom);
+                #[cfg(feature = "encoding-extended")]
+                let bytes = {
+                    let add_bom = encoding_keyword == "utf-8-bom";
+                    let encoding = resolve_encoding(encoding_keyword)?;
+                    encode_string(content, encoding, add_bom)
+                };
+
+                #[cfg(not(feature = "encoding-extended"))]
+                let bytes = {
+                    if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
+                        return Err(format!("Encoding '{}' is not supported in minimal build", encoding_keyword));
+                    }
+                    content.as_bytes().to_vec()
+                };
 
                 let mut file = fs::OpenOptions::new()
                     .append(true)
@@ -343,9 +372,20 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     }
 
     // エンコードして書き込み
-    let add_bom = encoding_keyword == "utf-8-bom";
-    let encoding = resolve_encoding(encoding_keyword)?;
-    let bytes = encode_string(content, encoding, add_bom);
+    #[cfg(feature = "encoding-extended")]
+    let bytes = {
+        let add_bom = encoding_keyword == "utf-8-bom";
+        let encoding = resolve_encoding(encoding_keyword)?;
+        encode_string(content, encoding, add_bom)
+    };
+
+    #[cfg(not(feature = "encoding-extended"))]
+    let bytes = {
+        if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
+            return Err(format!("Encoding '{}' is not supported in minimal build", encoding_keyword));
+        }
+        content.as_bytes().to_vec()
+    };
 
     fs::write(path, bytes)
         .map_err(|e| fmt_msg(MsgKey::IoFailedToWrite, &[path, &e.to_string()]))?;

@@ -5610,3 +5610,178 @@ triple
 - **TAB**: 補完
 
 ---
+
+## ビルド構成 - Feature Flags
+
+Qiは**条件付きコンパイル（Feature Flags）**により、用途に応じて必要な機能だけを含めたビルドが可能です。これにより、組み込み環境やWASMなど制約の厳しい環境でも動作します。
+
+### ビルドプリセット
+
+#### `default` - フル機能（デフォルト）
+
+全機能を含むビルド。開発や一般的な用途に最適。
+
+```bash
+cargo build
+# または
+cargo build --features default
+```
+
+**含まれる機能**:
+- ✅ データベース（SQLite）
+- ✅ Web通信（HTTPクライアント・サーバー）
+- ✅ データフォーマット（JSON、CSV）
+- ✅ 文字列処理（エンコーディング、暗号化）
+- ✅ ファイル・I/O（glob、一時ファイル、ZIP）
+- ✅ 標準ライブラリ拡張（時刻、数学、統計、集合）
+- ✅ REPL・開発ツール
+
+#### `minimal` - 最小構成
+
+最小限の依存関係でビルド。組み込み環境やWASM向け。
+
+```bash
+cargo build --no-default-features --features minimal
+```
+
+**含まれる機能**:
+- ✅ 基本ファイル操作（glob）
+- ✅ コア関数（リスト、マップ、文字列基本）
+- ✅ 並行・並列処理
+- ✅ パイプライン・パターンマッチング
+
+**除外される機能**:
+- ❌ データベース（SQLite等）
+- ❌ HTTP通信
+- ❌ JSON（`parse-json`, `to-json`）
+- ❌ 多重エンコーディング（UTF-8のみ）
+- ❌ 時刻処理（`time/*`）
+- ❌ 乱数生成（`math/rand*`、`math/shuffle`）
+- ❌ 統計・集合関数
+- ❌ ZIP圧縮、一時ファイル
+- ❌ REPL
+
+#### プリセット構成
+
+特定用途に最適化されたプリセット：
+
+```bash
+# Webサーバー構成
+cargo build --no-default-features --features web-server
+
+# CLIツール構成
+cargo build --no-default-features --features cli-tool
+
+# データ処理構成
+cargo build --no-default-features --features data-processing
+```
+
+| プリセット | 含まれる機能 |
+|-----------|-------------|
+| `web-server` | HTTPサーバー、JSON、SQLite |
+| `cli-tool` | REPL、JSON、glob、ZIP |
+| `data-processing` | SQLite、JSON、CSV |
+
+### 個別機能フラグ
+
+カスタムビルドには個別のfeatureフラグを組み合わせます：
+
+```bash
+# HTTPクライアントとJSONのみ
+cargo build --no-default-features --features http-client,format-json
+
+# データベースと統計のみ
+cargo build --no-default-features --features db-sqlite,std-stats
+```
+
+#### データベース
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `db-sqlite` | `db/connect`, `db/query`, `db/exec`, `db/close` 等（17関数） | rusqlite |
+
+#### Web通信
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `http-client` | `http-get`, `http-post`, `http-put`, `http-delete` | reqwest |
+| `http-server` | `server/start`, `server/stop`, `server/on` 等（15関数） | hyper, tokio |
+
+#### データフォーマット
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `format-json` | `parse-json`, `to-json` | serde_json |
+| `format-csv` | `csv/read`, `csv/write` | Pure Rust実装 |
+
+#### 文字列処理
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `string-encoding` | `to-base64`, `from-base64`, `url-encode`, `url-decode`, `html-escape`, `html-unescape` | base64, urlencoding, html-escape |
+| `string-crypto` | `hash`, `uuid` | sha2, uuid |
+| `encoding-extended` | 多重エンコーディング対応（`read-file`/`write-file`でShift_JIS、EUC-JP等） | encoding_rs |
+
+**注**: `encoding-extended`を無効にすると、`read-file`/`write-file`はUTF-8のみ対応になります。
+
+#### ファイル・I/O
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `io-glob` | `list-dir`でglobパターン | glob |
+| `io-temp` | `temp/file`, `temp/dir` | tempfile |
+| `util-zip` | `zip/create`, `zip/extract`, `gzip`, `gunzip` | zip, flate2 |
+
+#### 標準ライブラリ拡張
+
+| Feature | 関数 | 依存クレート |
+|---------|------|-------------|
+| `std-time` | `time/now`, `time/parse`, `time/format` 等（17関数） | chrono |
+| `std-math` | `math/rand`, `math/rand-int`, `math/random-range`, `math/shuffle` | rand |
+| `std-stats` | `stats/mean`, `stats/median`, `stats/stddev` 等（6関数） | Pure Rust実装 |
+| `std-set` | `set/union`, `set/intersect`, `set/diff` 等（7関数） | Pure Rust実装 |
+
+#### 開発支援
+
+| Feature | 内容 | 依存クレート |
+|---------|------|-------------|
+| `repl` | インタラクティブREPL | rustyline, dirs |
+| `dev-tools` | プロファイラー（`profile/start`, `profile/stop`, `profile/report`） | Pure Rust実装 |
+
+### ビルドサイズ比較
+
+参考値（Release ビルド、macOS arm64）:
+
+| 構成 | バイナリサイズ | 備考 |
+|------|--------------|------|
+| `default` | 〜15MB | 全機能含む |
+| `minimal` | 〜3MB | 組み込み・WASM向け |
+| `web-server` | 〜8MB | Webアプリ向け |
+| `cli-tool` | 〜5MB | CLIツール向け |
+
+### 機能チェック
+
+プログラム内で機能の有無を確認したい場合：
+
+```lisp
+;; 実行時にエラーで判断
+(try
+  (parse-json "{\"key\": \"value\"}")
+  (fn [err] (println "JSON feature not available")))
+
+;; 関数の存在チェック
+(if (fn? parse-json)
+  (parse-json data)
+  (println "JSON not supported"))
+```
+
+### 設計思想
+
+Qiの条件付きコンパイルは以下の原則に基づいています：
+
+1. **Pure Rust優先** - C/C++依存のクレートは避け、クロスコンパイルを容易に
+2. **段階的導入** - 必要な機能から順に有効化
+3. **明確なエラー** - 無効な機能を呼ぶと分かりやすいエラーメッセージ
+4. **スレッドセーフ** - 全てのビルド構成でスレッドセーフを保証
+
+---

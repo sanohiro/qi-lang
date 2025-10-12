@@ -1,4 +1,8 @@
 //! 日時処理関数
+//!
+//! このモジュールは `std-time` feature でコンパイルされます。
+
+#![cfg(feature = "std-time")]
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;

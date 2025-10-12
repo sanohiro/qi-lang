@@ -51,6 +51,11 @@ pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Nil)
 }
 
+// ========================================
+// JSON関連関数（feature-gated）
+// ========================================
+
+#[cfg(feature = "format-json")]
 /// json-parse - JSON文字列をパース
 pub fn native_json_parse(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -68,6 +73,7 @@ pub fn native_json_parse(args: &[Value]) -> Result<Value, String> {
     json_to_value(&json_value)
 }
 
+#[cfg(feature = "format-json")]
 /// json-stringify - 値をJSON文字列化
 pub fn native_json_stringify(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -81,6 +87,7 @@ pub fn native_json_stringify(args: &[Value]) -> Result<Value, String> {
     Ok(Value::String(json_str))
 }
 
+#[cfg(feature = "format-json")]
 /// json-pretty - 値を整形されたJSON文字列化
 pub fn native_json_pretty(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -94,6 +101,7 @@ pub fn native_json_pretty(args: &[Value]) -> Result<Value, String> {
     Ok(Value::String(json_str))
 }
 
+#[cfg(feature = "format-json")]
 // JSON変換ヘルパー
 fn json_to_value(json: &serde_json::Value) -> Result<Value, String> {
     match json {
@@ -123,6 +131,7 @@ fn json_to_value(json: &serde_json::Value) -> Result<Value, String> {
     }
 }
 
+#[cfg(feature = "format-json")]
 fn value_to_json(value: &Value) -> Result<serde_json::Value, String> {
     match value {
         Value::Nil => Ok(serde_json::Value::Null),

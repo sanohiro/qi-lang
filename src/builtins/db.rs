@@ -340,6 +340,7 @@ pub fn params_from_value(params: &Value) -> DbResult<Vec<Value>> {
 // Qi Builtin関数
 // ========================================
 
+#[cfg(feature = "db-sqlite")]
 use super::sqlite::SqliteDriver;
 use crate::i18n::fmt_msg;
 use crate::i18n::MsgKey;
@@ -383,7 +384,14 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
 
     // URLからドライバーを判定
     let driver: Box<dyn DbDriver> = if url.starts_with("sqlite:") {
-        Box::new(SqliteDriver::new())
+        #[cfg(feature = "db-sqlite")]
+        {
+            Box::new(SqliteDriver::new())
+        }
+        #[cfg(not(feature = "db-sqlite"))]
+        {
+            return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &["sqlite (feature not enabled)"]));
+        }
     } else {
         return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &[url]));
     };

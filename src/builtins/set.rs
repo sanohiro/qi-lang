@@ -1,4 +1,8 @@
 //! 集合演算関数
+//!
+//! このモジュールは `std-set` feature でコンパイルされます。
+
+#![cfg(feature = "std-set")]
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;

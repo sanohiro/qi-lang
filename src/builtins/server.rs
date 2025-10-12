@@ -6,6 +6,10 @@
 //! - router: ルーティング定義
 //! - with-logging/with-cors/with-json-body: ミドルウェア
 //! - static-file/static-dir: 静的ファイル配信
+//!
+//! このモジュールは `http-server` feature でコンパイルされます。
+
+#![cfg(feature = "http-server")]
 
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};

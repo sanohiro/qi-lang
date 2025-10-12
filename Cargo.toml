@@ -53,23 +53,23 @@ default = [
 ]
 
 # プリセット構成
-minimal       = []  # 最小構成（組み込み・WASM用）
-web-server    = ["http-server", "format-json", "db-sqlite"]
+minimal       = ["io-glob"]  # 最小構成（組み込み・WASM用）+ 基本的なファイル操作
+web-server    = ["http-server", "format-json", "db-sqlite", "io-glob"]  # list-dirのためio-globが必要
 cli-tool      = ["repl", "format-json", "io-glob", "util-zip"]
-data-processing = ["db-sqlite", "format-json", "format-csv"]
+data-processing = ["db-sqlite", "format-json", "format-csv", "io-glob"]  # list-dirのためio-globが必要
 
 # C依存含むフル機能（将来用）
 # full = ["default", "db-odbc", "db-duckdb"]
 
 # 個別機能フラグ
-db-sqlite = ["dep:rusqlite"]
+db-sqlite = ["dep:rusqlite", "string-encoding"]  # BLOBデータのbase64エンコードにstring-encodingが必要
 # db-postgres = ["dep:tokio-postgres", "dep:postgres-types"]  # TODO: Phase 4
 # db-mysql = ["dep:mysql_async"]  # TODO: Phase 4
 # db-odbc = ["dep:odbc-api"]  # Optional, C依存
 # db-duckdb = ["dep:duckdb"]  # Optional, C++依存、サイズ巨大
 
-http-client = ["dep:reqwest"]
-http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio"]
+http-client = ["dep:reqwest", "format-json", "string-encoding", "util-zip"]  # JSON、base64、gzip圧縮が必要
+http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio", "format-json", "string-encoding", "util-zip"]  # JSON、URL/base64、gzip圧縮が必要
 
 format-json = ["dep:serde_json"]
 format-csv = []  # Pure Rust自前実装
@@ -110,7 +110,7 @@ rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 # odbc-api = { version = "8.1", optional = true }  # Optional, C依存
 
 reqwest = { version = "0.12", features = ["json", "blocking", "gzip", "deflate", "brotli"], optional = true }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"], optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "net"], optional = true }
 hyper = { version = "1", features = ["server", "http1", "http2"], optional = true }
 hyper-util = { version = "0.1", features = ["tokio"], optional = true }
 http-body-util = { version = "0.1", optional = true }

@@ -55,32 +55,57 @@ pub mod core_concurrency;
 
 // 専門モジュール
 pub mod hof;
+
+#[cfg(feature = "http-client")]
 pub mod http;
+
 pub mod io;
+
+#[cfg(feature = "format-json")]
 pub mod json;
 pub mod list;
 pub mod map;
 pub mod math;
 pub mod path;
+
+#[cfg(feature = "std-set")]
 pub mod set;
+
+#[cfg(feature = "std-stats")]
 pub mod stats;
+
 pub mod stream;
 pub mod string;
+
+#[cfg(feature = "std-time")]
 pub mod time;
+
 pub mod concurrency;
 pub mod util;
 pub mod csv;
 pub mod flow;
 pub mod env;
 pub mod log;
+
+#[cfg(feature = "util-zip")]
 pub mod zip;
+
 pub mod args;
+
+#[cfg(feature = "io-temp")]
 pub mod temp;
+
 pub mod test;
 pub mod profile;
 pub mod ds;
+
+#[cfg(feature = "db-sqlite")]
 pub mod db;
+
+#[cfg(feature = "db-sqlite")]
 pub mod sqlite;
+
+#[cfg(feature = "http-server")]
 pub mod server;
 
 use crate::eval::Evaluator;
@@ -266,18 +291,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "fn/tap>" => hof::native_tap,
 
         // ========================================
-        // 専門モジュール: set（7個）
-        // ========================================
-        "set/union" => set::native_union,
-        "set/intersect" => set::native_intersect,
-        "set/difference" => set::native_difference,
-        "set/subset?" => set::native_subset,
-        "set/superset?" => set::native_superset,
-        "set/disjoint?" => set::native_disjoint,
-        "set/symmetric-difference" => set::native_symmetric_difference,
-
-        // ========================================
-        // 専門モジュール: math（10個）
+        // 専門モジュール: math（6個 + 4個）
         // ========================================
         "math/pow" => math::native_pow,
         "math/sqrt" => math::native_sqrt,
@@ -285,49 +299,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "math/floor" => math::native_floor,
         "math/ceil" => math::native_ceil,
         "math/clamp" => math::native_clamp,
-        "math/rand" => math::native_rand,
-        "math/rand-int" => math::native_rand_int,
-        "math/random-range" => math::native_random_range,
-        "math/shuffle" => math::native_shuffle,
-
-        // ========================================
-        // 専門モジュール: time（25個）
-        // ========================================
-        "time/now-iso" => time::native_now_iso,
-        "time/today" => time::native_today,
-        "time/from-unix" => time::native_from_unix,
-        "time/to-unix" => time::native_to_unix,
-        "time/format" => time::native_format,
-        "time/parse" => time::native_parse,
-        "time/add-days" => time::native_add_days,
-        "time/add-hours" => time::native_add_hours,
-        "time/add-minutes" => time::native_add_minutes,
-        "time/sub-days" => time::native_sub_days,
-        "time/sub-hours" => time::native_sub_hours,
-        "time/sub-minutes" => time::native_sub_minutes,
-        "time/diff-days" => time::native_diff_days,
-        "time/diff-hours" => time::native_diff_hours,
-        "time/diff-minutes" => time::native_diff_minutes,
-        "time/before?" => time::native_before,
-        "time/after?" => time::native_after,
-        "time/between?" => time::native_between,
-        "time/year" => time::native_year,
-        "time/month" => time::native_month,
-        "time/day" => time::native_day,
-        "time/hour" => time::native_hour,
-        "time/minute" => time::native_minute,
-        "time/second" => time::native_second,
-        "time/weekday" => time::native_weekday,
-
-        // ========================================
-        // 専門モジュール: stats（6個）
-        // ========================================
-        "stats/mean" => stats::native_mean,
-        "stats/median" => stats::native_median,
-        "stats/mode" => stats::native_mode,
-        "stats/variance" => stats::native_variance,
-        "stats/stddev" => stats::native_stddev,
-        "stats/percentile" => stats::native_percentile,
 
         // ========================================
         // 専門モジュール: csv（5個）
@@ -389,30 +360,12 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "log/set-format" => log::native_log_set_format,
 
         // ========================================
-        // 専門モジュール: zip（6個）
-        // ========================================
-        "zip/create" => zip::native_zip_create,
-        "zip/extract" => zip::native_zip_extract,
-        "zip/list" => zip::native_zip_list,
-        "zip/add" => zip::native_zip_add,
-        "zip/gzip" => zip::native_gzip,
-        "zip/gunzip" => zip::native_gunzip,
-
-        // ========================================
         // 専門モジュール: args（4個）
         // ========================================
         "args/all" => args::native_args_all,
         "args/get" => args::native_args_get,
         "args/parse" => args::native_args_parse,
         "args/count" => args::native_args_count,
-
-        // ========================================
-        // 専門モジュール: temp（4個）
-        // ========================================
-        "io/temp-file" => temp::native_temp_file,
-        "io/temp-file-keep" => temp::native_temp_file_keep,
-        "io/temp-dir" => temp::native_temp_dir,
-        "io/temp-dir-keep" => temp::native_temp_dir_keep,
 
         // ========================================
         // 専門モジュール: test（5個）
@@ -455,72 +408,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         // 専門モジュール: dbg（2個）
         // ========================================
         "dbg/inspect" => util::native_inspect,
-
-        // ========================================
-        // 専門モジュール: json（3個）
-        // ========================================
-        "json/parse" => json::native_parse,
-        "json/stringify" => json::native_stringify,
-        "json/pretty" => json::native_pretty,
-
-        // ========================================
-        // 専門モジュール: http（11個）- HTTPクライアント
-        // ========================================
-        "http/get" => http::native_get,
-        "http/post" => http::native_post,
-        "http/put" => http::native_put,
-        "http/delete" => http::native_delete,
-        "http/patch" => http::native_patch,
-        "http/head" => http::native_head,
-        "http/options" => http::native_options,
-        "http/request" => http::native_request,
-        "http/get-stream" => http::native_get_stream,
-        "http/post-stream" => http::native_post_stream,
-        "http/request-stream" => http::native_request_stream,
-
-        // ========================================
-        // 専門モジュール: server（11個）- HTTPサーバー
-        // ========================================
-        "server/serve" => server::native_server_serve,
-        "server/router" => server::native_server_router,
-        "server/ok" => server::native_server_ok,
-        "server/json" => server::native_server_json,
-        "server/not-found" => server::native_server_not_found,
-        "server/no-content" => server::native_server_no_content,
-        // サーバーミドルウェア
-        "server/with-logging" => server::native_server_with_logging,
-        "server/with-cors" => server::native_server_with_cors,
-        "server/with-json-body" => server::native_server_with_json_body,
-        "server/with-compression" => server::native_server_with_compression,
-        "server/with-basic-auth" => server::native_server_with_basic_auth,
-        "server/with-bearer" => server::native_server_with_bearer,
-        "server/with-no-cache" => server::native_server_with_no_cache,
-        "server/with-cache-control" => server::native_server_with_cache_control,
-        // サーバー静的ファイル配信
-        "server/static-file" => server::native_server_static_file,
-        "server/static-dir" => server::native_server_static_dir,
-
-        // ========================================
-        // 専門モジュール: db（17個）
-        // ========================================
-        "db/connect" => db::native_connect,
-        "db/query" => db::native_query,
-        "db/query-one" => db::native_query_one,
-        "db/exec" => db::native_exec,
-        "db/close" => db::native_close,
-        "db/sanitize" => db::native_sanitize,
-        "db/sanitize-identifier" => db::native_sanitize_identifier,
-        "db/escape-like" => db::native_escape_like,
-        "db/begin" => db::native_begin,
-        "db/commit" => db::native_commit,
-        "db/rollback" => db::native_rollback,
-        "db/tables" => db::native_tables,
-        "db/columns" => db::native_columns,
-        "db/indexes" => db::native_indexes,
-        "db/foreign-keys" => db::native_foreign_keys,
-        "db/call" => db::native_call,
-        "db/supports?" => db::native_supports,
-        "db/driver-info" => db::native_driver_info,
 
         // ========================================
         // 専門モジュール: stream（11個）
@@ -592,14 +479,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "str/parse-float" => string::native_parse_float,
         "str/slugify" => string::native_slugify,
         "str/word-count" => string::native_word_count,
-        "str/to-base64" => string::native_to_base64,
-        "str/from-base64" => string::native_from_base64,
-        "str/url-encode" => string::native_url_encode,
-        "str/url-decode" => string::native_url_decode,
-        "str/html-encode" => string::native_html_encode,
-        "str/html-decode" => string::native_html_decode,
-        "str/hash" => string::native_hash,
-        "str/uuid" => string::native_uuid,
         "str/re-find" => string::native_re_find,
         "str/re-matches" => string::native_re_matches,
         "str/re-replace" => string::native_re_replace,
@@ -620,6 +499,178 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "async/race" => concurrency::native_race,
         "pipeline/fan-out" => concurrency::native_fan_out,
         "pipeline/fan-in" => concurrency::native_fan_in,
+    );
+
+    // ========================================
+    // Feature-gated modules
+    // ========================================
+
+    // 乱数関数（4個）
+    #[cfg(feature = "std-math")]
+    register_native!(env.write(),
+        "math/rand" => math::native_rand,
+        "math/rand-int" => math::native_rand_int,
+        "math/random-range" => math::native_random_range,
+        "math/shuffle" => math::native_shuffle,
+    );
+
+    // JSON処理（3個）
+    #[cfg(feature = "format-json")]
+    register_native!(env.write(),
+        "json/parse" => json::native_parse,
+        "json/stringify" => json::native_stringify,
+        "json/pretty" => json::native_pretty,
+    );
+
+    // HTTPクライアント（11個）
+    #[cfg(feature = "http-client")]
+    register_native!(env.write(),
+        "http/get" => http::native_get,
+        "http/post" => http::native_post,
+        "http/put" => http::native_put,
+        "http/delete" => http::native_delete,
+        "http/patch" => http::native_patch,
+        "http/head" => http::native_head,
+        "http/options" => http::native_options,
+        "http/request" => http::native_request,
+        "http/get-stream" => http::native_get_stream,
+        "http/post-stream" => http::native_post_stream,
+        "http/request-stream" => http::native_request_stream,
+    );
+
+    // HTTPサーバー（16個）
+    #[cfg(feature = "http-server")]
+    register_native!(env.write(),
+        "server/serve" => server::native_server_serve,
+        "server/router" => server::native_server_router,
+        "server/ok" => server::native_server_ok,
+        "server/json" => server::native_server_json,
+        "server/not-found" => server::native_server_not_found,
+        "server/no-content" => server::native_server_no_content,
+        "server/with-logging" => server::native_server_with_logging,
+        "server/with-cors" => server::native_server_with_cors,
+        "server/with-json-body" => server::native_server_with_json_body,
+        "server/with-compression" => server::native_server_with_compression,
+        "server/with-basic-auth" => server::native_server_with_basic_auth,
+        "server/with-bearer" => server::native_server_with_bearer,
+        "server/with-no-cache" => server::native_server_with_no_cache,
+        "server/with-cache-control" => server::native_server_with_cache_control,
+        "server/static-file" => server::native_server_static_file,
+        "server/static-dir" => server::native_server_static_dir,
+    );
+
+    // 集合演算（7個）
+    #[cfg(feature = "std-set")]
+    register_native!(env.write(),
+        "set/union" => set::native_union,
+        "set/intersect" => set::native_intersect,
+        "set/difference" => set::native_difference,
+        "set/subset?" => set::native_subset,
+        "set/superset?" => set::native_superset,
+        "set/disjoint?" => set::native_disjoint,
+        "set/symmetric-difference" => set::native_symmetric_difference,
+    );
+
+    // 統計関数（6個）
+    #[cfg(feature = "std-stats")]
+    register_native!(env.write(),
+        "stats/mean" => stats::native_mean,
+        "stats/median" => stats::native_median,
+        "stats/mode" => stats::native_mode,
+        "stats/variance" => stats::native_variance,
+        "stats/stddev" => stats::native_stddev,
+        "stats/percentile" => stats::native_percentile,
+    );
+
+    // 日時処理（25個）
+    #[cfg(feature = "std-time")]
+    register_native!(env.write(),
+        "time/now-iso" => time::native_now_iso,
+        "time/today" => time::native_today,
+        "time/from-unix" => time::native_from_unix,
+        "time/to-unix" => time::native_to_unix,
+        "time/format" => time::native_format,
+        "time/parse" => time::native_parse,
+        "time/add-days" => time::native_add_days,
+        "time/add-hours" => time::native_add_hours,
+        "time/add-minutes" => time::native_add_minutes,
+        "time/sub-days" => time::native_sub_days,
+        "time/sub-hours" => time::native_sub_hours,
+        "time/sub-minutes" => time::native_sub_minutes,
+        "time/diff-days" => time::native_diff_days,
+        "time/diff-hours" => time::native_diff_hours,
+        "time/diff-minutes" => time::native_diff_minutes,
+        "time/before?" => time::native_before,
+        "time/after?" => time::native_after,
+        "time/between?" => time::native_between,
+        "time/year" => time::native_year,
+        "time/month" => time::native_month,
+        "time/day" => time::native_day,
+        "time/hour" => time::native_hour,
+        "time/minute" => time::native_minute,
+        "time/second" => time::native_second,
+        "time/weekday" => time::native_weekday,
+    );
+
+    // ZIP圧縮（6個）
+    #[cfg(feature = "util-zip")]
+    register_native!(env.write(),
+        "zip/create" => zip::native_zip_create,
+        "zip/extract" => zip::native_zip_extract,
+        "zip/list" => zip::native_zip_list,
+        "zip/add" => zip::native_zip_add,
+        "zip/gzip" => zip::native_gzip,
+        "zip/gunzip" => zip::native_gunzip,
+    );
+
+    // 一時ファイル（4個）
+    #[cfg(feature = "io-temp")]
+    register_native!(env.write(),
+        "io/temp-file" => temp::native_temp_file,
+        "io/temp-file-keep" => temp::native_temp_file_keep,
+        "io/temp-dir" => temp::native_temp_dir,
+        "io/temp-dir-keep" => temp::native_temp_dir_keep,
+    );
+
+    // データベース（17個）
+    #[cfg(feature = "db-sqlite")]
+    register_native!(env.write(),
+        "db/connect" => db::native_connect,
+        "db/query" => db::native_query,
+        "db/query-one" => db::native_query_one,
+        "db/exec" => db::native_exec,
+        "db/close" => db::native_close,
+        "db/sanitize" => db::native_sanitize,
+        "db/sanitize-identifier" => db::native_sanitize_identifier,
+        "db/escape-like" => db::native_escape_like,
+        "db/begin" => db::native_begin,
+        "db/commit" => db::native_commit,
+        "db/rollback" => db::native_rollback,
+        "db/tables" => db::native_tables,
+        "db/columns" => db::native_columns,
+        "db/indexes" => db::native_indexes,
+        "db/foreign-keys" => db::native_foreign_keys,
+        "db/call" => db::native_call,
+        "db/supports?" => db::native_supports,
+        "db/driver-info" => db::native_driver_info,
+    );
+
+    // 文字列エンコーディング（6個）
+    #[cfg(feature = "string-encoding")]
+    register_native!(env.write(),
+        "str/to-base64" => string::native_to_base64,
+        "str/from-base64" => string::native_from_base64,
+        "str/url-encode" => string::native_url_encode,
+        "str/url-decode" => string::native_url_decode,
+        "str/html-encode" => string::native_html_encode,
+        "str/html-decode" => string::native_html_decode,
+    );
+
+    // 文字列暗号化/ユーティリティ（2個）
+    #[cfg(feature = "string-crypto")]
+    register_native!(env.write(),
+        "str/hash" => string::native_hash,
+        "str/uuid" => string::native_uuid,
     );
 }
 
@@ -832,10 +883,12 @@ pub fn stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
     stream::native_stream_filter(args, evaluator)
 }
 
+#[cfg(feature = "http-client")]
 pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_get_async(args, evaluator)
 }
 
+#[cfg(feature = "http-client")]
 pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     http::native_post_async(args, evaluator)
 }
