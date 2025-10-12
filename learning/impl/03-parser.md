@@ -208,7 +208,7 @@ fn parse_primary(&mut self) -> Result<Expr, String> {
 
 ```mermaid
 flowchart TD
-    LParen["`(` 検出"] --> Empty{空リスト?}
+    LParen["左括弧検出"] --> Empty{空リスト?}
     Empty -->|Yes| EmptyList["Expr::List([])"]
     Empty -->|No| CheckFirst[先頭シンボルチェック]
 
