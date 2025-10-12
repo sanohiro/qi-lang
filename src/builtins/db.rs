@@ -340,7 +340,6 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/query", &args.len().to_string()]));
     }
 
-    let conn_id = extract_conn_id(&args[0])?;
     let sql = match &args[1] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/query", "string"])),
@@ -358,12 +357,21 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
         QueryOptions::default()
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
-
-    let rows = conn.query(sql, &params, &opts)
-        .map_err(|e| e.message)?;
+    // 接続かトランザクションかを判別
+    let rows = match extract_conn_or_tx(&args[0])? {
+        ConnOrTx::Conn(conn_id) => {
+            let connections = CONNECTIONS.lock();
+            let conn = connections.get(&conn_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+            conn.query(sql, &params, &opts).map_err(|e| e.message)?
+        }
+        ConnOrTx::Tx(tx_id) => {
+            let transactions = TRANSACTIONS.lock();
+            let tx = transactions.get(&tx_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
+            tx.query(sql, &params, &opts).map_err(|e| e.message)?
+        }
+    };
 
     Ok(rows_to_value(rows))
 }
@@ -408,7 +416,6 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/exec", &args.len().to_string()]));
     }
 
-    let conn_id = extract_conn_id(&args[0])?;
     let sql = match &args[1] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/exec", "string"])),
@@ -426,12 +433,21 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
         QueryOptions::default()
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
-
-    let affected = conn.exec(sql, &params, &opts)
-        .map_err(|e| e.message)?;
+    // 接続かトランザクションかを判別
+    let affected = match extract_conn_or_tx(&args[0])? {
+        ConnOrTx::Conn(conn_id) => {
+            let connections = CONNECTIONS.lock();
+            let conn = connections.get(&conn_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+            conn.exec(sql, &params, &opts).map_err(|e| e.message)?
+        }
+        ConnOrTx::Tx(tx_id) => {
+            let transactions = TRANSACTIONS.lock();
+            let tx = transactions.get(&tx_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
+            tx.exec(sql, &params, &opts).map_err(|e| e.message)?
+        }
+    };
 
     Ok(Value::Integer(affected))
 }
@@ -517,6 +533,25 @@ fn extract_conn_id(value: &Value) -> Result<String, String> {
             Ok(s.strip_prefix("DbConnection:").unwrap().to_string())
         }
         _ => Err(fmt_msg(MsgKey::DbExpectedConnection, &[&format!("{:?}", value)])),
+    }
+}
+
+/// 接続またはトランザクションを判別
+enum ConnOrTx {
+    Conn(String),
+    Tx(String),
+}
+
+/// 接続IDまたはトランザクションIDを抽出
+fn extract_conn_or_tx(value: &Value) -> Result<ConnOrTx, String> {
+    match value {
+        Value::String(s) if s.starts_with("DbConnection:") => {
+            Ok(ConnOrTx::Conn(s.strip_prefix("DbConnection:").unwrap().to_string()))
+        }
+        Value::String(s) if s.starts_with("DbTransaction:") => {
+            Ok(ConnOrTx::Tx(s.strip_prefix("DbTransaction:").unwrap().to_string()))
+        }
+        _ => Err(fmt_msg(MsgKey::DbExpectedConnectionOrTransaction, &[&format!("{:?}", value)])),
     }
 }
 

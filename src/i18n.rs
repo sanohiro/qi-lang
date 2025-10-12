@@ -308,6 +308,7 @@ pub enum MsgKey {
     DbConnectionNotFound,        // Connection not found: {0}
     DbExpectedTransaction,       // Expected DbTransaction, got: {0}
     DbTransactionNotFound,       // Transaction not found: {0}
+    DbExpectedConnectionOrTransaction,  // Expected DbConnection or DbTransaction, got: {0}
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs,          // {0}: failed to decode as {1} (invalid byte sequence)
@@ -679,6 +680,7 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::DbConnectionNotFound), "Connection not found: {0}");
         messages.insert((Lang::En, MsgKey::DbExpectedTransaction), "Expected DbTransaction, got: {0}");
         messages.insert((Lang::En, MsgKey::DbTransactionNotFound), "Transaction not found: {0}");
+        messages.insert((Lang::En, MsgKey::DbExpectedConnectionOrTransaction), "Expected DbConnection or DbTransaction, got: {0}");
 
         // 英語メッセージ - I/O（追加）
         messages.insert((Lang::En, MsgKey::IoFailedToDecodeAs), "{0}: failed to decode as {1} (invalid byte sequence)");
@@ -948,6 +950,7 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::DbConnectionNotFound), "接続が見つかりません: {0}");
         messages.insert((Lang::Ja, MsgKey::DbExpectedTransaction), "DbTransactionが期待されましたが、実際: {0}");
         messages.insert((Lang::Ja, MsgKey::DbTransactionNotFound), "トランザクションが見つかりません: {0}");
+        messages.insert((Lang::Ja, MsgKey::DbExpectedConnectionOrTransaction), "DbConnectionまたはDbTransactionが期待されましたが、実際: {0}");
 
         // 日本語メッセージ - I/O（追加）
         messages.insert((Lang::Ja, MsgKey::IoFailedToDecodeAs), "{0}: {1}としてデコードできませんでした (無効なバイト列)");
