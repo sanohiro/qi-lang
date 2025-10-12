@@ -1,0 +1,61 @@
+;; Standard Library Documentation (English)
+;; Path Manipulation Functions
+
+;; Path Operations
+(def __doc__path/join
+  {:desc "Join path components"
+   :params [{:name "& parts" :type "string" :desc "Path parts to join"}]
+   :returns {:type "string" :desc "Joined path"}
+   :examples ["(path/join \"home\" \"user\" \"file.txt\") ;=> \"home/user/file.txt\""]})
+
+(def __doc__path/dirname
+  {:desc "Get directory name of path"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "string" :desc "Directory name"}
+   :examples ["(path/dirname \"home/user/file.txt\") ;=> \"home/user\""]})
+
+(def __doc__path/basename
+  {:desc "Get base name of path (file name with extension)"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "string" :desc "Base name"}
+   :examples ["(path/basename \"home/user/file.txt\") ;=> \"file.txt\""]})
+
+(def __doc__path/stem
+  {:desc "Get file name without extension"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "string" :desc "File stem"}
+   :examples ["(path/stem \"home/user/file.txt\") ;=> \"file\""]})
+
+(def __doc__path/extension
+  {:desc "Get file extension"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "string" :desc "File extension (with dot)"}
+   :examples ["(path/extension \"file.txt\") ;=> \".txt\""]})
+
+;; Path Normalization
+(def __doc__path/normalize
+  {:desc "Normalize path (resolve . and ..)"
+   :params [{:name "path" :type "string" :desc "Path to normalize"}]
+   :returns {:type "string" :desc "Normalized path"}
+   :examples ["(path/normalize \"home/./user/../file.txt\") ;=> \"home/file.txt\""]})
+
+(def __doc__path/absolute
+  {:desc "Convert to absolute path"
+   :params [{:name "path" :type "string" :desc "Relative or absolute path"}]
+   :returns {:type "string" :desc "Absolute path"}
+   :examples ["(path/absolute \"file.txt\")"]})
+
+;; Path Testing
+(def __doc__path/is-absolute?
+  {:desc "Check if path is absolute"
+   :params [{:name "path" :type "string" :desc "Path to check"}]
+   :returns {:type "boolean" :desc "true if absolute"}
+   :examples ["(path/is-absolute? \"/home/user\") ;=> true"
+              "(path/is-absolute? \"user/file.txt\") ;=> false"]})
+
+(def __doc__path/is-relative?
+  {:desc "Check if path is relative"
+   :params [{:name "path" :type "string" :desc "Path to check"}]
+   :returns {:type "boolean" :desc "true if relative"}
+   :examples ["(path/is-relative? \"user/file.txt\") ;=> true"
+              "(path/is-relative? \"/home/user\") ;=> false"]})

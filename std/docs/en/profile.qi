@@ -1,0 +1,24 @@
+;; Standard Library Documentation (English)
+;; Performance Profiling Functions
+
+;; Profiling Control
+(def __doc__profile/start
+  {:desc "Start profiling function execution times"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/start)"]})
+
+(def __doc__profile/stop
+  {:desc "Stop profiling"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/stop)"]})
+
+(def __doc__profile/clear
+  {:desc "Clear profiling data"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/clear)"]})
+
+;; Profiling Reports
+(def __doc__profile/report
+  {:desc "Generate profiling report"
+   :returns {:type "string" :desc "Formatted profiling report"}
+   :examples ["(profile/report)"]})

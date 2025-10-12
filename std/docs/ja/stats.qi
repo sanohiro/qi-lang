@@ -1,0 +1,44 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 統計関数
+
+;; 中心傾向
+(def __doc__stats/mean
+  {:desc "算術平均（平均値）を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
+   :returns {:type "number" :desc "平均値"}
+   :examples ["(stats/mean [1 2 3 4 5]) ;=> 3.0"]})
+
+(def __doc__stats/median
+  {:desc "中央値を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
+   :returns {:type "number" :desc "中央値"}
+   :examples ["(stats/median [1 2 3 4 5]) ;=> 3"
+              "(stats/median [1 2 3 4]) ;=> 2.5"]})
+
+(def __doc__stats/mode
+  {:desc "最頻値（最も頻繁に出現する値）を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
+   :returns {:type "any" :desc "最頻値"}
+   :examples ["(stats/mode [1 2 2 3 3 3 4]) ;=> 3"]})
+
+;; 散らばり
+(def __doc__stats/variance
+  {:desc "分散を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
+   :returns {:type "number" :desc "分散"}
+   :examples ["(stats/variance [1 2 3 4 5]) ;=> 2.5"]})
+
+(def __doc__stats/stddev
+  {:desc "標準偏差を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
+   :returns {:type "number" :desc "標準偏差"}
+   :examples ["(stats/stddev [1 2 3 4 5]) ;=> 1.581..."]})
+
+;; パーセンタイル
+(def __doc__stats/percentile
+  {:desc "パーセンタイル値を計算する"
+   :params [{:name "nums" :type "collection" :desc "数のコレクション"}
+            {:name "p" :type "number" :desc "パーセンタイル（0-100）"}]
+   :returns {:type "number" :desc "パーセンタイル値"}
+   :examples ["(stats/percentile [1 2 3 4 5] 50) ;=> 3"
+              "(stats/percentile [1 2 3 4 5] 95) ;=> 5"]})

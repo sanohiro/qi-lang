@@ -1,0 +1,75 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 数学関数
+
+;; 丸め関数
+(def __doc__math/floor
+  {:desc "最も近い整数に切り下げる"
+   :params [{:name "n" :type "number" :desc "丸める数"}]
+   :returns {:type "number" :desc "切り下げた値"}
+   :examples ["(math/floor 3.7) ;=> 3"
+              "(math/floor -2.3) ;=> -3"]})
+
+(def __doc__math/ceil
+  {:desc "最も近い整数に切り上げる"
+   :params [{:name "n" :type "number" :desc "丸める数"}]
+   :returns {:type "number" :desc "切り上げた値"}
+   :examples ["(math/ceil 3.2) ;=> 4"
+              "(math/ceil -2.8) ;=> -2"]})
+
+(def __doc__math/round
+  {:desc "最も近い整数に四捨五入する"
+   :params [{:name "n" :type "number" :desc "丸める数"}]
+   :returns {:type "number" :desc "四捨五入した値"}
+   :examples ["(math/round 3.4) ;=> 3"
+              "(math/round 3.6) ;=> 4"]})
+
+;; 数学演算
+(def __doc__math/sqrt
+  {:desc "平方根を計算する"
+   :params [{:name "n" :type "number" :desc "数（非負でなければならない）"}]
+   :returns {:type "number" :desc "平方根"}
+   :examples ["(math/sqrt 16) ;=> 4.0"
+              "(math/sqrt 2) ;=> 1.414..."]})
+
+(def __doc__math/pow
+  {:desc "累乗を計算する"
+   :params [{:name "base" :type "number" :desc "底"}
+            {:name "exp" :type "number" :desc "指数"}]
+   :returns {:type "number" :desc "base^expの結果"}
+   :examples ["(math/pow 2 3) ;=> 8"
+              "(math/pow 10 -2) ;=> 0.01"]})
+
+(def __doc__math/clamp
+  {:desc "数を最小値と最大値の間にクランプする"
+   :params [{:name "n" :type "number" :desc "クランプする数"}
+            {:name "min" :type "number" :desc "最小値"}
+            {:name "max" :type "number" :desc "最大値"}]
+   :returns {:type "number" :desc "クランプされた値"}
+   :examples ["(math/clamp 5 0 10) ;=> 5"
+              "(math/clamp -5 0 10) ;=> 0"
+              "(math/clamp 15 0 10) ;=> 10"]})
+
+;; 乱数関数
+(def __doc__math/rand
+  {:desc "0.0から1.0の間のランダムな浮動小数点数を生成する"
+   :returns {:type "number" :desc "乱数"}
+   :examples ["(math/rand) ;=> 0.742..."]})
+
+(def __doc__math/rand-int
+  {:desc "0からn-1の間のランダムな整数を生成する"
+   :params [{:name "n" :type "number" :desc "上限（この値は含まれない）"}]
+   :returns {:type "number" :desc "ランダムな整数"}
+   :examples ["(math/rand-int 10) ;=> 7"]})
+
+(def __doc__math/random-range
+  {:desc "[min, max)の範囲のランダムな数を生成する"
+   :params [{:name "min" :type "number" :desc "最小値（含む）"}
+            {:name "max" :type "number" :desc "最大値（含まない）"}]
+   :returns {:type "number" :desc "範囲内のランダムな数"}
+   :examples ["(math/random-range 10 20) ;=> 15.342..."]})
+
+(def __doc__math/shuffle
+  {:desc "コレクションをランダムにシャッフルする"
+   :params [{:name "coll" :type "collection" :desc "シャッフルするコレクション"}]
+   :returns {:type "list" :desc "シャッフルされたリスト"}
+   :examples ["(math/shuffle [1 2 3 4 5])"]})

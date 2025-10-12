@@ -1,0 +1,75 @@
+;; Standard Library Documentation (English)
+;; Math Functions
+
+;; Rounding Functions
+(def __doc__math/floor
+  {:desc "Round down to nearest integer"
+   :params [{:name "n" :type "number" :desc "Number to round"}]
+   :returns {:type "number" :desc "Floored value"}
+   :examples ["(math/floor 3.7) ;=> 3"
+              "(math/floor -2.3) ;=> -3"]})
+
+(def __doc__math/ceil
+  {:desc "Round up to nearest integer"
+   :params [{:name "n" :type "number" :desc "Number to round"}]
+   :returns {:type "number" :desc "Ceiled value"}
+   :examples ["(math/ceil 3.2) ;=> 4"
+              "(math/ceil -2.8) ;=> -2"]})
+
+(def __doc__math/round
+  {:desc "Round to nearest integer"
+   :params [{:name "n" :type "number" :desc "Number to round"}]
+   :returns {:type "number" :desc "Rounded value"}
+   :examples ["(math/round 3.4) ;=> 3"
+              "(math/round 3.6) ;=> 4"]})
+
+;; Mathematical Operations
+(def __doc__math/sqrt
+  {:desc "Calculate square root"
+   :params [{:name "n" :type "number" :desc "Number (must be non-negative)"}]
+   :returns {:type "number" :desc "Square root"}
+   :examples ["(math/sqrt 16) ;=> 4.0"
+              "(math/sqrt 2) ;=> 1.414..."]})
+
+(def __doc__math/pow
+  {:desc "Raise number to power"
+   :params [{:name "base" :type "number" :desc "Base number"}
+            {:name "exp" :type "number" :desc "Exponent"}]
+   :returns {:type "number" :desc "Result of base^exp"}
+   :examples ["(math/pow 2 3) ;=> 8"
+              "(math/pow 10 -2) ;=> 0.01"]})
+
+(def __doc__math/clamp
+  {:desc "Clamp number between min and max"
+   :params [{:name "n" :type "number" :desc "Number to clamp"}
+            {:name "min" :type "number" :desc "Minimum value"}
+            {:name "max" :type "number" :desc "Maximum value"}]
+   :returns {:type "number" :desc "Clamped value"}
+   :examples ["(math/clamp 5 0 10) ;=> 5"
+              "(math/clamp -5 0 10) ;=> 0"
+              "(math/clamp 15 0 10) ;=> 10"]})
+
+;; Random Functions
+(def __doc__math/rand
+  {:desc "Generate random float between 0.0 and 1.0"
+   :returns {:type "number" :desc "Random number"}
+   :examples ["(math/rand) ;=> 0.742..."]})
+
+(def __doc__math/rand-int
+  {:desc "Generate random integer between 0 and n-1"
+   :params [{:name "n" :type "number" :desc "Upper bound (exclusive)"}]
+   :returns {:type "number" :desc "Random integer"}
+   :examples ["(math/rand-int 10) ;=> 7"]})
+
+(def __doc__math/random-range
+  {:desc "Generate random number in range [min, max)"
+   :params [{:name "min" :type "number" :desc "Minimum value (inclusive)"}
+            {:name "max" :type "number" :desc "Maximum value (exclusive)"}]
+   :returns {:type "number" :desc "Random number in range"}
+   :examples ["(math/random-range 10 20) ;=> 15.342..."]})
+
+(def __doc__math/shuffle
+  {:desc "Randomly shuffle collection"
+   :params [{:name "coll" :type "collection" :desc "Collection to shuffle"}]
+   :returns {:type "list" :desc "Shuffled list"}
+   :examples ["(math/shuffle [1 2 3 4 5])"]})

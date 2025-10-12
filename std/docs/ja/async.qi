@@ -1,0 +1,45 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 非同期プログラミング関数
+
+;; 非同期コア関数
+(def __doc__async/make-scope
+  {:desc "並行タスクを管理するための新しい非同期スコープを作成する"
+   :returns {:type "scope" :desc "新しい非同期スコープ"}
+   :examples ["(async/make-scope) ;=> <scope>"]})
+
+(def __doc__async/await
+  {:desc "非同期タスクの完了を待ち、その結果を返す"
+   :params [{:name "task" :type "async-task" :desc "待機するタスク"}]
+   :returns {:type "any" :desc "タスクの結果"}
+   :examples ["(async/await task) ;=> 42"]})
+
+(def __doc__async/cancel!
+  {:desc "実行中の非同期タスクをキャンセルする"
+   :params [{:name "task" :type "async-task" :desc "キャンセルするタスク"}]
+   :returns {:type "boolean" :desc "キャンセルされた場合true"}
+   :examples ["(async/cancel! task) ;=> true"]})
+
+(def __doc__async/cancelled?
+  {:desc "タスクがキャンセルされたかチェックする"
+   :params [{:name "task" :type "async-task" :desc "チェックするタスク"}]
+   :returns {:type "boolean" :desc "キャンセルされていた場合true"}
+   :examples ["(async/cancelled? task) ;=> false"]})
+
+;; 非同期コンビネータ
+(def __doc__async/all
+  {:desc "すべてのタスクの完了を待つ"
+   :params [{:name "& tasks" :type "async-task" :desc "待機するタスク"}]
+   :returns {:type "list" :desc "すべての結果のリスト"}
+   :examples ["(async/all task1 task2 task3) ;=> [1 2 3]"]})
+
+(def __doc__async/race
+  {:desc "最初に完了したタスクを待つ"
+   :params [{:name "& tasks" :type "async-task" :desc "競争させるタスク"}]
+   :returns {:type "any" :desc "最初に完了したタスクの結果"}
+   :examples ["(async/race task1 task2) ;=> <first-result>"]})
+
+(def __doc__async/try-recv!
+  {:desc "ブロックせずに非同期チャネルから値を受信しようと試みる"
+   :params [{:name "channel" :type "channel" :desc "受信するチャネル"}]
+   :returns {:type "any" :desc "受信した値、またはnil"}
+   :examples ["(async/try-recv! ch) ;=> 42"]})

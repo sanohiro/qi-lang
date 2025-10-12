@@ -1,0 +1,69 @@
+;; 標準ライブラリドキュメント (日本語)
+;; コマンド実行関数
+
+;; 基本実行
+(def __doc__cmd/sh
+  {:desc "シェルコマンドを実行して出力を返す"
+   :params [{:name "command" :type "string" :desc "実行するシェルコマンド"}]
+   :returns {:type "string" :desc "コマンド出力"}
+   :examples ["(cmd/sh \"ls -la\")"]})
+
+(def __doc__cmd/exec
+  {:desc "引数付きコマンドを実行する"
+   :params [{:name "program" :type "string" :desc "実行するプログラム"}
+            {:name "& args" :type "string" :desc "コマンド引数"}]
+   :returns {:type "string" :desc "コマンド出力"}
+   :examples ["(cmd/exec \"git\" \"status\")"]})
+
+;; インタラクティブコマンド
+(def __doc__cmd/interactive
+  {:desc "インタラクティブコマンドを実行する（stdioを継承）"
+   :params [{:name "program" :type "string" :desc "実行するプログラム"}
+            {:name "& args" :type "string" :desc "コマンド引数"}]
+   :returns {:type "number" :desc "終了コード"}
+   :examples ["(cmd/interactive \"vim\" \"file.txt\")"]})
+
+;; プロセス管理
+(def __doc__cmd/pipe
+  {:desc "コマンドパイプラインを作成する"
+   :params [{:name "& commands" :type "list" :desc "パイプするコマンド"}]
+   :returns {:type "string" :desc "パイプライン出力"}
+   :examples ["(cmd/pipe [\"cat\" \"data.txt\"] [\"grep\" \"error\"])"]})
+
+(def __doc__cmd/wait
+  {:desc "プロセスの完了を待つ"
+   :params [{:name "process" :type "process" :desc "待機するプロセス"}]
+   :returns {:type "number" :desc "終了コード"}
+   :examples ["(cmd/wait proc)"]})
+
+(def __doc__cmd/write
+  {:desc "プロセスの標準入力に書き込む"
+   :params [{:name "process" :type "process" :desc "書き込むプロセス"}
+            {:name "data" :type "string" :desc "書き込むデータ"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(cmd/write proc \"input\\n\")"]})
+
+;; ストリームベース実行
+(def __doc__cmd/stream-lines
+  {:desc "コマンドを実行して出力を行ごとにストリームする"
+   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
+   :returns {:type "stream" :desc "行のストリーム"}
+   :examples ["(cmd/stream-lines \"tail -f log.txt\")"]})
+
+(def __doc__cmd/stream-bytes
+  {:desc "コマンドを実行して出力をバイトとしてストリームする"
+   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
+   :returns {:type "stream" :desc "バイトのストリーム"}
+   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+
+(def __doc__cmd/lines
+  {:desc "コマンドを実行して行を返す"
+   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
+   :returns {:type "list" :desc "出力行のリスト"}
+   :examples ["(cmd/lines \"ls -1\")"]})
+
+(def __doc__cmd/read-line
+  {:desc "プロセスの標準出力から1行読み込む"
+   :params [{:name "process" :type "process" :desc "読み込むプロセス"}]
+   :returns {:type "string" :desc "出力行、またはnil"}
+   :examples ["(cmd/read-line proc)"]})

@@ -1,0 +1,39 @@
+;; 標準ライブラリドキュメント (日本語)
+;; テスト関数
+
+;; テストアサーション
+(def __doc__test/assert
+  {:desc "式が真であることをアサートする"
+   :params [{:name "expr" :type "any" :desc "テストする式"}
+            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
+   :returns {:type "boolean" :desc "通過した場合true"}
+   :examples ["(test/assert (= 1 1) \"等しいはず\")"
+              "(test/assert (> 5 3))"]})
+
+(def __doc__test/assert-eq
+  {:desc "2つの値が等しいことをアサートする"
+   :params [{:name "expected" :type "any" :desc "期待される値"}
+            {:name "actual" :type "any" :desc "実際の値"}
+            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
+   :returns {:type "boolean" :desc "等しい場合true"}
+   :examples ["(test/assert-eq 42 (+ 40 2))"
+              "(test/assert-eq \"hello\" (str \"hel\" \"lo\"))"]})
+
+(def __doc__test/assert-not
+  {:desc "式が偽であることをアサートする"
+   :params [{:name "expr" :type "any" :desc "テストする式"}
+            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
+   :returns {:type "boolean" :desc "通過した場合true"}
+   :examples ["(test/assert-not (= 1 2))"
+              "(test/assert-not nil)"]})
+
+;; テスト管理
+(def __doc__test/run-all
+  {:desc "登録されたすべてのテストを実行する"
+   :returns {:type "map" :desc "テスト結果のサマリー"}
+   :examples ["(test/run-all)"]})
+
+(def __doc__test/clear
+  {:desc "登録されたすべてのテストをクリアする"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(test/clear)"]})

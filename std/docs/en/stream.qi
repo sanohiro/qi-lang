@@ -1,0 +1,55 @@
+;; Standard Library Documentation (English)
+;; Stream Processing Functions
+
+;; Stream Creation
+(def __doc__stream/stream
+  {:desc "Create stream from collection"
+   :params [{:name "coll" :type "collection" :desc "Collection to stream"}]
+   :returns {:type "stream" :desc "Stream"}
+   :examples ["(stream/stream [1 2 3 4 5])"]})
+
+(def __doc__stream/range
+  {:desc "Create stream of numbers in range"
+   :params [{:name "start" :type "number" :desc "Start value"}
+            {:name "end" :type "number" :desc "End value (exclusive)"}]
+   :returns {:type "stream" :desc "Stream of numbers"}
+   :examples ["(stream/range 1 10)"]})
+
+(def __doc__stream/repeat
+  {:desc "Create infinite stream of repeated value"
+   :params [{:name "value" :type "any" :desc "Value to repeat"}]
+   :returns {:type "stream" :desc "Infinite stream"}
+   :examples ["(stream/repeat 42)"]})
+
+(def __doc__stream/cycle
+  {:desc "Create infinite stream cycling through collection"
+   :params [{:name "coll" :type "collection" :desc "Collection to cycle"}]
+   :returns {:type "stream" :desc "Infinite stream"}
+   :examples ["(stream/cycle [1 2 3])"]})
+
+(def __doc__stream/file
+  {:desc "Create stream from file lines"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "stream" :desc "Stream of lines"}
+   :examples ["(stream/file \"data.txt\")"]})
+
+;; Stream Operations
+(def __doc__stream/take
+  {:desc "Take first n elements from stream"
+   :params [{:name "n" :type "number" :desc "Number of elements"}
+            {:name "stream" :type "stream" :desc "Input stream"}]
+   :returns {:type "list" :desc "List of n elements"}
+   :examples ["(stream/take 5 (stream/range 1 100))"]})
+
+(def __doc__stream/drop
+  {:desc "Drop first n elements from stream"
+   :params [{:name "n" :type "number" :desc "Number of elements to drop"}
+            {:name "stream" :type "stream" :desc "Input stream"}]
+   :returns {:type "stream" :desc "Stream with elements dropped"}
+   :examples ["(stream/drop 10 (stream/range 1 100))"]})
+
+(def __doc__stream/realize
+  {:desc "Realize entire stream into list"
+   :params [{:name "stream" :type "stream" :desc "Stream to realize"}]
+   :returns {:type "list" :desc "List of all stream elements"}
+   :examples ["(stream/realize (stream/range 1 6))"]})

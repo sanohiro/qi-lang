@@ -1,0 +1,135 @@
+;; Standard Library Documentation (English)
+;; Database Functions
+
+;; Database Connection
+(def __doc__db/connect
+  {:desc "Connect to database"
+   :params [{:name "url" :type "string" :desc "Database connection URL"}]
+   :returns {:type "connection" :desc "Database connection"}
+   :examples ["(db/connect \"sqlite://data.db\")"
+              "(db/connect \"postgres://localhost/mydb\")"]})
+
+(def __doc__db/close
+  {:desc "Close database connection"
+   :params [{:name "conn" :type "connection" :desc "Connection to close"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/close conn)"]})
+
+(def __doc__db/driver-info
+  {:desc "Get database driver information"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}]
+   :returns {:type "map" :desc "Driver info map"}
+   :examples ["(db/driver-info conn)"]})
+
+;; Query Execution
+(def __doc__db/query
+  {:desc "Execute SQL query and return all rows"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "sql" :type "string" :desc "SQL query"}
+            {:name "& params" :type "any" :desc "Query parameters"}]
+   :returns {:type "list" :desc "List of row maps"}
+   :examples ["(db/query conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+
+(def __doc__db/query-one
+  {:desc "Execute SQL query and return single row"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "sql" :type "string" :desc "SQL query"}
+            {:name "& params" :type "any" :desc "Query parameters"}]
+   :returns {:type "map" :desc "Single row map or nil"}
+   :examples ["(db/query-one conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+
+(def __doc__db/exec
+  {:desc "Execute SQL statement (INSERT, UPDATE, DELETE)"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "sql" :type "string" :desc "SQL statement"}
+            {:name "& params" :type "any" :desc "Statement parameters"}]
+   :returns {:type "number" :desc "Number of affected rows"}
+   :examples ["(db/exec conn \"INSERT INTO users (name) VALUES (?)\" \"Alice\")"]})
+
+(def __doc__db/call
+  {:desc "Call stored procedure or function"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "proc" :type "string" :desc "Procedure name"}
+            {:name "& args" :type "any" :desc "Procedure arguments"}]
+   :returns {:type "any" :desc "Procedure result"}
+   :examples ["(db/call conn \"get_user_count\")"]})
+
+;; Transaction Management
+(def __doc__db/begin
+  {:desc "Begin database transaction"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}]
+   :returns {:type "transaction" :desc "Transaction object"}
+   :examples ["(db/begin conn)"]})
+
+(def __doc__db/commit
+  {:desc "Commit transaction"
+   :params [{:name "tx" :type "transaction" :desc "Transaction to commit"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/commit tx)"]})
+
+(def __doc__db/rollback
+  {:desc "Rollback transaction"
+   :params [{:name "tx" :type "transaction" :desc "Transaction to rollback"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/rollback tx)"]})
+
+;; Schema Introspection
+(def __doc__db/tables
+  {:desc "List all tables in database"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}]
+   :returns {:type "list" :desc "List of table names"}
+   :examples ["(db/tables conn) ;=> [\"users\" \"posts\"]"]})
+
+(def __doc__db/columns
+  {:desc "List columns of a table"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "list" :desc "List of column info maps"}
+   :examples ["(db/columns conn \"users\")"]})
+
+(def __doc__db/indexes
+  {:desc "List indexes of a table"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "list" :desc "List of index info maps"}
+   :examples ["(db/indexes conn \"users\")"]})
+
+(def __doc__db/foreign-keys
+  {:desc "List foreign keys of a table"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "list" :desc "List of foreign key info maps"}
+   :examples ["(db/foreign-keys conn \"posts\")"]})
+
+;; Security and Utilities
+(def __doc__db/sanitize
+  {:desc "Sanitize SQL value to prevent injection"
+   :params [{:name "value" :type "any" :desc "Value to sanitize"}]
+   :returns {:type "string" :desc "Sanitized value"}
+   :examples ["(db/sanitize \"user's input\")"]})
+
+(def __doc__db/sanitize-identifier
+  {:desc "Sanitize SQL identifier (table/column name)"
+   :params [{:name "name" :type "string" :desc "Identifier to sanitize"}]
+   :returns {:type "string" :desc "Sanitized identifier"}
+   :examples ["(db/sanitize-identifier \"table_name\")"]})
+
+(def __doc__db/escape-like
+  {:desc "Escape LIKE pattern special characters"
+   :params [{:name "pattern" :type "string" :desc "LIKE pattern"}]
+   :returns {:type "string" :desc "Escaped pattern"}
+   :examples ["(db/escape-like \"50%\") ;=> \"50\\%\""]})
+
+(def __doc__db/supports?
+  {:desc "Check if database supports a feature"
+   :params [{:name "conn" :type "connection" :desc "Database connection"}
+            {:name "feature" :type "keyword" :desc "Feature to check"}]
+   :returns {:type "boolean" :desc "true if supported"}
+   :examples ["(db/supports? conn :transactions)"]})
+
+;; Debug Function
+(def __doc__dbg/inspect
+  {:desc "Inspect and print value for debugging"
+   :params [{:name "value" :type "any" :desc "Value to inspect"}]
+   :returns {:type "any" :desc "Returns the value unchanged"}
+   :examples ["(dbg/inspect {:a 1 :b 2})"]})

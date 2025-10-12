@@ -1,0 +1,69 @@
+;; Standard Library Documentation (English)
+;; Command Execution Functions
+
+;; Basic Execution
+(def __doc__cmd/sh
+  {:desc "Execute shell command and return output"
+   :params [{:name "command" :type "string" :desc "Shell command to execute"}]
+   :returns {:type "string" :desc "Command output"}
+   :examples ["(cmd/sh \"ls -la\")"]})
+
+(def __doc__cmd/exec
+  {:desc "Execute command with arguments"
+   :params [{:name "program" :type "string" :desc "Program to execute"}
+            {:name "& args" :type "string" :desc "Command arguments"}]
+   :returns {:type "string" :desc "Command output"}
+   :examples ["(cmd/exec \"git\" \"status\")"]})
+
+;; Interactive Commands
+(def __doc__cmd/interactive
+  {:desc "Run interactive command (inherits stdio)"
+   :params [{:name "program" :type "string" :desc "Program to execute"}
+            {:name "& args" :type "string" :desc "Command arguments"}]
+   :returns {:type "number" :desc "Exit code"}
+   :examples ["(cmd/interactive \"vim\" \"file.txt\")"]})
+
+;; Process Management
+(def __doc__cmd/pipe
+  {:desc "Create command pipeline"
+   :params [{:name "& commands" :type "list" :desc "Commands to pipe"}]
+   :returns {:type "string" :desc "Pipeline output"}
+   :examples ["(cmd/pipe [\"cat\" \"data.txt\"] [\"grep\" \"error\"])"]})
+
+(def __doc__cmd/wait
+  {:desc "Wait for process to complete"
+   :params [{:name "process" :type "process" :desc "Process to wait for"}]
+   :returns {:type "number" :desc "Exit code"}
+   :examples ["(cmd/wait proc)"]})
+
+(def __doc__cmd/write
+  {:desc "Write to process stdin"
+   :params [{:name "process" :type "process" :desc "Process to write to"}
+            {:name "data" :type "string" :desc "Data to write"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(cmd/write proc \"input\\n\")"]})
+
+;; Stream-based Execution
+(def __doc__cmd/stream-lines
+  {:desc "Execute command and stream output line by line"
+   :params [{:name "command" :type "string" :desc "Command to execute"}]
+   :returns {:type "stream" :desc "Stream of lines"}
+   :examples ["(cmd/stream-lines \"tail -f log.txt\")"]})
+
+(def __doc__cmd/stream-bytes
+  {:desc "Execute command and stream output as bytes"
+   :params [{:name "command" :type "string" :desc "Command to execute"}]
+   :returns {:type "stream" :desc "Stream of bytes"}
+   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+
+(def __doc__cmd/lines
+  {:desc "Execute command and return lines"
+   :params [{:name "command" :type "string" :desc "Command to execute"}]
+   :returns {:type "list" :desc "List of output lines"}
+   :examples ["(cmd/lines \"ls -1\")"]})
+
+(def __doc__cmd/read-line
+  {:desc "Read single line from process stdout"
+   :params [{:name "process" :type "process" :desc "Process to read from"}]
+   :returns {:type "string" :desc "Output line or nil"}
+   :examples ["(cmd/read-line proc)"]})

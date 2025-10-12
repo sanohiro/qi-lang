@@ -1,0 +1,44 @@
+;; Standard Library Documentation (English)
+;; Statistics Functions
+
+;; Central Tendency
+(def __doc__stats/mean
+  {:desc "Calculate arithmetic mean (average)"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}]
+   :returns {:type "number" :desc "Mean value"}
+   :examples ["(stats/mean [1 2 3 4 5]) ;=> 3.0"]})
+
+(def __doc__stats/median
+  {:desc "Calculate median (middle value)"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}]
+   :returns {:type "number" :desc "Median value"}
+   :examples ["(stats/median [1 2 3 4 5]) ;=> 3"
+              "(stats/median [1 2 3 4]) ;=> 2.5"]})
+
+(def __doc__stats/mode
+  {:desc "Calculate mode (most frequent value)"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}]
+   :returns {:type "any" :desc "Most frequent value"}
+   :examples ["(stats/mode [1 2 2 3 3 3 4]) ;=> 3"]})
+
+;; Dispersion
+(def __doc__stats/variance
+  {:desc "Calculate variance"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}]
+   :returns {:type "number" :desc "Variance"}
+   :examples ["(stats/variance [1 2 3 4 5]) ;=> 2.5"]})
+
+(def __doc__stats/stddev
+  {:desc "Calculate standard deviation"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}]
+   :returns {:type "number" :desc "Standard deviation"}
+   :examples ["(stats/stddev [1 2 3 4 5]) ;=> 1.581..."]})
+
+;; Percentiles
+(def __doc__stats/percentile
+  {:desc "Calculate percentile value"
+   :params [{:name "nums" :type "collection" :desc "Collection of numbers"}
+            {:name "p" :type "number" :desc "Percentile (0-100)"}]
+   :returns {:type "number" :desc "Percentile value"}
+   :examples ["(stats/percentile [1 2 3 4 5] 50) ;=> 3"
+              "(stats/percentile [1 2 3 4 5] 95) ;=> 5"]})

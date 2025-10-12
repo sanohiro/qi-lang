@@ -1,0 +1,123 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 入出力関数
+
+;; ファイル読み込み
+(def __doc__io/read-file
+  {:desc "ファイル全体を文字列として読み込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "string" :desc "ファイル内容"}
+   :examples ["(io/read-file \"data.txt\")"]})
+
+(def __doc__io/read-lines
+  {:desc "ファイルを行のリストとして読み込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "list" :desc "行のリスト"}
+   :examples ["(io/read-lines \"data.txt\")"]})
+
+;; ファイル書き込み
+(def __doc__io/write-file
+  {:desc "文字列をファイルに書き込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "content" :type "string" :desc "書き込む内容"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/write-file \"output.txt\" \"Hello\")"]})
+
+(def __doc__io/append-file
+  {:desc "文字列をファイルに追記する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "content" :type "string" :desc "追記する内容"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/append-file \"log.txt\" \"New entry\\n\")"]})
+
+(def __doc__io/write-stream
+  {:desc "ストリームをファイルに書き込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "stream" :type "stream" :desc "書き込むストリーム"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/write-stream \"output.txt\" stream)"]})
+
+;; ファイル操作
+(def __doc__io/copy-file
+  {:desc "ファイルを宛先にコピーする"
+   :params [{:name "src" :type "string" :desc "ソースパス"}
+            {:name "dest" :type "string" :desc "宛先パス"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/copy-file \"a.txt\" \"b.txt\")"]})
+
+(def __doc__io/move-file
+  {:desc "ファイルを移動/名前変更する"
+   :params [{:name "src" :type "string" :desc "ソースパス"}
+            {:name "dest" :type "string" :desc "宛先パス"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/move-file \"old.txt\" \"new.txt\")"]})
+
+(def __doc__io/delete-file
+  {:desc "ファイルを削除する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/delete-file \"temp.txt\")"]})
+
+;; ディレクトリ操作
+(def __doc__io/create-dir
+  {:desc "ディレクトリを作成する（必要に応じて親ディレクトリも作成）"
+   :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/create-dir \"data/cache\")"]})
+
+(def __doc__io/list-dir
+  {:desc "ディレクトリの内容をリストする"
+   :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
+   :returns {:type "list" :desc "ファイル/ディレクトリ名のリスト"}
+   :examples ["(io/list-dir \".\")"]})
+
+(def __doc__io/delete-dir
+  {:desc "ディレクトリを削除する（空である必要がある）"
+   :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(io/delete-dir \"temp\")"]})
+
+;; ファイル/ディレクトリチェック
+(def __doc__io/file-exists?
+  {:desc "ファイルまたはディレクトリが存在するかチェックする"
+   :params [{:name "path" :type "string" :desc "チェックするパス"}]
+   :returns {:type "boolean" :desc "存在する場合true"}
+   :examples ["(io/file-exists? \"data.txt\")"]})
+
+(def __doc__io/is-file?
+  {:desc "パスがファイルかチェックする"
+   :params [{:name "path" :type "string" :desc "チェックするパス"}]
+   :returns {:type "boolean" :desc "ファイルの場合true"}
+   :examples ["(io/is-file? \"data.txt\")"]})
+
+(def __doc__io/is-dir?
+  {:desc "パスがディレクトリかチェックする"
+   :params [{:name "path" :type "string" :desc "チェックするパス"}]
+   :returns {:type "boolean" :desc "ディレクトリの場合true"}
+   :examples ["(io/is-dir? \"data\")"]})
+
+(def __doc__io/file-info
+  {:desc "ファイルのメタデータを取得する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "map" :desc "ファイル情報マップ（size, modifiedなど）"}
+   :examples ["(io/file-info \"data.txt\")"]})
+
+;; 一時ファイル
+(def __doc__io/temp-file
+  {:desc "一時ファイルを作成する（自動削除）"
+   :returns {:type "string" :desc "一時ファイルパス"}
+   :examples ["(io/temp-file)"]})
+
+(def __doc__io/temp-file-keep
+  {:desc "一時ファイルを作成する（自動削除されない）"
+   :returns {:type "string" :desc "一時ファイルパス"}
+   :examples ["(io/temp-file-keep)"]})
+
+(def __doc__io/temp-dir
+  {:desc "一時ディレクトリを作成する（自動削除）"
+   :returns {:type "string" :desc "一時ディレクトリパス"}
+   :examples ["(io/temp-dir)"]})
+
+(def __doc__io/temp-dir-keep
+  {:desc "一時ディレクトリを作成する（自動削除されない）"
+   :returns {:type "string" :desc "一時ディレクトリパス"}
+   :examples ["(io/temp-dir-keep)"]})

@@ -1,0 +1,183 @@
+;; 標準ライブラリドキュメント (日本語)
+;; 時間関数
+
+;; 現在時刻
+(def __doc__timestamp
+  {:desc "現在のUnixタイムスタンプ（ミリ秒）を取得する"
+   :returns {:type "number" :desc "現在のタイムスタンプ"}
+   :examples ["(timestamp) ;=> 1704067200000"]})
+
+(def __doc__time/now-iso
+  {:desc "現在時刻をISO 8601文字列として取得する"
+   :returns {:type "string" :desc "ISO 8601タイムスタンプ"}
+   :examples ["(time/now-iso) ;=> \"2024-01-01T00:00:00Z\""]})
+
+(def __doc__time/today
+  {:desc "今日の日付を文字列として取得する"
+   :returns {:type "string" :desc "今日の日付"}
+   :examples ["(time/today) ;=> \"2024-01-01\""]})
+
+;; 時間のパースとフォーマット
+(def __doc__time/parse
+  {:desc "時間文字列をタイムスタンプにパースする"
+   :params [{:name "s" :type "string" :desc "時間文字列"}]
+   :returns {:type "number" :desc "タイムスタンプ"}
+   :examples ["(time/parse \"2024-01-01T00:00:00Z\") ;=> 1704067200000"]})
+
+(def __doc__time/format
+  {:desc "タイムスタンプを文字列としてフォーマットする"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "format" :type "string" :desc "フォーマット文字列"}]
+   :returns {:type "string" :desc "フォーマット済み時間文字列"}
+   :examples ["(time/format 1704067200000 \"%Y-%m-%d\") ;=> \"2024-01-01\""]})
+
+;; Unix時間変換
+(def __doc__time/to-unix
+  {:desc "時間をUnixタイムスタンプ（秒）に変換する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ（ミリ秒）"}]
+   :returns {:type "number" :desc "Unixタイムスタンプ（秒）"}
+   :examples ["(time/to-unix 1704067200000) ;=> 1704067200"]})
+
+(def __doc__time/from-unix
+  {:desc "UnixタイムスタンプをミリData変換する"
+   :params [{:name "unix" :type "number" :desc "Unixタイムスタンプ（秒）"}]
+   :returns {:type "number" :desc "タイムスタンプ（ミリ秒）"}
+   :examples ["(time/from-unix 1704067200) ;=> 1704067200000"]})
+
+;; 時間コンポーネント
+(def __doc__time/year
+  {:desc "タイムスタンプから年を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "年"}
+   :examples ["(time/year 1704067200000) ;=> 2024"]})
+
+(def __doc__time/month
+  {:desc "タイムスタンプから月を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "月（1-12）"}
+   :examples ["(time/month 1704067200000) ;=> 1"]})
+
+(def __doc__time/day
+  {:desc "タイムスタンプから日を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "日（1-31）"}
+   :examples ["(time/day 1704067200000) ;=> 1"]})
+
+(def __doc__time/hour
+  {:desc "タイムスタンプから時を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "時（0-23）"}
+   :examples ["(time/hour 1704067200000) ;=> 0"]})
+
+(def __doc__time/minute
+  {:desc "タイムスタンプから分を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "分（0-59）"}
+   :examples ["(time/minute 1704067200000) ;=> 0"]})
+
+(def __doc__time/second
+  {:desc "タイムスタンプから秒を抽出する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "秒（0-59）"}
+   :examples ["(time/second 1704067200000) ;=> 0"]})
+
+(def __doc__time/weekday
+  {:desc "タイムスタンプから曜日を取得する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
+   :returns {:type "number" :desc "曜日（0=日曜、6=土曜）"}
+   :examples ["(time/weekday 1704067200000) ;=> 1"]})
+
+;; 時間演算
+(def __doc__time/add-days
+  {:desc "タイムスタンプに日数を加算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "days" :type "number" :desc "日数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/add-days 1704067200000 7) ;=> 1704672000000"]})
+
+(def __doc__time/add-hours
+  {:desc "タイムスタンプに時間を加算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "hours" :type "number" :desc "時間数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/add-hours 1704067200000 24) ;=> 1704153600000"]})
+
+(def __doc__time/add-minutes
+  {:desc "タイムスタンプに分を加算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "minutes" :type "number" :desc "分数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/add-minutes 1704067200000 60) ;=> 1704070800000"]})
+
+(def __doc__time/sub-days
+  {:desc "タイムスタンプから日数を減算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "days" :type "number" :desc "日数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/sub-days 1704067200000 7) ;=> 1703462400000"]})
+
+(def __doc__time/sub-hours
+  {:desc "タイムスタンプから時間を減算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "hours" :type "number" :desc "時間数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/sub-hours 1704067200000 24) ;=> 1703980800000"]})
+
+(def __doc__time/sub-minutes
+  {:desc "タイムスタンプから分を減算する"
+   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
+            {:name "minutes" :type "number" :desc "分数"}]
+   :returns {:type "number" :desc "新しいタイムスタンプ"}
+   :examples ["(time/sub-minutes 1704067200000 60) ;=> 1704063600000"]})
+
+;; 時間比較
+(def __doc__time/after?
+  {:desc "最初のタイムスタンプが2番目より後かチェックする"
+   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
+            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
+   :returns {:type "boolean" :desc "ts1 > ts2ならtrue"}
+   :examples ["(time/after? 1704153600000 1704067200000) ;=> true"]})
+
+(def __doc__time/before?
+  {:desc "最初のタイムスタンプが2番目より前かチェックする"
+   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
+            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
+   :returns {:type "boolean" :desc "ts1 < ts2ならtrue"}
+   :examples ["(time/before? 1704067200000 1704153600000) ;=> true"]})
+
+(def __doc__time/between?
+  {:desc "タイムスタンプが2つの他のタイムスタンプの間にあるかチェックする"
+   :params [{:name "ts" :type "number" :desc "チェックするタイムスタンプ"}
+            {:name "start" :type "number" :desc "開始タイムスタンプ"}
+            {:name "end" :type "number" :desc "終了タイムスタンプ"}]
+   :returns {:type "boolean" :desc "start <= ts <= endならtrue"}
+   :examples ["(time/between? 1704100000000 1704067200000 1704153600000) ;=> true"]})
+
+;; 時間差分
+(def __doc__time/diff-days
+  {:desc "タイムスタンプ間の日数差分を計算する"
+   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
+            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
+   :returns {:type "number" :desc "日数差分"}
+   :examples ["(time/diff-days 1704153600000 1704067200000) ;=> 1"]})
+
+(def __doc__time/diff-hours
+  {:desc "タイムスタンプ間の時間差分を計算する"
+   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
+            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
+   :returns {:type "number" :desc "時間差分"}
+   :examples ["(time/diff-hours 1704153600000 1704067200000) ;=> 24"]})
+
+(def __doc__time/diff-minutes
+  {:desc "タイムスタンプ間の分差分を計算する"
+   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
+            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
+   :returns {:type "number" :desc "分差分"}
+   :examples ["(time/diff-minutes 1704070800000 1704067200000) ;=> 60"]})
+
+;; ユーティリティ
+(def __doc__sleep
+  {:desc "指定ミリ秒だけスリープする"
+   :params [{:name "ms" :type "number" :desc "スリープするミリ秒"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(sleep 1000) ; 1秒スリープ"]})

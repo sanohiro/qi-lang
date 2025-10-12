@@ -1,0 +1,61 @@
+;; 標準ライブラリドキュメント (日本語)
+;; パス操作関数
+
+;; パス操作
+(def __doc__path/join
+  {:desc "パスコンポーネントを結合する"
+   :params [{:name "& parts" :type "string" :desc "結合するパス部分"}]
+   :returns {:type "string" :desc "結合されたパス"}
+   :examples ["(path/join \"home\" \"user\" \"file.txt\") ;=> \"home/user/file.txt\""]})
+
+(def __doc__path/dirname
+  {:desc "パスのディレクトリ名を取得する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "string" :desc "ディレクトリ名"}
+   :examples ["(path/dirname \"home/user/file.txt\") ;=> \"home/user\""]})
+
+(def __doc__path/basename
+  {:desc "パスのベース名を取得する（拡張子付きファイル名）"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "string" :desc "ベース名"}
+   :examples ["(path/basename \"home/user/file.txt\") ;=> \"file.txt\""]})
+
+(def __doc__path/stem
+  {:desc "拡張子なしのファイル名を取得する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "string" :desc "ファイルステム"}
+   :examples ["(path/stem \"home/user/file.txt\") ;=> \"file\""]})
+
+(def __doc__path/extension
+  {:desc "ファイル拡張子を取得する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "string" :desc "ファイル拡張子（ドット付き）"}
+   :examples ["(path/extension \"file.txt\") ;=> \".txt\""]})
+
+;; パス正規化
+(def __doc__path/normalize
+  {:desc "パスを正規化する（.と..を解決）"
+   :params [{:name "path" :type "string" :desc "正規化するパス"}]
+   :returns {:type "string" :desc "正規化されたパス"}
+   :examples ["(path/normalize \"home/./user/../file.txt\") ;=> \"home/file.txt\""]})
+
+(def __doc__path/absolute
+  {:desc "絶対パスに変換する"
+   :params [{:name "path" :type "string" :desc "相対パスまたは絶対パス"}]
+   :returns {:type "string" :desc "絶対パス"}
+   :examples ["(path/absolute \"file.txt\")"]})
+
+;; パステスト
+(def __doc__path/is-absolute?
+  {:desc "パスが絶対パスかチェックする"
+   :params [{:name "path" :type "string" :desc "チェックするパス"}]
+   :returns {:type "boolean" :desc "絶対パスの場合true"}
+   :examples ["(path/is-absolute? \"/home/user\") ;=> true"
+              "(path/is-absolute? \"user/file.txt\") ;=> false"]})
+
+(def __doc__path/is-relative?
+  {:desc "パスが相対パスかチェックする"
+   :params [{:name "path" :type "string" :desc "チェックするパス"}]
+   :returns {:type "boolean" :desc "相対パスの場合true"}
+   :examples ["(path/is-relative? \"user/file.txt\") ;=> true"
+              "(path/is-relative? \"/home/user\") ;=> false"]})

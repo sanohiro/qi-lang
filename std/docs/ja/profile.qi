@@ -1,0 +1,24 @@
+;; 標準ライブラリドキュメント (日本語)
+;; パフォーマンスプロファイリング関数
+
+;; プロファイリング制御
+(def __doc__profile/start
+  {:desc "関数実行時間のプロファイリングを開始する"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/start)"]})
+
+(def __doc__profile/stop
+  {:desc "プロファイリングを停止する"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/stop)"]})
+
+(def __doc__profile/clear
+  {:desc "プロファイリングデータをクリアする"
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(profile/clear)"]})
+
+;; プロファイリングレポート
+(def __doc__profile/report
+  {:desc "プロファイリングレポートを生成する"
+   :returns {:type "string" :desc "フォーマットされたプロファイリングレポート"}
+   :examples ["(profile/report)"]})

@@ -1,0 +1,55 @@
+;; 標準ライブラリドキュメント (日本語)
+;; ストリーム処理関数
+
+;; ストリーム作成
+(def __doc__stream/stream
+  {:desc "コレクションからストリームを作成する"
+   :params [{:name "coll" :type "collection" :desc "ストリーム化するコレクション"}]
+   :returns {:type "stream" :desc "ストリーム"}
+   :examples ["(stream/stream [1 2 3 4 5])"]})
+
+(def __doc__stream/range
+  {:desc "範囲内の数のストリームを作成する"
+   :params [{:name "start" :type "number" :desc "開始値"}
+            {:name "end" :type "number" :desc "終了値（含まない）"}]
+   :returns {:type "stream" :desc "数のストリーム"}
+   :examples ["(stream/range 1 10)"]})
+
+(def __doc__stream/repeat
+  {:desc "値を繰り返す無限ストリームを作成する"
+   :params [{:name "value" :type "any" :desc "繰り返す値"}]
+   :returns {:type "stream" :desc "無限ストリーム"}
+   :examples ["(stream/repeat 42)"]})
+
+(def __doc__stream/cycle
+  {:desc "コレクションを循環する無限ストリームを作成する"
+   :params [{:name "coll" :type "collection" :desc "循環するコレクション"}]
+   :returns {:type "stream" :desc "無限ストリーム"}
+   :examples ["(stream/cycle [1 2 3])"]})
+
+(def __doc__stream/file
+  {:desc "ファイルの行からストリームを作成する"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "stream" :desc "行のストリーム"}
+   :examples ["(stream/file \"data.txt\")"]})
+
+;; ストリーム操作
+(def __doc__stream/take
+  {:desc "ストリームから最初のn個の要素を取得する"
+   :params [{:name "n" :type "number" :desc "要素数"}
+            {:name "stream" :type "stream" :desc "入力ストリーム"}]
+   :returns {:type "list" :desc "n個の要素のリスト"}
+   :examples ["(stream/take 5 (stream/range 1 100))"]})
+
+(def __doc__stream/drop
+  {:desc "ストリームから最初のn個の要素を削除する"
+   :params [{:name "n" :type "number" :desc "削除する要素数"}
+            {:name "stream" :type "stream" :desc "入力ストリーム"}]
+   :returns {:type "stream" :desc "要素が削除されたストリーム"}
+   :examples ["(stream/drop 10 (stream/range 1 100))"]})
+
+(def __doc__stream/realize
+  {:desc "ストリーム全体をリストに実現する"
+   :params [{:name "stream" :type "stream" :desc "実現するストリーム"}]
+   :returns {:type "list" :desc "すべてのストリーム要素のリスト"}
+   :examples ["(stream/realize (stream/range 1 6))"]})

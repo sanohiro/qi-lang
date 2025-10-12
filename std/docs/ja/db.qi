@@ -1,0 +1,135 @@
+;; 標準ライブラリドキュメント (日本語)
+;; データベース関数
+
+;; データベース接続
+(def __doc__db/connect
+  {:desc "データベースに接続する"
+   :params [{:name "url" :type "string" :desc "データベース接続URL"}]
+   :returns {:type "connection" :desc "データベース接続"}
+   :examples ["(db/connect \"sqlite://data.db\")"
+              "(db/connect \"postgres://localhost/mydb\")"]})
+
+(def __doc__db/close
+  {:desc "データベース接続を閉じる"
+   :params [{:name "conn" :type "connection" :desc "閉じる接続"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/close conn)"]})
+
+(def __doc__db/driver-info
+  {:desc "データベースドライバー情報を取得する"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "map" :desc "ドライバー情報マップ"}
+   :examples ["(db/driver-info conn)"]})
+
+;; クエリ実行
+(def __doc__db/query
+  {:desc "SQLクエリを実行してすべての行を返す"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "sql" :type "string" :desc "SQLクエリ"}
+            {:name "& params" :type "any" :desc "クエリパラメータ"}]
+   :returns {:type "list" :desc "行マップのリスト"}
+   :examples ["(db/query conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+
+(def __doc__db/query-one
+  {:desc "SQLクエリを実行して1行だけ返す"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "sql" :type "string" :desc "SQLクエリ"}
+            {:name "& params" :type "any" :desc "クエリパラメータ"}]
+   :returns {:type "map" :desc "1行のマップまたはnil"}
+   :examples ["(db/query-one conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+
+(def __doc__db/exec
+  {:desc "SQL文を実行する（INSERT, UPDATE, DELETE）"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "sql" :type "string" :desc "SQL文"}
+            {:name "& params" :type "any" :desc "文のパラメータ"}]
+   :returns {:type "number" :desc "影響を受けた行数"}
+   :examples ["(db/exec conn \"INSERT INTO users (name) VALUES (?)\" \"Alice\")"]})
+
+(def __doc__db/call
+  {:desc "ストアドプロシージャまたは関数を呼び出す"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "proc" :type "string" :desc "プロシージャ名"}
+            {:name "& args" :type "any" :desc "プロシージャ引数"}]
+   :returns {:type "any" :desc "プロシージャの結果"}
+   :examples ["(db/call conn \"get_user_count\")"]})
+
+;; トランザクション管理
+(def __doc__db/begin
+  {:desc "データベーストランザクションを開始する"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "transaction" :desc "トランザクションオブジェクト"}
+   :examples ["(db/begin conn)"]})
+
+(def __doc__db/commit
+  {:desc "トランザクションをコミットする"
+   :params [{:name "tx" :type "transaction" :desc "コミットするトランザクション"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/commit tx)"]})
+
+(def __doc__db/rollback
+  {:desc "トランザクションをロールバックする"
+   :params [{:name "tx" :type "transaction" :desc "ロールバックするトランザクション"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(db/rollback tx)"]})
+
+;; スキーマ参照
+(def __doc__db/tables
+  {:desc "データベース内のすべてのテーブルをリストする"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "list" :desc "テーブル名のリスト"}
+   :examples ["(db/tables conn) ;=> [\"users\" \"posts\"]"]})
+
+(def __doc__db/columns
+  {:desc "テーブルのカラムをリストする"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "list" :desc "カラム情報マップのリスト"}
+   :examples ["(db/columns conn \"users\")"]})
+
+(def __doc__db/indexes
+  {:desc "テーブルのインデックスをリストする"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "list" :desc "インデックス情報マップのリスト"}
+   :examples ["(db/indexes conn \"users\")"]})
+
+(def __doc__db/foreign-keys
+  {:desc "テーブルの外部キーをリストする"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "list" :desc "外部キー情報マップのリスト"}
+   :examples ["(db/foreign-keys conn \"posts\")"]})
+
+;; セキュリティとユーティリティ
+(def __doc__db/sanitize
+  {:desc "SQLインジェクションを防ぐためにSQL値をサニタイズする"
+   :params [{:name "value" :type "any" :desc "サニタイズする値"}]
+   :returns {:type "string" :desc "サニタイズされた値"}
+   :examples ["(db/sanitize \"user's input\")"]})
+
+(def __doc__db/sanitize-identifier
+  {:desc "SQL識別子（テーブル/カラム名）をサニタイズする"
+   :params [{:name "name" :type "string" :desc "サニタイズする識別子"}]
+   :returns {:type "string" :desc "サニタイズされた識別子"}
+   :examples ["(db/sanitize-identifier \"table_name\")"]})
+
+(def __doc__db/escape-like
+  {:desc "LIKEパターンの特殊文字をエスケープする"
+   :params [{:name "pattern" :type "string" :desc "LIKEパターン"}]
+   :returns {:type "string" :desc "エスケープされたパターン"}
+   :examples ["(db/escape-like \"50%\") ;=> \"50\\%\""]})
+
+(def __doc__db/supports?
+  {:desc "データベースが機能をサポートしているかチェックする"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "feature" :type "keyword" :desc "チェックする機能"}]
+   :returns {:type "boolean" :desc "サポートしている場合true"}
+   :examples ["(db/supports? conn :transactions)"]})
+
+;; デバッグ関数
+(def __doc__dbg/inspect
+  {:desc "デバッグのために値を検査して出力する"
+   :params [{:name "value" :type "any" :desc "検査する値"}]
+   :returns {:type "any" :desc "値をそのまま返す"}
+   :examples ["(dbg/inspect {:a 1 :b 2})"]})

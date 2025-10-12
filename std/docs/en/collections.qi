@@ -1,0 +1,130 @@
+;; Standard Library Documentation (English)
+;; Collection Data Structures (Set, Queue, Stack)
+
+;; Set Functions
+(def __doc__set/union
+  {:desc "Compute union of sets"
+   :params [{:name "& sets" :type "collection" :desc "Sets to union"}]
+   :returns {:type "set" :desc "Union of all sets"}
+   :examples ["(set/union #{1 2} #{2 3}) ;=> #{1 2 3}"
+              "(set/union #{:a} #{:b} #{:c}) ;=> #{:a :b :c}"]})
+
+(def __doc__set/intersect
+  {:desc "Compute intersection of sets"
+   :params [{:name "& sets" :type "collection" :desc "Sets to intersect"}]
+   :returns {:type "set" :desc "Intersection of all sets"}
+   :examples ["(set/intersect #{1 2 3} #{2 3 4}) ;=> #{2 3}"
+              "(set/intersect #{1 2} #{2 3} #{2 4}) ;=> #{2}"]})
+
+(def __doc__set/difference
+  {:desc "Compute set difference"
+   :params [{:name "set1" :type "collection" :desc "First set"}
+            {:name "set2" :type "collection" :desc "Second set"}]
+   :returns {:type "set" :desc "Elements in set1 but not in set2"}
+   :examples ["(set/difference #{1 2 3} #{2 3 4}) ;=> #{1}"
+              "(set/difference #{:a :b :c} #{:b}) ;=> #{:a :c}"]})
+
+(def __doc__set/symmetric-difference
+  {:desc "Compute symmetric difference of sets"
+   :params [{:name "set1" :type "collection" :desc "First set"}
+            {:name "set2" :type "collection" :desc "Second set"}]
+   :returns {:type "set" :desc "Elements in either set but not both"}
+   :examples ["(set/symmetric-difference #{1 2 3} #{2 3 4}) ;=> #{1 4}"]})
+
+(def __doc__set/subset?
+  {:desc "Check if first set is subset of second"
+   :params [{:name "set1" :type "collection" :desc "Potential subset"}
+            {:name "set2" :type "collection" :desc "Potential superset"}]
+   :returns {:type "boolean" :desc "true if set1 ⊆ set2"}
+   :examples ["(set/subset? #{1 2} #{1 2 3}) ;=> true"
+              "(set/subset? #{1 4} #{1 2 3}) ;=> false"]})
+
+(def __doc__set/superset?
+  {:desc "Check if first set is superset of second"
+   :params [{:name "set1" :type "collection" :desc "Potential superset"}
+            {:name "set2" :type "collection" :desc "Potential subset"}]
+   :returns {:type "boolean" :desc "true if set1 ⊇ set2"}
+   :examples ["(set/superset? #{1 2 3} #{1 2}) ;=> true"
+              "(set/superset? #{1 2} #{1 2 3}) ;=> false"]})
+
+(def __doc__set/disjoint?
+  {:desc "Check if sets have no common elements"
+   :params [{:name "set1" :type "collection" :desc "First set"}
+            {:name "set2" :type "collection" :desc "Second set"}]
+   :returns {:type "boolean" :desc "true if sets are disjoint"}
+   :examples ["(set/disjoint? #{1 2} #{3 4}) ;=> true"
+              "(set/disjoint? #{1 2} #{2 3}) ;=> false"]})
+
+;; Queue Functions
+(def __doc__queue/new
+  {:desc "Create new empty queue"
+   :returns {:type "queue" :desc "Empty queue"}
+   :examples ["(queue/new) ;=> <queue>"]})
+
+(def __doc__queue/push
+  {:desc "Add element to end of queue (enqueue)"
+   :params [{:name "q" :type "queue" :desc "Queue"}
+            {:name "elem" :type "any" :desc "Element to add"}]
+   :returns {:type "queue" :desc "Queue with element added"}
+   :examples ["(queue/push q 1) ;=> <queue with 1>"]})
+
+(def __doc__queue/pop
+  {:desc "Remove and return element from front of queue (dequeue)"
+   :params [{:name "q" :type "queue" :desc "Queue"}]
+   :returns {:type "any" :desc "First element"}
+   :examples ["(queue/pop q) ;=> 1"]})
+
+(def __doc__queue/peek
+  {:desc "Return element from front without removing"
+   :params [{:name "q" :type "queue" :desc "Queue"}]
+   :returns {:type "any" :desc "First element"}
+   :examples ["(queue/peek q) ;=> 1"]})
+
+(def __doc__queue/empty?
+  {:desc "Check if queue is empty"
+   :params [{:name "q" :type "queue" :desc "Queue"}]
+   :returns {:type "boolean" :desc "true if empty"}
+   :examples ["(queue/empty? q) ;=> true"]})
+
+(def __doc__queue/size
+  {:desc "Get number of elements in queue"
+   :params [{:name "q" :type "queue" :desc "Queue"}]
+   :returns {:type "number" :desc "Number of elements"}
+   :examples ["(queue/size q) ;=> 5"]})
+
+;; Stack Functions
+(def __doc__stack/new
+  {:desc "Create new empty stack"
+   :returns {:type "stack" :desc "Empty stack"}
+   :examples ["(stack/new) ;=> <stack>"]})
+
+(def __doc__stack/push
+  {:desc "Push element onto stack"
+   :params [{:name "s" :type "stack" :desc "Stack"}
+            {:name "elem" :type "any" :desc "Element to push"}]
+   :returns {:type "stack" :desc "Stack with element pushed"}
+   :examples ["(stack/push s 1) ;=> <stack with 1>"]})
+
+(def __doc__stack/pop
+  {:desc "Pop element from stack"
+   :params [{:name "s" :type "stack" :desc "Stack"}]
+   :returns {:type "any" :desc "Top element"}
+   :examples ["(stack/pop s) ;=> 1"]})
+
+(def __doc__stack/peek
+  {:desc "Peek at top element without removing"
+   :params [{:name "s" :type "stack" :desc "Stack"}]
+   :returns {:type "any" :desc "Top element"}
+   :examples ["(stack/peek s) ;=> 1"]})
+
+(def __doc__stack/empty?
+  {:desc "Check if stack is empty"
+   :params [{:name "s" :type "stack" :desc "Stack"}]
+   :returns {:type "boolean" :desc "true if empty"}
+   :examples ["(stack/empty? s) ;=> true"]})
+
+(def __doc__stack/size
+  {:desc "Get number of elements in stack"
+   :params [{:name "s" :type "stack" :desc "Stack"}]
+   :returns {:type "number" :desc "Number of elements"}
+   :examples ["(stack/size s) ;=> 5"]})
