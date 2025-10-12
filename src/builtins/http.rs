@@ -163,24 +163,20 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         .unwrap_or_default();
 
     // Basic Auth処理
-    if let Some(basic_auth) = opts.get("basic-auth") {
-        if let Value::Vector(v) = basic_auth {
-            if v.len() == 2 {
-                if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
-                    use base64::{Engine as _, engine::general_purpose};
-                    let credentials = format!("{}:{}", user, pass);
-                    let encoded = general_purpose::STANDARD.encode(credentials);
-                    headers.insert("authorization".to_string(), Value::String(format!("Basic {}", encoded)));
-                }
+    if let Some(Value::Vector(v)) = opts.get("basic-auth") {
+        if v.len() == 2 {
+            if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
+                use base64::{Engine as _, engine::general_purpose};
+                let credentials = format!("{}:{}", user, pass);
+                let encoded = general_purpose::STANDARD.encode(credentials);
+                headers.insert("authorization".to_string(), Value::String(format!("Basic {}", encoded)));
             }
         }
     }
 
     // Bearer Token処理
-    if let Some(bearer) = opts.get("bearer-token") {
-        if let Value::String(token) = bearer {
-            headers.insert("authorization".to_string(), Value::String(format!("Bearer {}", token)));
-        }
+    if let Some(Value::String(token)) = opts.get("bearer-token") {
+        headers.insert("authorization".to_string(), Value::String(format!("Bearer {}", token)));
     }
 
     let headers_ref = if headers.is_empty() { None } else { Some(&headers) };

@@ -616,12 +616,10 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
         } else {
             format!("{}/{}", dir_path, pat)
         }
+    } else if recursive {
+        format!("{}/**/*", dir_path)
     } else {
-        if recursive {
-            format!("{}/**/*", dir_path)
-        } else {
-            format!("{}/*", dir_path)
-        }
+        format!("{}/*", dir_path)
     };
 
     // グロブでファイル一覧を取得
