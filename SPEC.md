@@ -491,13 +491,13 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
   |> (map first))  ;; (0 1 1 2 3 5 8 13 21 34)
 
 ;; データ処理パイプライン
-(def process-data (fn [data]
+(defn process-data [data]
   (data
    |> stream
    |> (stream-map parse)
    |> (stream-filter valid?)
    |> (stream-take 1000)
-   |> realize)))
+   |> realize))
 ```
 
 #### ✅ I/Oストリーム（実装済み）
@@ -585,12 +585,12 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ```lisp
 ;; 大きなログファイルをメモリ効率的に処理
-(def analyze-logs (fn [file]
+(defn analyze-logs [file]
   (file-stream file
    |> (stream-filter (fn [line] (contains? line "ERROR")))
    |> (stream-map parse-log-line)
    |> (stream-take 100)  ; 最初の100エラー
-   |> realize)))
+   |> realize))
 
 ;; 結果を取得
 (def errors (analyze-logs "/var/log/app.log"))
@@ -873,11 +873,11 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ### ✅ `defer` - 遅延実行
 ```lisp
 ;; スコープ終了時に実行
-(def process-file (fn [path]
+(defn process-file [path]
   (let [f (open path)]
     (do
       (defer (close f))  ;; 関数終了時に必ず実行
-      (read f)))))
+      (read f))))
 
 ;; 複数のdefer（LIFO: 後入れ先出し）
 (do
@@ -888,13 +888,13 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ;; 実行順: work → "1" → "2" → "3"
 
 ;; エラー時も実行される
-(def safe-process (fn []
+(defn safe-process []
   (do
     (defer (cleanup))
-    (try (risky-op)))))
+    (try (risky-op))))
 ```
 
-## 3. 演算子
+## 4. 演算子
 
 ### ✅ `|>` - パイプライン
 ```lisp
@@ -920,7 +920,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
  |> (join ", "))
 ```
 
-## 4. データ構造
+## 5. データ構造
 
 ### リスト
 ```lisp
@@ -961,7 +961,7 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
 ((get handlers :get) request)
 ```
 
-## 5. コア関数
+## 6. コア関数
 
 Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流れと変換を重視した設計になっています。
 
@@ -1126,15 +1126,16 @@ sum-by                  ;; キー関数で合計
 
 **設計メモ**: `frequencies`と`count-by`はデータ分析でよく使う。`group-by`と組み合わせると強力。
 
-#### 集合演算（🔜 計画中）
+#### 集合演算（✅ 実装済み）
 ```lisp
-;; 🔜 優先度: 高
-union                   ;; 和集合: (union [1 2] [2 3]) => [1 2 3]
-intersect               ;; 積集合: (intersect [1 2 3] [2 3 4]) => [2 3]
-difference              ;; 差集合: (difference [1 2 3] [2]) => [1 3]
-
-;; 🔜 優先度: 低
-subset? superset?       ;; 集合判定
+;; set/モジュールで実装済み
+set/union                   ;; 和集合: (set/union [1 2] [2 3]) => [1 2 3]
+set/intersect               ;; 積集合: (set/intersect [1 2 3] [2 3 4]) => [2 3]
+set/difference              ;; 差集合: (set/difference [1 2 3] [2]) => [1 3]
+set/symmetric-difference    ;; 対称差: (set/symmetric-difference [1 2 3] [2 3 4]) => [1 4]
+set/subset?                 ;; 部分集合判定
+set/superset?               ;; 上位集合判定
+set/disjoint?               ;; 互いに素判定
 ```
 
 **Flow哲学との関係**: 集合演算はデータフィルタリングで頻出。パイプラインと相性が良い。
@@ -1182,11 +1183,15 @@ log exp                 ;; 対数・指数
 
 **設計方針**: `pow`/`sqrt`/`round`/`clamp`/`rand`はcoreに。三角関数などは将来`math`モジュールへ。
 
-#### 統計（🔜 計画中）
+#### 統計（✅ 実装済み）
 ```lisp
-;; 🔜 優先度: 中
-mean median mode        ;; 平均、中央値、最頻値
-stddev variance         ;; 標準偏差、分散
+;; stats/モジュールで実装済み
+stats/mean              ;; 平均
+stats/median            ;; 中央値
+stats/mode              ;; 最頻値
+stats/stddev            ;; 標準偏差
+stats/variance          ;; 分散
+stats/percentile        ;; パーセンタイル
 ```
 
 ### 論理（✅ 全て実装済み）
@@ -1821,7 +1826,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
           query (get params "q")
           page (get params "page")
           limit (get params "limit")]
-      (http/json {"search" query "page" page "limit" limit}))))
+      (server/json {"search" query "page" page "limit" limit}))))
 
 ;; GET /search?q=lisp&page=1&limit=20
 ;; => {"search":"lisp","page":"1","limit":"20"}
@@ -1831,7 +1836,7 @@ server/with-cache-control ;; カスタムCache-Controlヘッダーを追加
   (fn [req]
     (let [params (get req "query-params")
           tags (get params "tags")]  ;; 配列になる
-      (http/json {"tags" tags}))))
+      (server/json {"tags" tags}))))
 
 ;; GET /filter?tags=ruby&tags=python&tags=lisp
 ;; => {"tags":["ruby","python","lisp"]}
@@ -1847,18 +1852,18 @@ Qiは静的ファイル（HTML、CSS、JavaScript、画像、フォントなど�
 
 ```lisp
 ;; ミドルウェア関数
-http/static-file        ;; 単一ファイルを配信するレスポンスを生成
-http/static-dir         ;; ディレクトリから静的ファイルを配信するハンドラーを生成
+server/static-file        ;; 単一ファイルを配信するレスポンスを生成
+server/static-dir         ;; ディレクトリから静的ファイルを配信するハンドラーを生成
 ```
 
 **使用例 - ディレクトリ配信**:
 ```lisp
 ;; publicディレクトリ配下の静的ファイルを配信
 (def routes
-  [["/" (assoc {} "get" (http/static-dir "./public"))]])
+  [["/" (assoc {} "get" (server/static-dir "./public"))]])
 
-(def app (http/router routes))
-(http/serve app {"port" 3000})
+(def app (server/router routes))
+(server/serve app {"port" 3000})
 
 ;; GET /index.html  => ./public/index.html を配信
 ;; GET /style.css   => ./public/style.css を配信
@@ -1871,7 +1876,7 @@ http/static-dir         ;; ディレクトリから静的ファイルを配信�
 ;; 特定のファイルを直接配信
 (def favicon-handler
   (fn [req]
-    (http/static-file "./public/favicon.ico")))
+    (server/static-file "./public/favicon.ico")))
 
 (def routes
   [["/favicon.ico" (assoc {} "get" favicon-handler)]])
@@ -1883,10 +1888,10 @@ http/static-dir         ;; ディレクトリから静的ファイルを配信�
 (def routes
   [["/api/users" (assoc {} "get" list-users "post" create-user)]
    ["/api/users/:id" (assoc {} "get" get-user)]
-   ["/" (assoc {} "get" (http/static-dir "./public"))]])  ;; 静的ファイル
+   ["/" (assoc {} "get" (server/static-dir "./public"))]])  ;; 静的ファイル
 
-(def app (http/router routes))
-(http/serve app {"port" 8080})
+(def app (server/router routes))
+(server/serve app {"port" 8080})
 
 ;; GET /api/users         => APIレスポンス（JSON）
 ;; GET /api/users/123     => APIレスポンス（JSON）
@@ -2193,10 +2198,10 @@ reset!                  ;; 値を直接セット
 ;; リクエストカウンター
 (def request-count (atom 0))
 
-(def handle-request (fn [req]
+(defn handle-request [req]
   (do
     (swap! request-count inc)
-    (process req))))
+    (process req)))
 
 ;; 現在のカウント確認
 (deref request-count)  ;; 処理したリクエスト数
@@ -2208,14 +2213,14 @@ reset!                  ;; 値を直接セット
 ;; キャッシュ
 (def cache (atom {}))
 
-(def get-or-fetch (fn [key fetch-fn]
+(defn get-or-fetch [key fetch-fn]
   (let [cached (get (deref cache) key)]
     (if cached
       cached
       (let [value (fetch-fn)]
         (do
           (swap! cache assoc key value)
-          value))))))
+          value)))))
 
 ;; 使用例
 (get-or-fetch :user-123 (fn [] (fetch-from-db :user-123)))
@@ -2227,11 +2232,11 @@ reset!                  ;; 値を直接セット
 ;; アクティブな接続を管理
 (def clients (atom #{}))
 
-(def handle-connection (fn [conn]
+(defn handle-connection [conn]
   (do
     (swap! clients conj conn)
     (defer (swap! clients dissoc conn))  ;; 確実にクリーンアップ
-    (process-connection conn))))
+    (process-connection conn)))
 
 ;; アクティブ接続数
 (len (deref clients))
@@ -2248,15 +2253,15 @@ reset!                  ;; 値を直接セット
 }))
 
 ;; ユーザー追加
-(def add-user (fn [user]
+(defn add-user [user]
   (swap! app-state (fn [state]
     (assoc state :users
-      (assoc (get state :users) (get user :id) user))))))
+      (assoc (get state :users) (get user :id) user)))))
 
 ;; 投稿追加
-(def add-post (fn [post]
+(defn add-post [post]
   (swap! app-state (fn [state]
-    (assoc state :posts (conj (get state :posts) post))))))
+    (assoc state :posts (conj (get state :posts) post)))))
 
 ;; 状態確認
 (deref app-state)
@@ -2310,7 +2315,7 @@ macro?                  ;; マクロかどうか
 eval                    ;; 式を評価
 ```
 
-## 6. ループ構造
+## 7. ループ構造
 
 ### ✅ `loop` / `recur`（実装済み）
 
@@ -2323,30 +2328,30 @@ eval                    ;; 式を評価
   (recur new-val1 new-val2 ...))
 
 ;; 階乗（5! = 120）
-(def factorial (fn [n]
+(defn factorial [n]
   (loop [i n acc 1]
     (if (= i 0)
       acc
-      (recur (dec i) (* acc i))))))
+      (recur (dec i) (* acc i)))))
 
 (factorial 5)  ;; 120
 
 ;; カウントダウン
-(def count-down (fn [n]
+(defn count-down [n]
   (loop [i n]
     (if (<= i 0)
       "done"
       (do
         (print i)
-        (recur (dec i)))))))
+        (recur (dec i))))))
 
 ;; リスト処理（matchと組み合わせる場合は要実装）
 ;; 現在は以下のような形で実装可能：
-(def sum-list (fn [lst]
+(defn sum-list [lst]
   (loop [items lst result 0]
     (if (empty? items)
       result
-      (recur (rest items) (+ result (first items)))))))
+      (recur (rest items) (+ result (first items))))))
 
 (sum-list [1 2 3 4 5])  ;; 15
 ```
@@ -2357,7 +2362,7 @@ eval                    ;; 式を評価
 - 通常の再帰と異なり、スタックを消費しない（末尾再帰最適化）
 ```
 
-## 7. エラー処理戦略
+## 8. エラー処理戦略
 
 ### エラー処理の3層構造
 
@@ -2375,10 +2380,10 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ```lisp
 ;; Result型を返す関数
-(def divide (fn [x y]
+(defn divide [x y]
   (if (= y 0)
     {:error "division by zero"}
-    {:ok (/ x y)})))
+    {:ok (/ x y)}))
 
 ;; Railway Pipelineで処理
 (user-input
@@ -2410,7 +2415,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ;; ネスト可能
 (match (try
-         (def data (parse-data input))
+         (let data (parse-data input))
          (process data))
   {:ok result} -> result
   {:error e} -> {:error (str "Failed: " e)})
@@ -2426,31 +2431,31 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ```lisp
 ;; deferで確実にクリーンアップ
-(def process-file (fn [path]
-  (def f (open-file path))
+(defn process-file [path]
+  (let f (open-file path))
   (defer (close-file f))  ;; 関数終了時に必ず実行
-  (def data (read-file f))
-  (transform data)))
+  (let data (read-file f))
+  (transform data))
 
 ;; 複数のdeferはスタック的に実行（後入れ先出し）
-(def complex-operation (fn []
-  (def conn (open-connection))
+(defn complex-operation []
+  (let conn (open-connection))
   (defer (close-connection conn))
-  (def lock (acquire-lock))
+  (let lock (acquire-lock))
   (defer (release-lock lock))
-  (def file (open-file "data.txt"))
+  (let file (open-file "data.txt"))
   (defer (close-file file))
   ;; 処理...
   ;; 終了時: close-file → release-lock → close-connection
-  ))
+  )
 
 ;; エラー時もdeferは実行される
-(def safe-process (fn []
-  (def res (allocate-resource))
+(defn safe-process []
+  (let res (allocate-resource))
   (defer (free-resource res))
   (if (error-condition?)
     (error "something went wrong")  ;; deferは実行される
-    (process res))))
+    (process res)))
 ```
 
 **設計哲学**:
@@ -2466,10 +2471,10 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ### 回復可能 - {:ok/:error}
 ```lisp
 ;; 関数が結果を返す
-(def divide (fn [x y]
+(defn divide [x y]
   (if (= y 0)
     {:error "division by zero"}
-    {:ok (/ x y)})))
+    {:ok (/ x y)}))
 
 (match (divide 10 2)
   {:ok result} -> result
@@ -2489,13 +2494,13 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
     (error "config.qi not found")
     (load-config))))
 
-(def factorial (fn [n]
+(defn factorial [n]
   (if (< n 0)
     (error "negative input not allowed")
     (loop [i n acc 1]
       (if (= i 0)
         acc
-        (recur (dec i) (* acc i)))))))
+        (recur (dec i) (* acc i))))))
 
 ;; try でキャッチ
 (match (try (factorial -5))
@@ -2503,7 +2508,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
   {:error e} -> (log (str "Error: " e)))
 ```
 
-## 8. ユニーク変数（uvars）
+## 9. ユニーク変数（uvars）
 
 ### 基本
 ```lisp
@@ -2587,15 +2592,15 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
            (list ,a ,b ,c))))))
 ```
 
-## 9. モジュールシステム（✅ 基本機能実装済み）
+## 10. モジュールシステム（✅ 基本機能実装済み）
 
 ### ✅ モジュール定義
 ```lisp
 ;; http.qi
 (module http)
 
-(def get (fn [url] ...))
-(def post (fn [url data] ...))
+(defn get [url] ...)
+(defn post [url data] ...)
 
 (export get post)
 ```
@@ -2962,17 +2967,17 @@ time/hour time/minute time/second time/weekday
 ;; ============================================
 
 ;; 大きなデータを一時ファイルで処理
-(def process-large-data (fn [url]
+(defn process-large-data [url]
   (let [tmp (io/temp-file)]
     ;; データをダウンロードして一時ファイルに保存
     (http/get url :output tmp)
     ;; 一時ファイルを処理
     (let [result (process-file tmp)]
       ;; 関数終了後、tmpは自動削除される
-      result))))
+      result)))
 
 ;; 複数の一時ファイルを使用
-(def merge-files (fn [files output]
+(defn merge-files [files output]
   (let [tmpdir (io/temp-dir)
         processed (files
                    |> (map (fn [f]
@@ -2983,14 +2988,14 @@ time/hour time/minute time/second time/weekday
     ;; 処理済みファイルをマージ
     (merge-all processed output)
     ;; 関数終了後、tmpdirと中身は自動削除される
-    output)))
+    output))
 
 ;; ============================================
 ;; 実用例: ビルドの一時ディレクトリ
 ;; ============================================
 
 ;; ビルド成果物を一時ディレクトリで作成してからコピー
-(def build-project (fn [source-dir output-dir]
+(defn build-project [source-dir output-dir]
   (let [build-dir (io/temp-dir)]
     (try
       (do
@@ -3558,22 +3563,22 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 (0.856 |> (s/format-percent 1))   ;; "85.6%" (パイプラインで使用)
 
 ;; 実用例: 価格表示のパイプライン
-(def format-price (fn [price]
+(defn format-price [price]
   (price
    |> (s/format-comma)
-   |> (str/join "" ["¥" _]))))
+   |> (str/join "" ["¥" _])))
 
 (format-price 1234567)  ;; "¥1,234,567"
 
 ;; 実用例: レポート生成
-(def gen-report (fn [data]
+(defn gen-report [data]
   f"""
   Sales Report
   ============
   Total: {(s/format-comma (:total data))}
   Growth: {(s/format-percent 1 (:growth data))}
   """
-))
+)
 
 (gen-report {:total 1234567 :growth 0.156})
 ;; =>
@@ -3645,7 +3650,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
  |> (io/write-stream "processed.txt"))
 
 ;; 実用例: CSVデータの変換パイプライン
-(def process-users (fn []
+(defn process-users []
   ("users.csv"
    |> io/read-file
    |> csv/parse
@@ -3688,15 +3693,15 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; => "123"
 
 ;; 実用例: メールアドレスの抽出
-(def extract-email (fn [text]
-  (s/re-find text "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")))
+(defn extract-email [text]
+  (s/re-find text "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"))
 
 (extract-email "Contact: test@example.com for details")
 ;; => "test@example.com"
 
 ;; 実用例: バリデーション
-(def valid-username? (fn [name]
-  (s/re-matches name "^[a-zA-Z0-9_]{3,16}$")))
+(defn valid-username? [name]
+  (s/re-matches name "^[a-zA-Z0-9_]{3,16}$"))
 
 (valid-username? "user_123")  ;; => true
 (valid-username? "ab")        ;; => false (短すぎる)
@@ -3762,11 +3767,11 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
  |> (fn [n] (math/clamp n 1 100)))  ;; 1-100に制限
 
 ;; 3. 統計処理
-(def analyze (fn [data]
+(defn analyze [data]
   {:mean (math/mean data)
    :median (math/median data)
    :stddev (math/stddev data)
-   :p95 (math/percentile data 95)}))
+   :p95 (math/percentile data 95)})
 
 (analyze [10 20 30 40 50])
 ;; {:mean 30 :median 30 :stddev 14.14 :p95 48}
@@ -3782,10 +3787,10 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
  |> math/round)           ;; 小数点以下四捨五入
 
 ;; 6. 三角関数（ゲーム・グラフィックス）
-(def rotate-point (fn [x y angle]
+(defn rotate-point [x y angle]
   (let [rad (* angle (/ math/pi 180))]
     {:x (- (* x (math/cos rad)) (* y (math/sin rad)))
-     :y (+ (* x (math/sin rad)) (* y (math/cos rad)))})))
+     :y (+ (* x (math/sin rad)) (* y (math/cos rad)))}))
 ```
 
 **実装優先度**:
@@ -3931,7 +3936,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; ============================================
 
 ;; 古いログをgzip圧縮してアーカイブ
-(def archive-logs (fn [log-dir archive-name]
+(defn archive-logs [log-dir archive-name]
   (let [logs (io/list-dir log-dir :pattern "*.log")]
     ;; 各ログファイルをgzip圧縮
     (logs |> (map zip/gzip))
@@ -3939,7 +3944,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
     (let [gz-files (io/list-dir log-dir :pattern "*.gz")]
       (zip/create archive-name gz-files)
       ;; 元の.gzファイルを削除
-      (gz-files |> (map io/delete-file))))))
+      (gz-files |> (map io/delete-file)))))
 
 (archive-logs "logs/" "logs-2025-01.zip")
 
@@ -3948,16 +3953,16 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; ============================================
 
 ;; プロジェクトをバックアップ
-(def backup-project (fn [project-dir backup-file]
+(defn backup-project [project-dir backup-file]
   (zip/create backup-file project-dir)
-  (println f"Backup created: {backup-file}")))
+  (println f"Backup created: {backup-file}"))
 
 (backup-project "myapp/" "backups/myapp-2025-01-11.zip")
 
 ;; バックアップから復元
-(def restore-project (fn [backup-file restore-dir]
+(defn restore-project [backup-file restore-dir]
   (zip/extract backup-file restore-dir)
-  (println f"Restored to: {restore-dir}")))
+  (println f"Restored to: {restore-dir}"))
 
 (restore-project "backups/myapp-2025-01-11.zip" "restored/")
 ```
@@ -4025,7 +4030,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; ============================================
 
 ;; シンプルなファイル処理ツール
-(def main (fn []
+(defn main []
   (let [parsed (args/parse)
         flags (:flags parsed)
         options (:options parsed)
@@ -4061,7 +4066,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; 実用例: 設定のオーバーライド
 ;; ============================================
 
-(def load-config (fn []
+(defn load-config []
   (let [parsed (args/parse)
         options (:options parsed)
 
@@ -4081,7 +4086,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
                 |> (fn [c] (if (contains? (:flags parsed) "debug")
                              (assoc c :debug true)
                              c)))]
-    config)))
+    config))
 
 ;; 使用例:
 ;; ./qi server.qi --host 0.0.0.0 --port 8080 --debug
@@ -4091,7 +4096,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; 実用例: サブコマンド処理
 ;; ============================================
 
-(def main (fn []
+(defn main []
   (let [subcommand (args/get 2)  ;; 第2引数（プログラム名、スクリプト名の次）
         rest-args (args/all |> (drop 3))]
 
@@ -4100,7 +4105,7 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
       "build"   -> (cmd-build rest-args)
       "test"    -> (cmd-test rest-args)
       "deploy"  -> (cmd-deploy rest-args)
-      _         -> (println "Unknown command. Use: init, build, test, or deploy")))))
+      _         -> (println "Unknown command. Use: init, build, test, or deploy"))))
 
 ;; 使用例:
 ;; ./qi cli.qi init myproject
@@ -4172,16 +4177,16 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 ;; "2025-01-18T03:00:00Z"
 
 ;; 3. パースとフォーマット
-(def format-date (fn [date-str]
+(defn format-date [date-str]
   (date-str
    |> (fn [s] (time/parse s "%Y-%m-%d"))
-   |> (fn [t] (time/format t "%B %d, %Y")))))
+   |> (fn [t] (time/format t "%B %d, %Y"))))
 
 (format-date "2025-01-11")  ;; "January 11, 2025"
 
 ;; 4. 実用例：期限チェック
-(def is-expired? (fn [expires-at]
-  (time/before? expires-at (time/now))))
+(defn is-expired? [expires-at]
+  (time/before? expires-at (time/now)))
 
 (def session {:created-at (time/now)
               :expires-at (time/add-hours (time/now) 24)})
@@ -4199,22 +4204,22 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
  |> (group-by :date))
 
 ;; 6. 営業日計算（カスタム関数）
-(def add-business-days (fn [date n]
+(defn add-business-days [date n]
   (loop [current date remaining n]
     (if (<= remaining 0)
       current
       (let [next-day (time/add-days current 1)]
         (if (time/weekend? next-day)
           (recur next-day remaining)
-          (recur next-day (dec remaining))))))))
+          (recur next-day (dec remaining)))))))
 
 ;; 7. 相対時間表示（SNS的）
-(def relative-time (fn [timestamp]
+(defn relative-time [timestamp]
   (let [diff (time/diff-minutes timestamp (time/now))]
     (match diff
       n when (< n 60) -> f"{n}分前"
       n when (< n 1440) -> f"{(/ n 60)}時間前"
-      n -> f"{(/ n 1440)}日前"))))
+      n -> f"{(/ n 1440)}日前")))
 ```
 
 **実装優先度**:
@@ -4238,7 +4243,7 @@ io        ;; ファイルIO拡張
 test      ;; テストフレームワーク
 ```
 
-## 10. 文字列リテラル
+## 11. 文字列リテラル
 
 ### ✅ 基本（実装済み）
 ```lisp
@@ -4297,7 +4302,7 @@ Status: Active
 """
 
 ;; テンプレートエンジンのように使える
-(def gen-email (fn [user]
+(defn gen-email [user]
   f"""
   Dear {(:name user)},
 
@@ -4306,7 +4311,7 @@ Status: Active
 
   Thank you for your purchase!
   """
-))
+)
 
 (gen-email {:name "Bob" :order-id 12345 :total 99.99})
 ;; => メール本文が生成される
@@ -4347,8 +4352,8 @@ f"Escaped: \{not interpolated\}"  ;; => "Escaped: {not interpolated}"
 f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 
 ;; 実用例（キーワード関数を使った簡潔な記述）
-(def greet (fn [user]
-  f"Welcome, {(:name user)}! You have {(:messages user)} new messages."))
+(defn greet [user]
+  f"Welcome, {(:name user)}! You have {(:messages user)} new messages.")
 
 (greet {:name "Alice" :messages 3})
 ;; => "Welcome, Alice! You have 3 new messages."
@@ -4363,13 +4368,13 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 - 関数: `<function>`または`<native-fn:name>`に変換
 ```
 
-## 11. 実用例
+## 12. 実用例
 
 ### Webスクレイパー
 ```lisp
 (use http :only [get])
 
-(def scrape-prices (fn [url]
+(defn scrape-prices [url]
   (match (try
     (url
      |> get
@@ -4377,7 +4382,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
      |> (select ".price")
      |> (pmap extract-number)))
     {:ok prices} -> prices
-    {:error e} -> (do (log e) []))))
+    {:error e} -> (do (log e) [])))
 
 (def all-prices
   (["https://shop1.com" "https://shop2.com"]
@@ -4418,18 +4423,18 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 (use csv)
 (use str :as s)
 
-(def clean-csv (fn [file]
+(defn clean-csv [file]
   (file
    |> csv/parse-file
    |> (map (fn [row]
             {:name (s/trim (:name row))
              :email (s/lower (:email row))
              :age (parse-int (:age row))}))
-   |> (filter (fn [row] 
+   |> (filter (fn [row]
                (match (:age row)
                  {:ok n} -> (> n 0)
                  _ -> false)))
-   |> (csv/write-file "cleaned.csv"))))
+   |> (csv/write-file "cleaned.csv")))
 ```
 
 ### ログ解析
@@ -4437,12 +4442,12 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 (use regex :as re)
 (use str :as s)
 
-(def parse-log (fn [line]
+(defn parse-log [line]
   (match (re/match line #"^\[(?<level>\w+)\] (?<time>[\d:]+) - (?<msg>.+)$")
     {:groups {:level l :time t :msg m}} -> {:level l :time t :msg m}
-    _ -> nil)))
+    _ -> nil))
 
-(def analyze-logs (fn [file]
+(defn analyze-logs [file]
   (file
    |> slurp
    |> s/lines
@@ -4452,17 +4457,17 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
    |> (group-by :msg)
    |> (map (fn [[msg entries]] {:msg msg :count (len entries)}))
    |> (sort-by :count)
-   |> reverse)))
+   |> reverse))
 ```
 
 ### チャットサーバー
 ```lisp
 (def clients (atom #{}))
 
-(def broadcast (fn [msg]
-  (pmap (fn [c] (send c msg)) @clients)))
+(defn broadcast [msg]
+  (pmap (fn [c] (send c msg)) @clients))
 
-(def handle-client (fn [conn]
+(defn handle-client [conn]
   (do
     (swap! clients conj conn)
     (defer (swap! clients dissoc conn))
@@ -4472,7 +4477,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
           (match (recv conn)
             {:msg m} -> (do (broadcast m) (recur true))
             :close -> (recur false))
-          nil))))))
+          nil)))))
 
 (listen 8080 |> (map handle-client))
 ```
@@ -4482,7 +4487,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 (use str :as s)
 (use csv)
 
-(def process-logs (fn [file]
+(defn process-logs [file]
   (match (try
     (file
      |> csv/parse-file
@@ -4492,7 +4497,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
      |> (sort-by :count)
      |> reverse))
     {:ok data} -> data
-    {:error e} -> [])))
+    {:error e} -> []))
 
 (def results
   (dir-files "logs/*.csv")
@@ -4506,11 +4511,11 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 ```lisp
 (use str :as s)
 
-(def build-url (fn [base path params]
+(defn build-url [base path params]
   (let [query (params
                |> (map (fn [[k v]] f"{k}={(s/url-encode v)}"))
                |> (s/join "&"))]
-    f"{base}/{path}?{query}")))
+    f"{base}/{path}?{query}"))
 
 (build-url "https://api.example.com" "search"
            {:q "hello world" :limit 10})
@@ -4522,27 +4527,27 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 (use str :as s)
 (use regex :as re)
 
-(def clean-text (fn [text]
+(defn clean-text [text]
   (text
    |> (re/replace-all #"\s+" " ")
    |> s/trim
-   |> (s/truncate 1000))))
+   |> (s/truncate 1000)))
 
-(def extract-emails (fn [text]
+(defn extract-emails [text]
   (re/match-all text #"[^@\s]+@[^@\s]+\.[^@\s]+")
-  |> (map :matched)))
+  |> (map :matched))
 
-(def word-frequency (fn [text]
+(defn word-frequency [text]
   (text
    |> s/lower
    |> s/words
    |> (group-by identity)
    |> (map (fn [[word instances]] {:word word :count (len instances)}))
    |> (sort-by :count)
-   |> reverse)))
+   |> reverse))
 ```
 
-## 12. 言語文化
+## 13. 言語文化
 
 ### 命名規則
 - **関数名**: 短く直感的（`len`, `trim`, `split`）
@@ -4585,7 +4590,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
 - ❌ 過度な最適化（まず動くコードを書く）
 - ❌ パイプラインを使わない冗長な中間変数
 
-## 13. コマンドラインツール
+## 14. コマンドラインツール
 
 ```bash
 # REPL起動
@@ -4608,7 +4613,7 @@ $ qi install http json
 $ qi update
 ```
 
-## 14. メモリ管理と実行モデル ✅
+## 15. メモリ管理と実行モデル ✅
 
 ### メモリ管理
 
