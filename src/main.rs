@@ -412,19 +412,37 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
     }
 
     // 最初に見つかったディレクトリからドキュメントファイル一覧を取得
-    let mut doc_files = Vec::new();
+    let mut doc_files = std::collections::HashSet::new();
     let mut found_base = None;
     for base_path in &doc_base_paths {
+        // 英語版ディレクトリから取得
         let en_path = format!("{}/en", base_path);
         if let Ok(entries) = std::fs::read_dir(&en_path) {
             for entry in entries.flatten() {
                 if let Some(filename) = entry.file_name().to_str() {
                     if filename.ends_with(".qi") {
-                        doc_files.push(filename.to_string());
+                        doc_files.insert(filename.to_string());
                     }
                 }
             }
             found_base = Some(base_path.clone());
+        }
+
+        // 指定言語版ディレクトリからも取得（enと異なる場合）
+        if lang != "en" && found_base.is_some() {
+            let lang_path = format!("{}/{}", base_path, lang);
+            if let Ok(entries) = std::fs::read_dir(&lang_path) {
+                for entry in entries.flatten() {
+                    if let Some(filename) = entry.file_name().to_str() {
+                        if filename.ends_with(".qi") {
+                            doc_files.insert(filename.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        if found_base.is_some() {
             break;
         }
     }
@@ -437,6 +455,7 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
     let base_path = found_base.unwrap();
 
     // ファイル名でソート（読み込み順序を安定させる）
+    let mut doc_files: Vec<_> = doc_files.into_iter().collect();
     doc_files.sort();
 
     // 1. 英語版を先に読み込み
