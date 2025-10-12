@@ -103,7 +103,7 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
     let body_bytes = body
         .collect()
         .await
-        .map_err(|e| format!("Failed to read request body: {}", e))?
+        .map_err(|e| fmt_msg(MsgKey::ServerFailedToReadBody, &[&e.to_string()]))?
         .to_bytes();
 
     // Content-Encodingヘッダーをチェックして解凍
@@ -112,7 +112,7 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
             if encoding_str.to_lowercase() == "gzip" {
                 // gzip解凍
                 decompress_gzip(&body_bytes)
-                    .map_err(|e| format!("Failed to decompress gzip body: {}", e))?
+                    .map_err(|e| fmt_msg(MsgKey::ServerFailedToDecompressGzip, &[&e.to_string()]))?
             } else {
                 body_bytes.to_vec()
             }
@@ -191,7 +191,7 @@ fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
 
             response
                 .body(Full::new(Bytes::from(body_bytes)))
-                .map_err(|e| format!("Failed to build response: {}", e))
+                .map_err(|e| fmt_msg(MsgKey::ServerFailedToBuildResponse, &[&e.to_string()]))
         }
         _ => Err(format!("Handler must return a map, got: {}", value.type_name())),
     }
@@ -1133,7 +1133,7 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
 
     // ファイルサイズチェック
     let metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("server/static-file: failed to read file metadata: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::ServerStaticFileMetadataFailed, &[&e.to_string()]))?;
 
     let file_size = metadata.len();
     if file_size > MAX_STATIC_FILE_SIZE {

@@ -253,6 +253,20 @@ pub enum MsgKey {
     IoCopyFileFailed,         // io/copy-file: failed to copy '{0}' to '{1}': {2}
     IoMoveFileFailed,         // io/move-file: failed to move '{0}' to '{1}': {2}
     IoGetMetadataFailed,      // io/file-info: failed to get metadata for '{0}': {1}
+
+    // サーバーエラー（詳細）
+    ServerFailedToReadBody,   // Failed to read request body: {0}
+    ServerFailedToDecompressGzip, // Failed to decompress gzip body: {0}
+    ServerFailedToBuildResponse,  // Failed to build response: {0}
+    ServerStaticFileMetadataFailed, // server/static-file: failed to read file metadata: {0}
+
+    // SQLiteエラー
+    SqliteFailedToOpen,       // Failed to open SQLite database: {0}
+    SqliteFailedToSetTimeout, // Failed to set timeout: {0}
+    SqliteFailedToGetColumnName, // Failed to get column name: {0}
+    SqliteFailedToPrepare,    // Failed to prepare statement: {0}
+    SqliteFailedToExecuteQuery, // Failed to execute query: {0}
+    SqliteFailedToExecuteStatement, // Failed to execute statement: {0}
 }
 
 /// UIメッセージキー
@@ -563,6 +577,20 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::IoMoveFileFailed), "io/move-file: failed to move '{0}' to '{1}': {2}");
         messages.insert((Lang::En, MsgKey::IoGetMetadataFailed), "io/file-info: failed to get metadata for '{0}': {1}");
 
+        // 英語メッセージ - サーバー（詳細）
+        messages.insert((Lang::En, MsgKey::ServerFailedToReadBody), "Failed to read request body: {0}");
+        messages.insert((Lang::En, MsgKey::ServerFailedToDecompressGzip), "Failed to decompress gzip body: {0}");
+        messages.insert((Lang::En, MsgKey::ServerFailedToBuildResponse), "Failed to build response: {0}");
+        messages.insert((Lang::En, MsgKey::ServerStaticFileMetadataFailed), "server/static-file: failed to read file metadata: {0}");
+
+        // 英語メッセージ - SQLite
+        messages.insert((Lang::En, MsgKey::SqliteFailedToOpen), "Failed to open SQLite database: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToSetTimeout), "Failed to set timeout: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToGetColumnName), "Failed to get column name: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToPrepare), "Failed to prepare statement: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteQuery), "Failed to execute query: {0}");
+        messages.insert((Lang::En, MsgKey::SqliteFailedToExecuteStatement), "Failed to execute statement: {0}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -769,6 +797,20 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::IoCopyFileFailed), "io/copy-file: '{0}' から '{1}' へのコピーに失敗しました: {2}");
         messages.insert((Lang::Ja, MsgKey::IoMoveFileFailed), "io/move-file: '{0}' から '{1}' への移動に失敗しました: {2}");
         messages.insert((Lang::Ja, MsgKey::IoGetMetadataFailed), "io/file-info: '{0}' のメタデータ取得に失敗しました: {1}");
+
+        // 日本語メッセージ - サーバー（詳細）
+        messages.insert((Lang::Ja, MsgKey::ServerFailedToReadBody), "リクエストボディの読み込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerFailedToDecompressGzip), "gzipボディの解凍に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerFailedToBuildResponse), "レスポンスの構築に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::ServerStaticFileMetadataFailed), "server/static-file: ファイルメタデータの読み込みに失敗しました: {0}");
+
+        // 日本語メッセージ - SQLite
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToOpen), "SQLiteデータベースのオープンに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToSetTimeout), "タイムアウトの設定に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToGetColumnName), "カラム名の取得に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToPrepare), "ステートメントの準備に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteQuery), "クエリの実行に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::SqliteFailedToExecuteStatement), "ステートメントの実行に失敗しました: {0}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

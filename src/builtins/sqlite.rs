@@ -6,6 +6,7 @@
 //! - ACID準拠のトランザクション
 
 use super::db::*;
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use base64::Engine;
 use parking_lot::Mutex;
@@ -36,12 +37,12 @@ impl DbDriver for SqliteDriver {
         } else {
             SqliteConn::open(path)
         }
-        .map_err(|e| DbError::new(format!("Failed to open SQLite database: {}", e)))?;
+        .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToOpen, &[&e.to_string()])))?;
 
         // タイムアウト設定
         if let Some(timeout_ms) = opts.timeout_ms {
             conn.busy_timeout(std::time::Duration::from_millis(timeout_ms))
-                .map_err(|e| DbError::new(format!("Failed to set timeout: {}", e)))?;
+                .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToSetTimeout, &[&e.to_string()])))?;
         }
 
         Ok(Arc::new(SqliteConnection {
@@ -84,7 +85,7 @@ impl SqliteConnection {
             let column_name = row
                 .as_ref()
                 .column_name(i)
-                .map_err(|e| DbError::new(format!("Failed to get column name: {}", e)))?
+                .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToGetColumnName, &[&e.to_string()])))?
                 .to_string();
 
             let value = match row.get_ref(i) {
@@ -113,14 +114,14 @@ impl DbConnection for SqliteConnection {
         let conn = self.conn.lock();
         let mut stmt = conn
             .prepare(sql)
-            .map_err(|e| DbError::new(format!("Failed to prepare statement: {}", e)))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params.iter().map(Self::value_to_param).collect();
 
         let rows = stmt
             .query(params_from_iter(param_refs.iter()))
-            .map_err(|e| DbError::new(format!("Failed to execute query: {}", e)))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToExecuteQuery, &[&e.to_string()])))?;
 
         let mut results = Vec::new();
         let mut rows = rows;
@@ -135,14 +136,14 @@ impl DbConnection for SqliteConnection {
         let conn = self.conn.lock();
         let mut stmt = conn
             .prepare(sql)
-            .map_err(|e| DbError::new(format!("Failed to prepare statement: {}", e)))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params.iter().map(Self::value_to_param).collect();
 
         let affected = stmt
             .execute(params_from_iter(param_refs.iter()))
-            .map_err(|e| DbError::new(format!("Failed to execute statement: {}", e)))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToExecuteStatement, &[&e.to_string()])))?;
 
         Ok(affected as i64)
     }
