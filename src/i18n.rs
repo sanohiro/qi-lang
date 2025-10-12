@@ -127,6 +127,8 @@ pub enum MsgKey {
     // マクロエラー
     MacVarargNeedsSymbol,
     VariadicMacroNeedsParams,
+    MacArgCountMismatch,        // mac {0}: 引数の数が一致しません（期待: {1}, 実際: {2}）
+    MacVariadicArgCountMismatch, // mac {0}: 引数の数が不足しています（最低: {1}, 実際: {2}）
 
     // quasiquote エラー
     UnquoteOutsideQuasiquote,
@@ -135,6 +137,7 @@ pub enum MsgKey {
 
     // loop/recur エラー
     RecurNotFound,
+    RecurArgCountMismatch,      // recur: 引数の数が一致しません（期待: {0}, 実際: {1}）
 
     // 内部変換エラー
     ValueCannotBeConverted,
@@ -489,6 +492,8 @@ impl Messages {
         // 英語メッセージ - マクロ
         messages.insert((Lang::En, MsgKey::MacVarargNeedsSymbol), "mac: '&' requires a symbol");
         messages.insert((Lang::En, MsgKey::VariadicMacroNeedsParams), "variadic macro requires parameters");
+        messages.insert((Lang::En, MsgKey::MacArgCountMismatch), "mac {0}: argument count mismatch (expected {1}, got {2})");
+        messages.insert((Lang::En, MsgKey::MacVariadicArgCountMismatch), "mac {0}: insufficient arguments (minimum {1}, got {2})");
 
         // 英語メッセージ - quasiquote
         messages.insert((Lang::En, MsgKey::UnquoteOutsideQuasiquote), "unquote: can only be used inside quasiquote");
@@ -497,6 +502,7 @@ impl Messages {
 
         // 英語メッセージ - loop/recur
         messages.insert((Lang::En, MsgKey::RecurNotFound), "recur not found");
+        messages.insert((Lang::En, MsgKey::RecurArgCountMismatch), "recur: argument count mismatch (expected {0}, got {1})");
 
         // 英語メッセージ - 内部変換
         messages.insert((Lang::En, MsgKey::ValueCannotBeConverted), "value cannot be converted");
@@ -749,6 +755,8 @@ impl Messages {
         // 日本語メッセージ - マクロ
         messages.insert((Lang::Ja, MsgKey::MacVarargNeedsSymbol), "mac: &の後にシンボルが必要です");
         messages.insert((Lang::Ja, MsgKey::VariadicMacroNeedsParams), "可変長マクロはパラメータが必要です");
+        messages.insert((Lang::Ja, MsgKey::MacArgCountMismatch), "mac {0}: 引数の数が一致しません（期待: {1}, 実際: {2}）");
+        messages.insert((Lang::Ja, MsgKey::MacVariadicArgCountMismatch), "mac {0}: 引数の数が不足しています（最低: {1}, 実際: {2}）");
 
         // 日本語メッセージ - quasiquote
         messages.insert((Lang::Ja, MsgKey::UnquoteOutsideQuasiquote), "unquote: quasiquote外では使用できません");
@@ -757,6 +765,7 @@ impl Messages {
 
         // 日本語メッセージ - loop/recur
         messages.insert((Lang::Ja, MsgKey::RecurNotFound), "recurが見つかりません");
+        messages.insert((Lang::Ja, MsgKey::RecurArgCountMismatch), "recur: 引数の数が一致しません（期待: {0}, 実際: {1}）");
 
         // 日本語メッセージ - 内部変換
         messages.insert((Lang::Ja, MsgKey::ValueCannotBeConverted), "この値は変換できません");

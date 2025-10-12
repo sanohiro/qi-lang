@@ -2292,10 +2292,9 @@ impl Evaluator {
 
                         // 環境を更新
                         if bindings.len() != new_values.len() {
-                            return Err(format!(
-                                "recur: 引数の数が一致しません（期待: {}, 実際: {}）",
-                                bindings.len(),
-                                new_values.len()
+                            return Err(fmt_msg(
+                                MsgKey::RecurArgCountMismatch,
+                                &[&bindings.len().to_string(), &new_values.len().to_string()]
                             ));
                         }
 
@@ -2570,11 +2569,9 @@ impl Evaluator {
 
             // 固定引数が足りない場合エラー
             if args.len() < fixed_count {
-                return Err(format!(
-                    "mac {}: 引数の数が不足しています（最低: {}, 実際: {}）",
-                    mac.name,
-                    fixed_count,
-                    args.len()
+                return Err(fmt_msg(
+                    MsgKey::MacVariadicArgCountMismatch,
+                    &[&mac.name, &fixed_count.to_string(), &args.len().to_string()]
                 ));
             }
 
@@ -2593,11 +2590,9 @@ impl Evaluator {
         } else {
             // 通常の引数
             if mac.params.len() != args.len() {
-                return Err(format!(
-                    "mac {}: 引数の数が一致しません（期待: {}, 実際: {}）",
-                    mac.name,
-                    mac.params.len(),
-                    args.len()
+                return Err(fmt_msg(
+                    MsgKey::MacArgCountMismatch,
+                    &[&mac.name, &mac.params.len().to_string(), &args.len().to_string()]
                 ));
             }
             for (param, arg) in mac.params.iter().zip(args.iter()) {
