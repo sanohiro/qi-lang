@@ -1365,6 +1365,144 @@ file-exists?            ;; ファイル存在確認
 ;; ✅ 実装済み（上記の基本I/Oに含まれる）
 ```
 
+### コマンド実行 🚀 **Qiの最強機能 - Unixコマンドとのシームレス統合**
+
+> **他の言語では難しい「コマンドパイプライン」が、Qiでは `|>` で簡単に！**
+>
+> Python/Node.jsでのプロセス間通信は面倒。Qiなら**データの流れとして扱える**。
+
+#### なぜQiのコマンド実行が革新的なのか？
+
+**従来の問題点**:
+- Python: `subprocess.Popen(stdin=PIPE)` で複雑なコード
+- Node.js: `spawn().stdin.write()` とイベントハンドラ
+- **パイプが使いにくい、データの流れが見えない**
+
+**Qiの解決策**:
+```lisp
+;; データをコマンドへ流すだけ！
+(data |> (cmd/pipe "jq") |> (cmd/pipe "sort") |> process)
+
+;; Lispの関数もUnixコマンドも同じように扱える
+(["alice" "bob" "charlie"]
+ |> (map str/upper)        ;; Lisp関数
+ |> (cmd/pipe "sort -r")   ;; Unixコマンド
+ |> (take 2))              ;; Lisp関数
+;; => ("CHARLIE" "BOB")
+```
+
+#### 基本関数（✅ 実装済み）
+```lisp
+cmd/exec     ;; コマンド実行（結果を返す）
+cmd/sh       ;; シェル経由で実行（パイプ、リダイレクト可）
+cmd/pipe     ;; データをコマンドへパイプ（★超重要）
+cmd/lines    ;; テキストを行リストに分割
+```
+
+---
+
+#### 💎 かっこいい実用例
+
+**例1: ログ分析パイプライン**
+```lisp
+;; エラーログを抽出して集計（Lisp + Unix完全統合）
+("access.log"
+ |> read-file
+ |> (cmd/pipe "grep ERROR")
+ |> (get _ "stdout")
+ |> cmd/lines
+ |> (map (fn [line] (re-find #"\[(\w+)\]" line)))
+ |> (filter some?)
+ |> frequencies
+ |> (sort-by second >)
+ |> (take 5))
+;; Lisp関数とgrepが完全に融合！
+```
+
+**例2: API + jq + データ加工**
+```lisp
+;; GitHub APIから取得→jqで整形→Qiで集計
+(defn get-user-repos [username]
+  (cmd/sh (str "curl -s https://api.github.com/users/" username "/repos")
+   |> (get _ "stdout")
+   |> (cmd/pipe "jq '[.[] | {name: .name, stars: .stargazers_count}]'")
+   |> (get _ "stdout")
+   |> json/parse
+   |> (get _ :ok)
+   |> (sort-by (fn [r] (get r "stars")) >)
+   |> (take 10)))
+
+(get-user-repos "octocat")
+;; curlもjqもQiも全部パイプライン！
+```
+
+**例3: CSVデータの数値ソート（awk不要）**
+```lisp
+;; 複雑なCSVソート（売上データを金額でソート）
+(def sales-data "apple,10,150\nbanana,5,80\ncherry,15,300\n")
+
+(sales-data
+ |> (cmd/pipe "sort -t, -k3 -rn")  ;; 3列目で降順ソート
+ |> (get _ "stdout")
+ |> cmd/lines
+ |> (map (fn [line] (split line ",")))
+ |> (map (fn [[name qty price]]
+          {:product name
+           :qty (to-int qty)
+           :total (to-int price)})))
+;; => ({:product "cherry" :qty 15 :total 300}
+;;     {:product "apple" :qty 10 :total 150}
+;;     {:product "banana" :qty 5 :total 80})
+
+;; sortコマンドでソート→Lispでパース→マップに変換
+;; これが一つのパイプラインで！
+```
+
+**例4: 並列処理 + コマンド**
+```lisp
+;; 複数ファイルを並列で処理
+(["data1.json" "data2.json" "data3.json"]
+ ||> read-file                    ;; 並列読み込み
+ ||> (cmd/pipe "jq '.records'")   ;; 並列jq処理
+ ||> (fn [r] (get r "stdout"))
+ ||> json/parse
+ |> (map (fn [r] (get r :ok)))
+ |> flatten
+ |> (take 100))
+
+;; ||> で全部並列！curl + jq + Qiのハイブリッド並列処理
+```
+
+**例5: リアルタイム監視（将来拡張）**
+```lisp
+;; 🚧 Phase 2で実装予定: cmd/stream
+;; tail -f のようなストリーム処理
+(cmd/stream "tail -f /var/log/app.log"
+ |> (filter (fn [line] (str/includes? line "ERROR")))
+ |> (map parse-log)
+ |> (each alert))
+```
+
+---
+
+#### 🎯 設計思想
+
+1. **データの流れとして統一** - コマンドも関数も同じパイプライン
+2. **安全性** - ベクタ形式 `["cmd" "arg1" "arg2"]` でインジェクション防止
+3. **結果は常にMap** - `{:stdout "" :stderr "" :exit 0}` で一貫性
+4. **リストは自動変換** - `["a" "b" "c"]` → `"a\nb\nc"` へ自動変換
+
+#### 📊 他言語との比較
+
+| 操作 | Python | Node.js | **Qi** |
+|------|--------|---------|--------|
+| コマンド実行 | `subprocess.run(...)` 冗長 | `execSync(...)` | `(cmd/exec "...")` |
+| データパイプ | `Popen(stdin=PIPE)` 複雑 | `spawn().stdin.write()` | `(data \|> (cmd/pipe "..."))` |
+| 複数コマンド | 手動で繋ぐ | 手動で繋ぐ | `\|>` で自然に繋がる |
+| 並列実行 | ThreadPool必要 | Promise.all | `\|\|>` だけ |
+
+**→ Qiなら1行でできることが、他の言語では10行以上必要！**
+
 ### Web開発・ユーティリティ ⭐ **Phase 4.5新機能**
 
 #### JSON処理（✅ 実装済み）

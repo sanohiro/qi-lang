@@ -95,6 +95,8 @@ pub mod args;
 #[cfg(feature = "io-temp")]
 pub mod temp;
 
+pub mod cmd;
+
 pub mod test;
 pub mod profile;
 pub mod ds;
@@ -366,6 +368,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "args/get" => args::native_args_get,
         "args/parse" => args::native_args_parse,
         "args/count" => args::native_args_count,
+
+        // ========================================
+        // 専門モジュール: cmd（4個）
+        // ========================================
+        "cmd/exec" => cmd::native_exec,
+        "cmd/sh" => cmd::native_sh,
+        "cmd/pipe" => cmd::native_pipe,
+        "cmd/lines" => cmd::native_lines,
 
         // ========================================
         // 専門モジュール: test（5個）

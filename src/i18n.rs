@@ -196,6 +196,15 @@ pub enum MsgKey {
     CsvCannotSerialize,  // csv/stringify: cannot serialize {0}
     CsvRecordMustBeList, // csv/stringify: each record must be a list
 
+    // コマンド実行エラー
+    CmdEmptyCommand,         // Command cannot be empty
+    CmdFirstArgMustBeString, // First element of command list must be a string
+    CmdArgsMustBeStrings,    // All command arguments must be strings
+    CmdInvalidArgument,      // Invalid command argument: expected string or list
+    CmdExecutionFailed,      // Command execution failed: {0}
+    CmdWriteFailed,          // Failed to write to command stdin: {0}
+    CmdWaitFailed,           // Failed to wait for command: {0}
+
     // データ構造エラー
     MustBeQueue,         // {0}: {1} must be a queue
     MustBeStack,         // {0}: {1} must be a stack
@@ -572,6 +581,15 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::CsvCannotSerialize), "csv/stringify: cannot serialize {0}");
         messages.insert((Lang::En, MsgKey::CsvRecordMustBeList), "csv/stringify: each record must be a list");
 
+        // 英語メッセージ - コマンド実行
+        messages.insert((Lang::En, MsgKey::CmdEmptyCommand), "Command cannot be empty");
+        messages.insert((Lang::En, MsgKey::CmdFirstArgMustBeString), "First element of command list must be a string");
+        messages.insert((Lang::En, MsgKey::CmdArgsMustBeStrings), "All command arguments must be strings");
+        messages.insert((Lang::En, MsgKey::CmdInvalidArgument), "Invalid command argument: expected string or list");
+        messages.insert((Lang::En, MsgKey::CmdExecutionFailed), "Command execution failed: {0}");
+        messages.insert((Lang::En, MsgKey::CmdWriteFailed), "Failed to write to command stdin: {0}");
+        messages.insert((Lang::En, MsgKey::CmdWaitFailed), "Failed to wait for command: {0}");
+
         // 英語メッセージ - データ構造
         messages.insert((Lang::En, MsgKey::MustBeQueue), "{0}: {1} must be a queue");
         messages.insert((Lang::En, MsgKey::MustBeStack), "{0}: {1} must be a stack");
@@ -845,6 +863,15 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::FileReadError), "{0}: ファイル読み込みエラー: {1}");
         messages.insert((Lang::Ja, MsgKey::CsvCannotSerialize), "csv/stringify: シリアライズできません: {0}");
         messages.insert((Lang::Ja, MsgKey::CsvRecordMustBeList), "csv/stringify: 各レコードはリストである必要があります");
+
+        // 日本語メッセージ - コマンド実行
+        messages.insert((Lang::Ja, MsgKey::CmdEmptyCommand), "コマンドが空です");
+        messages.insert((Lang::Ja, MsgKey::CmdFirstArgMustBeString), "コマンドリストの最初の要素は文字列である必要があります");
+        messages.insert((Lang::Ja, MsgKey::CmdArgsMustBeStrings), "全てのコマンド引数は文字列である必要があります");
+        messages.insert((Lang::Ja, MsgKey::CmdInvalidArgument), "無効なコマンド引数: 文字列またはリストが必要です");
+        messages.insert((Lang::Ja, MsgKey::CmdExecutionFailed), "コマンド実行に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::CmdWriteFailed), "コマンドの標準入力への書き込みに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::CmdWaitFailed), "コマンドの待機に失敗しました: {0}");
 
         // 日本語メッセージ - データ構造
         messages.insert((Lang::Ja, MsgKey::MustBeQueue), "{0}: {1}はキューである必要があります");
