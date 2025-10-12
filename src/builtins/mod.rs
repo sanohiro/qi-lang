@@ -676,13 +676,19 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "str/uuid" => string::native_uuid,
     );
 
-    // コマンド実行（4個）
+    // コマンド実行（10個）
     #[cfg(feature = "cmd-exec")]
     register_native!(env.write(),
         "cmd/exec" => cmd::native_exec,
         "cmd/sh" => cmd::native_sh,
         "cmd/pipe" => cmd::native_pipe,
         "cmd/lines" => cmd::native_lines,
+        "cmd/stream-lines" => cmd::native_stream_lines,
+        "cmd/stream-bytes" => cmd::native_stream_bytes,
+        "cmd/interactive" => cmd::native_interactive,
+        "cmd/write" => cmd::native_proc_write,
+        "cmd/read-line" => cmd::native_proc_read_line,
+        "cmd/wait" => cmd::native_proc_wait,
     );
 }
 

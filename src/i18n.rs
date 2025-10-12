@@ -204,6 +204,12 @@ pub enum MsgKey {
     CmdExecutionFailed,      // Command execution failed: {0}
     CmdWriteFailed,          // Failed to write to command stdin: {0}
     CmdWaitFailed,           // Failed to wait for command: {0}
+    CmdInvalidProcessHandle, // Invalid process handle
+    CmdProcessNotFound,      // Process not found (PID: {0})
+    CmdStdinClosed,          // stdin is already closed
+    CmdStdoutClosed,         // stdout is already closed
+    CmdReadFailed,           // Failed to read: {0}
+    MustBePositiveInteger,   // {0}: {1} must be a positive integer
 
     // データ構造エラー
     MustBeQueue,         // {0}: {1} must be a queue
@@ -589,6 +595,12 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::CmdExecutionFailed), "Command execution failed: {0}");
         messages.insert((Lang::En, MsgKey::CmdWriteFailed), "Failed to write to command stdin: {0}");
         messages.insert((Lang::En, MsgKey::CmdWaitFailed), "Failed to wait for command: {0}");
+        messages.insert((Lang::En, MsgKey::CmdInvalidProcessHandle), "Invalid process handle");
+        messages.insert((Lang::En, MsgKey::CmdProcessNotFound), "Process not found (PID: {0})");
+        messages.insert((Lang::En, MsgKey::CmdStdinClosed), "stdin is already closed");
+        messages.insert((Lang::En, MsgKey::CmdStdoutClosed), "stdout is already closed");
+        messages.insert((Lang::En, MsgKey::CmdReadFailed), "Failed to read: {0}");
+        messages.insert((Lang::En, MsgKey::MustBePositiveInteger), "{0}: {1} must be a positive integer");
 
         // 英語メッセージ - データ構造
         messages.insert((Lang::En, MsgKey::MustBeQueue), "{0}: {1} must be a queue");
@@ -872,6 +884,12 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::CmdExecutionFailed), "コマンド実行に失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::CmdWriteFailed), "コマンドの標準入力への書き込みに失敗しました: {0}");
         messages.insert((Lang::Ja, MsgKey::CmdWaitFailed), "コマンドの待機に失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::CmdInvalidProcessHandle), "無効なプロセスハンドルです");
+        messages.insert((Lang::Ja, MsgKey::CmdProcessNotFound), "プロセスが見つかりません (PID: {0})");
+        messages.insert((Lang::Ja, MsgKey::CmdStdinClosed), "標準入力は既に閉じられています");
+        messages.insert((Lang::Ja, MsgKey::CmdStdoutClosed), "標準出力は既に閉じられています");
+        messages.insert((Lang::Ja, MsgKey::CmdReadFailed), "読み取りに失敗しました: {0}");
+        messages.insert((Lang::Ja, MsgKey::MustBePositiveInteger), "{0}: {1}は正の整数である必要があります");
 
         // 日本語メッセージ - データ構造
         messages.insert((Lang::Ja, MsgKey::MustBeQueue), "{0}: {1}はキューである必要があります");
