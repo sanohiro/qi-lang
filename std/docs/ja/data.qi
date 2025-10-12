@@ -1,0 +1,150 @@
+;; 標準ライブラリドキュメント (日本語)
+;; データフォーマット関数 (JSON, YAML, CSV)
+
+;; JSON関数
+(def __doc__json/parse
+  {:desc "JSON文字列をQiデータ構造にパースする"
+   :params [{:name "s" :type "string" :desc "JSON文字列"}]
+   :returns {:type "any" :desc "パースされたデータ"}
+   :examples ["(json/parse \"{\\\"name\\\": \\\"John\\\", \\\"age\\\": 30}\") ;=> {:name \"John\" :age 30}"
+              "(json/parse \"[1, 2, 3]\") ;=> [1 2 3]"]})
+
+(def __doc__json/stringify
+  {:desc "Qiデータ構造をJSON文字列に変換する"
+   :params [{:name "data" :type "any" :desc "文字列化するデータ"}]
+   :returns {:type "string" :desc "JSON文字列"}
+   :examples ["(json/stringify {:name \"John\" :age 30}) ;=> \"{\\\"name\\\":\\\"John\\\",\\\"age\\\":30}\""
+              "(json/stringify [1 2 3]) ;=> \"[1,2,3]\""]})
+
+(def __doc__json/pretty
+  {:desc "データを整形されたJSON文字列に変換する"
+   :params [{:name "data" :type "any" :desc "文字列化するデータ"}]
+   :returns {:type "string" :desc "整形されたJSON"}
+   :examples ["(json/pretty {:name \"John\" :age 30})"
+              ";=> \"{\\n  \\\"name\\\": \\\"John\\\",\\n  \\\"age\\\": 30\\n}\""]})
+
+(def __doc__json/read-file
+  {:desc "JSONファイルを読み込んでパースする"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "any" :desc "パースされたデータ"}
+   :examples ["(json/read-file \"data.json\") ;=> {...}"]})
+
+(def __doc__json/write-file
+  {:desc "データをJSONファイルに書き込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "data" :type "any" :desc "書き込むデータ"}]
+   :returns {:type "nil" :desc "成功時はnil"}
+   :examples ["(json/write-file \"output.json\" {:name \"John\"})"]}
+)
+
+;; YAML関数
+(def __doc__yaml/parse
+  {:desc "YAML文字列をQiデータ構造にパースする"
+   :params [{:name "s" :type "string" :desc "YAML文字列"}]
+   :returns {:type "any" :desc "パースされたデータ"}
+   :examples ["(yaml/parse \"name: John\\nage: 30\") ;=> {:name \"John\" :age 30}"]})
+
+(def __doc__yaml/stringify
+  {:desc "QiデータをYAML文字列に変換する"
+   :params [{:name "data" :type "any" :desc "文字列化するデータ"}]
+   :returns {:type "string" :desc "YAML文字列"}
+   :examples ["(yaml/stringify {:name \"John\" :age 30}) ;=> \"name: John\\nage: 30\\n\""]})
+
+(def __doc__yaml/pretty
+  {:desc "データを整形されたYAML文字列に変換する"
+   :params [{:name "data" :type "any" :desc "文字列化するデータ"}]
+   :returns {:type "string" :desc "整形されたYAML"}
+   :examples ["(yaml/pretty {:name \"John\" :items [\"a\" \"b\"]})"]})
+
+(def __doc__yaml/read-file
+  {:desc "YAMLファイルを読み込んでパースする"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "any" :desc "パースされたデータ"}
+   :examples ["(yaml/read-file \"config.yaml\") ;=> {...}"]})
+
+(def __doc__yaml/write-file
+  {:desc "データをYAMLファイルに書き込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "data" :type "any" :desc "書き込むデータ"}]
+   :returns {:type "nil" :desc "成功時はnil"}
+   :examples ["(yaml/write-file \"config.yaml\" {:debug true})"]}
+)
+
+;; CSV関数
+(def __doc__csv/parse
+  {:desc "CSV文字列をマップのリストにパースする"
+   :params [{:name "s" :type "string" :desc "CSV文字列"}]
+   :returns {:type "list" :desc "行マップのリスト"}
+   :examples ["(csv/parse \"name,age\\nJohn,30\\nJane,25\") ;=> [{:name \"John\" :age \"30\"} {:name \"Jane\" :age \"25\"}]"]})
+
+(def __doc__csv/stringify
+  {:desc "マップのリストをCSV文字列に変換する"
+   :params [{:name "data" :type "list" :desc "マップのリスト"}]
+   :returns {:type "string" :desc "CSV文字列"}
+   :examples ["(csv/stringify [{:name \"John\" :age 30}]) ;=> \"name,age\\nJohn,30\\n\""]})
+
+(def __doc__csv/read-file
+  {:desc "CSVファイルを読み込んでパースする"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "list" :desc "行マップのリスト"}
+   :examples ["(csv/read-file \"data.csv\") ;=> [{...} {...}]"]})
+
+(def __doc__csv/write-file
+  {:desc "データをCSVファイルに書き込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "data" :type "list" :desc "書き込むマップのリスト"}]
+   :returns {:type "nil" :desc "成功時はnil"}
+   :examples ["(csv/write-file \"output.csv\" [{:name \"John\" :age 30}])"]}
+)
+
+(def __doc__csv/read-stream
+  {:desc "CSVファイルをストリームとして読み込む"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "stream" :desc "行のストリーム"}
+   :examples ["(csv/read-stream \"large.csv\")"]})
+
+;; 変換ユーティリティ
+(def __doc__to-int
+  {:desc "値を整数に変換する"
+   :params [{:name "x" :type "any" :desc "変換する値"}]
+   :returns {:type "number" :desc "整数値"}
+   :examples ["(to-int \"42\") ;=> 42"
+              "(to-int 3.14) ;=> 3"]})
+
+(def __doc__to-float
+  {:desc "値を浮動小数点数に変換する"
+   :params [{:name "x" :type "any" :desc "変換する値"}]
+   :returns {:type "number" :desc "浮動小数点数値"}
+   :examples ["(to-float \"3.14\") ;=> 3.14"
+              "(to-float 42) ;=> 42.0"]})
+
+(def __doc__to-string
+  {:desc "値を文字列に変換する"
+   :params [{:name "x" :type "any" :desc "変換する値"}]
+   :returns {:type "string" :desc "文字列表現"}
+   :examples ["(to-string 42) ;=> \"42\""
+              "(to-string true) ;=> \"true\""]})
+
+(def __doc__true?
+  {:desc "値がtrueかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "値がtrueならtrue"}
+   :examples ["(true? true) ;=> true"
+              "(true? false) ;=> false"
+              "(true? 1) ;=> false"]})
+
+(def __doc__false?
+  {:desc "値がfalseかチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "値がfalseならtrue"}
+   :examples ["(false? false) ;=> true"
+              "(false? true) ;=> false"
+              "(false? 0) ;=> false"]})
+
+(def __doc__boolean?
+  {:desc "値が真偽値かチェックする"
+   :params [{:name "x" :type "any" :desc "チェックする値"}]
+   :returns {:type "boolean" :desc "真偽値ならtrue"}
+   :examples ["(boolean? true) ;=> true"
+              "(boolean? false) ;=> true"
+              "(boolean? 1) ;=> false"]})

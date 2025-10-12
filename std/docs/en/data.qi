@@ -1,0 +1,150 @@
+;; Standard Library Documentation (English)
+;; Data Format Functions (JSON, YAML, CSV)
+
+;; JSON Functions
+(def __doc__json/parse
+  {:desc "Parse JSON string into Qi data structure"
+   :params [{:name "s" :type "string" :desc "JSON string"}]
+   :returns {:type "any" :desc "Parsed data"}
+   :examples ["(json/parse \"{\\\"name\\\": \\\"John\\\", \\\"age\\\": 30}\") ;=> {:name \"John\" :age 30}"
+              "(json/parse \"[1, 2, 3]\") ;=> [1 2 3]"]})
+
+(def __doc__json/stringify
+  {:desc "Convert Qi data structure to JSON string"
+   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+   :returns {:type "string" :desc "JSON string"}
+   :examples ["(json/stringify {:name \"John\" :age 30}) ;=> \"{\\\"name\\\":\\\"John\\\",\\\"age\\\":30}\""
+              "(json/stringify [1 2 3]) ;=> \"[1,2,3]\""]})
+
+(def __doc__json/pretty
+  {:desc "Convert data to pretty-printed JSON string"
+   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+   :returns {:type "string" :desc "Pretty-printed JSON"}
+   :examples ["(json/pretty {:name \"John\" :age 30})"
+              ";=> \"{\\n  \\\"name\\\": \\\"John\\\",\\n  \\\"age\\\": 30\\n}\""]})
+
+(def __doc__json/read-file
+  {:desc "Read and parse JSON file"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "any" :desc "Parsed data"}
+   :examples ["(json/read-file \"data.json\") ;=> {...}"]})
+
+(def __doc__json/write-file
+  {:desc "Write data to JSON file"
+   :params [{:name "path" :type "string" :desc "File path"}
+            {:name "data" :type "any" :desc "Data to write"}]
+   :returns {:type "nil" :desc "nil on success"}
+   :examples ["(json/write-file \"output.json\" {:name \"John\"})"]}
+)
+
+;; YAML Functions
+(def __doc__yaml/parse
+  {:desc "Parse YAML string into Qi data structure"
+   :params [{:name "s" :type "string" :desc "YAML string"}]
+   :returns {:type "any" :desc "Parsed data"}
+   :examples ["(yaml/parse \"name: John\\nage: 30\") ;=> {:name \"John\" :age 30}"]})
+
+(def __doc__yaml/stringify
+  {:desc "Convert Qi data structure to YAML string"
+   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+   :returns {:type "string" :desc "YAML string"}
+   :examples ["(yaml/stringify {:name \"John\" :age 30}) ;=> \"name: John\\nage: 30\\n\""]})
+
+(def __doc__yaml/pretty
+  {:desc "Convert data to pretty-printed YAML string"
+   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+   :returns {:type "string" :desc "Pretty-printed YAML"}
+   :examples ["(yaml/pretty {:name \"John\" :items [\"a\" \"b\"]})"]})
+
+(def __doc__yaml/read-file
+  {:desc "Read and parse YAML file"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "any" :desc "Parsed data"}
+   :examples ["(yaml/read-file \"config.yaml\") ;=> {...}"]})
+
+(def __doc__yaml/write-file
+  {:desc "Write data to YAML file"
+   :params [{:name "path" :type "string" :desc "File path"}
+            {:name "data" :type "any" :desc "Data to write"}]
+   :returns {:type "nil" :desc "nil on success"}
+   :examples ["(yaml/write-file \"config.yaml\" {:debug true})"]}
+)
+
+;; CSV Functions
+(def __doc__csv/parse
+  {:desc "Parse CSV string into list of maps"
+   :params [{:name "s" :type "string" :desc "CSV string"}]
+   :returns {:type "list" :desc "List of row maps"}
+   :examples ["(csv/parse \"name,age\\nJohn,30\\nJane,25\") ;=> [{:name \"John\" :age \"30\"} {:name \"Jane\" :age \"25\"}]"]})
+
+(def __doc__csv/stringify
+  {:desc "Convert list of maps to CSV string"
+   :params [{:name "data" :type "list" :desc "List of maps"}]
+   :returns {:type "string" :desc "CSV string"}
+   :examples ["(csv/stringify [{:name \"John\" :age 30}]) ;=> \"name,age\\nJohn,30\\n\""]})
+
+(def __doc__csv/read-file
+  {:desc "Read and parse CSV file"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "list" :desc "List of row maps"}
+   :examples ["(csv/read-file \"data.csv\") ;=> [{...} {...}]"]})
+
+(def __doc__csv/write-file
+  {:desc "Write data to CSV file"
+   :params [{:name "path" :type "string" :desc "File path"}
+            {:name "data" :type "list" :desc "List of maps to write"}]
+   :returns {:type "nil" :desc "nil on success"}
+   :examples ["(csv/write-file \"output.csv\" [{:name \"John\" :age 30}])"]}
+)
+
+(def __doc__csv/read-stream
+  {:desc "Read CSV file as a stream"
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "stream" :desc "Stream of rows"}
+   :examples ["(csv/read-stream \"large.csv\")"]})
+
+;; Conversion Utilities
+(def __doc__to-int
+  {:desc "Convert value to integer"
+   :params [{:name "x" :type "any" :desc "Value to convert"}]
+   :returns {:type "number" :desc "Integer value"}
+   :examples ["(to-int \"42\") ;=> 42"
+              "(to-int 3.14) ;=> 3"]})
+
+(def __doc__to-float
+  {:desc "Convert value to floating point number"
+   :params [{:name "x" :type "any" :desc "Value to convert"}]
+   :returns {:type "number" :desc "Float value"}
+   :examples ["(to-float \"3.14\") ;=> 3.14"
+              "(to-float 42) ;=> 42.0"]})
+
+(def __doc__to-string
+  {:desc "Convert value to string"
+   :params [{:name "x" :type "any" :desc "Value to convert"}]
+   :returns {:type "string" :desc "String representation"}
+   :examples ["(to-string 42) ;=> \"42\""
+              "(to-string true) ;=> \"true\""]})
+
+(def __doc__true?
+  {:desc "Check if value is true"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if value is true"}
+   :examples ["(true? true) ;=> true"
+              "(true? false) ;=> false"
+              "(true? 1) ;=> false"]})
+
+(def __doc__false?
+  {:desc "Check if value is false"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if value is false"}
+   :examples ["(false? false) ;=> true"
+              "(false? true) ;=> false"
+              "(false? 0) ;=> false"]})
+
+(def __doc__boolean?
+  {:desc "Check if value is a boolean"
+   :params [{:name "x" :type "any" :desc "Value to check"}]
+   :returns {:type "boolean" :desc "true if boolean"}
+   :examples ["(boolean? true) ;=> true"
+              "(boolean? false) ;=> true"
+              "(boolean? 1) ;=> false"]})
