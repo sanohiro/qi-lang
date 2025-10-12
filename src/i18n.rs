@@ -291,6 +291,13 @@ pub enum MsgKey {
     DbNeed2To4Args,              // {0} requires 2-4 arguments, got {1}
     DbExpectedConnection,        // Expected DbConnection, got: {0}
     DbConnectionNotFound,        // Connection not found: {0}
+
+    // I/Oエラー（追加）
+    IoFailedToDecodeAs,          // {0}: failed to decode as {1} (invalid byte sequence)
+    IoCouldNotDetectEncoding,    // {0}: could not detect encoding (tried UTF-8, UTF-16, Japanese, Chinese, Korean, European encodings)
+    IoAppendFileFailedToWrite,   // append-file: failed to write {0}: {1}
+    IoAppendFileFailedToOpen,    // append-file: failed to open {0}: {1}
+    IoReadLinesFailedToRead,     // read-lines: failed to read {0}: {1}
 }
 
 /// UIメッセージキー
@@ -639,6 +646,13 @@ impl Messages {
         messages.insert((Lang::En, MsgKey::DbExpectedConnection), "Expected DbConnection, got: {0}");
         messages.insert((Lang::En, MsgKey::DbConnectionNotFound), "Connection not found: {0}");
 
+        // 英語メッセージ - I/O（追加）
+        messages.insert((Lang::En, MsgKey::IoFailedToDecodeAs), "{0}: failed to decode as {1} (invalid byte sequence)");
+        messages.insert((Lang::En, MsgKey::IoCouldNotDetectEncoding), "{0}: could not detect encoding (tried UTF-8, UTF-16, Japanese, Chinese, Korean, European encodings)");
+        messages.insert((Lang::En, MsgKey::IoAppendFileFailedToWrite), "append-file: failed to write {0}: {1}");
+        messages.insert((Lang::En, MsgKey::IoAppendFileFailedToOpen), "append-file: failed to open {0}: {1}");
+        messages.insert((Lang::En, MsgKey::IoReadLinesFailedToRead), "read-lines: failed to read {0}: {1}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -883,6 +897,13 @@ impl Messages {
         messages.insert((Lang::Ja, MsgKey::DbNeed2To4Args), "{0}には2〜4個の引数が必要です。実際: {1}個");
         messages.insert((Lang::Ja, MsgKey::DbExpectedConnection), "DbConnectionが期待されましたが、実際: {0}");
         messages.insert((Lang::Ja, MsgKey::DbConnectionNotFound), "接続が見つかりません: {0}");
+
+        // 日本語メッセージ - I/O（追加）
+        messages.insert((Lang::Ja, MsgKey::IoFailedToDecodeAs), "{0}: {1}としてデコードできませんでした (無効なバイト列)");
+        messages.insert((Lang::Ja, MsgKey::IoCouldNotDetectEncoding), "{0}: エンコーディングを検出できませんでした (UTF-8, UTF-16, 日本語, 中国語, 韓国語, ヨーロッパ言語のエンコーディングを試行)");
+        messages.insert((Lang::Ja, MsgKey::IoAppendFileFailedToWrite), "append-file: {0} への書き込みに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoAppendFileFailedToOpen), "append-file: {0} のオープンに失敗しました: {1}");
+        messages.insert((Lang::Ja, MsgKey::IoReadLinesFailedToRead), "read-lines: {0} の読み込みに失敗しました: {1}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

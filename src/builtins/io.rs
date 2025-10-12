@@ -70,7 +70,7 @@ fn strip_bom(bytes: &[u8]) -> (&[u8], Option<&'static Encoding>) {
 fn decode_bytes(bytes: &[u8], encoding: &'static Encoding, path: &str) -> Result<String, String> {
     let (decoded, _, had_errors) = encoding.decode(bytes);
     if had_errors {
-        Err(format!("{}: failed to decode as {} (invalid byte sequence)", path, encoding.name()))
+        Err(fmt_msg(MsgKey::IoFailedToDecodeAs, &[path, encoding.name()]))
     } else {
         Ok(decoded.into_owned())
     }
@@ -118,10 +118,7 @@ fn auto_detect_encoding(bytes: &[u8], path: &str) -> Result<String, String> {
         }
     }
 
-    Err(format!(
-        "{}: could not detect encoding (tried UTF-8, UTF-16, Japanese, Chinese, Korean, European encodings)",
-        path
-    ))
+    Err(fmt_msg(MsgKey::IoCouldNotDetectEncoding, &[path]))
 }
 
 /// 文字列をバイト列にエンコード
@@ -370,10 +367,10 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
                 Ok(mut file) => {
                     match file.write_all(content.as_bytes()) {
                         Ok(_) => Ok(Value::Nil),
-                        Err(e) => Err(format!("append-file: failed to write {}: {}", path, e)),
+                        Err(e) => Err(fmt_msg(MsgKey::IoAppendFileFailedToWrite, &[path, &e.to_string()])),
                     }
                 }
-                Err(e) => Err(format!("append-file: failed to open {}: {}", path, e)),
+                Err(e) => Err(fmt_msg(MsgKey::IoAppendFileFailedToOpen, &[path, &e.to_string()])),
             }
         }
         _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["append-file", "2", "(content: string, path: string)"])),
@@ -413,7 +410,7 @@ pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
                         .collect();
                     Ok(Value::List(lines))
                 }
-                Err(e) => Err(format!("read-lines: failed to read {}: {}", path, e)),
+                Err(e) => Err(fmt_msg(MsgKey::IoReadLinesFailedToRead, &[path, &e.to_string()])),
             }
         }
         _ => Err(fmt_msg(MsgKey::MustBeString, &["read-lines", "argument"])),
