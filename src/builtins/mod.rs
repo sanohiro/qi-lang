@@ -37,7 +37,7 @@
 //! - json: JSON処理（3個）
 //! - csv: CSV処理（5個）
 //! - http: HTTP通信（22個）
-//! - db: データベース（8個）
+//! - db: データベース（17個）
 
 // Coreモジュール
 pub mod core_numeric;
@@ -498,7 +498,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "server/static-dir" => server::native_server_static_dir,
 
         // ========================================
-        // 専門モジュール: db（10個）
+        // 専門モジュール: db（17個）
         // ========================================
         "db/connect" => db::native_connect,
         "db/query" => db::native_query,
@@ -511,6 +511,13 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "db/begin" => db::native_begin,
         "db/commit" => db::native_commit,
         "db/rollback" => db::native_rollback,
+        "db/tables" => db::native_tables,
+        "db/columns" => db::native_columns,
+        "db/indexes" => db::native_indexes,
+        "db/foreign-keys" => db::native_foreign_keys,
+        "db/call" => db::native_call,
+        "db/supports?" => db::native_supports,
+        "db/driver-info" => db::native_driver_info,
 
         // ========================================
         // 専門モジュール: stream（11個）

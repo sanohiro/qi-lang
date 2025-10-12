@@ -121,6 +121,54 @@ impl QueryOptions {
     }
 }
 
+/// カラム情報
+#[derive(Debug, Clone)]
+pub struct ColumnInfo {
+    pub name: String,
+    pub data_type: String,
+    pub nullable: bool,
+    pub default_value: Option<String>,
+    pub primary_key: bool,
+}
+
+/// インデックス情報
+#[derive(Debug, Clone)]
+pub struct IndexInfo {
+    pub name: String,
+    pub table: String,
+    pub columns: Vec<String>,
+    pub unique: bool,
+}
+
+/// 外部キー情報
+#[derive(Debug, Clone)]
+pub struct ForeignKeyInfo {
+    pub name: String,
+    pub table: String,
+    pub columns: Vec<String>,
+    pub referenced_table: String,
+    pub referenced_columns: Vec<String>,
+}
+
+/// ストアドプロシージャ/ファンクション呼び出しの結果
+#[derive(Debug, Clone)]
+pub enum CallResult {
+    /// 関数の戻り値
+    Value(Value),
+    /// プロシージャの結果セット
+    Rows(Rows),
+    /// 複数の結果セット
+    Multiple(Vec<Rows>),
+}
+
+/// ドライバー情報
+#[derive(Debug, Clone)]
+pub struct DriverInfo {
+    pub name: String,
+    pub version: String,
+    pub database_version: String,
+}
+
 /// トランザクション分離レベル
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsolationLevel {
@@ -218,11 +266,27 @@ pub trait DbConnection: Send + Sync {
     /// ドライバー名を取得
     fn driver_name(&self) -> &str;
 
-    // TODO: Phase 2で実装予定
-    // fn call(&self, name: &str, params: &[Value], opts: &CallOptions) -> DbResult<CallResult>;
-    // fn tables(&self) -> DbResult<Vec<String>>;
-    // fn columns(&self, table: &str) -> DbResult<Vec<ColumnInfo>>;
-    // fn supports(&self, feature: &str) -> bool;
+    // Phase 2: メタデータAPI
+    /// テーブル一覧を取得
+    fn tables(&self) -> DbResult<Vec<String>>;
+
+    /// テーブルのカラム情報を取得
+    fn columns(&self, table: &str) -> DbResult<Vec<ColumnInfo>>;
+
+    /// テーブルのインデックス一覧を取得
+    fn indexes(&self, table: &str) -> DbResult<Vec<IndexInfo>>;
+
+    /// テーブルの外部キー一覧を取得
+    fn foreign_keys(&self, table: &str) -> DbResult<Vec<ForeignKeyInfo>>;
+
+    /// ストアドプロシージャ/ファンクションを呼び出す
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult>;
+
+    /// 機能をサポートしているか確認
+    fn supports(&self, feature: &str) -> bool;
+
+    /// ドライバー情報を取得
+    fn driver_info(&self) -> DbResult<DriverInfo>;
 }
 
 /// データベーストランザクションの統一インターフェース
@@ -635,6 +699,239 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
     tx.rollback().map_err(|e| e.message)?;
 
     Ok(Value::Nil)
+}
+
+/// db/tables - テーブル一覧を取得
+pub fn native_tables(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["db/tables"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let tables = conn.tables().map_err(|e| e.message)?;
+
+    Ok(Value::Vector(
+        tables.into_iter().map(Value::String).collect()
+    ))
+}
+
+/// db/columns - テーブルのカラム情報を取得
+pub fn native_columns(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/columns"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let table = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/columns", "string"])),
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let columns = conn.columns(table).map_err(|e| e.message)?;
+
+    // Vec<ColumnInfo>をValue::Vectorに変換
+    let result = columns
+        .into_iter()
+        .map(|col| {
+            let mut map = HashMap::new();
+            map.insert("name".to_string(), Value::String(col.name));
+            map.insert("type".to_string(), Value::String(col.data_type));
+            map.insert("nullable".to_string(), Value::Bool(col.nullable));
+            map.insert(
+                "default".to_string(),
+                col.default_value.map(Value::String).unwrap_or(Value::Nil),
+            );
+            map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
+            Value::Map(map)
+        })
+        .collect();
+
+    Ok(Value::Vector(result))
+}
+
+/// db/indexes - テーブルのインデックス一覧を取得
+pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/indexes"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let table = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/indexes", "string"])),
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let indexes = conn.indexes(table).map_err(|e| e.message)?;
+
+    // Vec<IndexInfo>をValue::Vectorに変換
+    let result = indexes
+        .into_iter()
+        .map(|idx| {
+            let mut map = HashMap::new();
+            map.insert("name".to_string(), Value::String(idx.name));
+            map.insert("table".to_string(), Value::String(idx.table));
+            map.insert(
+                "columns".to_string(),
+                Value::Vector(idx.columns.into_iter().map(Value::String).collect()),
+            );
+            map.insert("unique".to_string(), Value::Bool(idx.unique));
+            Value::Map(map)
+        })
+        .collect();
+
+    Ok(Value::Vector(result))
+}
+
+/// db/foreign-keys - テーブルの外部キー一覧を取得
+pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/foreign-keys"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let table = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/foreign-keys", "string"])),
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let foreign_keys = conn.foreign_keys(table).map_err(|e| e.message)?;
+
+    // Vec<ForeignKeyInfo>をValue::Vectorに変換
+    let result = foreign_keys
+        .into_iter()
+        .map(|fk| {
+            let mut map = HashMap::new();
+            map.insert("name".to_string(), Value::String(fk.name));
+            map.insert("table".to_string(), Value::String(fk.table));
+            map.insert(
+                "columns".to_string(),
+                Value::Vector(fk.columns.into_iter().map(Value::String).collect()),
+            );
+            map.insert(
+                "referenced_table".to_string(),
+                Value::String(fk.referenced_table),
+            );
+            map.insert(
+                "referenced_columns".to_string(),
+                Value::Vector(
+                    fk.referenced_columns
+                        .into_iter()
+                        .map(Value::String)
+                        .collect(),
+                ),
+            );
+            Value::Map(map)
+        })
+        .collect();
+
+    Ok(Value::Vector(result))
+}
+
+/// db/call - ストアドプロシージャ/ファンクションを呼び出す
+pub fn native_call(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err(fmt_msg(MsgKey::Need2Or3Args, &["db/call"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let name = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/call", "string"])),
+    };
+
+    let params = if args.len() == 3 {
+        params_from_value(&args[2]).map_err(|e| e.message)?
+    } else {
+        vec![]
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let call_result = conn.call(name, &params).map_err(|e| e.message)?;
+
+    // CallResultをValueに変換
+    let result = match call_result {
+        CallResult::Value(v) => v,
+        CallResult::Rows(rows) => rows_to_value(rows),
+        CallResult::Multiple(multiple) => Value::Vector(
+            multiple.into_iter().map(rows_to_value).collect()
+        ),
+    };
+
+    Ok(result)
+}
+
+/// db/supports? - 機能をサポートしているか確認
+pub fn native_supports(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/supports?"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let feature = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/supports?", "string"])),
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let supported = conn.supports(feature);
+
+    Ok(Value::Bool(supported))
+}
+
+/// db/driver-info - ドライバー情報を取得
+pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["db/driver-info"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let info = conn.driver_info().map_err(|e| e.message)?;
+
+    // DriverInfoをマップに変換
+    let mut map = HashMap::new();
+    map.insert("name".to_string(), Value::String(info.name));
+    map.insert("version".to_string(), Value::String(info.version));
+    map.insert(
+        "database_version".to_string(),
+        Value::String(info.database_version),
+    );
+
+    Ok(Value::Map(map))
 }
 
 #[cfg(test)]
