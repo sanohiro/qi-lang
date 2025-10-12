@@ -402,7 +402,7 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
     // ドキュメントファイル一覧
-    let doc_files = ["core.qi", "string.qi"];
+    let doc_files = ["core.qi", "string.qi", "list.qi"];
 
     // 1. 英語版を先に読み込み
     for file in &doc_files {
