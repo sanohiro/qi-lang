@@ -285,6 +285,12 @@ pub enum MsgKey {
 
     // ZIPエラー
     ZipPathDoesNotExist,         // {0}: path '{1}' does not exist
+
+    // データベースエラー
+    DbUnsupportedUrl,            // Unsupported database URL: {0}. Supported: sqlite:
+    DbNeed2To4Args,              // {0} requires 2-4 arguments, got {1}
+    DbExpectedConnection,        // Expected DbConnection, got: {0}
+    DbConnectionNotFound,        // Connection not found: {0}
 }
 
 /// UIメッセージキー
@@ -627,6 +633,12 @@ impl Messages {
         // 英語メッセージ - ZIP
         messages.insert((Lang::En, MsgKey::ZipPathDoesNotExist), "{0}: path '{1}' does not exist");
 
+        // 英語メッセージ - データベース
+        messages.insert((Lang::En, MsgKey::DbUnsupportedUrl), "Unsupported database URL: {0}. Supported: sqlite:");
+        messages.insert((Lang::En, MsgKey::DbNeed2To4Args), "{0} requires 2-4 arguments, got {1}");
+        messages.insert((Lang::En, MsgKey::DbExpectedConnection), "Expected DbConnection, got: {0}");
+        messages.insert((Lang::En, MsgKey::DbConnectionNotFound), "Connection not found: {0}");
+
         // 日本語メッセージ - パーサー/レキサー
         messages.insert((Lang::Ja, MsgKey::UnexpectedToken), "予期しないトークン: {0}");
         messages.insert((Lang::Ja, MsgKey::UnexpectedEof), "予期しないEOF");
@@ -865,6 +877,12 @@ impl Messages {
 
         // 日本語メッセージ - ZIP
         messages.insert((Lang::Ja, MsgKey::ZipPathDoesNotExist), "{0}: パス '{1}' が存在しません");
+
+        // 日本語メッセージ - データベース
+        messages.insert((Lang::Ja, MsgKey::DbUnsupportedUrl), "サポートされていないデータベースURL: {0} (対応: sqlite:)");
+        messages.insert((Lang::Ja, MsgKey::DbNeed2To4Args), "{0}には2〜4個の引数が必要です。実際: {1}個");
+        messages.insert((Lang::Ja, MsgKey::DbExpectedConnection), "DbConnectionが期待されましたが、実際: {0}");
+        messages.insert((Lang::Ja, MsgKey::DbConnectionNotFound), "接続が見つかりません: {0}");
 
         // UIメッセージ
         let mut ui_messages = HashMap::new();

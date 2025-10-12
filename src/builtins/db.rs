@@ -317,7 +317,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
     let driver: Box<dyn DbDriver> = if url.starts_with("sqlite:") {
         Box::new(SqliteDriver::new())
     } else {
-        return Err(format!("Unsupported database URL: {}. Supported: sqlite:", url));
+        return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &[url]));
     };
 
     let conn = driver.connect(url, &opts)
@@ -333,7 +333,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
 /// db/query - SQLクエリを実行
 pub fn native_query(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(format!("db/query requires 2-4 arguments, got {}", args.len()));
+        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/query", &args.len().to_string()]));
     }
 
     let conn_id = extract_conn_id(&args[0])?;
@@ -356,7 +356,7 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     let rows = conn.query(sql, &params, &opts)
         .map_err(|e| e.message)?;
@@ -367,7 +367,7 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
 /// db/query-one - SQLクエリを実行して最初の1行のみ取得
 pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(format!("db/query-one requires 2-4 arguments, got {}", args.len()));
+        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/query-one", &args.len().to_string()]));
     }
 
     let conn_id = extract_conn_id(&args[0])?;
@@ -390,7 +390,7 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     let row = conn.query_one(sql, &params, &opts)
         .map_err(|e| e.message)?;
@@ -401,7 +401,7 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
 /// db/exec - SQL文を実行
 pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(format!("db/exec requires 2-4 arguments, got {}", args.len()));
+        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/exec", &args.len().to_string()]));
     }
 
     let conn_id = extract_conn_id(&args[0])?;
@@ -424,7 +424,7 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     let affected = conn.exec(sql, &params, &opts)
         .map_err(|e| e.message)?;
@@ -442,7 +442,7 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
 
     let mut connections = CONNECTIONS.lock();
     let conn = connections.remove(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     conn.close().map_err(|e| e.message)?;
 
@@ -463,7 +463,7 @@ pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.sanitize(value)))
 }
@@ -482,7 +482,7 @@ pub fn native_sanitize_identifier(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.sanitize_identifier(name)))
 }
@@ -501,7 +501,7 @@ pub fn native_escape_like(args: &[Value]) -> Result<Value, String> {
 
     let connections = CONNECTIONS.lock();
     let conn = connections.get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.escape_like(pattern)))
 }
@@ -512,7 +512,7 @@ fn extract_conn_id(value: &Value) -> Result<String, String> {
         Value::String(s) if s.starts_with("DbConnection:") => {
             Ok(s.strip_prefix("DbConnection:").unwrap().to_string())
         }
-        _ => Err(format!("Expected DbConnection, got: {:?}", value)),
+        _ => Err(fmt_msg(MsgKey::DbExpectedConnection, &[&format!("{:?}", value)])),
     }
 }
 
