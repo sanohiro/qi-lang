@@ -1,4 +1,5 @@
 use qi_lang::eval::Evaluator;
+use qi_lang::formatter;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::value::Value;
@@ -115,6 +116,25 @@ fn main() {
             }
             run_code(&args[2]);
         }
+        "fmt" => {
+            // フォーマッター
+            if args.len() < 3 {
+                eprintln!("Usage: qi fmt [--check] <file>");
+                std::process::exit(1);
+            }
+
+            let (check_mode, file_path) = if args[2] == "--check" {
+                if args.len() < 4 {
+                    eprintln!("Usage: qi fmt --check <file>");
+                    std::process::exit(1);
+                }
+                (true, &args[3])
+            } else {
+                (false, &args[2])
+            };
+
+            run_formatter(file_path, check_mode);
+        }
         "-" => {
             // 標準入力からスクリプト実行
             run_stdin();
@@ -148,6 +168,7 @@ fn print_help() {
     println!("{}:", ui_msg(UiMsg::HelpOptions));
     println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
     println!("    -                   {}", ui_msg(UiMsg::OptStdin));
+    println!("    fmt <file>          Format Qi code (use --check to print to stdout)");
     println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
     println!("    -h, --help          {}", ui_msg(UiMsg::OptHelp));
     println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
@@ -761,5 +782,44 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
                 eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
             }
         }
+    }
+}
+
+/// フォーマッターを実行
+fn run_formatter(file_path: &str, check_mode: bool) {
+    // ファイルを読み込む
+    let content = std::fs::read_to_string(file_path).unwrap_or_else(|e| {
+        eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
+        std::process::exit(1);
+    });
+
+    // パーサーでASTに変換
+    let exprs = match Parser::new(&content) {
+        Ok(mut parser) => match parser.parse_all() {
+            Ok(exprs) => exprs,
+            Err(e) => {
+                eprintln!("{}:{}: {}", file_path, ui_msg(UiMsg::ErrorParse), e);
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            eprintln!("{}:{}: {}", file_path, ui_msg(UiMsg::ErrorLexer), e);
+            std::process::exit(1);
+        }
+    };
+
+    // フォーマット
+    let formatted = formatter::format_exprs(&exprs);
+
+    if check_mode {
+        // --checkモード: 標準出力に出力
+        println!("{}", formatted);
+    } else {
+        // 通常モード: ファイルに書き込み
+        if let Err(e) = std::fs::write(file_path, formatted) {
+            eprintln!("Failed to write file: {}", e);
+            std::process::exit(1);
+        }
+        println!("Formatted: {}", file_path);
     }
 }

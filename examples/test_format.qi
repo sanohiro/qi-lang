@@ -1,0 +1,23 @@
+(def x 10)
+
+(def add (fn [a b] (+ a b)))
+
+(def greet (fn [name] (println f"Hello, {name}!")))
+
+(let [
+  x 10
+  y 20
+  z 30
+]
+  (+ x y z))
+
+(if (> x 10)
+  "big"
+  "small")
+
+(match x
+  0 -> "zero"
+  1 -> "one"
+  _ -> "other")
+
+(def config {:host "localhost" :port 8080 :timeout 5000})
