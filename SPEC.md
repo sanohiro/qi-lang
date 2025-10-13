@@ -1616,100 +1616,314 @@ Qiは**2層モジュール設計**を採用しています：
 ### 関数型プログラミング基礎
 
 #### 基本ツール（✅ 全て実装済み）
+
 ```qi
-;; ✅ 実装済み（関数型の必須ツール）
-identity                ;; 引数をそのまま返す: (identity 42) => 42
-constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) => 42
-comp                    ;; 関数合成: ((comp f g) x) => (f (g x))
-partial                 ;; 部分適用: (def add5 (partial + 5))
-apply                   ;; リストを引数として適用: (apply + [1 2 3]) => 6
-complement              ;; 述語の否定: ((fn/complement even?) 3) => true
-juxt                    ;; 複数関数を並列適用: ((fn/juxt inc dec) 5) => [6 4]
+;; === 基本 ===
+
+;; identity - 引数をそのまま返す
+(identity 42)                       ;; => 42
+(filter identity [1 false nil 2])   ;; => (1 2)
+
+;; constantly - 常に同じ値を返す関数を生成
+((constantly 42) "anything")        ;; => 42
+
+;; apply - リストを引数として関数に適用
+(apply + [1 2 3])                   ;; => 6
+(apply max [5 2 8 3])               ;; => 8
+
+;; === 関数合成 ===
+
+;; comp - 関数を合成（右から左に適用）
+(def process (comp inc (* 2)))
+(process 5)                         ;; => 11  ((5 * 2) + 1)
+
+;; partial - 部分適用
+(def add5 (partial + 5))
+(add5 10)                           ;; => 15
+
+;; === fn/モジュール ===
+
+;; fn/complement - 述語の否定
+((fn/complement even?) 3)           ;; => true
+((fn/complement even?) 4)           ;; => false
+
+;; fn/juxt - 複数関数を並列適用
+((fn/juxt inc dec) 5)               ;; => [6 4]
 ```
-
-**使用例**:
-```qi
-;; identity: フィルタや変換のデフォルト
-(filter identity [1 false nil 2 3])  ;; (1 2 3)
-
-;; comp: パイプラインの代替（右から左）
-(def process (comp upper trim))
-(process "  hello  ")  ;; "HELLO"
-
-;; constantly: デフォルト値生成
-(def get-or-default (fn [m k] (get m k (constantly "N/A"))))
-```
-
-**設計メモ**: `identity`/`comp`/`apply`は関数型の基礎。パイプライン（`|>`）と`comp`は補完関係。
 
 ### 文字列操作
 
 #### Core関数（✅ 実装済み）
+
 ```qi
-str                     ;; 連結
-split join              ;; 分割・結合
-upper lower trim        ;; 変換
-len empty?              ;; 長さ、空チェック
-map-lines               ;; 各行に関数適用
+;; === 基本 ===
+
+;; str - 値を文字列に変換・連結
+(str "hello" " " "world")           ;; => "hello world"
+(str 42)                            ;; => "42"
+
+;; split - 文字列を分割
+(split "a,b,c" ",")                 ;; => ["a" "b" "c"]
+
+;; join - リストを結合
+(join "," ["a" "b" "c"])            ;; => "a,b,c"
+
+;; === その他 ===
+
+;; map-lines - 各行に関数を適用
+(map-lines str/upper "line1\nline2\nline3")
+;; => "LINE1\nLINE2\nLINE3"
 ```
 
-#### 拡張機能（🔜 strモジュールで提供予定）
-SPEC.mdの「標準ライブラリ > str」セクション参照。60以上の文字列関数を提供予定。
+**拡張機能**: 60以上の文字列関数が `str/` モジュールで提供されています。
 
 ### 述語関数（✅ 全て実装済み）
+
 ```qi
-;; 型判定
-nil? list? vector? map? string? keyword?
-integer? float? number? fn?
-coll?           ;; コレクション型か（list/vector/map）
-sequential?     ;; シーケンシャル型か（list/vector）
+;; === 型判定 ===
 
-;; 状態チェック
-empty?
-some?           ;; nilでないか
+;; nil? - nilかどうか
+(nil? nil)                          ;; => true
+(nil? 0)                            ;; => false
 
-;; 論理値判定
-true?           ;; 厳密にtrueか
-false?          ;; 厳密にfalseか
+;; list? vector? map? - コレクション型判定
+(list? '(1 2 3))                    ;; => true
+(vector? [1 2 3])                   ;; => true
+(map? {:a 1})                       ;; => true
 
-;; 数値判定
-even? odd?
-positive? negative? zero?
+;; string? keyword? - その他の型判定
+(string? "hello")                   ;; => true
+(keyword? :name)                    ;; => true
+
+;; integer? float? number? - 数値型判定
+(integer? 42)                       ;; => true
+(float? 3.14)                       ;; => true
+(number? 42)                        ;; => true
+
+;; function? macro? - 関数・マクロ判定
+(function? map)                     ;; => true
+(macro? defn)                       ;; => true
+
+;; === コレクション判定 ===
+
+;; coll? - コレクション型か（list/vector/map）
+(coll? [1 2 3])                     ;; => true
+(coll? {:a 1})                      ;; => true
+
+;; sequential? - シーケンシャル型か（list/vector）
+(sequential? [1 2 3])               ;; => true
+(sequential? {:a 1})                ;; => false
+
+;; === 状態判定 ===
+
+;; empty? - 空かどうか
+(empty? [])                         ;; => true
+(empty? [1])                        ;; => false
+
+;; some? - nilでないか
+(some? 0)                           ;; => true
+(some? nil)                         ;; => false
+
+;; === 論理値判定 ===
+
+;; true? false? - 厳密な真偽値判定
+(true? true)                        ;; => true
+(true? 1)                           ;; => false
+(false? false)                      ;; => true
+
+;; === 数値判定 ===
+
+;; even? odd? - 偶数・奇数判定
+(even? 4)                           ;; => true
+(odd? 5)                            ;; => true
+
+;; positive? negative? zero? - 正負ゼロ判定
+(positive? 5)                       ;; => true
+(negative? -5)                      ;; => true
+(zero? 0)                           ;; => true
 ```
 
 ### IO・ファイル操作
 
 #### 基本I/O（✅ 実装済み）
-```qi
-print                   ;; 標準出力
-println                 ;; 改行付き出力
-read-file               ;; ファイル読み込み
-read-lines              ;; 行ごとに読み込み（メモリ効率）
-write-file              ;; ファイル書き込み（上書き）
-append-file             ;; ファイル追記
-file-exists?            ;; ファイル存在確認
-```
 
-**使用例**:
 ```qi
-;; ファイル読み書き
+;; このセクションの関数は io/ モジュールに属します
+
+;; === 出力 ===
+
+;; print - 標準出力（改行なし）
+(print "Hello")                     ;; Hello（改行なし）
+
+;; println - 標準出力（改行あり）
+(println "Hello")                   ;; Hello\n
+
+;; === ファイル読み込み ===
+
+;; io/read-file - ファイル全体を読み込み
+(io/read-file "data.txt")           ;; => "file content..."
+
+;; io/read-lines - 行ごとに読み込み（メモリ効率的）
+(io/read-lines "data.txt")          ;; => ["line1" "line2" "line3"]
+
+;; === ファイル書き込み ===
+
+;; io/write-file - ファイルに書き込み（上書き）
 (io/write-file "/tmp/test.txt" "Hello, Qi!")
-(def content (io/read-file "/tmp/test.txt"))
-(print content)  ;; "Hello, Qi!"
 
-;; 追記
+;; io/append-file - ファイルに追記
 (io/append-file "/tmp/test.txt" "\nSecond line")
 
-;; パイプラインで処理
-(io/read-file "data.csv"
- |> split "\n"
- |> (fn [lines] (map parse-line lines))
- |> (fn [data] (filter valid? data)))
+;; === ファイル確認 ===
+
+;; io/file-exists? - ファイルの存在確認
+(io/file-exists? "/tmp/test.txt")   ;; => true
 ```
 
-#### 拡張I/O（全て実装済み）
+**使用例: CSVファイル処理**
+
 ```qi
-;; ✅ 実装済み（上記の基本I/Oに含まれる）
+;; CSVを読み込んで処理
+(io/read-file "data.csv")
+  |> (fn [content] (split content "\n"))
+  |> (map (fn [line] (split line ",")))
+  |> (filter (fn [row] (> (len row) 2)))
+```
+
+### 並行処理（✅ 実装済み）
+
+```qi
+;; === チャネル ===
+
+;; chan - チャネルを作成
+(chan)                              ;; 無制限バッファ
+(chan 10)                           ;; バッファサイズ10
+
+;; send! - チャネルに送信
+(def ch (chan))
+(send! ch 42)
+
+;; recv! - チャネルから受信（ブロッキング）
+(recv! ch)                          ;; => 42
+
+;; close! - チャネルをクローズ
+(close! ch)
+
+;; === Goroutine ===
+
+;; go - 新しいgoroutineで実行
+(go (println "async!"))
+
+;; 結果をチャネルで受け取る
+(def result-ch (chan))
+(go (send! result-ch (* 2 3)))
+(recv! result-ch)                   ;; => 6
+```
+
+**使用例: 並列計算**
+
+```qi
+;; 複数のgoroutineで並列計算
+(def ch (chan))
+
+(go (send! ch (* 2 3)))
+(go (send! ch (* 4 5)))
+(go (send! ch (* 6 7)))
+
+[(recv! ch) (recv! ch) (recv! ch)]  ;; => [6 20 42]
+```
+
+### 状態管理（✅ 実装済み）
+
+```qi
+;; === アトム ===
+
+;; atom - ミュータブルな状態を作成
+(def counter (atom 0))
+
+;; deref - 現在の値を取得
+(deref counter)                     ;; => 0
+
+;; reset! - 値を設定
+(reset! counter 10)
+(deref counter)                     ;; => 10
+
+;; swap! - 関数で値を更新
+(swap! counter inc)
+(deref counter)                     ;; => 11
+
+(swap! counter (fn [x] (* x 2)))
+(deref counter)                     ;; => 22
+```
+
+**使用例: スレッドセーフなカウンター**
+
+```qi
+(def counter (atom 0))
+
+;; 複数のgoroutineから安全にインクリメント
+(go (swap! counter inc))
+(go (swap! counter inc))
+(go (swap! counter inc))
+
+(sleep 100)  ;; 完了を待つ
+(deref counter)  ;; => 3
+```
+
+### メタプログラミング・その他（✅ 実装済み）
+
+```qi
+;; === メタプログラミング ===
+
+;; eval - 文字列をコードとして評価
+(eval "(+ 1 2)")                    ;; => 3
+
+;; uvar - ユニークな変数名を生成（名前衝突回避）
+(uvar)                              ;; => "g__1234"
+
+;; variable - 変数を作成
+(variable "x" 42)
+
+;; macro? - マクロかどうか判定
+(macro? defn)                       ;; => true
+
+;; === 型変換 ===
+
+;; to-int - 整数に変換
+(to-int "42")                       ;; => 42
+(to-int 3.14)                       ;; => 3
+
+;; to-float - 浮動小数点数に変換
+(to-float "3.14")                   ;; => 3.14
+(to-float 42)                       ;; => 42.0
+
+;; to-string - 文字列に変換
+(to-string 42)                      ;; => "42"
+(to-string [1 2 3])                 ;; => "[1 2 3]"
+
+;; === 日時 ===
+
+;; now - 現在時刻（ミリ秒）
+(now)                               ;; => 1234567890123
+
+;; timestamp - 現在のUNIXタイムスタンプ（秒）
+(timestamp)                         ;; => 1234567890
+
+;; sleep - 指定ミリ秒スリープ
+(sleep 1000)                        ;; 1秒待機
+
+;; === デバッグ ===
+
+;; time - 関数の実行時間を計測
+(time (fn [] (reduce + (range 1000000))))
+;; Elapsed: 0.234s
+
+;; inspect - 値を整形表示して返す
+(inspect {:name "Alice" :age 30})
+;; => {:name "Alice" :age 30} (整形表示される)
+
+;; error - エラーを発生させる
+(error "Something went wrong")
 ```
 
 ### コマンド実行 🚀 **Qiの最強機能 - Unixコマンドとのシームレス統合**
