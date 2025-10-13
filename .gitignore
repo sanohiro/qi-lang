@@ -21,3 +21,6 @@ test_repl.txt
 # ai doc
 chat
 reports
+
+# VSCode
+*.vsix

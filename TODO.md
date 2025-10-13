@@ -176,11 +176,11 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 
 ---
 
-## ✅ データベース機能の拡張（Phase 2） - 実装完了
+## ✅ データベース機能の拡張（Phase 2 & 3） - 実装完了
 
 ### 実装完了 (2025-01-13)
 
-データベースの**メタデータAPI**と**機能検出API**が実装されました。
+データベースの**メタデータAPI**、**機能検出API**、**クエリ情報取得**、および**コネクションプーリング**が実装されました。
 
 ### 実装内容
 
@@ -229,16 +229,64 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 ;; PostgreSQL/MySQLでは実装予定
 ```
 
+#### ✅ 4. クエリ情報取得（Phase 2追加）
+
+```qi
+;; db/query-info - クエリのメタデータを取得（実行せずに）
+(def conn (db/connect "sqlite:test.db"))
+(def info (db/query-info conn "SELECT id, name FROM users WHERE age > ?"))
+;; => {:columns [{:name "id" :type "UNKNOWN" :nullable true ...}
+;;               {:name "name" :type "UNKNOWN" :nullable true ...}]
+;;     :parameter_count 1}
+
+;; カラム情報を取得
+(def columns (get info :columns))
+(println "カラム数:" (count columns))
+(println "パラメータ数:" (get info :parameter_count))
+```
+
+#### ✅ 5. コネクションプーリング（Phase 3）
+
+```qi
+;; db/create-pool - コネクションプールを作成
+(def pool (db/create-pool "sqlite:mydb.db" {} 10))  ; 最大10接続
+
+;; db/pool-acquire - プールから接続を取得
+(def conn (db/pool-acquire pool))
+
+;; 接続を使用
+(db/exec conn "INSERT INTO users (name) VALUES (?)" ["Alice"])
+(def users (db/query conn "SELECT * FROM users" []))
+
+;; db/pool-release - 接続をプールに返却
+(db/pool-release pool conn)
+
+;; db/pool-stats - プールの統計情報を取得
+(def stats (db/pool-stats pool))
+;; => {:available 9, :in_use 1, :max 10}
+
+;; db/pool-close - プール全体をクローズ
+(db/pool-close pool)
+```
+
 ### 実装詳細
 
 **変更したファイル**:
 - `src/builtins/db.rs`:
   - DbConnection traitに以下のメソッドを追加:
     - `tables()`, `columns()`, `indexes()`, `foreign_keys()`
-    - `call()`, `supports()`, `driver_info()`
+    - `call()`, `supports()`, `driver_info()`, `query_info()`
   - 対応するQiビルトイン関数を実装:
     - `native_tables()`, `native_columns()`, `native_indexes()`, `native_foreign_keys()`
-    - `native_call()`, `native_supports()`, `native_driver_info()`
+    - `native_call()`, `native_supports()`, `native_driver_info()`, `native_query_info()`
+  - DbPool構造体を追加（スレッドセーフなコネクションプーリング）:
+    - `acquire()` - プールから接続を取得
+    - `release()` - 接続をプールに返却
+    - `close()` - プール全体をクローズ
+    - `stats()` - プールの統計情報を取得
+  - プール管理関数を実装:
+    - `native_create_pool()`, `native_pool_acquire()`, `native_pool_release()`
+    - `native_pool_close()`, `native_pool_stats()`
 
 - `src/builtins/sqlite.rs`:
   - SQLiteドライバーで全メソッドを実装
@@ -249,9 +297,14 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
   - `supports()`: SQLiteがサポートする機能を返却
   - `driver_info()`: rusqliteとSQLiteのバージョン情報を返却
   - `call()`: 未サポート（エラーを返す）
+  - `query_info()`: プリペアドステートメントからカラム情報とパラメータ数を取得
 
 - `src/builtins/mod.rs`:
-  - 7つの新しい関数を登録
+  - 12個の新しい関数を登録（Phase 2: 7個 + Phase 3: 5個）
+
+- `src/i18n.rs`:
+  - プール関連のエラーメッセージキーを追加:
+    - `DbExpectedPool`, `DbPoolNotFound`, `DbInvalidPoolSize`, `DbNeed1To3Args`
 
 **サポートされる機能**:
 - SQLiteで確認できる機能:
@@ -263,9 +316,19 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
   - `"stored_functions"` → false
 
 **メリット**:
-- データベーススキーマの動的な検査が可能
-- マイグレーションツールの実装が容易
-- データベース依存のコードを実行前に検出可能
+- **Phase 2 (メタデータAPI)**:
+  - データベーススキーマの動的な検査が可能
+  - マイグレーションツールの実装が容易
+  - データベース依存のコードを実行前に検出可能
+- **Phase 2 (クエリ情報取得)**:
+  - クエリを実行せずにカラム情報を取得可能
+  - 動的なクエリビルダーの実装が容易
+  - パラメータの数を事前に確認できる
+- **Phase 3 (コネクションプーリング)**:
+  - 複数の接続を再利用してパフォーマンス向上
+  - 並行・並列処理に対応（スレッドセーフ）
+  - 最大接続数の制限により、リソース枯渇を防止
+  - 統計情報の取得により、プールの状態を監視可能
 
 ---
 
@@ -281,20 +344,7 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 
 ### 優先度: 中
 
-#### 1. コネクションプーリング（Phase 3）
-
-**目的**: 複数の接続を再利用してパフォーマンスを向上
-
-**現状**: 接続は1つずつ管理
-
-**実装内容**:
-- コネクションプールの実装
-- 接続の再利用
-- 最大接続数の制限
-
----
-
-#### 3. 正規表現の拡張機能
+#### 1. 正規表現の拡張機能
 
 **実装予定の機能**:
 - グループキャプチャ（名前付き・番号付き）
@@ -328,9 +378,10 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 **未実装のモジュール**:
 - `http` - HTTPクライアント（基本機能は実装済み、拡張が必要）
 - `json` - JSONパース（基本機能は実装済み）
-- `tail-stream` - リアルタイムログ監視
 
-**関連**: SPEC.md line 6032-6037, 6986
+**注**: リアルタイムログ監視は`cmd/stream-lines`と`tail -f`コマンドの組み合わせで実現可能
+
+**関連**: SPEC.md line 6032-6037
 
 ---
 

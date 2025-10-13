@@ -322,11 +322,15 @@ pub enum MsgKey {
     // データベースエラー
     DbUnsupportedUrl,      // Unsupported database URL: {0}. Supported: sqlite:
     DbNeed2To4Args,        // {0} requires 2-4 arguments, got {1}
+    DbNeed1To3Args,        // {0} requires 1-3 arguments, got {1}
     DbExpectedConnection,  // Expected DbConnection, got: {0}
     DbConnectionNotFound,  // Connection not found: {0}
     DbExpectedTransaction, // Expected DbTransaction, got: {0}
     DbTransactionNotFound, // Transaction not found: {0}
     DbExpectedConnectionOrTransaction, // Expected DbConnection or DbTransaction, got: {0}
+    DbExpectedPool,        // Expected DbPool, got: {0}
+    DbPoolNotFound,        // Pool not found: {0}
+    DbInvalidPoolSize,     // {0}: invalid pool size, expected {1}
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs, // {0}: failed to decode as {1} (invalid byte sequence)
@@ -1261,6 +1265,19 @@ impl Messages {
             (Lang::En, MsgKey::DbExpectedConnectionOrTransaction),
             "Expected DbConnection or DbTransaction, got: {0}",
         );
+        messages.insert(
+            (Lang::En, MsgKey::DbNeed1To3Args),
+            "{0} requires 1-3 arguments, got {1}",
+        );
+        messages.insert(
+            (Lang::En, MsgKey::DbExpectedPool),
+            "Expected DbPool, got: {0}",
+        );
+        messages.insert((Lang::En, MsgKey::DbPoolNotFound), "Pool not found: {0}");
+        messages.insert(
+            (Lang::En, MsgKey::DbInvalidPoolSize),
+            "{0}: invalid pool size, expected {1}",
+        );
 
         // 英語メッセージ - I/O（追加）
         messages.insert(
@@ -2146,6 +2163,22 @@ impl Messages {
         messages.insert(
             (Lang::Ja, MsgKey::DbExpectedConnectionOrTransaction),
             "DbConnectionまたはDbTransactionが期待されましたが、実際: {0}",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::DbNeed1To3Args),
+            "{0}は1～3個の引数が必要です。実際: {1}個",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::DbExpectedPool),
+            "DbPoolが期待されましたが、実際: {0}",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::DbPoolNotFound),
+            "プールが見つかりません: {0}",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::DbInvalidPoolSize),
+            "{0}: 無効なプールサイズです。期待される値: {1}",
         );
 
         // 日本語メッセージ - I/O（追加）

@@ -665,7 +665,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "io/temp-dir-keep" => temp::native_temp_dir_keep,
     );
 
-    // データベース（17個）
+    // データベース（22個）
     #[cfg(feature = "db-sqlite")]
     register_native!(env.write(),
         "db/connect" => db::native_connect,
@@ -686,6 +686,12 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "db/call" => db::native_call,
         "db/supports?" => db::native_supports,
         "db/driver-info" => db::native_driver_info,
+        "db/query-info" => db::native_query_info,
+        "db/create-pool" => db::native_create_pool,
+        "db/pool-acquire" => db::native_pool_acquire,
+        "db/pool-release" => db::native_pool_release,
+        "db/pool-close" => db::native_pool_close,
+        "db/pool-stats" => db::native_pool_stats,
     );
 
     // 文字列エンコーディング（6個）

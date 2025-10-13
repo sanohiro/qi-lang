@@ -406,6 +406,43 @@ impl DbConnection for SqliteConnection {
             database_version: db_version,
         })
     }
+
+    fn query_info(&self, sql: &str) -> DbResult<QueryInfo> {
+        let conn = self.conn.lock();
+        let stmt = conn
+            .prepare(sql)
+            .map_err(|e| DbError::new(format!("Failed to prepare statement: {}", e)))?;
+
+        let column_count = stmt.column_count();
+        let mut columns = Vec::new();
+
+        for i in 0..column_count {
+            let name = stmt
+                .column_name(i)
+                .map_err(|e| DbError::new(format!("Failed to get column name: {}", e)))?
+                .to_string();
+
+            // SQLiteではクエリから型情報を取得するのが難しいため、
+            // プリペアドステートメントからは型名を取得できない
+            // 実際のデータを見ないと正確な型がわからないため、
+            // "UNKNOWN"として返す
+            columns.push(ColumnInfo {
+                name,
+                data_type: "UNKNOWN".to_string(),
+                nullable: true, // SQLiteではNULL可能性も不明
+                default_value: None,
+                primary_key: false,
+            });
+        }
+
+        // SQLiteではパラメータ数を取得
+        let parameter_count = stmt.parameter_count();
+
+        Ok(QueryInfo {
+            columns,
+            parameter_count,
+        })
+    }
 }
 
 /// SQLiteトランザクション

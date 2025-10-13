@@ -4791,10 +4791,19 @@ db/foreign-keys         ;; 外部キー一覧を取得
 db/call                 ;; ストアドプロシージャ/ファンクション呼び出し（SQLiteは未サポート）
 db/supports?            ;; 機能のサポート確認
 db/driver-info          ;; ドライバー情報を取得
+db/query-info           ;; クエリ情報を取得（実行せずに）
 ```
 
-**Phase 3 機能** (🚧 未実装):
-- 🚧 コネクションプーリング - 未実装
+**Phase 3 機能** (✅ 実装済み):
+- ✅ コネクションプーリング - 実装完了
+```qi
+;; Phase 3: コネクションプーリング
+db/create-pool          ;; コネクションプールを作成
+db/pool-acquire         ;; プールから接続を取得
+db/pool-release         ;; 接続をプールに返却
+db/pool-close           ;; プール全体をクローズ
+db/pool-stats           ;; プールの統計情報を取得
+```
 
 **基本的な使い方**:
 ```qi
@@ -4955,6 +4964,62 @@ db/driver-info          ;; ドライバー情報を取得
 ;; プロシージャ（結果セット）
 (db/call conn "get_users_by_age" [25])
 ;; => [{"id" 1 "name" "Alice" "age" 30} ...]
+```
+
+**クエリ情報の取得**:
+```qi
+;; db/query-info - クエリのメタデータを取得（実行せずに）
+(def conn (db/connect "sqlite:app.db"))
+(def info (db/query-info conn "SELECT id, name, email FROM users WHERE age > ?"))
+
+;; クエリ情報を確認
+(println "カラム数:" (count (get info :columns)))
+(println "パラメータ数:" (get info :parameter_count))
+
+;; カラム情報を取得
+(def columns (get info :columns))
+(map (fn [col] (get col :name)) columns)
+;; => ["id" "name" "email"]
+
+;; 注: SQLiteでは型情報は"UNKNOWN"として返される
+```
+
+**コネクションプーリング（Phase 3）**:
+```qi
+;; プールを作成（最大10接続）
+(def pool (db/create-pool "sqlite:app.db" {} 10))
+
+;; プールから接続を取得
+(def conn1 (db/pool-acquire pool))
+(def conn2 (db/pool-acquire pool))
+
+;; 接続を使用
+(db/exec conn1 "INSERT INTO users (name) VALUES (?)" ["Alice"])
+(db/query conn2 "SELECT * FROM users" [])
+
+;; プールの統計情報を確認
+(def stats (db/pool-stats pool))
+;; => {:available 8, :in_use 2, :max 10}
+
+;; 接続をプールに返却
+(db/pool-release pool conn1)
+(db/pool-release pool conn2)
+
+;; プールをクローズ
+(db/pool-close pool)
+
+;; 並行処理での使用例
+(defn process-user [pool user-id]
+  (let [conn (db/pool-acquire pool)]
+    (try
+      (db/query conn "SELECT * FROM users WHERE id = ?" [user-id])
+      (finally
+        (db/pool-release pool conn)))))
+
+;; 複数のユーザーを並行処理
+(def pool (db/create-pool "sqlite:app.db" {} 5))
+(def results (pmap (partial process-user pool) [1 2 3 4 5]))
+(db/pool-close pool)
 ```
 
 **マイグレーションツールの例**:
@@ -7047,7 +7112,7 @@ mean median stddev
 *Stream I/O拡張*:
 - ✅ `stream/file`（io.rs）ファイルストリーミング **実装済み**
 - ✅ `http/get-stream` `http/post-stream` `http/request-stream`（http.rs）HTTPストリーミング **実装済み**
-- 🚧 `tail-stream`（リアルタイムログ監視）**将来実装**
+- ✅ リアルタイムログ監視は`cmd/stream-lines`と`tail -f`で実現可能
 
 **🚧 将来**:
 - 標準モジュール群（str/csv/regex/http/json）

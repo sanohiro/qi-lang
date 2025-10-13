@@ -169,6 +169,13 @@ pub struct DriverInfo {
     pub database_version: String,
 }
 
+/// クエリ情報
+#[derive(Debug, Clone)]
+pub struct QueryInfo {
+    pub columns: Vec<ColumnInfo>,
+    pub parameter_count: usize,
+}
+
 /// トランザクション分離レベル
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsolationLevel {
@@ -287,6 +294,9 @@ pub trait DbConnection: Send + Sync {
 
     /// ドライバー情報を取得
     fn driver_info(&self) -> DbResult<DriverInfo>;
+
+    /// クエリのメタデータを取得（実行せずにカラム情報を取得）
+    fn query_info(&self, sql: &str) -> DbResult<QueryInfo>;
 }
 
 /// データベーストランザクションの統一インターフェース
@@ -346,6 +356,98 @@ use crate::i18n::fmt_msg;
 use crate::i18n::MsgKey;
 use parking_lot::Mutex;
 
+/// コネクションプール
+#[derive(Clone)]
+pub struct DbPool {
+    url: String,
+    opts: ConnectionOptions,
+    max_connections: usize,
+    available: Arc<Mutex<Vec<Arc<dyn DbConnection>>>>,
+    in_use_count: Arc<Mutex<usize>>,
+}
+
+impl DbPool {
+    /// 新しいコネクションプールを作成
+    pub fn new(url: String, opts: ConnectionOptions, max_connections: usize) -> Self {
+        Self {
+            url,
+            opts,
+            max_connections,
+            available: Arc::new(Mutex::new(Vec::new())),
+            in_use_count: Arc::new(Mutex::new(0)),
+        }
+    }
+
+    /// プールから接続を取得（利用可能な接続がなければ新規作成）
+    pub fn acquire(&self) -> DbResult<Arc<dyn DbConnection>> {
+        // まず利用可能な接続があるか確認
+        let mut available = self.available.lock();
+        if let Some(conn) = available.pop() {
+            let mut in_use = self.in_use_count.lock();
+            *in_use += 1;
+            return Ok(conn);
+        }
+
+        // 利用可能な接続がない場合、新規作成を試みる
+        drop(available); // ロックを解放
+        let in_use = self.in_use_count.lock();
+        let total = *in_use + self.available.lock().len();
+
+        if total >= self.max_connections {
+            return Err(DbError::new(format!(
+                "Connection pool exhausted (max: {})",
+                self.max_connections
+            )));
+        }
+        drop(in_use); // ロックを解放
+
+        // 新しい接続を作成
+        let driver: Box<dyn DbDriver> = if self.url.starts_with("sqlite:") {
+            #[cfg(feature = "db-sqlite")]
+            {
+                Box::new(SqliteDriver::new())
+            }
+            #[cfg(not(feature = "db-sqlite"))]
+            {
+                return Err(DbError::new("SQLite driver not enabled"));
+            }
+        } else {
+            return Err(DbError::new(format!("Unsupported URL: {}", self.url)));
+        };
+
+        let conn = driver.connect(&self.url, &self.opts)?;
+        let mut in_use = self.in_use_count.lock();
+        *in_use += 1;
+        Ok(conn)
+    }
+
+    /// 接続をプールに返却
+    pub fn release(&self, conn: Arc<dyn DbConnection>) {
+        let mut available = self.available.lock();
+        available.push(conn);
+        let mut in_use = self.in_use_count.lock();
+        *in_use = in_use.saturating_sub(1);
+    }
+
+    /// プール全体をクローズ
+    pub fn close(&self) -> DbResult<()> {
+        let mut available = self.available.lock();
+        for conn in available.drain(..) {
+            conn.close()?;
+        }
+        let mut in_use = self.in_use_count.lock();
+        *in_use = 0;
+        Ok(())
+    }
+
+    /// プールの統計情報を取得
+    pub fn stats(&self) -> (usize, usize, usize) {
+        let available = self.available.lock().len();
+        let in_use = *self.in_use_count.lock();
+        (available, in_use, self.max_connections)
+    }
+}
+
 lazy_static::lazy_static! {
     /// グローバル接続マネージャー
     static ref CONNECTIONS: Mutex<HashMap<String, Arc<dyn DbConnection>>> = Mutex::new(HashMap::new());
@@ -354,6 +456,10 @@ lazy_static::lazy_static! {
     /// グローバルトランザクションマネージャー
     static ref TRANSACTIONS: Mutex<HashMap<String, Arc<dyn DbTransaction>>> = Mutex::new(HashMap::new());
     static ref NEXT_TX_ID: Mutex<usize> = Mutex::new(0);
+
+    /// グローバルプールマネージャー
+    static ref POOLS: Mutex<HashMap<String, DbPool>> = Mutex::new(HashMap::new());
+    static ref NEXT_POOL_ID: Mutex<usize> = Mutex::new(0);
 }
 
 /// 接続IDを生成
@@ -990,6 +1096,220 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
         "database_version".to_string(),
         Value::String(info.database_version),
     );
+
+    Ok(Value::Map(map))
+}
+
+/// db/query-info - クエリのメタデータを取得
+pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/query-info"]));
+    }
+
+    let conn_id = extract_conn_id(&args[0])?;
+    let sql = match &args[1] {
+        Value::String(s) => s,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/query-info", "string"],
+            ))
+        }
+    };
+
+    let connections = CONNECTIONS.lock();
+    let conn = connections
+        .get(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    let info = conn.query_info(sql).map_err(|e| e.message)?;
+
+    // QueryInfoをマップに変換
+    let columns = info
+        .columns
+        .into_iter()
+        .map(|col| {
+            let mut map = HashMap::new();
+            map.insert("name".to_string(), Value::String(col.name));
+            map.insert("type".to_string(), Value::String(col.data_type));
+            map.insert("nullable".to_string(), Value::Bool(col.nullable));
+            map.insert(
+                "default".to_string(),
+                col.default_value.map(Value::String).unwrap_or(Value::Nil),
+            );
+            map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
+            Value::Map(map)
+        })
+        .collect();
+
+    let mut result = HashMap::new();
+    result.insert("columns".to_string(), Value::Vector(columns));
+    result.insert(
+        "parameter_count".to_string(),
+        Value::Integer(info.parameter_count as i64),
+    );
+
+    Ok(Value::Map(result))
+}
+
+// ========================================
+// Phase 3: コネクションプーリング関数
+// ========================================
+
+/// プールIDを生成
+fn gen_pool_id() -> String {
+    let mut id = NEXT_POOL_ID.lock();
+    let pool_id = format!("pool_{}", *id);
+    *id += 1;
+    pool_id
+}
+
+/// プールIDを抽出
+fn extract_pool_id(value: &Value) -> Result<String, String> {
+    match value {
+        Value::String(s) if s.starts_with("DbPool:") => {
+            Ok(s.strip_prefix("DbPool:").unwrap().to_string())
+        }
+        _ => Err(fmt_msg(MsgKey::DbExpectedPool, &[&format!("{:?}", value)])),
+    }
+}
+
+/// db/create-pool - コネクションプールを作成
+pub fn native_create_pool(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() || args.len() > 3 {
+        return Err(fmt_msg(
+            MsgKey::DbNeed1To3Args,
+            &["db/create-pool", &args.len().to_string()],
+        ));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["db/create-pool", "string"],
+            ))
+        }
+    };
+
+    let opts = if args.len() >= 2 {
+        ConnectionOptions::from_value(&args[1]).map_err(|e| e.message)?
+    } else {
+        ConnectionOptions::default()
+    };
+
+    let max_connections = if args.len() >= 3 {
+        match &args[2] {
+            Value::Integer(n) if *n > 0 => *n as usize,
+            Value::Integer(_) => {
+                return Err(fmt_msg(
+                    MsgKey::DbInvalidPoolSize,
+                    &["db/create-pool", "positive integer"],
+                ))
+            }
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::ThirdArgMustBe,
+                    &["db/create-pool", "positive integer"],
+                ))
+            }
+        }
+    } else {
+        10 // デフォルトは10接続
+    };
+
+    // プールを作成
+    let pool = DbPool::new(url, opts, max_connections);
+    let pool_id = gen_pool_id();
+    POOLS.lock().insert(pool_id.clone(), pool);
+
+    Ok(Value::String(format!("DbPool:{}", pool_id)))
+}
+
+/// db/pool-acquire - プールから接続を取得
+pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-acquire"]));
+    }
+
+    let pool_id = extract_pool_id(&args[0])?;
+
+    let pools = POOLS.lock();
+    let pool = pools
+        .get(&pool_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+
+    let conn = pool.acquire().map_err(|e| e.message)?;
+
+    // 接続を保存
+    let conn_id = gen_conn_id();
+    CONNECTIONS.lock().insert(conn_id.clone(), conn);
+
+    Ok(Value::String(format!("DbConnection:{}", conn_id)))
+}
+
+/// db/pool-release - 接続をプールに返却
+pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["db/pool-release"]));
+    }
+
+    let pool_id = extract_pool_id(&args[0])?;
+    let conn_id = extract_conn_id(&args[1])?;
+
+    let pools = POOLS.lock();
+    let pool = pools
+        .get(&pool_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+
+    let mut connections = CONNECTIONS.lock();
+    let conn = connections
+        .remove(&conn_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+
+    pool.release(conn);
+
+    Ok(Value::Nil)
+}
+
+/// db/pool-close - プール全体をクローズ
+pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-close"]));
+    }
+
+    let pool_id = extract_pool_id(&args[0])?;
+
+    let mut pools = POOLS.lock();
+    let pool = pools
+        .remove(&pool_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+
+    pool.close().map_err(|e| e.message)?;
+
+    Ok(Value::Nil)
+}
+
+/// db/pool-stats - プールの統計情報を取得
+pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-stats"]));
+    }
+
+    let pool_id = extract_pool_id(&args[0])?;
+
+    let pools = POOLS.lock();
+    let pool = pools
+        .get(&pool_id)
+        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+
+    let (available, in_use, max) = pool.stats();
+
+    let mut map = HashMap::new();
+    map.insert("available".to_string(), Value::Integer(available as i64));
+    map.insert("in_use".to_string(), Value::Integer(in_use as i64));
+    map.insert("max".to_string(), Value::Integer(max as i64));
 
     Ok(Value::Map(map))
 }
