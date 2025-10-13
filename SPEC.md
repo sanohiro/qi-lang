@@ -2217,28 +2217,34 @@ cmd/wait            ;; プロセスの終了を待つ
 ### Web開発・ユーティリティ ⭐ **Phase 4.5新機能**
 
 #### JSON処理（✅ 実装済み）
+
 ```qi
-json/parse              ;; JSON文字列をパース: "{\"a\":1}" => {:ok {:a 1}}
-json/stringify          ;; 値をJSON化（コンパクト）
-json/pretty             ;; 値を整形JSON化
+;; このセクションの関数は json/ モジュールに属します
+
+;; === 基本操作 ===
+
+;; json/parse - JSON文字列をパース
+(json/parse "{\"name\":\"Alice\",\"age\":30}")
+;; => {:ok {"name" "Alice" "age" 30}}
+
+;; json/stringify - 値をJSON化（コンパクト）
+(json/stringify {"name" "Bob" "age" 25})
+;; => {:ok "{\"name\":\"Bob\",\"age\":25}"}
+
+;; json/pretty - 値を整形JSON化
+(json/pretty {"name" "Bob" "age" 25})
+;; => {:ok "{\n  \"name\": \"Bob\",\n  \"age\": 25\n}"}
 ```
 
-**使用例**:
+**使用例: APIレスポンスの処理**
 ```qi
-;; JSONパース
-(def json-str "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"dev\",\"lisp\"]}")
-(json/parse json-str)
-;; => {:ok {"name" "Alice" "age" 30 "tags" ["dev" "lisp"]}}
-
-;; JSON生成
-(def data {"name" "Bob" "age" 25})
-(json/stringify data)  ;; => {:ok "{\"name\":\"Bob\",\"age\":25}"}
-(json/pretty data)     ;; => {:ok "{\n  \"name\": \"Bob\",\n  ..."}
-
-;; データパイプライン
-(data
- |> (assoc _ "active" true)
- |> json/pretty
+;; APIレスポンスをパース→変換→保存
+("https://api.example.com/users/123"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})
+ |>? json/parse
+ |>? (fn [data] {:ok (assoc data "processed" true)})
+ |>? json/pretty
  |>? (fn [json] {:ok (io/write-file "output.json" json)}))
 ```
 
@@ -2247,38 +2253,26 @@ json/pretty             ;; 値を整形JSON化
 **Pure Rust実装 - serde_yaml使用**
 
 ```qi
-yaml/parse              ;; YAML文字列をパース: "name: Alice" => {:ok {:name "Alice"}}
-yaml/stringify          ;; 値をYAML化
-yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
-```
+;; このセクションの関数は yaml/ モジュールに属します
 
-**使用例**:
-```qi
-;; YAMLパース
-(def yaml-str "name: Alice\nage: 30\ntags:\n  - dev\n  - ops")
-(yaml/parse yaml-str)
+;; === 基本操作 ===
+
+;; yaml/parse - YAML文字列をパース
+(yaml/parse "name: Alice\nage: 30\ntags:\n  - dev\n  - ops")
 ;; => {:ok {"name" "Alice" "age" 30 "tags" ["dev" "ops"]}}
 
-;; YAML生成
-(def data {"name" "Bob" "age" 25 "tags" ["backend" "devops"]})
-(yaml/stringify data)
+;; yaml/stringify - 値をYAML化
+(yaml/stringify {"name" "Bob" "age" 25 "tags" ["backend" "devops"]})
 ;; => {:ok "name: Bob\nage: 25\ntags:\n- backend\n- devops\n"}
 
-;; 複雑なネスト構造
-(def config {
-  "server" {
-    "host" "localhost"
-    "port" 8080
-  }
-  "database" {
-    "url" "sqlite://db.sqlite"
-    "pool_size" 10
-  }
-})
-(yaml/pretty config)
-;; => {:ok "server:\n  host: localhost\n  port: 8080\n..."}
+;; yaml/pretty - 値を整形YAML化（yaml/stringifyと同じ）
+(yaml/pretty {"server" {"host" "localhost" "port" 8080}})
+;; => {:ok "server:\n  host: localhost\n  port: 8080\n"}
+```
 
-;; 設定ファイルパイプライン
+**使用例: 設定ファイル処理**
+```qi
+;; 設定ファイルをパースしてポート番号を取得
 ("config.yaml"
  |> io/read-file
  |> yaml/parse
@@ -2300,41 +2294,74 @@ yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
 - エラーハンドリング: `{:ok ...}` または `{:error "..."}`
 
 #### HTTP クライアント（✅ 実装済み）
-```qi
-http/get                ;; HTTP GET: (http/get "https://...") => {:ok {:status 200 :body "..."}}
-http/post               ;; HTTP POST: (http/post "url" {:key "value"})
-http/put                ;; HTTP PUT
-http/delete             ;; HTTP DELETE
-http/patch              ;; HTTP PATCH
-http/head               ;; HTTP HEAD
-http/options            ;; HTTP OPTIONS
-http/request            ;; 詳細設定: (http/request {:method "GET" :url "..." :headers {...}})
 
-;; 非同期版
-http/get-async          ;; 非同期GET: Channelを返す
-http/post-async         ;; 非同期POST: Channelを返す
-```
-
-**使用例**:
 ```qi
-;; 基本的なGET
+;; このセクションの関数は http/ モジュールに属します
+
+;; === 基本メソッド ===
+
+;; http/get - HTTP GETリクエスト
 (http/get "https://httpbin.org/get")
-;; => {:ok {:status 200 :headers {...} :body "..."}}
+;; => {:ok {"status" 200 "headers" {...} "body" "..."}}
 
-;; POSTでJSON送信
-(def user {:name "Alice" :email "alice@example.com"})
-(http/post "https://api.example.com/users" user)
+;; http/post - HTTP POSTリクエスト
+(http/post "https://api.example.com/users" {"name" "Alice" "email" "alice@example.com"})
+;; => {:ok {"status" 201 "body" "..."}}
 
-;; カスタムヘッダ付きリクエスト
+;; http/put - HTTP PUTリクエスト
+(http/put "https://api.example.com/users/1" {"name" "Alice Updated"})
+
+;; http/delete - HTTP DELETEリクエスト
+(http/delete "https://api.example.com/users/1")
+
+;; http/patch - HTTP PATCHリクエスト
+(http/patch "https://api.example.com/users/1" {"email" "newemail@example.com"})
+
+;; http/head - HTTP HEADリクエスト
+(http/head "https://api.example.com/status")
+
+;; http/options - HTTP OPTIONSリクエスト
+(http/options "https://api.example.com")
+
+;; === 詳細設定 ===
+
+;; http/request - カスタムリクエスト
 (http/request {
-  :method "POST"
-  :url "https://api.example.com/data"
-  :headers {"Authorization" "Bearer token123"}
-  :body {:data "value"}
-  :timeout 5000
+  "method" "POST"
+  "url" "https://api.example.com/data"
+  "headers" {"Authorization" "Bearer token123"}
+  "body" {"data" "value"}
+  "timeout" 5000
 })
 
-;; Railway Pipelineと組み合わせ
+;; === 認証 ===
+
+;; Basic認証
+(http/request {
+  "url" "https://api.example.com/data"
+  "basic-auth" ["username" "password"]
+})
+
+;; Bearer Token認証
+(http/request {
+  "url" "https://api.example.com/data"
+  "bearer-token" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+})
+
+;; === コンテンツ圧縮 ===
+
+;; 自動解凍（デフォルトで有効）
+(http/get "https://example.com/api")  ;; gzip/deflate/brotli を自動解凍
+
+;; 送信時の圧縮
+(http/post "https://example.com/api"
+  {"data" "large payload"}
+  {"headers" {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮
+```
+
+**使用例: Railway Pipelineと組み合わせ**
+```qi
+;; GitHub APIからユーザー名を取得
 ("https://api.github.com/users/octocat"
  |> http/get
  |>? (fn [resp] {:ok (get resp "body")})
@@ -2342,73 +2369,12 @@ http/post-async         ;; 非同期POST: Channelを返す
  |>? (fn [data] {:ok (get data "name")}))
 ;; => {:ok "The Octocat"}
 
-;; 非同期リクエスト
-(def ch (http/get-async "https://api.example.com/data"))
-(def resp (recv! ch))  ;; ブロッキング受信
-```
-
-**エラーハンドリング**:
-```qi
-;; エラー時は {:error {...}} を返す
-(http/get "https://invalid-domain-12345.com")
-;; => {:error {:type "connection" :message "..."}}
-
-;; Railway Pipelineで自動的にエラー伝播
+;; エラーハンドリング（自動的にエラー伝播）
 ("https://invalid.com/api"
  |> http/get
  |>? (fn [resp] {:ok (get resp "body")})  ;; 実行されない
  |>? json/parse)                          ;; 実行されない
-;; => {:error {...}}
-```
-
-**HTTPコンテンツ圧縮**:
-
-HTTPクライアント・サーバー共に、gzip/deflate/brotli圧縮をサポートしています。
-
-**クライアント側**:
-```qi
-;; 自動解凍（デフォルトで有効）
-;; サーバーが gzip/deflate/brotli で圧縮したレスポンスを自動的に解凍
-(http/get "https://example.com/api")  ;; 圧縮されたレスポンスも自動解凍
-
-;; 送信時の圧縮（Content-Encodingヘッダーで指定）
-(http/post "https://example.com/api"
-  {:data "large payload"}
-  {:headers {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮して送信
-```
-
-**サーバー側**:
-```qi
-;; リクエストボディの自動解凍
-;; クライアントが Content-Encoding: gzip で送信した場合、自動的に解凍
-(def handler
-  (fn [req]
-    (let [body (get req "body")]  ;; 既に解凍済み
-      (server/ok body))))
-
-;; レスポンス圧縮はserver/with-compressionミドルウェアで実現（後述）
-```
-
-**HTTP認証**:
-
-HTTP Basic AuthとBearer Token認証をサポートしています。
-
-**クライアント側**:
-```qi
-;; Basic Auth
-(http/request {
-  "url" "https://api.example.com/data"
-  "basic-auth" ["username" "password"]})  ;; 自動的にAuthorizationヘッダーを設定
-
-;; Bearer Token
-(http/request {
-  "url" "https://api.example.com/data"
-  "bearer-token" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."})  ;; Authorization: Bearer ...
-```
-
-**サーバー側**（後述）:
-- `server/with-basic-auth`: Basic認証ミドルウェア
-- `server/with-bearer`: Bearer Token抽出ミドルウェア
+;; => {:error {"type" "connection" "message" "..."}}
 
 #### HTTP サーバー（✅ 実装済み）
 
@@ -2416,110 +2382,133 @@ HTTP Basic AuthとBearer Token認証をサポートしています。
 
 Qiの哲学（Flow-Oriented Programming）に沿った、ハンドラーはパイプライン、ルーティングはデータという設計です。
 
-**基本関数**:
 ```qi
-;; レスポンスヘルパー
-server/ok                 ;; 200 OKレスポンス: (server/ok "Hello!")
-server/json               ;; JSONレスポンス: (server/json {:message "hello"})
-server/not-found          ;; 404レスポンス: (server/not-found "Not Found")
-server/no-content         ;; 204 No Contentレスポンス
+;; このセクションの関数は server/ モジュールに属します
 
-;; ルーティング & サーバー
-server/router             ;; ルーター作成: (server/router routes)
-server/serve              ;; サーバー起動: (server/serve app {:port 3000})
+;; === レスポンスヘルパー ===
 
-;; ミドルウェア
-server/with-logging       ;; ロギングミドルウェア
-server/with-cors          ;; CORSミドルウェア
-server/with-json-body     ;; JSONボディ自動パースミドルウェア
-server/with-compression   ;; レスポンス圧縮ミドルウェア（gzip）
-server/with-basic-auth    ;; Basic認証ミドルウェア
-server/with-bearer        ;; Bearer Token抽出ミドルウェア
+;; server/ok - 200 OKレスポンス
+(server/ok "Hello, World!")
+;; => {"status" 200 "headers" {...} "body" "Hello, World!"}
 
-;; 静的ファイル配信
-server/static-file        ;; 単一ファイル配信: (server/static-file "path/to/file")
-server/static-dir         ;; ディレクトリ配信: (server/static-dir "public")
+;; server/json - JSONレスポンス
+(server/json {"message" "hello" "status" "success"})
+;; => {"status" 200 "headers" {"Content-Type" "application/json"} "body" "{...}"}
+
+;; server/not-found - 404 Not Foundレスポンス
+(server/not-found "Page not found")
+
+;; server/no-content - 204 No Contentレスポンス
+(server/no-content)
+
+;; === ルーティング ===
+
+;; server/router - ルーター作成
+(server/router [["/" {"get" hello-handler}]
+                ["/api/users" {"get" list-users "post" create-user}]
+                ["/api/users/:id" {"get" get-user}]])
+
+;; server/serve - サーバー起動
+(server/serve app {"port" 3000})
+;; => HTTP server started on http://127.0.0.1:3000
+
+;; server/serve - 詳細設定
+(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+
+;; === ミドルウェア ===
+
+;; server/with-logging - リクエスト/レスポンスをログ出力
+(def handler (server/with-logging (fn [req] (server/ok "Hello"))))
+
+;; server/with-cors - CORSヘッダーを追加
+(def handler (server/with-cors (fn [req] (server/json {...}))))
+
+;; server/with-json-body - リクエストボディを自動的にJSONパース
+(def handler (server/with-json-body (fn [req] (get req "json"))))
+
+;; server/with-compression - レスポンスボディをgzip圧縮
+(def handler (server/with-compression (fn [req] (server/ok "..."))))
+
+;; server/with-basic-auth - Basic認証
+(def handler (server/with-basic-auth (fn [req] ...) "user" "pass"))
+
+;; server/with-bearer - Bearer Token抽出
+(def handler (server/with-bearer (fn [req] (get req "token"))))
+
+;; server/with-no-cache - キャッシュ無効化ヘッダーを追加
+(def handler (server/with-no-cache (fn [req] (server/ok "..."))))
+
+;; server/with-cache-control - カスタムCache-Controlヘッダーを追加
+(def handler (server/with-cache-control (fn [req] ...) "public, max-age=3600"))
+
+;; === 静的ファイル配信 ===
+
+;; server/static-file - 単一ファイル配信
+(server/static-file "index.html")
+
+;; server/static-dir - ディレクトリ配信
+(server/static-dir "public")
 ```
 
-**使用例 - シンプルなサーバー**:
+**使用例: シンプルなサーバー**
 ```qi
 ;; ハンドラー（リクエスト -> レスポンス）
 (def hello-handler
-  (fn [req]
-    (server/ok "Hello, World!")))
+  (fn [req] (server/ok "Hello, World!")))
 
 ;; ルート定義（データ駆動）
-(def routes
-  [["/" (assoc {} "get" hello-handler)]])
+(def routes [["/" {"get" hello-handler}]])
 
-;; ルーターを作成
+;; アプリ起動
 (def app (server/router routes))
-
-;; サーバー起動
 (server/serve app {"port" 3000})
-;; => HTTP server started on http://127.0.0.1:3000
 ```
 
-**使用例 - JSON API with パスパラメータ**:
+**使用例: JSON API with パスパラメータ**
 ```qi
-;; ハンドラーはパイプラインで構成
+;; ハンドラー定義
 (def list-users
   (fn [req]
     (server/json {"users" [{"id" 1 "name" "Alice"}
                            {"id" 2 "name" "Bob"}]})))
 
-;; パスパラメータを使う（✅ 実装済み）
 (def get-user
   (fn [req]
-    (let [params (get req "params")
-          user-id (get params "id")]
+    (let [user-id (get-in req ["params" "id"])]
       (server/json {"id" user-id "name" "Alice"}))))
-
-;; 複数のパスパラメータ
-(def get-post
-  (fn [req]
-    (let [params (get req "params")
-          user-id (get params "user_id")
-          post-id (get params "post_id")]
-      (server/json {"user_id" user-id "post_id" post-id}))))
 
 (def create-user
   (fn [req]
-    ;; リクエストボディは req の "body" キーから取得
     (server/json {"status" "created"} {"status" 201})))
 
-;; ルート定義 - データ構造なので検査・変換可能
-;; ✅ パスパラメータ: /users/:id 形式をサポート
+;; ルート定義（パスパラメータ: /users/:id 形式）
 (def routes
-  [["/api/users" (assoc {} "get" list-users "post" create-user)]
-   ["/api/users/:id" (assoc {} "get" get-user)]
-   ["/api/users/:user_id/posts/:post_id" (assoc {} "get" get-post)]])
+  [["/api/users" {"get" list-users "post" create-user}]
+   ["/api/users/:id" {"get" get-user}]
+   ["/api/users/:user_id/posts/:post_id" {"get" get-post}]])
 
-;; アプリ起動（タイムアウト設定可能）
+;; アプリ起動
 (def app (server/router routes))
 (server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
-;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
 ```
 
-**リクエストオブジェクト**:
+**リクエスト/レスポンスオブジェクト**:
 ```qi
-;; リクエストは以下の構造のマップ:
-{:method "get"                    ;; HTTPメソッド（小文字）
- :path "/api/users/123"           ;; リクエストパス
- :query "page=1&limit=10"         ;; クエリ文字列（生）
- :query-params {"page" "1"        ;; ✅ クエリパラメータ（自動パース）
-                "limit" "10"}
- :headers {"content-type" "application/json" ...}
- :body "..."                      ;; リクエストボディ（文字列）
- :params {"id" "123"}}            ;; ✅ パスパラメータ（マッチした場合のみ）
-```
+;; リクエスト構造
+{"method" "get"                      ;; HTTPメソッド（小文字）
+ "path" "/api/users/123"             ;; リクエストパス
+ "query" "page=1&limit=10"           ;; クエリ文字列（生）
+ "query-params" {"page" "1"          ;; クエリパラメータ（自動パース）
+                 "limit" "10"}
+ "headers" {"content-type" "application/json" ...}
+ "body" "..."                        ;; リクエストボディ（文字列）
+ "params" {"id" "123"}}              ;; パスパラメータ（マッチした場合のみ）
 
-**レスポンスオブジェクト**:
-```qi
-;; ハンドラーは以下の構造のマップを返す:
-{:status 200                ;; HTTPステータスコード
- :headers {"Content-Type" "text/plain; charset=utf-8" ...}
- :body "Hello, World!"}     ;; レスポンスボディ
+;; レスポンス構造
+{"status" 200                        ;; HTTPステータスコード
+ "headers" {"Content-Type" "text/plain; charset=utf-8" ...}
+ "body" "Hello, World!"}             ;; レスポンスボディ
 ```
 
 **実装済み機能**:
@@ -2527,25 +2516,14 @@ server/static-dir         ;; ディレクトリ配信: (server/static-dir "publi
 - ✅ **パイプライン**: ハンドラーは `|>` で流れが明確
 - ✅ **合成可能**: すべてが関数で、ミドルウェアも関数
 - ✅ **スレッドセーフ**: 並列リクエスト処理に対応
-- ✅ **Flow-Oriented**: Qiの哲学を体現
 - ✅ **パスパラメータ**: `/users/:id` 形式をサポート（複数パラメータ対応）
 - ✅ **クエリパラメータ**: `?page=1&limit=10` を自動パース、配列対応、URLデコード
 - ✅ **タイムアウト**: リクエストタイムアウトを設定可能（デフォルト30秒）
 - ✅ **ミドルウェア**: ロギング、CORS、JSONボディパース（複数重ね可能）
 - ✅ **静的ファイル配信**: HTML、CSS、JS、画像、フォントなどのバイナリファイル対応
-
-**メモリ管理**:
-- リクエストごとにクリーンな環境を使用
-- Arc による自動メモリ管理
-- 長時間実行サービスに適した設計（SPEC.md「14. メモリ管理」参照）
-
-**設定オプション**:
-```qi
-(server/serve app {
-  "port" 3000           ;; ポート番号（デフォルト: 3000）
-  "host" "0.0.0.0"      ;; ホスト（デフォルト: "127.0.0.1"）
-  "timeout" 30})        ;; タイムアウト秒数（デフォルト: 30）
-```
+- ✅ **コンテンツ圧縮**: gzip/deflate/brotli圧縮をサポート
+- ✅ **認証**: Basic Auth、Bearer Token抽出
+- ✅ **キャッシュ制御**: Cache-Control、グレースフルシャットダウン
 
 **ミドルウェアシステム**（✅ 実装済み）:
 
@@ -4285,287 +4263,282 @@ db/rollback             ;; トランザクションロールバック
 - **Phase分け**: Phase 1(基本), Phase 2(メタデータ), Phase 3(プーリング)
 
 #### ✅ str - 文字列操作（ほぼ完全実装）
+
 ```qi
-(use str :only [
-  ;; 検索 ✅
-  contains? starts-with? ends-with?
-  index-of last-index-of
+;; このセクションの関数は str/ モジュールに属します
 
-  ;; 基本変換 ✅
-  upper lower capitalize title
-  trim trim-left trim-right
-  pad-left pad-right pad               ;; pad-left/rightは左右詰め、padは中央揃え
-  repeat reverse
+;; === 検索 ===
 
-  ;; ケース変換（重要） ✅
-  snake        ;; "userName" -> "user_name"
-  camel        ;; "user_name" -> "userName"
-  kebab        ;; "userName" -> "user-name"
-  pascal       ;; "user_name" -> "UserName"
-  split-camel  ;; "userName" -> ["user", "Name"]
+;; str/contains? - 部分文字列を含むか判定
+(str/contains? "hello world" "world")     ;; => true
 
-  ;; 分割・結合 ✅
-  split join lines words chars
+;; str/starts-with? - 前方一致判定
+(str/starts-with? "hello" "he")           ;; => true
 
-  ;; 置換 ✅
-  replace replace-first splice
+;; str/ends-with? - 後方一致判定
+(str/ends-with? "hello" "lo")             ;; => true
 
-  ;; 部分文字列 ✅
-  slice take-str drop-str              ;; リストのtake/dropと区別
-  sub-before sub-after                 ;; 区切り文字で前後を取得
+;; str/index-of - 最初の出現位置
+(str/index-of "hello world" "world")      ;; => 6
 
-  ;; 整形・配置 ✅
-  truncate trunc-words
+;; str/last-index-of - 最後の出現位置
+(str/last-index-of "hello hello" "hello") ;; => 6
 
-  ;; 正規化・クリーンアップ（重要） ✅
-  squish                               ;; 連続空白を1つに、前後trim
-  expand-tabs                          ;; タブをスペースに変換
+;; === 基本変換 ===
 
-  ;; 判定（バリデーション） ✅
-  digit? alpha? alnum?
-  space? lower? upper?
-  numeric? integer? blank? ascii?
+;; str/upper - 大文字化
+(str/upper "hello")                       ;; => "HELLO"
 
-  ;; URL/Web ✅
-  slugify              ;; "Hello World!" -> "hello-world"
-  url-encode url-decode
-  html-encode html-decode              ;; HTMLエンコード/デコード（旧: html-escape/unescape）
+;; str/lower - 小文字化
+(str/lower "HELLO")                       ;; => "hello"
 
-  ;; エンコード ✅
-  to-base64 from-base64
+;; str/capitalize - 先頭のみ大文字
+(str/capitalize "hello")                  ;; => "Hello"
 
-  ;; パース ✅
-  parse-int parse-float
+;; str/title - タイトルケース
+(str/title "hello world")                 ;; => "Hello World"
 
-  ;; Unicode ✅
-  chars-count bytes-count  ;; Unicode文字数/バイト数
+;; str/trim - 前後の空白を削除
+(str/trim "  hello  ")                    ;; => "hello"
 
-  ;; 高度な変換
-  slugify      ;; ✅ "Hello World!" -> "hello-world"
-  ;; unaccent  ;; 🚧 未実装 アクセント除去 "café" -> "cafe"
+;; str/trim-left - 左側の空白を削除
+(str/trim-left "  hello  ")               ;; => "hello  "
 
-  ;; 生成 ✅
-  hash uuid
+;; str/trim-right - 右側の空白を削除
+(str/trim-right "  hello  ")              ;; => "  hello"
 
-  ;; 🚧 未実装
-  random       ;; ランダム文字列生成
-  map-lines    ;; 各行に関数を適用
+;; str/repeat - 文字列を繰り返し
+(str/repeat "-" 80)                       ;; => "----..." (80個)
+(str/repeat "ab" 3)                       ;; => "ababab"
 
-  ;; NLP ✅
-  word-count
+;; str/reverse - 文字列を逆順に
+(str/reverse "hello")                     ;; => "olleh"
 
-  ;; フォーマット ✅
-  format                  ;; プレースホルダー置換
-  format-decimal          ;; 小数点桁数指定
-  format-comma            ;; 3桁カンマ区切り
-  format-percent          ;; パーセント表示
-  indent wrap
-])
+;; === ケース変換 ===
 
-;; 例
-(use str :as s)
+;; str/snake - スネークケースに変換
+(str/snake "userName")                    ;; => "user_name"
 
-;; 基本
-(s/upper "hello")  ;; "HELLO"
-(s/split "a,b,c" ",")  ;; ["a" "b" "c"]
-(s/repeat "-" 80)  ;; "----------------..." (80個)
-(s/repeat "ab" 3)  ;; "ababab"
+;; str/camel - キャメルケースに変換
+(str/camel "user_name")                   ;; => "userName"
 
-;; 検索
-(s/contains? "hello world" "world")  ;; true
-(s/starts-with? "hello" "he")  ;; true
-(s/ends-with? "hello" "lo")  ;; true
-(s/index-of "hello world" "world")  ;; 6
-(s/last-index-of "hello hello" "hello")  ;; 6
+;; str/kebab - ケバブケースに変換
+(str/kebab "userName")                    ;; => "user-name"
 
-;; ケース変換（重要）
-(s/snake "userName")    ;; "user_name"
-(s/kebab "userName")    ;; "user-name"
-(s/camel "user_name")   ;; "userName"
-(s/pascal "user_name")  ;; "UserName"
+;; str/pascal - パスカルケースに変換
+(str/pascal "user_name")                  ;; => "UserName"
 
-;; Slugify（Web開発必須）
-(s/slugify "Hello World! 2024")  ;; "hello-world-2024"
-(s/slugify "Café résumé")        ;; "cafe-resume"
+;; str/split-camel - キャメルケースを分割
+(str/split-camel "userName")              ;; => ["user" "Name"]
 
-;; 整形・配置
-(s/pad-left "Total" 20)          ;; "               Total"
-(s/pad-right "Name" 20)          ;; "Name               "
-(s/pad "hi" 10)                  ;; "    hi    " (中央揃え)
-(s/pad "hi" 10 "*")              ;; "****hi****"
-(s/trunc-words article 10)       ;; 最初の10単語まで
+;; === 分割・結合 ===
 
-;; 正規化（超重要）
-(s/squish "  hello   world  \n")  ;; "hello world"
-(s/expand-tabs "\thello\tworld")  ;; "    hello    world"
+;; str/split - 文字列を分割
+(str/split "a,b,c" ",")                   ;; => ["a" "b" "c"]
 
-;; 判定（バリデーション）
-(s/digit? "12345")   ;; true
-(s/alpha? "hello")   ;; true
-(s/alnum? "hello123") ;; true
-(s/space? "  \n\t")  ;; true
-(s/numeric? "123.45") ;; true
-(s/integer? "123")   ;; true
-(s/blank? "  \n")    ;; true
-(s/ascii? "hello")   ;; true
+;; str/lines - 行に分割
+(str/lines "hello\nworld")                ;; => ["hello" "world"]
 
-;; 行操作
-(s/map-lines s/trim text)
-(s/map-lines #(str "> " %) quote)  ;; 各行にプレフィックス
+;; str/words - 単語に分割
+(str/words "hello world")                 ;; => ["hello" "world"]
 
-;; Unicode
-(s/chars-count "👨‍👩‍👧‍👦")  ;; 1 (視覚的な文字数)
-(s/bytes-count "👨‍👩‍👧‍👦")  ;; 25 (バイト数)
+;; str/chars - 文字に分割
+(str/chars "hello")                       ;; => ["h" "e" "l" "l" "o"]
 
-;; 部分文字列
-(s/take-str "hello" 3)       ;; "hel"
-(s/drop-str "hello" 2)       ;; "llo"
-(s/sub-before "user@example.com" "@")  ;; "user"
-(s/sub-after "user@example.com" "@")   ;; "example.com"
-(s/slice "hello world" 0 5)  ;; "hello"
+;; === 置換 ===
 
-;; 高度な変換
-(s/splice "hello world" 6 11 "universe")  ;; "hello universe"
-(s/title "hello world")                    ;; "Hello World"
-(s/reverse "hello")                        ;; "olleh"
-(s/chars "hello")                          ;; ["h" "e" "l" "l" "o"]
+;; str/replace - 全て置換
+(str/replace "hello world" "world" "qi")  ;; => "hello qi"
 
-;; パース
-(s/parse-int "123")    ;; 123
-(s/parse-float "3.14") ;; 3.14
+;; str/replace-first - 最初の1つのみ置換
+(str/replace-first "aa bb aa" "aa" "cc")  ;; => "cc bb aa"
 
-;; フォーマット - レイアウト
-(s/indent "hello\nworld" 2)      ;; "  hello\n  world"
-(s/wrap "hello world from qi" 10) ;; "hello\nworld from\nqi"
-(s/truncate "hello world" 8)     ;; "hello..."
-(s/trunc-words "hello world from qi" 2) ;; "hello world..."
+;; str/splice - 範囲を置換
+(str/splice "hello world" 6 11 "universe") ;; => "hello universe"
 
-;; フォーマット - プレースホルダー置換（Python/Rust風）
-(s/format "Hello, {}!" "World")           ;; "Hello, World!"
-(s/format "{} + {} = {}" 1 2 3)           ;; "1 + 2 = 3"
-(s/format "Name: {}, Age: {}" "Alice" 30) ;; "Name: Alice, Age: 30"
+;; === 部分文字列 ===
 
-;; フォーマット - 数値整形（パイプライン対応）
-;; format-decimal: 小数点桁数を指定
-(s/format-decimal 2 3.14159)     ;; "3.14"
-(3.14159 |> (s/format-decimal 2)) ;; "3.14" (パイプラインで使用)
+;; str/slice - 範囲を取得
+(str/slice "hello world" 0 5)             ;; => "hello"
 
-;; format-comma: 3桁カンマ区切り
-(s/format-comma 1234567)          ;; "1,234,567"
-(1234567 |> (s/format-comma))     ;; "1,234,567" (パイプラインで使用)
-(s/format-comma 1234.5678)        ;; "1,234.5678"
+;; str/take - 先頭n文字を取得
+(str/take "hello" 3)                      ;; => "hel"
 
-;; format-percent: パーセント表示
-(s/format-percent 0.1234)         ;; "12%" (デフォルトで0桁)
-(s/format-percent 2 0.1234)       ;; "12.34%" (2桁指定)
-(0.856 |> (s/format-percent 1))   ;; "85.6%" (パイプラインで使用)
+;; str/drop - 先頭n文字を削除
+(str/drop "hello" 2)                      ;; => "llo"
 
-;; 実用例: 価格表示のパイプライン
+;; str/sub-before - 区切り文字より前を取得
+(str/sub-before "user@example.com" "@")   ;; => "user"
+
+;; str/sub-after - 区切り文字より後を取得
+(str/sub-after "user@example.com" "@")    ;; => "example.com"
+
+;; === 整形・配置 ===
+
+;; str/pad-left - 左詰め
+(str/pad-left "Total" 20)                 ;; => "               Total"
+
+;; str/pad-right - 右詰め
+(str/pad-right "Name" 20)                 ;; => "Name               "
+
+;; str/pad - 中央揃え
+(str/pad "hi" 10)                         ;; => "    hi    "
+(str/pad "hi" 10 "*")                     ;; => "****hi****"
+
+;; str/truncate - 長さを制限
+(str/truncate "hello world" 8)            ;; => "hello..."
+
+;; str/trunc-words - 単語数を制限
+(str/trunc-words "hello world from qi" 2) ;; => "hello world..."
+
+;; str/indent - インデント追加
+(str/indent "hello\nworld" 2)             ;; => "  hello\n  world"
+
+;; str/wrap - 指定幅で折り返し
+(str/wrap "hello world from qi" 10)       ;; => "hello\nworld from\nqi"
+
+;; === 正規化 ===
+
+;; str/squish - 連続空白を1つに（前後trim込み）
+(str/squish "  hello   world  \n")        ;; => "hello world"
+
+;; str/expand-tabs - タブをスペースに変換
+(str/expand-tabs "\thello\tworld")        ;; => "    hello    world"
+
+;; === 判定（バリデーション） ===
+
+;; str/digit? - 数字のみか判定
+(str/digit? "12345")                      ;; => true
+
+;; str/alpha? - アルファベットのみか判定
+(str/alpha? "hello")                      ;; => true
+
+;; str/alnum? - 英数字のみか判定
+(str/alnum? "hello123")                   ;; => true
+
+;; str/space? - 空白文字のみか判定
+(str/space? "  \n\t")                     ;; => true
+
+;; str/numeric? - 数値表現か判定
+(str/numeric? "123.45")                   ;; => true
+
+;; str/integer? - 整数表現か判定
+(str/integer? "123")                      ;; => true
+
+;; str/blank? - 空白または空文字列か判定
+(str/blank? "  \n")                       ;; => true
+
+;; str/ascii? - ASCII文字のみか判定
+(str/ascii? "hello")                      ;; => true
+
+;; str/lower? - 全て小文字か判定
+(str/lower? "hello")                      ;; => true
+
+;; str/upper? - 全て大文字か判定
+(str/upper? "HELLO")                      ;; => true
+
+;; === URL/Web ===
+
+;; str/slugify - URL/ファイル名用に変換
+(str/slugify "Hello World! 2024")         ;; => "hello-world-2024"
+(str/slugify "Café résumé")               ;; => "cafe-resume"
+
+;; str/url-encode - URLエンコード
+(str/url-encode "hello world")            ;; => "hello%20world"
+
+;; str/url-decode - URLデコード
+(str/url-decode "hello%20world")          ;; => "hello world"
+
+;; str/html-encode - HTMLエンコード
+(str/html-encode "<div>test</div>")       ;; => "&lt;div&gt;test&lt;/div&gt;"
+
+;; str/html-decode - HTMLデコード
+(str/html-decode "&lt;div&gt;test&lt;/div&gt;") ;; => "<div>test</div>"
+
+;; === エンコード ===
+
+;; str/to-base64 - Base64エンコード
+(str/to-base64 "hello")                   ;; => "aGVsbG8="
+
+;; str/from-base64 - Base64デコード
+(str/from-base64 "aGVsbG8=")              ;; => "hello"
+
+;; === パース ===
+
+;; str/parse-int - 整数にパース
+(str/parse-int "123")                     ;; => 123
+
+;; str/parse-float - 浮動小数点数にパース
+(str/parse-float "3.14")                  ;; => 3.14
+
+;; === Unicode ===
+
+;; str/chars-count - Unicode文字数
+(str/chars-count "👨‍👩‍👧‍👦")                ;; => 1
+
+;; str/bytes-count - バイト数
+(str/bytes-count "👨‍👩‍👧‍👦")                ;; => 25
+
+;; === 生成 ===
+
+;; str/hash - ハッシュ値生成
+(str/hash "hello")                        ;; => "2cf24dba5fb0a30e..."
+(str/hash "hello" :sha256)                ;; SHA-256 (デフォルト)
+
+;; str/uuid - UUID生成
+(str/uuid)                                ;; => "550e8400-e29b-41d4-a716-446655440000"
+
+;; === NLP ===
+
+;; str/word-count - 単語数をカウント
+(str/word-count "hello world")            ;; => 2
+
+;; === フォーマット ===
+
+;; str/format - プレースホルダー置換
+(str/format "Hello, {}!" "World")         ;; => "Hello, World!"
+(str/format "{} + {} = {}" 1 2 3)         ;; => "1 + 2 = 3"
+
+;; str/format-decimal - 小数点桁数指定
+(str/format-decimal 2 3.14159)            ;; => "3.14"
+(3.14159 |> (str/format-decimal 2))       ;; パイプラインで使用
+
+;; str/format-comma - 3桁カンマ区切り
+(str/format-comma 1234567)                ;; => "1,234,567"
+(1234567 |> str/format-comma)             ;; パイプラインで使用
+
+;; str/format-percent - パーセント表示
+(str/format-percent 0.1234)               ;; => "12%"
+(str/format-percent 2 0.1234)             ;; => "12.34%"
+(0.856 |> (str/format-percent 1))         ;; => "85.6%"
+```
+
+**使用例: 価格表示パイプライン**
+```qi
 (defn format-price [price]
   (price
-   |> (s/format-comma)
-   |> (str/join "" ["¥" _])))
+   |> str/format-comma
+   |> (fn [s] (str "¥" s))))
 
-(format-price 1234567)  ;; "¥1,234,567"
+(format-price 1234567)  ;; => "¥1,234,567"
+```
 
-;; 実用例: レポート生成
+**使用例: レポート生成**
+```qi
 (defn gen-report [data]
   f"""
   Sales Report
   ============
-  Total: {(s/format-comma (:total data))}
-  Growth: {(s/format-percent 1 (:growth data))}
-  """
-)
+  Total: {(str/format-comma (get data "total"))}
+  Growth: {(str/format-percent 1 (get data "growth"))}
+  """)
 
-(gen-report {:total 1234567 :growth 0.156})
+(gen-report {"total" 1234567 "growth" 0.156})
 ;; =>
 ;; Sales Report
 ;; ============
 ;; Total: 1,234,567
 ;; Growth: 15.6%
-
-;; NLP
-(s/word-count "hello world")     ;; 2
-
-;; ✅ エンコード/デコード（実装済み）
-(s/to-base64 "hello")            ;; "aGVsbG8="
-(s/from-base64 "aGVsbG8=")       ;; "hello"
-(s/url-encode "hello world")     ;; "hello%20world"
-(s/url-decode "hello%20world")   ;; "hello world"
-(s/html-encode "<div>test</div>") ;; "&lt;div&gt;test&lt;/div&gt;"
-(s/html-decode "&lt;div&gt;test&lt;/div&gt;") ;; "<div>test</div>"
-
-;; ✅ ハッシュ/UUID（実装済み）
-(s/hash "hello")                 ;; "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
-(s/hash "hello" :sha256)         ;; SHA-256 (デフォルト)
-(s/uuid)                         ;; "550e8400-e29b-41d4-a716-446655440000"
-(s/uuid :v4)                     ;; UUID v4 (デフォルト)
-
-;; 生成（未実装）
-(s/random 16)          ;; "d7f3k9m2p5q8w1x4"
-(s/random 16 :hex)     ;; "3f8a9c2e1b4d7056"
-(s/random 16 :alnum)   ;; "aB3dE7fG9hJ2kL5m"
-```
-
-#### ✅ csv - CSV処理（実装済み）
-
-**コア関数（パイプライン対応）**:
-- `csv/parse` - CSV文字列をパース（TSV/PSV対応）
-- `csv/stringify` - データをCSV文字列に変換
-
-**便利関数**:
-- `csv/read-file` - ファイルを直接読み込み（`io/read-file` + `csv/parse`と同等）
-- `csv/write-file` - ファイルに直接書き込み（`csv/stringify` + `io/write-file`と同等）
-- `csv/read-stream` - ストリームとして読み込み
-
-```qi
-;; 基本的な使い方（RFC 4180準拠、ダブルクォートエスケープ対応）
-(csv/parse "name,age\n\"Alice\",30\n\"Bob\",25")
-;; => (("name" "age") ("Alice" "30") ("Bob" "25"))
-
-(csv/stringify '(("name" "age") ("Alice" "30")))
-;; => "name,age\nAlice,30\n"
-
-;; ✨ TSV（タブ区切り）/ PSV（パイプ区切り）対応
-(csv/parse "name\tage\tcity\nAlice\t30\tTokyo" :delimiter "\t")  ;; TSV
-;; => (("name" "age" "city") ("Alice" "30" "Tokyo"))
-
-(csv/parse "name|age|city\nAlice|30|Tokyo" :delimiter "|")  ;; PSV
-;; => (("name" "age" "city") ("Alice" "30" "Tokyo"))
-
-;; ✨ パイプライン推奨パターン - データが左から右へ流れる
-("data.csv"
- |> io/read-file        ;; ファイル → 文字列
- |> csv/parse           ;; 文字列 → データ
- |> (filter active?)    ;; データ処理
- |> (map transform)
- |> csv/stringify       ;; データ → 文字列
- |> (io/write-file "output.csv"))  ;; 文字列 → ファイル
-
-;; 便利関数 - シンプルな読み書き
-(csv/read-file "data.csv")  ;; => (("name" "age") ("Alice" "30") ...)
-(data |> (csv/write-file "output.csv"))  ;; データをCSV形式で保存
-
-;; ストリーム処理（巨大ファイル対応）
-("huge.csv"
- |> csv/read-stream
- |> (stream/take 1000)
- |> (stream/map transform)
- |> (io/write-stream "processed.txt"))
-
-;; 実用例: CSVデータの変換パイプライン
-(defn process-users []
-  ("users.csv"
-   |> io/read-file
-   |> csv/parse
-   |> rest                    ;; ヘッダー行をスキップ
-   |> (filter (fn [row]       ;; 30歳以上のみ
-        (>= (str/parse-int (nth row 1)) 30)))
-   |> (map (fn [row]          ;; 年齢を+1
-        (update row 1 (fn [age] (str (inc (str/parse-int age)))))))
-   |> (cons '("name" "age"))  ;; ヘッダーを追加
-   |> (csv/write-file "users_processed.csv"))))  ;; 便利関数で保存
 ```
 
 #### ✅ markdown - Markdown生成・解析（実装済み）
