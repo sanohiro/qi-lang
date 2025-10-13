@@ -3694,22 +3694,27 @@ map-lines
 ```
 
 ##### ✅ math - 数学関数
+
+Coreセクション「数学関数」を参照（詳細な例あり）
+
 ```qi
-math/pow math/sqrt
-math/round math/floor math/ceil math/clamp
-math/rand math/rand-int
+;; math/pow, math/sqrt, math/round, math/floor, math/ceil
+;; math/clamp, math/rand, math/rand-int
 ```
 
 ##### ✅ time - 日付・時刻
+
 ```qi
-time/now-iso time/today
-time/from-unix time/to-unix time/format time/parse
-time/add-days time/add-hours time/add-minutes
-time/sub-days time/sub-hours time/sub-minutes
-time/diff-days time/diff-hours time/diff-minutes
-time/before? time/after? time/between?
-time/year time/month time/day
-time/hour time/minute time/second time/weekday
+;; このセクションの関数は time/ モジュールに属します
+
+;; time/now-iso, time/today, time/from-unix, time/to-unix
+;; time/format, time/parse
+;; time/add-days, time/add-hours, time/add-minutes
+;; time/sub-days, time/sub-hours, time/sub-minutes
+;; time/diff-days, time/diff-hours, time/diff-minutes
+;; time/before?, time/after?, time/between?
+;; time/year, time/month, time/day
+;; time/hour, time/minute, time/second, time/weekday
 ```
 
 ##### ✅ io - ファイルI/O - グローバルエンコーディング対応（日中韓欧露）
@@ -4130,43 +4135,98 @@ time/hour time/minute time/second time/weekday
 ```
 
 ##### ✅ async - 並行処理（高度）
+
 ```qi
-;; チャネル拡張
-async/try-recv! async/select!
+;; このセクションの関数は async/ モジュールに属します
 
-;; Structured Concurrency
-async/make-scope async/scope-go async/with-scope
-async/cancel! async/cancelled?
+;; === チャネル拡張 ===
+;; async/try-recv! - ノンブロッキング受信
+;; async/select! - 複数チャネルから選択的受信
 
-;; 並列処理
-async/pfilter async/preduce async/parallel-do
+;; === Structured Concurrency ===
+;; async/make-scope - スコープ作成
+;; async/scope-go - スコープ内でgoroutine起動
+;; async/with-scope - スコープ付き実行
+;; async/cancel! - キャンセル
+;; async/cancelled? - キャンセル判定
 
-;; Promise
-async/await async/then async/catch async/all async/race
+;; === 並列処理 ===
+;; async/pfilter - 並列フィルタ
+;; async/preduce - 並列reduce
+;; async/parallel-do - 並列実行
+
+;; === Promise ===
+;; async/await - Promise待機
+;; async/then - Promise連鎖
+;; async/catch - Promiseエラーハンドリング
+;; async/all - 全Promise待機
+;; async/race - 最初のPromise待機
 ```
 
 ##### ✅ pipeline - パイプライン処理
+
 ```qi
-pipeline/pipeline pipeline/map pipeline/filter
-pipeline/fan-out pipeline/fan-in
+;; このセクションの関数は pipeline/ モジュールに属します
+
+;; pipeline/pipeline - パイプライン作成
+;; pipeline/map - パイプラインmap
+;; pipeline/filter - パイプラインfilter
+;; pipeline/fan-out - 複数の出力チャネルに分配
+;; pipeline/fan-in - 複数の入力チャネルを統合
 ```
 
 ##### ✅ stream - ストリーム処理
+
 ```qi
-stream/stream stream/range stream/repeat stream/cycle
-stream/take stream/drop stream/realize stream/iterate
-stream/map stream/filter stream/file
+;; このセクションの関数は stream/ モジュールに属します
+
+;; === ストリーム生成 ===
+;; stream/stream - ストリーム作成
+;; stream/range - 範囲ストリーム
+;; stream/repeat - 繰り返しストリーム
+;; stream/cycle - 循環ストリーム
+;; stream/iterate - 反復ストリーム
+;; stream/file - ファイルストリーム
+
+;; === ストリーム変換 ===
+;; stream/take - n要素取得
+;; stream/drop - n要素スキップ
+;; stream/map - マップ変換
+;; stream/filter - フィルタ
+;; stream/realize - ストリームを実体化
 ```
 
 ##### ✅ zip - ZIP圧縮・解凍
+
 ```qi
-zip/create zip/extract zip/list zip/add
-zip/gzip zip/gunzip
+;; このセクションの関数は zip/ モジュールに属します
+
+;; zip/create - ZIP作成
+;; zip/extract - ZIP展開
+;; zip/list - ZIP内容一覧
+;; zip/add - ZIPに追加
+;; zip/gzip - gzip圧縮
+;; zip/gunzip - gzip展開
 ```
 
 ##### ✅ args - コマンドライン引数パース
+
 ```qi
-args/all args/get args/parse args/count
+;; このセクションの関数は args/ モジュールに属します
+
+;; args/all - 全引数取得
+(args/all)                          ;; => ["arg1" "arg2" "arg3"]
+
+;; args/get - 指定位置の引数取得
+(args/get 0)                        ;; => "arg1"
+(args/get 1 "default")              ;; デフォルト値付き
+
+;; args/count - 引数の数
+(args/count)                        ;; => 3
+
+;; args/parse - 引数をパース
+(args/parse)                        ;; => {"_" ["file.qi"] "port" "3000" "debug" true}
+;; qi script.qi --port 3000 --debug
 ```
 
 ##### ✅ db - データベース
