@@ -373,6 +373,9 @@ impl Parser {
             } else if let Some(Token::LBracket) = self.current() {
                 // ベクタの分解パターン
                 params.push(self.parse_fn_param_vector()?);
+            } else if let Some(Token::LBrace) = self.current() {
+                // マップの分解パターン
+                params.push(self.parse_fn_param_map()?);
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string());
             }
@@ -447,6 +450,9 @@ impl Parser {
             } else if let Some(Token::LBracket) = self.current() {
                 // ベクタの分解パターン
                 params.push(self.parse_fn_param_vector()?);
+            } else if let Some(Token::LBrace) = self.current() {
+                // マップの分解パターン
+                params.push(self.parse_fn_param_map()?);
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn-"]).to_string());
             }
@@ -470,7 +476,7 @@ impl Parser {
         if let Some(doc) = doc_expr {
             let doc_key = format!("__doc__{}", name);
             let doc_def = Expr::Def(doc_key, Box::new(doc), true); // プライベート
-            let fn_def = Expr::Def(name, Box::new(fn_expr), true);  // プライベート
+            let fn_def = Expr::Def(name, Box::new(fn_expr), true); // プライベート
             Ok(Expr::Do(vec![doc_def, fn_def]))
         } else {
             Ok(Expr::Def(name, Box::new(fn_expr), true)) // プライベート
@@ -504,6 +510,9 @@ impl Parser {
             } else if let Some(Token::LBracket) = self.current() {
                 // ベクタの分解パターン
                 params.push(self.parse_fn_param_vector()?);
+            } else if let Some(Token::LBrace) = self.current() {
+                // マップの分解パターン
+                params.push(self.parse_fn_param_map()?);
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn"]).to_string());
             }
@@ -522,14 +531,28 @@ impl Parser {
         })
     }
 
-    /// ベクタの分解パターンをパース: [x y] or [[a b] c]
+    /// ベクタの分解パターンをパース: [x y] or [[a b] c] or [x ...rest]
     fn parse_fn_param_vector(&mut self) -> Result<crate::value::FnParam, String> {
         self.expect(Token::LBracket)?;
 
         let mut params = Vec::new();
+        let mut rest = None;
 
         while self.current() != Some(&Token::RBracket) {
-            if let Some(Token::Symbol(s)) = self.current() {
+            // ...rest パターンのチェック
+            if self.current() == Some(&Token::Ellipsis) {
+                self.advance(); // ...
+                                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(s)) => {
+                        rest = Some(Box::new(crate::value::FnParam::Simple(s.clone())));
+                        self.advance();
+                        // ...rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(msg(MsgKey::RestNeedsVar).to_string()),
+                }
+            } else if let Some(Token::Symbol(s)) = self.current() {
                 params.push(crate::value::FnParam::Simple(s.clone()));
                 self.advance();
             } else if let Some(Token::LBracket) = self.current() {
@@ -542,7 +565,60 @@ impl Parser {
 
         self.expect(Token::RBracket)?;
 
-        Ok(crate::value::FnParam::Vector(params))
+        Ok(crate::value::FnParam::Vector(params, rest))
+    }
+
+    /// マップの分解パターンをパース: {:key var} or {:key var :as all}
+    fn parse_fn_param_map(&mut self) -> Result<crate::value::FnParam, String> {
+        self.expect(Token::LBrace)?;
+
+        let mut pairs = Vec::new();
+        let mut as_var = None;
+
+        while self.current() != Some(&Token::RBrace) {
+            // :as チェック
+            if let Some(Token::Keyword(k)) = self.current() {
+                if k == "as" {
+                    self.advance(); // :as
+                                    // 次は変数名
+                    match self.current() {
+                        Some(Token::Symbol(var)) => {
+                            as_var = Some(var.clone());
+                            self.advance();
+                            break;
+                        }
+                        _ => return Err(msg(MsgKey::AsNeedsVarName).to_string()),
+                    }
+                }
+            }
+
+            let key = match self.current() {
+                Some(Token::Keyword(k)) => k.clone(),
+                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
+            };
+            self.advance();
+
+            // 変数名またはパターン
+            let pattern = if let Some(Token::Symbol(var)) = self.current() {
+                let var_name = var.clone();
+                self.advance();
+                crate::value::FnParam::Simple(var_name)
+            } else if let Some(Token::LBracket) = self.current() {
+                // ネストしたベクタパターン
+                self.parse_fn_param_vector()?
+            } else if let Some(Token::LBrace) = self.current() {
+                // ネストしたマップパターン
+                self.parse_fn_param_map()?
+            } else {
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["map pattern"]).to_string());
+            };
+
+            pairs.push((key, pattern));
+        }
+
+        self.expect(Token::RBrace)?;
+
+        Ok(crate::value::FnParam::Map(pairs, as_var))
     }
 
     fn parse_let(&mut self) -> Result<Expr, String> {
@@ -553,13 +629,15 @@ impl Parser {
         let mut bindings = Vec::new();
 
         while self.current() != Some(&Token::RBracket) {
-            // パターンをパース（シンボルまたはベクタ分解）
+            // パターンをパース（シンボル、ベクタ分解、またはマップ分解）
             let pattern = if let Some(Token::Symbol(s)) = self.current() {
                 let name = s.clone();
                 self.advance();
                 crate::value::FnParam::Simple(name)
             } else if let Some(Token::LBracket) = self.current() {
                 self.parse_fn_param_vector()?
+            } else if let Some(Token::LBrace) = self.current() {
+                self.parse_fn_param_map()?
             } else {
                 return Err(fmt_msg(MsgKey::NeedsSymbol, &["let"]).to_string());
             };

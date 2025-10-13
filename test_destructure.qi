@@ -1,0 +1,82 @@
+;; 分解機能のテストコード
+
+(println "=== letで...rest構文のテスト ===")
+(let [[first ...rest] [1 2 3 4 5]]
+  (do
+    (println f"first: {first}")
+    (println f"rest: {rest}")))
+
+(let [[x y ...tail] [10 20 30 40]]
+  (do
+    (println f"x: {x}, y: {y}")
+    (println f"tail: {tail}")))
+
+(println "\n=== letでmapの分解テスト ===")
+(let [{:name n :age a} {:name "太郎" :age 25}]
+  (println f"{n}さんは{a}歳です"))
+
+(let [{:host h :port p} {:host "localhost" :port 8080}]
+  (println f"接続先: {h}:{p}"))
+
+(println "\n=== letでmap分解+:as束縛テスト ===")
+(let [{:name n :age a :as person} {:name "花子" :age 30 :title "部長"}]
+  (do
+    (println f"名前: {n}")
+    (println f"年齢: {a}")
+    (println f"全体: {person}")))
+
+(println "\n=== fn/defnで...rest構文のテスト ===")
+(defn process-list [[first ...rest]]
+  (str "first: " first ", rest: " rest))
+
+(println (process-list [1 2 3 4]))
+(println (process-list [100]))
+
+(defn analyze-data [[head second ...tail]]
+  {:head head
+   :second second
+   :tail tail
+   :count (+ 2 (len tail))})
+
+(println (analyze-data [10 20 30 40]))
+
+(println "\n=== fn/defnでmap分解のテスト ===")
+(defn greet [{:name n :age a}]
+  (str n "さんは" a "歳です"))
+
+(println (greet {:name "次郎" :age 35}))
+
+(defn connect [{:host h :port p :timeout t}]
+  (str "接続先: " h ":" p " (timeout: " t "ms)"))
+
+(println (connect {:host "127.0.0.1" :port 3000 :timeout 5000}))
+
+(println "\n=== fn/defnでmap分解+:as束縛テスト ===")
+(defn log-user [{:name n :as user}]
+  (do
+    (println f"Processing: {n}")
+    user))
+
+(println (log-user {:name "三郎" :age 40 :role "admin"}))
+
+(println "\n=== ネストした分解のテスト ===")
+(let [[[a b] c] [[1 2] 3]]
+  (println f"a={a}, b={b}, c={c}"))
+
+(defn nested [[x [y z]]]
+  (+ x y z))
+
+(println (nested [10 [20 30]]))
+
+(println "\n=== 複雑な例：HTTPハンドラー風 ===")
+;; method と path のみを分解（body はオプショナル）
+(defn handle-get [{:method m :path p}]
+  (str "GET " p))
+
+(defn handle-post [{:method m :path p :body b}]
+  (str "POST " p " with body: " b))
+
+(println (handle-get {:method "GET" :path "/api/users"}))
+(println (handle-post {:method "POST" :path "/api/users" :body "{\"name\":\"test\"}"}))
+
+(println "\n=== すべてのテストが完了しました ===")

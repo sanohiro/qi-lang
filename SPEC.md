@@ -62,7 +62,7 @@ Qiは段階的にFlow機能を強化していきます：
 *match強化* ⭐ **Qi独自の差別化要素**:
 - ✅ `:as` 束縛 - 部分と全体を両方使える
 - ✅ `=> 変換` - マッチ時にパイプライン的変換（matchの中に流れを埋め込む）
-- 🚧 `or` パターン - 複数パターンで同じ処理（`1 | 2 | 3 -> "small"`）（未実装）
+- ✅ `or` パターン - 複数パターンで同じ処理（`1 | 2 | 3 -> "small"`）（実装済み）
 
 **フェーズ3（✅ 完了）**:
 - ✅ 並列処理基盤 - スレッドセーフEvaluator、pmap完全並列化（実装済み）
@@ -718,6 +718,24 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 (defn format-kv [[k v]]
   f"{k}={v}")
 
+;; ✅ ...rest構文（ベクタの残りの要素を取得）
+(defn process-list [[first ...rest]]
+  (str "first: " first ", rest: " rest))
+
+(process-list [1 2 3 4])  ;; => "first: 1, rest: (2 3 4)"
+
+;; ✅ mapの分解
+(defn greet [{:name n :age a}]
+  (str n "さんは" a "歳です"))
+
+(greet {:name "太郎" :age 25})  ;; => "太郎さんは25歳です"
+
+;; ✅ map分解 + :as束縛
+(defn log-user [{:name n :as user}]
+  (do
+    (println f"Processing: {n}")
+    user))
+
 ;; ドキュメント付き（将来サポート予定）
 (defn greet "挨拶する" [name]
   (str "Hello, " name))
@@ -745,7 +763,28 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ;; ネストした分解
 (fn [[[a b] c]] (+ a b c))  ;; [[1 2] 3] => 6
+
+;; ✅ ...rest構文（ベクタの残りの要素を取得）
+(fn [[first ...rest]]
+  (str "first: " first ", rest: " rest))
+
+;; 例: (fn [[first ...rest]] ...) を [1 2 3 4] に適用
+;; => first: 1, rest: (2 3 4)
+
+;; ✅ mapの分解
+(fn [{:name n :age a}]
+  (str n " is " a " years old"))
+
+;; 例: {:name "Alice" :age 30} を渡すと => "Alice is 30 years old"
+
+;; ✅ map分解 + :as束縛
+(fn [{:name n :as user}]
+  (do
+    (println f"Processing: {n}")
+    user))
 ```
+
+**Note**: `&`による可変長引数と`...rest`は異なる機能です。`&`は全引数をリストとして受け取り、`...rest`はベクタ分解の一部として残りの要素を取得します。
 
 ### ✅ `let` - ローカル束縛
 ```qi
@@ -772,7 +811,32 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 (let [x 10
       [y z] [20 30]]
   (+ x y z))  ;; => 60
+
+;; ✅ ...rest構文（ベクタの残りの要素を取得）
+(let [[first ...rest] [1 2 3 4]]
+  (str "first: " first ", rest: " rest))
+;; => "first: 1, rest: (2 3 4)"
+
+(let [[x y ...tail] [10 20 30 40]]
+  {:x x :y y :tail tail})
+;; => {:x 10, :y 20, :tail (30 40)}
+
+;; ✅ mapの分解
+(let [{:name n :age a} {:name "Alice" :age 30}]
+  (str n " is " a))
+;; => "Alice is 30"
+
+(let [{:host h :port p} {:host "localhost" :port 8080}]
+  (str h ":" p))
+;; => "localhost:8080"
+
+;; ✅ :as束縛（部分と全体を同時に取得）
+(let [{:name n :age a :as person} {:name "Bob" :age 25 :role "admin"}]
+  [n a person])
+;; => ["Bob" 25 {:name "Bob", :age 25, :role "admin"}]
 ```
+
+**Note**: `...rest`やmapの分解は、`let`、`fn`/`defn`、`match`のすべてで利用可能です。
 
 ### ✅ `do` - 順次実行
 ```qi
@@ -876,19 +940,24 @@ Qiのパターンマッチは**データの流れを分岐させる制御構造*
   _ -> (error "unexpected response"))
 ```
 
-**3. `or` パターン - 複数パターンで同じ処理** 🚧
+**3. ✅ `or` パターン - 複数パターンで同じ処理**
 ```qi
-;; 複数の値にマッチ
+;; 複数の値にマッチ（| 記法を使用）
 (match status
-  (200 or 201 or 204) -> "success"
-  (400 or 401 or 403) -> "client error"
-  (500 or 502 or 503) -> "server error"
+  200 | 201 | 204 -> "success"
+  400 | 401 | 403 -> "client error"
+  500 | 502 | 503 -> "server error"
   _ -> "unknown")
 
-;; 複数の構造にマッチ
-(match event
-  ({:type "click"} or {:type "tap"}) -> (handle-interaction)
-  ({:type "scroll"} or {:type "drag"}) -> (handle-movement))
+;; 文字列にも使える
+(match day
+  "月" | "火" | "水" | "木" | "金" -> "平日"
+  "土" | "日" -> "週末")
+
+;; キーワードにも使える
+(match result
+  :ok | :success -> (handle-ok)
+  :error | :fail -> (handle-error))
 ```
 
 **4. ネスト + ガード - 構造的な条件分岐**
@@ -3469,7 +3538,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
            (list ,a ,b ,c))))))
 ```
 
-## 10. モジュールシステム（🚧 実装予定）
+## 10. モジュールシステム ✅️実装済み
 
 ### 概要
 
@@ -3773,17 +3842,6 @@ defn で定義
 
 (export maybe-public)
 ```
-
-### 実装状況
-
-- 🚧 `use` - ファイル読み込み＋インポート（未実装）
-- 🚧 `load` - ファイル実行のみ（未実装、REPLの`:load`はあり）
-- 🚧 `defn-` - プライベート関数定義（未実装）
-- 🚧 `export` - エクスポート宣言（未実装）
-- 🚧 `module` - モジュール宣言（未実装）
-- 🚧 モジュール探索パス
-- 🚧 循環参照検出
-- 🚧 名前衝突検出
 
 ### 実践的な使用例
 

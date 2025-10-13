@@ -1,6 +1,8 @@
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::value::{Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value};
+use crate::value::{
+    Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value,
+};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -1018,7 +1020,7 @@ impl Evaluator {
                 env.set(name.clone(), value.clone());
                 Ok(())
             }
-            FnParam::Vector(params) => {
+            FnParam::Vector(params, rest_param) => {
                 // 値がリストまたはベクタであることを確認
                 let values = match value {
                     Value::List(v) | Value::Vector(v) => v,
@@ -1030,17 +1032,67 @@ impl Evaluator {
                     }
                 };
 
-                if values.len() != params.len() {
-                    return Err(format!(
-                        "引数エラー: ベクタパターンは{}個の要素を期待しましたが、{}個が渡されました",
-                        params.len(),
-                        values.len()
-                    ));
+                // restパターンがある場合とない場合で処理を分岐
+                if let Some(rest) = rest_param {
+                    // [x y ...rest] 形式
+                    if values.len() < params.len() {
+                        return Err(format!(
+                            "引数エラー: ベクタパターンは最低{}個の要素を期待しましたが、{}個が渡されました",
+                            params.len(),
+                            values.len()
+                        ));
+                    }
+
+                    // 固定部分をバインド
+                    for (p, v) in params.iter().zip(values.iter()) {
+                        self.bind_fn_param(p, v, env)?;
+                    }
+
+                    // rest部分をバインド（残りの要素をリストとして）
+                    let rest_values = values[params.len()..].to_vec();
+                    self.bind_fn_param(rest, &Value::List(rest_values), env)?;
+                } else {
+                    // [x y] 形式（固定長）
+                    if values.len() != params.len() {
+                        return Err(format!(
+                            "引数エラー: ベクタパターンは{}個の要素を期待しましたが、{}個が渡されました",
+                            params.len(),
+                            values.len()
+                        ));
+                    }
+
+                    for (p, v) in params.iter().zip(values.iter()) {
+                        self.bind_fn_param(p, v, env)?;
+                    }
+                }
+                Ok(())
+            }
+            FnParam::Map(pairs, as_var) => {
+                // 値がマップであることを確認
+                let map = match value {
+                    Value::Map(m) => m,
+                    _ => {
+                        return Err(format!(
+                            "型エラー: マップパターンに対して{}を渡すことはできません",
+                            value.type_name()
+                        ));
+                    }
+                };
+
+                // 各キーに対応する値をバインド
+                for (key, pattern) in pairs {
+                    if let Some(val) = map.get(key) {
+                        self.bind_fn_param(pattern, val, env)?;
+                    } else {
+                        return Err(format!("キーエラー: マップにキー :{}が存在しません", key));
+                    }
                 }
 
-                for (p, v) in params.iter().zip(values.iter()) {
-                    self.bind_fn_param(p, v, env)?;
+                // :as 変数があればマップ全体をバインド
+                if let Some(var) = as_var {
+                    env.set(var.clone(), value.clone());
                 }
+
                 Ok(())
             }
         }
@@ -2325,16 +2377,18 @@ impl Evaluator {
                 // 全ての公開シンボルをインポート（デッドロック回避のため先に収集）
                 let bindings: Vec<(String, Value)> = {
                     let env_guard = module.env.read();
-                    let all_bindings: Vec<_> = env_guard.all_bindings()
+                    let all_bindings: Vec<_> = env_guard
+                        .all_bindings()
                         .map(|(name, binding)| (name.clone(), binding.clone()))
                         .collect();
                     std::mem::drop(env_guard); // 明示的にロックを解放
 
                     // exportリストに基づいてフィルタ
-                    all_bindings.into_iter()
+                    all_bindings
+                        .into_iter()
                         .filter(|(name, binding)| {
                             match &module.exports {
-                                None => !binding.is_private, // exportなし = privateでなければ公開
+                                None => !binding.is_private,       // exportなし = privateでなければ公開
                                 Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
                             }
                         })
@@ -2350,16 +2404,18 @@ impl Evaluator {
                 // エイリアス機能: alias/name という形式で全ての公開関数をインポート（デッドロック回避のため先に収集）
                 let bindings: Vec<(String, Value)> = {
                     let env_guard = module.env.read();
-                    let all_bindings: Vec<_> = env_guard.all_bindings()
+                    let all_bindings: Vec<_> = env_guard
+                        .all_bindings()
                         .map(|(name, binding)| (name.clone(), binding.clone()))
                         .collect();
                     std::mem::drop(env_guard); // 明示的にロックを解放
 
                     // exportリストに基づいてフィルタ
-                    all_bindings.into_iter()
+                    all_bindings
+                        .into_iter()
                         .filter(|(name, binding)| {
                             match &module.exports {
-                                None => !binding.is_private, // exportなし = privateでなければ公開
+                                None => !binding.is_private,       // exportなし = privateでなければ公開
                                 Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
                             }
                         })
@@ -2540,7 +2596,9 @@ impl Evaluator {
                     exports: None, // None = 全公開（defn-以外）
                 });
 
-                self.modules.write().insert(name.to_string(), module.clone());
+                self.modules
+                    .write()
+                    .insert(name.to_string(), module.clone());
                 module
             }
         };
@@ -2812,10 +2870,29 @@ impl Evaluator {
     /// FnParamをValueに変換（マクロ展開/quote用）
     fn fn_param_to_value(&self, param: &crate::value::FnParam) -> Value {
         use crate::value::FnParam;
+        use std::collections::HashMap;
         match param {
             FnParam::Simple(name) => Value::Symbol(name.clone()),
-            FnParam::Vector(params) => {
-                Value::Vector(params.iter().map(|p| self.fn_param_to_value(p)).collect())
+            FnParam::Vector(params, rest) => {
+                let mut items: Vec<Value> =
+                    params.iter().map(|p| self.fn_param_to_value(p)).collect();
+                // restがある場合は [..., "...", rest_name] の形式にする
+                if let Some(rest_param) = rest {
+                    items.push(Value::Symbol("...".to_string()));
+                    items.push(self.fn_param_to_value(rest_param));
+                }
+                Value::Vector(items)
+            }
+            FnParam::Map(pairs, as_var) => {
+                let mut map = HashMap::new();
+                for (key, pattern) in pairs {
+                    map.insert(key.clone(), self.fn_param_to_value(pattern));
+                }
+                // :as がある場合は追加
+                if let Some(var) = as_var {
+                    map.insert("as".to_string(), Value::Symbol(var.clone()));
+                }
+                Value::Map(map)
             }
         }
     }

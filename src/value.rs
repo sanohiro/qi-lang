@@ -393,9 +393,10 @@ impl Env {
 pub enum FnParam {
     /// シンプルなシンボル: x
     Simple(String),
-    /// ベクタの分解: [x y] or [[a b] c]
-    Vector(Vec<FnParam>),
-    // 将来の拡張: Map(MapPattern)
+    /// ベクタの分解: [x y] or [[a b] c] or [x ...rest]
+    Vector(Vec<FnParam>, Option<Box<FnParam>>), // (固定部, rest部)
+    /// マップの分解: {:key var} or {:key var :as all}
+    Map(Vec<(String, FnParam)>, Option<String>), // (キー・パターン対, :as変数)
 }
 
 /// AST（抽象構文木）の式
