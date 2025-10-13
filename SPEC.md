@@ -312,7 +312,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 ("{\"name\":\"Alice\",\"age\":30}"
  |> json/parse                    ;; => {:ok {...}}
  |>? (fn [data] {:ok (get data "name")})
- |>? (fn [name] {:ok (upper name)}))
+ |>? (fn [name] {:ok (str/upper name)}))
 ;; => {:ok "ALICE"}
 
 ;; HTTPリクエスト + エラーハンドリング
@@ -365,28 +365,28 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 ;; デバッグ
 (data
  |> clean
- |> ((tap> (fn [x] (print f"After clean: {x}"))))
+ |> ((fn/tap> (fn [x] (print f"After clean: {x}"))))
  |> analyze
- |> ((tap> (fn [x] (print f"After analyze: {x}"))))
+ |> ((fn/tap> (fn [x] (print f"After analyze: {x}"))))
  |> save)
 
 ;; ログ
 (requests
- |> ((tap> log-request))
+ |> ((fn/tap> log-request))
  |> process
- |> ((tap> log-response)))
+ |> ((fn/tap> log-response)))
 
 ;; 簡潔な使い方
 ([1 2 3]
  |> (map inc)
- |> ((tap> print))
+ |> ((fn/tap> print))
  |> sum)
 ```
 
 **実装**:
 - 高階関数として実装
-- `(tap> f)`は`(fn [x] (do (f x) x))`を返す
-- パイプライン内で`((tap> f))`として使用
+- `(fn/tap> f)`は`(fn [x] (do (f x) x))`を返す
+- パイプライン内で`((fn/tap> f))`として使用
 
 ---
 
@@ -419,7 +419,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ;; 再利用可能な小パイプ
 (def normalize-text
-  (flow |> trim |> lower |> (replace "\\s+" " ")))
+  (flow |> trim |> lower |> (str/replace "\\s+" " ")))
 
 (texts |> normalize-text |> unique)
 ```
@@ -460,16 +460,16 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ```qi
 ;; コレクションからストリーム作成
-(stream [1 2 3 4 5])
+(stream/stream [1 2 3 4 5])
 
 ;; 範囲ストリーム
-(range-stream 0 10)  ;; 0から9まで
+(stream/range 0 10)  ;; 0から9まで
 
 ;; 無限ストリーム：同じ値を繰り返し
-(repeat 42)  ;; 42, 42, 42, ...
+(stream/repeat 42)  ;; 42, 42, 42, ...
 
 ;; 無限ストリーム：リストを循環
-(cycle [1 2 3])  ;; 1, 2, 3, 1, 2, 3, ...
+(stream/cycle [1 2 3])  ;; 1, 2, 3, 1, 2, 3, ...
 
 ;; 無限ストリーム：関数を反復適用
 (stream/iterate (fn [x] (* x 2)) 1)  ;; 1, 2, 4, 8, 16, 32, ...
@@ -479,37 +479,37 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ```qi
 ;; map: 各要素に関数を適用
-(def s (range-stream 1 6))
+(def s (stream/range 1 6))
 (def s2 (stream/map (fn [x] (* x 2)) s))
-(realize s2)  ;; (2 4 6 8 10)
+(stream/realize s2)  ;; (2 4 6 8 10)
 
 ;; filter: 条件に合う要素のみ
-(def s (range-stream 1 11))
+(def s (stream/range 1 11))
 (def s2 (stream/filter (fn [x] (= (% x 2) 0)) s))
-(realize s2)  ;; (2 4 6 8 10)
+(stream/realize s2)  ;; (2 4 6 8 10)
 
 ;; take: 最初のn個を取得（無限ストリームを有限化）
-(def s (repeat 42))
-(def s2 (stream-take 5 s))
-(realize s2)  ;; (42 42 42 42 42)
+(def s (stream/repeat 42))
+(def s2 (stream/take 5 s))
+(stream/realize s2)  ;; (42 42 42 42 42)
 
 ;; drop: 最初のn個をスキップ
-(def s (range-stream 0 10))
-(def s2 (stream-drop 5 s))
-(realize s2)  ;; (5 6 7 8 9)
+(def s (stream/range 0 10))
+(def s2 (stream/drop 5 s))
+(stream/realize s2)  ;; (5 6 7 8 9)
 ```
 
 #### Stream実行
 
 ```qi
 ;; realize: ストリームをリストに変換（全要素を計算）
-(realize (stream [1 2 3]))  ;; (1 2 3)
+(stream/realize (stream/stream [1 2 3]))  ;; (1 2 3)
 
 ;; ⚠️ 注意: 無限ストリームをrealizeすると無限ループ
-;; (realize (repeat 42))  ;; NG: 永遠に終わらない
+;; (stream/realize (stream/repeat 42))  ;; NG: 永遠に終わらない
 
 ;; 正しい使い方: takeで有限化してからrealize
-(realize (stream-take 5 (repeat 42)))  ;; OK
+(stream/realize (stream/take 5 (stream/repeat 42)))  ;; OK
 ```
 
 #### パイプラインとの統合
@@ -517,25 +517,25 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ```qi
 ;; 既存の |> パイプライン演算子で使える
 [1 2 3 4 5]
-  |> stream
+  |> stream/stream
   |> (stream/map (fn [x] (* x x)))
   |> (stream/filter (fn [x] (> x 10)))
-  |> realize
+  |> stream/realize
 ;; (16 25)
 
 ;; 無限ストリームの処理
 1
   |> (stream/iterate (fn [x] (* x 2)))
-  |> (stream-take 10)
-  |> realize
+  |> (stream/take 10)
+  |> stream/realize
 ;; (1 2 4 8 16 32 64 128 256 512)
 
 ;; 複雑な変換チェーン
-(range-stream 1 100)
+(stream/range 1 100)
   |> (stream/map (fn [x] (* x x)))
   |> (stream/filter (fn [x] (= (% x 3) 0)))
-  |> (stream-take 5)
-  |> realize
+  |> (stream/take 5)
+  |> stream/realize
 ;; (9 36 81 144 225)
 ```
 
@@ -548,15 +548,14 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
    |> (stream/iterate inc)
    |> (stream/filter prime?)))
 
-(realize (stream-take 10 primes))  ;; 最初の10個の素数
+(stream/realize (stream/take 10 primes))  ;; 最初の10個の素数
 
 ;; フィボナッチ数列
 (def fib-stream
   (stream/iterate     (fn [[a b]] [b (+ a b)])
     [0 1]))
 
-(realize
-  (stream-take 10 fib-stream)
+(stream/realize   (stream/take 10 fib-stream)
   |> (map first))  ;; (0 1 1 2 3 5 8 13 21 34)
 
 ;; データ処理パイプライン
@@ -565,8 +564,8 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
    |> stream
    |> (stream/map parse)
    |> (stream/filter valid?)
-   |> (stream-take 1000)
-   |> realize))
+   |> (stream/take 1000)
+   |> stream/realize))
 ```
 
 #### ✅ I/Oストリーム（実装済み）
@@ -576,22 +575,22 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ##### テキストモード（行ベース）
 
 ```qi
-;; file-stream: ファイルを行ごとに遅延読み込み（io.rs）
-(file-stream "large.log")
+;; stream/file: ファイルを行ごとに遅延読み込み（io.rs）
+(stream/file "large.log")
   |> (stream/filter error-line?)
   |> (stream/map parse)
-  |> (stream-take 100)
-  |> realize
+  |> (stream/take 100)
+  |> stream/realize
 
 ;; http/get-stream: HTTPレスポンスを行ごとに読み込み（http.rs）
 (http/get-stream "https://api.example.com/data")
-  |> (stream-take 10)
-  |> realize
+  |> (stream/take 10)
+  |> stream/realize
 
 ;; http/post-stream: POSTリクエストでストリーミング受信
 (http/post-stream "https://api.example.com/upload" {:data "value"})
-  |> (stream-take 10)
-  |> realize
+  |> (stream/take 10)
+  |> stream/realize
 
 ;; http/request-stream: 詳細設定でストリーミング
 (http/request-stream {
@@ -599,31 +598,31 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
   :url "https://api.example.com/stream"
 })
   |> (stream/filter important?)
-  |> realize
+  |> stream/realize
 ```
 
 ##### バイナリモード（バイトチャンク）
 
 ```qi
-;; file-stream :bytes - ファイルを4KBチャンクで読み込み
-(file-stream "image.png" :bytes)
-  |> (stream-take 10)
-  |> realize
+;; stream/file :bytes - ファイルを4KBチャンクで読み込み
+(stream/file "image.png" :bytes)
+  |> (stream/take 10)
+  |> stream/realize
 ;; => Vector of Integers (bytes) のリスト
 
 ;; http/get-stream :bytes - HTTPバイナリダウンロード
 (http/get-stream "https://example.com/file.bin" :bytes)
   |> (stream/map process-chunk)
-  |> realize
+  |> stream/realize
 
 ;; バイト処理の例
-(def bytes (first (realize (stream-take 1 (file-stream "data.bin" :bytes)))))
+(def bytes (first (stream/realize (stream/take 1 (stream/file "data.bin" :bytes)))))
 (def sum (reduce + bytes))  ; バイトの合計
 (println sum)
 
 ;; 画像ダウンロード
 (http/get-stream "https://example.com/logo.png" :bytes)
-  |> realize
+  |> stream/realize
   |> flatten
   |> (write-bytes "logo.png")  ; write-bytes は将来実装
 ```
@@ -632,20 +631,20 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 | モード | 用途 | 戻り値 | 例 |
 |--------|------|--------|-----|
-| テキスト（デフォルト） | ログ、CSV、JSON | String（行ごと） | `(file-stream "data.txt")` |
-| バイナリ（`:bytes`） | 画像、動画、バイナリ | Vector of Integers（4KBチャンク） | `(file-stream "image.png" :bytes)` |
+| テキスト（デフォルト） | ログ、CSV、JSON | String（行ごと） | `(stream/file "data.txt")` |
+| バイナリ（`:bytes`） | 画像、動画、バイナリ | Vector of Integers（4KBチャンク） | `(stream/file "image.png" :bytes)` |
 
 ;; CSVファイルの処理
-(file-stream "data.csv")
-  |> (stream-drop 1)  ; ヘッダースキップ
+(stream/file "data.csv")
+  |> (stream/drop 1)  ; ヘッダースキップ
   |> (stream/map (fn [line] (split line ",")))
   |> (stream/filter (fn [cols] (> (len cols) 2)))
-  |> (stream-take 1000)
-  |> realize
+  |> (stream/take 1000)
+  |> stream/realize
 
 ;; HTTPからJSONを取得してパース
 (http/get-stream "https://jsonplaceholder.typicode.com/todos/1")
-  |> realize
+  |> stream/realize
   |> (join "\n")
   |> json/parse  ; json モジュールが実装されたら使える
 ```
@@ -655,11 +654,11 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ```qi
 ;; 大きなログファイルをメモリ効率的に処理
 (defn analyze-logs [file]
-  (file-stream file
-   |> (stream/filter (fn [line] (contains? line "ERROR")))
+  (stream/file file
+   |> (stream/filter (fn [line] (str/contains? line "ERROR")))
    |> (stream/map parse-log-line)
-   |> (stream-take 100)  ; 最初の100エラー
-   |> realize))
+   |> (stream/take 100)  ; 最初の100エラー
+   |> stream/realize))
 
 ;; 結果を取得
 (def errors (analyze-logs "/var/log/app.log"))
@@ -1113,7 +1112,7 @@ Qiは**2層モジュール設計**を採用しています：
 
 ;; useで短縮可能
 (use io :only [read-file])
-(read-file "data.txt")
+(io/read-file "data.txt")
 ```
 
 ### リスト操作
@@ -1264,10 +1263,10 @@ min max                 ;; 最小/最大
 #### 数学関数（✅ 実装済み）
 ```qi
 ;; ✅ 実装済み（coreに含まれる）
-pow                     ;; べき乗: (pow 2 8) => 256
-sqrt                    ;; 平方根: (sqrt 16) => 4
-round floor ceil        ;; 丸め: (round 3.7) => 4
-clamp                   ;; 範囲制限: (clamp 1 10 15) => 10
+pow                     ;; べき乗: (math/pow 2 8) => 256
+sqrt                    ;; 平方根: (math/sqrt 16) => 4
+round floor ceil        ;; 丸め: (math/round 3.7) => 4
+clamp                   ;; 範囲制限: (math/clamp 1 10 15) => 10
 rand                    ;; 0.0以上1.0未満の乱数
 rand-int                ;; 0以上n未満の整数乱数
 
@@ -1301,7 +1300,7 @@ and or not
 get keys vals           ;; アクセス
 assoc dissoc            ;; キーの追加・削除
 merge                   ;; マージ: (merge {:a 1} {:b 2}) => {:a 1 :b 2}
-select-keys             ;; キー選択: (select-keys {:a 1 :b 2 :c 3} [:a :c]) => {:a 1 :c 3}
+select-keys             ;; キー選択: (map/select-keys {:a 1 :b 2 :c 3} [:a :c]) => {:a 1 :c 3}
 ```
 
 #### ネスト操作（✅ 実装済み）⭐ **Flow哲学の核心**
@@ -1319,7 +1318,7 @@ dissoc-in               ;; ネスト削除
 ;; ✅ Phase 4.5で実装
 map/update-keys             ;; 全キーに関数適用: (map/update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
 map/update-vals             ;; 全値に関数適用: (map/update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
-zipmap                  ;; キーと値のリストからマップ生成: (zipmap [:a :b] [1 2]) => {:a 1 :b 2}
+zipmap                  ;; キーと値のリストからマップ生成: (list/zipmap [:a :b] [1 2]) => {:a 1 :b 2}
 ```
 
 **使用例**:
@@ -1355,7 +1354,7 @@ zipmap                  ;; キーと値のリストからマップ生成: (zipma
 ;; パイプラインで威力発揮
 (state
  |> (fn [s] (update-in s [:user :profile :visits] inc))
- |> (fn [s] (assoc-in s [:user :last-seen] (now))))
+ |> (fn [s] (map/assoc-in s [:user :last-seen] (now))))
 ```
 
 **設計メモ**: ネスト操作はQiの強み。JSONやWeb APIレスポンスの処理が直感的になる。一括変換関数と組み合わせることでデータ変換が簡潔に書ける。
@@ -1370,8 +1369,8 @@ constantly              ;; 常に同じ値を返す関数: ((constantly 42) x) =
 comp                    ;; 関数合成: ((comp f g) x) => (f (g x))
 partial                 ;; 部分適用: (def add5 (partial + 5))
 apply                   ;; リストを引数として適用: (apply + [1 2 3]) => 6
-complement              ;; 述語の否定: ((complement even?) 3) => true
-juxt                    ;; 複数関数を並列適用: ((juxt inc dec) 5) => [6 4]
+complement              ;; 述語の否定: ((fn/complement even?) 3) => true
+juxt                    ;; 複数関数を並列適用: ((fn/juxt inc dec) 5) => [6 4]
 ```
 
 **使用例**:
@@ -1440,15 +1439,15 @@ file-exists?            ;; ファイル存在確認
 **使用例**:
 ```qi
 ;; ファイル読み書き
-(write-file "/tmp/test.txt" "Hello, Qi!")
-(def content (read-file "/tmp/test.txt"))
+(io/write-file "/tmp/test.txt" "Hello, Qi!")
+(def content (io/read-file "/tmp/test.txt"))
 (print content)  ;; "Hello, Qi!"
 
 ;; 追記
-(append-file "/tmp/test.txt" "\nSecond line")
+(io/append-file "/tmp/test.txt" "\nSecond line")
 
 ;; パイプラインで処理
-(read-file "data.csv"
+(io/read-file "data.csv"
  |> split "\n"
  |> (fn [lines] (map parse-line lines))
  |> (fn [data] (filter valid? data)))
@@ -1516,7 +1515,7 @@ cmd/wait           ;; プロセス終了を待つ
  |> (cmd/pipe "grep ERROR")
  |> (get _ "stdout")
  |> cmd/lines
- |> (map (fn [line] (re-find #"\[(\w+)\]" line)))
+ |> (map (fn [line] (str/re-find #"\[(\w+)\]" line)))
  |> (filter some?)
  |> frequencies
  |> (list/sort-by second >)
@@ -1773,7 +1772,7 @@ json/pretty             ;; 値を整形JSON化
 (data
  |> (assoc _ "active" true)
  |> json/pretty
- |>? (fn [json] {:ok (write-file "output.json" json)}))
+ |>? (fn [json] {:ok (io/write-file "output.json" json)}))
 ```
 
 #### YAML処理（✅ 実装済み）
@@ -2487,13 +2486,13 @@ Structured Concurrency（構造化並行処理）:
 (def ctx (make-scope))  ;; スコープ作成
 (async/scope-go ctx (fn []    ;; スコープ内でgoroutine起動
   (loop [i 0]
-    (if (cancelled? ctx)
+    (if (async/cancelled? ctx)
       (println "cancelled")
       (do
         (println i)
         (sleep 100)
         (recur (inc i)))))))
-(cancel! ctx)           ;; スコープ内の全goroutineをキャンセル
+(async/cancel! ctx)           ;; スコープ内の全goroutineをキャンセル
 
 ;; with-scope関数（便利版） ✅
 (async/with-scope (fn [ctx]
@@ -2529,7 +2528,7 @@ async/parallel-do             ;; 複数式の並列実行 ✅
 ```lisp
 ;; 基本的なawait
 (def p (go (fn [] (+ 1 2 3))))
-(await p)  ;; => 6
+(async/await p)  ;; => 6
 
 ;; Promise チェーン
 (-> (go (fn [] 10))
@@ -2539,11 +2538,11 @@ async/parallel-do             ;; 複数式の並列実行 ✅
 
 ;; Promise.all風
 (def promises [(go (fn [] 1)) (go (fn [] 2)) (go (fn [] 3))])
-(await (all promises))  ;; => [1 2 3]
+(async/await (all promises))  ;; => [1 2 3]
 
 ;; Promise.race風
 (def promises [(go (fn [] "slow")) (go (fn [] "fast"))])
-(await (race promises))  ;; => "fast"
+(async/await (async/race promises))  ;; => "fast"
 
 ;; エラーハンドリング
 (async/catch promise (fn [e] (println "Error:" e)))
@@ -2869,7 +2868,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 (defn process-file [path]
   (let f (open-file path))
   (defer (close-file f))  ;; 関数終了時に必ず実行
-  (let data (read-file f))
+  (let data (io/read-file f))
   (transform data))
 
 ;; 複数のdeferはスタック的に実行（後入れ先出し）
@@ -2925,7 +2924,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; 致命的エラーは error で投げる
 (def critical-init (fn []
-  (if (not (file-exists? "config.qi"))
+  (if (not (io/file-exists? "config.qi"))
     (error "config.qi not found")
     (load-config))))
 
@@ -3751,7 +3750,7 @@ db/rollback             ;; トランザクションロールバック
 ```qi
 ;; データ処理パイプライン
 (db/query conn "SELECT * FROM users WHERE age > ?" [25])
-  |> (filter (fn [u] (starts-with? (get u "name") "A")))
+  |> (filter (fn [u] (str/starts-with? (get u "name") "A")))
   |> (map (fn [u] (assoc u "senior" true)))
   |> (take 10)
 
@@ -4727,8 +4726,8 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
         files (:args parsed)]
 
     ;; フラグのチェック
-    (let [verbose? (contains? flags "verbose")
-          help? (contains? flags "help")]
+    (let [verbose? (str/contains? flags "verbose")
+          help? (str/contains? flags "help")]
 
       (if help?
         (print-help)
@@ -4771,9 +4770,9 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
                              (assoc c :host (map/get options "host"))
                              c))
                 |> (fn [c] (if (map/has-key? options "port")
-                             (assoc c :port (parse-int (map/get options "port")))
+                             (assoc c :port (str/parse-int (map/get options "port")))
                              c))
-                |> (fn [c] (if (contains? (:flags parsed) "debug")
+                |> (fn [c] (if (str/contains? (:flags parsed) "debug")
                              (assoc c :debug true)
                              c)))]
     config))
@@ -5119,7 +5118,7 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
    |> (map (fn [row]
             {:name (s/trim (:name row))
              :email (s/lower (:email row))
-             :age (parse-int (:age row))}))
+             :age (str/parse-int (:age row))}))
    |> (filter (fn [row]
                (match (:age row)
                  {:ok n} -> (> n 0)
@@ -5852,7 +5851,7 @@ mean median stddev
 - **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `recv!:timeout` `try-recv!` `close!` `select!` `make-scope` `async/scope-go` `cancel!` `cancelled?` `async/with-scope`
 - **並行処理 Layer 2**: `pmap` `async/pfilter` `async/preduce` `async/parallel-do` `pipeline` `pipeline/map` `pipeline/filter` `fan-out` `fan-in`
 - **並行処理 Layer 3**: `await` `then` `catch` `all` `race`
-- **遅延評価（Stream）**: `stream` `range-stream` `repeat` `cycle` `iterate` `stream/map` `stream/filter` `stream-take` `stream-drop` `realize` `file-stream` `http/get-stream` `http/post-stream` `http/request-stream`
+- **遅延評価（Stream）**: `stream` `stream/range` `repeat` `cycle` `iterate` `stream/map` `stream/filter` `stream/take` `stream/drop` `realize` `stream/file` `http/get-stream` `http/post-stream` `http/request-stream`
 - **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Stream, Uvar
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
@@ -5876,7 +5875,7 @@ mean median stddev
 - 配列の複数束縛（`[x y]` で同時束縛）
 
 *Stream I/O拡張*:
-- ✅ `file-stream`（io.rs）ファイルストリーミング **実装済み**
+- ✅ `stream/file`（io.rs）ファイルストリーミング **実装済み**
 - ✅ `http/get-stream` `http/post-stream` `http/request-stream`（http.rs）HTTPストリーミング **実装済み**
 - 🚧 `tail-stream`（リアルタイムログ監視）**将来実装**
 
@@ -5905,7 +5904,7 @@ mean median stddev
 - **並行処理 Layer 1（13）**: go, chan, send!, recv!, recv!:timeout, try-recv!, close!, select!, make-scope, async/scope-go, cancel!, cancelled?, async/with-scope
 - **並行処理 Layer 2（9）**: pmap, async/pfilter, async/preduce, async/parallel-do, pipeline, pipeline/map, pipeline/filter, fan-out, fan-in
 - **並行処理 Layer 3（5）**: await, then, catch, all, race
-- **遅延評価 Stream（14）**: stream, range-stream, repeat, cycle, iterate, stream/map, stream/filter, stream-take, stream-drop, realize, file-stream, http/get-stream, http/post-stream, http/request-stream
+- **遅延評価 Stream（14）**: stream, stream/range, repeat, cycle, iterate, stream/map, stream/filter, stream/take, stream/drop, realize, stream/file, http/get-stream, http/post-stream, http/request-stream
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
 - **論理（3）**: and, or, not
