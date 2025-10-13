@@ -15,8 +15,8 @@ use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use flate2::read::GzDecoder;
-use http_body_util::{BodyExt, Full};
-use hyper::body::Bytes;
+use http_body_util::{combinators::BoxBody, BodyExt, Full, StreamBody};
+use hyper::body::{Bytes, Frame};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
@@ -27,7 +27,10 @@ use std::io::Read;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::fs::File as TokioFile;
 use tokio::net::TcpListener;
+use tokio_stream::StreamExt;
+use tokio_util::io::ReaderStream;
 
 /// gzip解凍ヘルパー関数
 fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
@@ -163,25 +166,45 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
     Ok((Value::Map(req_map), body_str))
 }
 
+/// ファイルをストリーミングでレスポンスボディに変換
+async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infallible>, String> {
+    // ファイルを非同期で開く
+    let file = TokioFile::open(file_path)
+        .await
+        .map_err(|e| fmt_msg(MsgKey::ServerFailedToReadFile, &[&e.to_string()]))?;
+
+    // ReaderStreamでチャンク単位に読み込み（デフォルト: 8KB chunks）
+    let reader_stream = ReaderStream::new(file);
+
+    // StreamをResult<Frame<Bytes>, Infallible>に変換
+    let stream = reader_stream.map(|result| match result {
+        Ok(bytes) => {
+            // Bytes を Frame に変換し、Result でラップ
+            Ok::<_, Infallible>(Frame::data(Bytes::from(bytes)))
+        }
+        Err(e) => {
+            eprintln!("Stream read error: {}", e);
+            // エラー時は空フレームを返す
+            Ok::<_, Infallible>(Frame::data(Bytes::new()))
+        }
+    });
+
+    // StreamBodyでBodyを作成
+    let body = StreamBody::new(stream);
+
+    // BoxBodyにラップ
+    Ok(body.boxed())
+}
+
 /// Qi値をHTTPレスポンスに変換
-fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
+async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infallible>>, String> {
     match value {
         Value::Map(m) => {
-            // {:status 200, :headers {...}, :body "..."}
+            // {:status 200, :headers {...}, :body "..." or :body-file "/path"}
             let status = match m.get("status") {
                 Some(Value::Integer(s)) => *s as u16,
                 _ => 200,
             };
-
-            let body_str = match m.get("body") {
-                Some(Value::String(s)) => s.clone(),
-                Some(v) => format!("{}", v),
-                None => String::new(),
-            };
-
-            // バイナリデータはlatin1としてStringに格納されているので、バイトに戻す
-            // latin1: 各char (0-255) を u8 にマッピング
-            let body_bytes: Vec<u8> = body_str.chars().map(|c| c as u8).collect();
 
             let mut response = Response::builder().status(status);
 
@@ -194,8 +217,28 @@ fn value_to_response(value: Value) -> Result<Response<Full<Bytes>>, String> {
                 }
             }
 
+            // ボディの生成: :body-file が優先
+            let body: BoxBody<Bytes, Infallible> =
+                if let Some(Value::String(file_path)) = m.get("body-file") {
+                    // ファイルストリーミング
+                    create_file_stream_body(file_path).await?
+                } else {
+                    // 従来の :body 処理
+                    let body_str = match m.get("body") {
+                        Some(Value::String(s)) => s.clone(),
+                        Some(v) => format!("{}", v),
+                        None => String::new(),
+                    };
+
+                    // バイナリデータはlatin1としてStringに格納されているので、バイトに戻す
+                    // latin1: 各char (0-255) を u8 にマッピング
+                    let body_bytes: Vec<u8> = body_str.chars().map(|c| c as u8).collect();
+
+                    Full::new(Bytes::from(body_bytes)).boxed()
+                };
+
             response
-                .body(Full::new(Bytes::from(body_bytes)))
+                .body(body)
                 .map_err(|e| fmt_msg(MsgKey::ServerFailedToBuildResponse, &[&e.to_string()]))
         }
         _ => Err(fmt_msg(
@@ -440,7 +483,7 @@ async fn handle_request(
     req: Request<hyper::body::Incoming>,
     handler: Arc<Value>,
     timeout: Duration,
-) -> Result<Response<Full<Bytes>>, Infallible> {
+) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
     // タイムアウト付きで処理
     let result = tokio::time::timeout(timeout, async {
         // リクエストをQi値に変換
@@ -460,9 +503,9 @@ async fn handle_request(
             )),
         };
 
-        // Qi値をHTTPレスポンスに変換
+        // Qi値をHTTPレスポンスに変換（async）
         match resp_value {
-            Ok(v) => value_to_response(v),
+            Ok(v) => value_to_response(v).await,
             Err(e) => {
                 eprintln!("Handler error: {}", e);
                 Err(fmt_msg(MsgKey::ServerHandlerError, &[&e]))
@@ -567,7 +610,7 @@ fn route_request(req: &Value, routes: &[Value]) -> Result<Value, String> {
     native_server_not_found(&[])
 }
 
-/// 静的ファイルを配信
+/// 静的ファイルを配信（ストリーミング対応）
 fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
     let path = match req {
         Value::Map(m) => match m.get("path") {
@@ -597,57 +640,35 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
         file_path
     };
 
-    // ファイルサイズチェック
-    let metadata = std::fs::metadata(&file_path).map_err(|e| {
+    // ファイルの存在確認（メタデータ取得）
+    std::fs::metadata(&file_path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             return format!("File not found: {}", path);
         }
         format!("Failed to read file metadata: {}", e)
     })?;
 
-    let file_size = metadata.len();
-    if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(fmt_msg(
-            MsgKey::ServerFileTooLarge,
-            &[
-                &file_size.to_string(),
-                &MAX_STATIC_FILE_SIZE.to_string(),
-                &(MAX_STATIC_FILE_SIZE / 1024 / 1024).to_string(),
-                path,
-            ],
-        ));
-    }
+    // ストリーミングレスポンスを生成（:body-file を使用）
+    let content_type = get_content_type(file_path.to_str().unwrap_or(""));
+    let file_path_str = file_path
+        .to_str()
+        .ok_or_else(|| fmt_msg(MsgKey::InvalidFilePath, &["serve_static_file"]))?;
 
-    // ファイル読み込み
-    match std::fs::read(&file_path) {
-        Ok(bytes) => {
-            let content_type = get_content_type(file_path.to_str().unwrap_or(""));
+    let mut resp = HashMap::new();
+    resp.insert("status".to_string(), Value::Integer(200));
+    resp.insert(
+        "body-file".to_string(),
+        Value::String(file_path_str.to_string()),
+    );
 
-            // バイナリデータを latin1 として String に変換（データロスなし）
-            // 各バイト (0-255) を char にマッピング
-            let body = bytes.iter().map(|&b| b as char).collect::<String>();
+    let mut headers = HashMap::new();
+    headers.insert(
+        "Content-Type".to_string(),
+        Value::String(content_type.to_string()),
+    );
+    resp.insert("headers".to_string(), Value::Map(headers));
 
-            let mut resp = HashMap::new();
-            resp.insert("status".to_string(), Value::Integer(200));
-            resp.insert("body".to_string(), Value::String(body));
-
-            let mut headers = HashMap::new();
-            headers.insert(
-                "Content-Type".to_string(),
-                Value::String(content_type.to_string()),
-            );
-            resp.insert("headers".to_string(), Value::Map(headers));
-
-            Ok(Value::Map(resp))
-        }
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                native_server_not_found(&[Value::String(format!("File not found: {}", path))])
-            } else {
-                Err(fmt_msg(MsgKey::ServerFailedToReadFile, &[&e.to_string()]))
-            }
-        }
-    }
+    Ok(Value::Map(resp))
 }
 
 /// ミドルウェアを適用してハンドラーを実行
@@ -1051,11 +1072,11 @@ fn match_route_pattern(pattern: &str, path: &str) -> Option<HashMap<String, Valu
 }
 
 /// エラーレスポンス生成
-fn error_response(status: u16, message: &str) -> Response<Full<Bytes>> {
+fn error_response(status: u16, message: &str) -> Response<BoxBody<Bytes, Infallible>> {
     Response::builder()
         .status(status)
         .header("Content-Type", "text/plain; charset=utf-8")
-        .body(Full::new(Bytes::from(message.to_string())))
+        .body(Full::new(Bytes::from(message.to_string())).boxed())
         .unwrap()
 }
 
@@ -1226,11 +1247,7 @@ fn is_safe_path(path: &str) -> bool {
     !path.contains("..") && !path.contains("//")
 }
 
-/// 静的ファイルの最大サイズ（10MB）
-/// この制限は、ファイル全体をメモリに読み込むことによるOOM防止のため
-const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024;
-
-/// server/static-file - 単一ファイルを配信するレスポンスを生成
+/// server/static-file - 単一ファイルを配信するレスポンスを生成（ストリーミング対応）
 pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["server/static-file"]));
@@ -1251,55 +1268,28 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::InvalidFilePath, &["server/static-file"]));
     }
 
-    // ファイルサイズチェック
-    let metadata = std::fs::metadata(file_path)
+    // ファイルの存在確認
+    std::fs::metadata(file_path)
         .map_err(|e| fmt_msg(MsgKey::ServerStaticFileMetadataFailed, &[&e.to_string()]))?;
 
-    let file_size = metadata.len();
-    if file_size > MAX_STATIC_FILE_SIZE {
-        return Err(fmt_msg(
-            MsgKey::ServerStaticFileTooLarge,
-            &[
-                &file_size.to_string(),
-                &MAX_STATIC_FILE_SIZE.to_string(),
-                &(MAX_STATIC_FILE_SIZE / 1024 / 1024).to_string(),
-            ],
-        ));
-    }
+    // ストリーミングレスポンスを生成（:body-file を使用）
+    let content_type = get_content_type(file_path);
 
-    // ファイル読み込み
-    match std::fs::read(file_path) {
-        Ok(bytes) => {
-            let content_type = get_content_type(file_path);
+    let mut resp = HashMap::new();
+    resp.insert("status".to_string(), Value::Integer(200));
+    resp.insert(
+        "body-file".to_string(),
+        Value::String(file_path.to_string()),
+    );
 
-            // バイナリデータを latin1 として String に変換（データロスなし）
-            // 各バイト (0-255) を char にマッピング
-            let body = bytes.iter().map(|&b| b as char).collect::<String>();
+    let mut headers = HashMap::new();
+    headers.insert(
+        "Content-Type".to_string(),
+        Value::String(content_type.to_string()),
+    );
+    resp.insert("headers".to_string(), Value::Map(headers));
 
-            let mut resp = HashMap::new();
-            resp.insert("status".to_string(), Value::Integer(200));
-            resp.insert("body".to_string(), Value::String(body));
-
-            let mut headers = HashMap::new();
-            headers.insert(
-                "Content-Type".to_string(),
-                Value::String(content_type.to_string()),
-            );
-            resp.insert("headers".to_string(), Value::Map(headers));
-
-            Ok(Value::Map(resp))
-        }
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                native_server_not_found(&[Value::String(format!("File not found: {}", file_path))])
-            } else {
-                Err(fmt_msg(
-                    MsgKey::ServerStaticFileFailedToRead,
-                    &[&e.to_string()],
-                ))
-            }
-        }
-    }
+    Ok(Value::Map(resp))
 }
 
 /// server/static-dir - ディレクトリから静的ファイルを配信するハンドラーを生成
