@@ -235,7 +235,7 @@ Qiのデータ構造について学びます。
 (drop 2 [1 2 3 4 5])  ; => (3 4 5)
 
 ; 末尾のn個を削除
-(drop-last 2 [1 2 3 4 5])  ; => (1 2 3)
+(list/drop-last 2 [1 2 3 4 5])  ; => (1 2 3)
 ```
 
 ### reverse
@@ -288,7 +288,7 @@ Qiのデータ構造について学びます。
 ; => (1 :a 2 :b 3 :c)
 ```
 
-### partition
+### list/partition
 
 ```lisp
 ; n個ずつグループ化
@@ -391,7 +391,7 @@ Qiのデータ構造について学びます。
 
 ; スコアの降順でソート
 (def sorted-data
-  (reverse (sort-by :score raw-data)))
+  (reverse (list/sort-by :score raw-data)))
 
 ; 名前のリストを抽出
 (map :name sorted-data)

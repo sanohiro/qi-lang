@@ -247,7 +247,7 @@ graph TD
     Simple --> Get["get, keys, vals"]
 
     HOF --> Map["map, filter, reduce"]
-    HOF --> Pmap["pmap, pfilter"]
+    HOF --> Pmap["pmap, async/pfilter"]
     HOF --> Every["every?, some?"]
 
     IO --> File["io/read-file, io/write-file"]
@@ -277,11 +277,11 @@ graph TD
 
 関数を引数に取り、評価器が必要：
 - `map, filter, reduce`
-- `pmap, pfilter, preduce`（並列版）
+- `pmap, async/pfilter, async/preduce`（並列版）
 - `every?, some?, find`
 - `take-while, drop-while`
-- `partition, group-by`
-- `sort-by, count-by, max-by, min-by`
+- `list/partition, list/group-by`
+- `list/sort-by, list/count-by, list/max-by, list/min-by`
 
 ### 3. I/O関数
 

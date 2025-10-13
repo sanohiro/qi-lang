@@ -472,7 +472,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 (cycle [1 2 3])  ;; 1, 2, 3, 1, 2, 3, ...
 
 ;; 無限ストリーム：関数を反復適用
-(iterate (fn [x] (* x 2)) 1)  ;; 1, 2, 4, 8, 16, 32, ...
+(stream/iterate (fn [x] (* x 2)) 1)  ;; 1, 2, 4, 8, 16, 32, ...
 ```
 
 #### Stream変換
@@ -480,12 +480,12 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ```qi
 ;; map: 各要素に関数を適用
 (def s (range-stream 1 6))
-(def s2 (stream-map (fn [x] (* x 2)) s))
+(def s2 (stream/map (fn [x] (* x 2)) s))
 (realize s2)  ;; (2 4 6 8 10)
 
 ;; filter: 条件に合う要素のみ
 (def s (range-stream 1 11))
-(def s2 (stream-filter (fn [x] (= (% x 2) 0)) s))
+(def s2 (stream/filter (fn [x] (= (% x 2) 0)) s))
 (realize s2)  ;; (2 4 6 8 10)
 
 ;; take: 最初のn個を取得（無限ストリームを有限化）
@@ -518,22 +518,22 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; 既存の |> パイプライン演算子で使える
 [1 2 3 4 5]
   |> stream
-  |> (stream-map (fn [x] (* x x)))
-  |> (stream-filter (fn [x] (> x 10)))
+  |> (stream/map (fn [x] (* x x)))
+  |> (stream/filter (fn [x] (> x 10)))
   |> realize
 ;; (16 25)
 
 ;; 無限ストリームの処理
 1
-  |> (iterate (fn [x] (* x 2)))
+  |> (stream/iterate (fn [x] (* x 2)))
   |> (stream-take 10)
   |> realize
 ;; (1 2 4 8 16 32 64 128 256 512)
 
 ;; 複雑な変換チェーン
 (range-stream 1 100)
-  |> (stream-map (fn [x] (* x x)))
-  |> (stream-filter (fn [x] (= (% x 3) 0)))
+  |> (stream/map (fn [x] (* x x)))
+  |> (stream/filter (fn [x] (= (% x 3) 0)))
   |> (stream-take 5)
   |> realize
 ;; (9 36 81 144 225)
@@ -545,15 +545,14 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; 素数の無限ストリーム（概念）
 (def primes
   (2
-   |> (iterate inc)
-   |> (stream-filter prime?)))
+   |> (stream/iterate inc)
+   |> (stream/filter prime?)))
 
 (realize (stream-take 10 primes))  ;; 最初の10個の素数
 
 ;; フィボナッチ数列
 (def fib-stream
-  (iterate
-    (fn [[a b]] [b (+ a b)])
+  (stream/iterate     (fn [[a b]] [b (+ a b)])
     [0 1]))
 
 (realize
@@ -564,8 +563,8 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 (defn process-data [data]
   (data
    |> stream
-   |> (stream-map parse)
-   |> (stream-filter valid?)
+   |> (stream/map parse)
+   |> (stream/filter valid?)
    |> (stream-take 1000)
    |> realize))
 ```
@@ -579,8 +578,8 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ```qi
 ;; file-stream: ファイルを行ごとに遅延読み込み（io.rs）
 (file-stream "large.log")
-  |> (stream-filter error-line?)
-  |> (stream-map parse)
+  |> (stream/filter error-line?)
+  |> (stream/map parse)
   |> (stream-take 100)
   |> realize
 
@@ -599,7 +598,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
   :method "GET"
   :url "https://api.example.com/stream"
 })
-  |> (stream-filter important?)
+  |> (stream/filter important?)
   |> realize
 ```
 
@@ -614,7 +613,7 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ;; http/get-stream :bytes - HTTPバイナリダウンロード
 (http/get-stream "https://example.com/file.bin" :bytes)
-  |> (stream-map process-chunk)
+  |> (stream/map process-chunk)
   |> realize
 
 ;; バイト処理の例
@@ -639,8 +638,8 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; CSVファイルの処理
 (file-stream "data.csv")
   |> (stream-drop 1)  ; ヘッダースキップ
-  |> (stream-map (fn [line] (split line ",")))
-  |> (stream-filter (fn [cols] (> (len cols) 2)))
+  |> (stream/map (fn [line] (split line ",")))
+  |> (stream/filter (fn [cols] (> (len cols) 2)))
   |> (stream-take 1000)
   |> realize
 
@@ -657,8 +656,8 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; 大きなログファイルをメモリ効率的に処理
 (defn analyze-logs [file]
   (file-stream file
-   |> (stream-filter (fn [line] (contains? line "ERROR")))
-   |> (stream-map parse-log-line)
+   |> (stream/filter (fn [line] (contains? line "ERROR")))
+   |> (stream/map parse-log-line)
    |> (stream-take 100)  ; 最初の100エラー
    |> realize))
 
@@ -1161,7 +1160,7 @@ tap                     ;; 副作用タップ（値を返しつつ副作用実�
 ```qi
 ;; ✅ Phase 4.5で実装
 find                    ;; 条件を満たす最初の要素: (find (fn [x] (> x 5)) [1 7 3]) => 7
-find-index              ;; 条件を満たす最初のインデックス: (find-index (fn [x] (> x 5)) [1 7 3]) => 1
+list/find-index              ;; 条件を満たす最初のインデックス: (list/find-index (fn [x] (> x 5)) [1 7 3]) => 1
 every?                  ;; 全要素が条件を満たすか: (every? (fn [x] (> x 0)) [1 2 3]) => true
 some?                   ;; いずれかが条件を満たすか: (some? (fn [x] (> x 5)) [1 7 3]) => true
 ```
@@ -1184,12 +1183,12 @@ some?                   ;; いずれかが条件を満たすか: (some? (fn [x] 
 #### ソート・集約（✅ 実装済み）
 ```qi
 sort                    ;; ソート（整数・浮動小数点・文字列対応）
-sort-by                 ;; キー指定ソート: (sort-by :age users)
+list/sort-by                 ;; キー指定ソート: (list/sort-by :age users)
 distinct                ;; 重複排除
-partition               ;; 述語で2分割: (partition even? [1 2 3 4]) => [(2 4) (1 3)]
-group-by                ;; キー関数でグループ化
+list/partition               ;; 述語で2分割: (list/partition even? [1 2 3 4]) => [(2 4) (1 3)]
+list/group-by                ;; キー関数でグループ化
 frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
-count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
+list/count-by                ;; 述語でカウント: (list/count-by even? [1 2 3 4]) => {true: 2, false: 2}
 ```
 
 **使用例**:
@@ -1204,21 +1203,21 @@ count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => 
  |> sort)  ;; (1 2 3 4 5 8 9)
 
 ;; グループ化
-(group-by (fn [n] (% n 3)) [1 2 3 4 5 6 7 8 9])
+(list/group-by (fn [n] (% n 3)) [1 2 3 4 5 6 7 8 9])
 ;; {0: (3 6 9), 1: (1 4 7), 2: (2 5 8)}
 ```
 
 #### 集約・分析（✅ 全て実装済み）
 ```qi
 ;; ✅ 実装済み
-sort-by                 ;; キー指定ソート: (sort-by :age users)
+list/sort-by                 ;; キー指定ソート: (list/sort-by :age users)
 frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
-count-by                ;; 述語でカウント: (count-by even? [1 2 3 4]) => {true: 2, false: 2}
-max-by min-by           ;; 条件に基づく最大/最小
-sum-by                  ;; キー関数で合計
+list/count-by                ;; 述語でカウント: (list/count-by even? [1 2 3 4]) => {true: 2, false: 2}
+list/max-by list/min-by           ;; 条件に基づく最大/最小
+list/sum-by                  ;; キー関数で合計
 ```
 
-**設計メモ**: `frequencies`と`count-by`はデータ分析でよく使う。`group-by`と組み合わせると強力。
+**設計メモ**: `frequencies`と`list/count-by`はデータ分析でよく使う。`list/group-by`と組み合わせると強力。
 
 #### 集合演算（✅ 実装済み）
 ```qi
@@ -1237,11 +1236,11 @@ set/disjoint?               ;; 互いに素判定
 #### チャンク・分割（✅ 実装済み）
 ```qi
 ;; ✅ 実装済み
-chunk                   ;; 固定サイズで分割: (chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
+list/chunk                   ;; 固定サイズで分割: (list/chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
 take-while drop-while   ;; 述語が真の間取得/削除
 
 ;; 🔜 優先度: 中
-partition-all           ;; partitionの全要素版
+list/partition-all           ;; partitionの全要素版
 ```
 
 ### 数値・比較
@@ -1316,24 +1315,24 @@ dissoc-in               ;; ネスト削除
 #### マップ一括変換（✅ 実装済み）
 ```qi
 ;; ✅ Phase 4.5で実装
-update-keys             ;; 全キーに関数適用: (update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
-update-vals             ;; 全値に関数適用: (update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
+map/update-keys             ;; 全キーに関数適用: (map/update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
+map/update-vals             ;; 全値に関数適用: (map/update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
 zipmap                  ;; キーと値のリストからマップ生成: (zipmap [:a :b] [1 2]) => {:a 1 :b 2}
 ```
 
 **使用例**:
 ```qi
 ;; すべてのキーを大文字に
-(update-keys upper {:name "Alice" :age 30})  ;; {"NAME" "Alice" "AGE" 30}
+(map/update-keys upper {:name "Alice" :age 30})  ;; {"NAME" "Alice" "AGE" 30}
 
 ;; すべての値を2倍に
 (def prices {:apple 100 :banana 50})
-(update-vals (fn [p] (* p 2)) prices)  ;; {:apple 200 :banana 100}
+(map/update-vals (fn [p] (* p 2)) prices)  ;; {:apple 200 :banana 100}
 
 ;; データ変換パイプライン
 (prices
- |> (update-vals (fn [p] (* p 1.1)))  ;; 10%値上げ
- |> (update-vals round))              ;; 丸める
+ |> (map/update-vals (fn [p] (* p 1.1)))  ;; 10%値上げ
+ |> (map/update-vals round))              ;; 丸める
 ```
 
 **ネスト操作の使用例**:
@@ -1518,7 +1517,7 @@ cmd/wait           ;; プロセス終了を待つ
  |> (map (fn [line] (re-find #"\[(\w+)\]" line)))
  |> (filter some?)
  |> frequencies
- |> (sort-by second >)
+ |> (list/sort-by second >)
  |> (take 5))
 ;; Lisp関数とgrepが完全に融合！
 ```
@@ -1533,7 +1532,7 @@ cmd/wait           ;; プロセス終了を待つ
    |> (get _ "stdout")
    |> json/parse
    |> (get _ :ok)
-   |> (sort-by (fn [r] (get r "stars")) >)
+   |> (list/sort-by (fn [r] (get r "stars")) >)
    |> (take 10)))
 
 (get-user-repos "octocat")
@@ -1639,10 +1638,10 @@ cmd/wait            ;; プロセスの終了を待つ
 
 (def total-bytes (atom 0))
 (tar-stream
- |> (stream/map (fn [chunk]
-                  (swap! total-bytes + (str/bytes-count chunk))
+ |> (stream/map (fn [list/chunk]
+                  (swap! total-bytes + (str/bytes-count list/chunk))
                   (println (str "Compressed: " @total-bytes " bytes"))
-                  chunk))
+                  list/chunk))
  |> stream/realize
  |> (fn [chunks]
       (io/write-bytes "backup.tar.gz" (apply str chunks))))
@@ -1660,11 +1659,11 @@ cmd/wait            ;; プロセスの終了を待つ
 (def output-file (io/open "video.mp4" :write))
 
 (download-stream
- |> (stream/map (fn [chunk]
-                  (swap! total + (str/bytes-count chunk))
+ |> (stream/map (fn [list/chunk]
+                  (swap! total + (str/bytes-count list/chunk))
                   (print (str "\rDownloaded: " @total " bytes"))
-                  (io/write-bytes output-file chunk)
-                  chunk))
+                  (io/write-bytes output-file list/chunk)
+                  list/chunk))
  |> stream/realize)
 
 (io/close output-file)
@@ -2395,7 +2394,7 @@ time                    ;; 関数実行時間を計測
 (data
  |> (assoc _ "average" 91.3)
  |> inspect              ;; 整形表示してそのまま返す
- |> (update-vals inc))
+ |> (map/update-vals inc))
 
 ;; time: パフォーマンス計測
 (time (fn []
@@ -2484,7 +2483,7 @@ Structured Concurrency（構造化並行処理）:
 ```qi
 ;; Structured Concurrency（構造化並行処理） ✅
 (def ctx (make-scope))  ;; スコープ作成
-(scope-go ctx (fn []    ;; スコープ内でgoroutine起動
+(async/scope-go ctx (fn []    ;; スコープ内でgoroutine起動
   (loop [i 0]
     (if (cancelled? ctx)
       (println "cancelled")
@@ -2495,9 +2494,9 @@ Structured Concurrency（構造化並行処理）:
 (cancel! ctx)           ;; スコープ内の全goroutineをキャンセル
 
 ;; with-scope関数（便利版） ✅
-(with-scope (fn [ctx]
-  (scope-go ctx task1)
-  (scope-go ctx task2)
+(async/with-scope (fn [ctx]
+  (async/scope-go ctx task1)
+  (async/scope-go ctx task2)
   ;; スコープ終了時に自動キャンセル
   ))
 ```
@@ -2506,9 +2505,9 @@ Structured Concurrency（構造化並行処理）:
 ```lisp
 ;; 並列コレクション操作 ✅
 pmap                    ;; 並列map（rayon使用）
-pfilter                 ;; 並列filter ✅
-preduce                 ;; 並列reduce ✅
-parallel-do             ;; 複数式の並列実行 ✅
+async/pfilter                 ;; 並列filter ✅
+async/preduce                 ;; 並列reduce ✅
+async/parallel-do             ;; 複数式の並列実行 ✅
 
 ;; パイプライン処理 ✅
 (pipeline n xf ch)      ;; n並列でxf変換をchに適用
@@ -2519,8 +2518,8 @@ parallel-do             ;; 複数式の並列実行 ✅
 
 ;; データパイプライン ✅
 (-> data
-    (pipeline-map 4 transform)     ;; 4並列で変換
-    (pipeline-filter 2 predicate)  ;; 2並列でフィルタ
+    (pipeline/map 4 transform)     ;; 4並列で変換
+    (pipeline/filter 2 predicate)  ;; 2並列でフィルタ
     (into []))
 ```
 
@@ -2532,8 +2531,8 @@ parallel-do             ;; 複数式の並列実行 ✅
 
 ;; Promise チェーン
 (-> (go (fn [] 10))
-    (then (fn [x] (* x 2)))
-    (then (fn [x] (+ x 1)))
+    (async/then (fn [x] (* x 2)))
+    (async/then (fn [x] (+ x 1)))
     (await))  ;; => 21
 
 ;; Promise.all風
@@ -2545,7 +2544,7 @@ parallel-do             ;; 複数式の並列実行 ✅
 (await (race promises))  ;; => "fast"
 
 ;; エラーハンドリング
-(catch promise (fn [e] (println "Error:" e)))
+(async/catch promise (fn [e] (println "Error:" e)))
 ```
 
 **実装済み・実装予定の関数一覧**:
@@ -2560,19 +2559,19 @@ parallel-do             ;; 複数式の並列実行 ✅
 - ✅ `go`: goroutine起動
 - ✅ `select!`: 複数チャネル待ち合わせ
 - ✅ `make-scope`: スコープ作成
-- ✅ `scope-go`: スコープ内goroutine
+- ✅ `async/scope-go`: スコープ内goroutine
 - ✅ `cancel!`: スコープキャンセル
 - ✅ `cancelled?`: キャンセル確認
-- ✅ `with-scope`: スコープ自動管理
+- ✅ `async/with-scope`: スコープ自動管理
 
 **Layer 2 (Pipeline)**:
 - ✅ `pmap`: 並列map
-- ✅ `pfilter`: 並列filter
-- ✅ `preduce`: 並列reduce
-- ✅ `parallel-do`: 複数式の並列実行
+- ✅ `async/pfilter`: 並列filter
+- ✅ `async/preduce`: 並列reduce
+- ✅ `async/parallel-do`: 複数式の並列実行
 - ✅ `pipeline`: パイプライン処理
-- ✅ `pipeline-map`: パイプラインmap
-- ✅ `pipeline-filter`: パイプラインfilter
+- ✅ `pipeline/map`: パイプラインmap
+- ✅ `pipeline/filter`: パイプラインfilter
 - ✅ `fan-out`: ファンアウト
 - ✅ `fan-in`: ファンイン
 
@@ -2586,7 +2585,7 @@ parallel-do             ;; 複数式の並列実行 ✅
 #### 実装技術スタック
 
 - **crossbeam-channel**: Go風チャネル実装（select!マクロも提供）
-- **rayon**: データ並列（pmap, pfilter, preduce等）
+- **rayon**: データ並列（pmap, async/pfilter, preduce等）
 - **parking_lot**: 高性能RwLock
 - **tokio** (将来): async/await実行時
 
@@ -3438,7 +3437,7 @@ time/hour time/minute time/second time/weekday
         ;; 成功したら出力ディレクトリにコピー
         (io/copy-file build-dir output-dir)
         {:ok true})
-      (catch e
+      (async/catch e
         ;; エラーが起きても一時ディレクトリは自動削除される
         {:error e})))))
 ```
@@ -4296,7 +4295,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
           (println "Testing:" code)
           (try
             (do (eval code) (println "✓ Pass"))
-            (catch e (println "✗ Fail:" e)))))
+            (async/catch e (println "✗ Fail:" e)))))
       blocks)))
 
 ;; 使用例: ドキュメント内の全コード例をテスト
@@ -4888,7 +4887,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
                      (time/now))))
  |> (map (fn [log] {:date (time/format (:timestamp log) "%Y-%m-%d")
                     :level (:level log)}))
- |> (group-by :date))
+ |> (list/group-by :date))
 
 ;; 6. 営業日計算（カスタム関数）
 (defn add-business-days [date n]
@@ -5141,9 +5140,9 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
    |> (map parse-log)
    |> (filter (fn [x] (not (= x nil))))
    |> (filter (fn [x] (= (:level x) "ERROR")))
-   |> (group-by :msg)
+   |> (list/group-by :msg)
    |> (map (fn [[msg entries]] {:msg msg :count (len entries)}))
-   |> (sort-by :count)
+   |> (list/sort-by :count)
    |> reverse))
 ```
 
@@ -5179,9 +5178,9 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
     (file
      |> csv/parse-file
      |> (filter (fn [e] (= (:level e) "ERROR")))
-     |> (group-by :service)
+     |> (list/group-by :service)
      |> (map (fn [[k v]] {:service k :count (len v)}))
-     |> (sort-by :count)
+     |> (list/sort-by :count)
      |> reverse))
     {:ok data} -> data
     {:error e} -> []))
@@ -5228,9 +5227,9 @@ f"Items: {(join \", \" items)}"  ;; => "Items: apple, banana, cherry"
   (text
    |> s/lower
    |> s/words
-   |> (group-by identity)
+   |> (list/group-by identity)
    |> (map (fn [[word instances]] {:word word :count (len instances)}))
-   |> (sort-by :count)
+   |> (list/sort-by :count)
    |> reverse))
 ```
 
@@ -5799,13 +5798,13 @@ pow sqrt round floor ceil clamp rand rand-int
 
 **5. ソート・集約拡張**
 ```qi
-sort-by frequencies count-by
+list/sort-by frequencies list/count-by
 ```
-理由: データ分析で頻出。`group-by`との相性良い。
+理由: データ分析で頻出。`list/group-by`との相性良い。
 
 **6. リスト分割**
 ```qi
-chunk take-while drop-while
+list/chunk take-while drop-while
 ```
 理由: バッチ処理・ストリーム処理で便利。
 
@@ -5819,7 +5818,7 @@ println read-lines file-exists?
 
 **8. 集約関数**
 ```qi
-max-by min-by sum-by
+list/max-by list/min-by list/sum-by
 ```
 
 **9. 高階関数拡張**
@@ -5844,12 +5843,12 @@ mean median stddev
 - **エラー処理**: `try` `error` `defer`
 - **マクロシステム**: `mac` `quasiquote` `unquote` `unquote-splice` `uvar` `variable` `macro?` `eval`
 - **状態管理**: `atom` `@` `deref` `swap!` `reset!`（スレッドセーフ）
-- **並列処理**: `pmap` `pfilter` `preduce` `parallel-do`（rayon使用、完全並列化済み）
+- **並列処理**: `pmap` `async/pfilter` `async/preduce` `async/parallel-do`（rayon使用、完全並列化済み）
 - **スレッド安全**: Evaluator完全スレッドセーフ化（Arc<RwLock<_>>）
-- **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `recv!:timeout` `try-recv!` `close!` `select!` `make-scope` `scope-go` `cancel!` `cancelled?` `with-scope`
-- **並行処理 Layer 2**: `pmap` `pfilter` `preduce` `parallel-do` `pipeline` `pipeline-map` `pipeline-filter` `fan-out` `fan-in`
+- **並行処理 Layer 1**: `go` `chan` `send!` `recv!` `recv!:timeout` `try-recv!` `close!` `select!` `make-scope` `async/scope-go` `cancel!` `cancelled?` `async/with-scope`
+- **並行処理 Layer 2**: `pmap` `async/pfilter` `async/preduce` `async/parallel-do` `pipeline` `pipeline/map` `pipeline/filter` `fan-out` `fan-in`
 - **並行処理 Layer 3**: `await` `then` `catch` `all` `race`
-- **遅延評価（Stream）**: `stream` `range-stream` `repeat` `cycle` `iterate` `stream-map` `stream-filter` `stream-take` `stream-drop` `realize` `file-stream` `http/get-stream` `http/post-stream` `http/request-stream`
+- **遅延評価（Stream）**: `stream` `range-stream` `repeat` `cycle` `iterate` `stream/map` `stream/filter` `stream-take` `stream-drop` `realize` `file-stream` `http/get-stream` `http/post-stream` `http/request-stream`
 - **データ型**: nil, bool, 整数, 浮動小数点, 文字列, シンボル, キーワード, リスト, ベクタ, マップ, 関数, アトム, チャネル, スコープ, Stream, Uvar
 - **文字列**: f-string補間
 - **モジュール**: 基本機能（`module`/`export`/`use :only`/`:all`）
@@ -5889,20 +5888,20 @@ mean median stddev
 **パイプライン演算子**: `|>` 逐次、`||>` 並列、`tap>` タップ
 
 **組み込み関数（150個以上）**:
-- **リスト操作（26）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, sort-by, distinct, partition, group-by, frequencies, count-by, chunk, take-while, drop-while, max-by, min-by, sum-by
+- **リスト操作（26）**: map, filter, reduce, first, rest, last, take, drop, concat, flatten, range, reverse, nth, zip, sort, list/sort-by, distinct, list/partition, list/group-by, frequencies, list/count-by, list/chunk, take-while, drop-while, list/max-by, list/min-by, list/sum-by
 - **数値演算（11）**: +, -, *, /, %, abs, min, max, inc, dec, sum
 - **比較（6）**: =, !=, <, >, <=, >=
 - **マップ操作（12）**: get, keys, vals, assoc, dissoc, merge, select-keys, update, update-in, get-in, assoc-in, dissoc-in
 - **文字列（6 core + 60+ str）**: str, split, join, upper, lower, trim, map-lines ＋ strモジュールで60以上
 - **述語（9）**: nil?, list?, vector?, map?, string?, keyword?, integer?, float?, empty?
-- **高階関数（13）**: map, filter, reduce, pmap, partition, group-by, map-lines, identity, constantly, comp, apply, partial, count-by, complement, juxt
+- **高階関数（13）**: map, filter, reduce, pmap, list/partition, list/group-by, map-lines, identity, constantly, comp, apply, partial, list/count-by, complement, juxt
 - **集合演算（4）**: union, intersect, difference, subset?
 - **数学関数（8）**: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 - **状態管理（5）**: atom, @, deref, swap!, reset!
-- **並行処理 Layer 1（13）**: go, chan, send!, recv!, recv!:timeout, try-recv!, close!, select!, make-scope, scope-go, cancel!, cancelled?, with-scope
-- **並行処理 Layer 2（9）**: pmap, pfilter, preduce, parallel-do, pipeline, pipeline-map, pipeline-filter, fan-out, fan-in
+- **並行処理 Layer 1（13）**: go, chan, send!, recv!, recv!:timeout, try-recv!, close!, select!, make-scope, async/scope-go, cancel!, cancelled?, async/with-scope
+- **並行処理 Layer 2（9）**: pmap, async/pfilter, async/preduce, async/parallel-do, pipeline, pipeline/map, pipeline/filter, fan-out, fan-in
 - **並行処理 Layer 3（5）**: await, then, catch, all, race
-- **遅延評価 Stream（14）**: stream, range-stream, repeat, cycle, iterate, stream-map, stream-filter, stream-take, stream-drop, realize, file-stream, http/get-stream, http/post-stream, http/request-stream
+- **遅延評価 Stream（14）**: stream, range-stream, repeat, cycle, iterate, stream/map, stream/filter, stream-take, stream-drop, realize, file-stream, http/get-stream, http/post-stream, http/request-stream
 - **エラー処理（2）**: try, error
 - **メタ（7）**: mac, uvar, variable, macro?, eval, quasiquote, unquote
 - **論理（3）**: and, or, not
@@ -5931,12 +5930,12 @@ mean median stddev
 4. ✅ 数値基本: pow, sqrt, round, floor, ceil, clamp, rand, rand-int
 
 **フェーズ2: 分析・集約（✅ 完了）**
-5. ✅ sort-by, frequencies, count-by
-6. ✅ chunk, take-while, drop-while
+5. ✅ list/sort-by, frequencies, list/count-by
+6. ✅ list/chunk, take-while, drop-while
 7. ✅ println, read-lines, file-exists?
 
 **フェーズ3: 高度機能（✅ 完了）**
-8. ✅ max-by, min-by, sum-by
+8. ✅ list/max-by, list/min-by, list/sum-by
 9. ✅ complement, juxt（partialはフェーズ1で完了）
 
 **フェーズ4: 並行・並列処理（✅ 完了）**
@@ -5950,13 +5949,13 @@ mean median stddev
 15. ✅ Railway Pipeline (`|>?`)
 16. ✅ JSON/HTTP完全実装
 17. ✅ デバッグ関数（inspect, time）
-18. ✅ コレクション拡張（find, every?, some?, zipmap, update-keys, update-vals等）
+18. ✅ コレクション拡張（find, every?, some?, zipmap, map/update-keys, update-vals等）
 
 **フェーズ5: 並行・並列処理の完成（✅ 完了）**
-19. ✅ 並列コレクション完成（pfilter, preduce）
+19. ✅ 並列コレクション完成（async/pfilter, async/preduce）
 20. ✅ select!とタイムアウト（recv! :timeout, select!）
-21. ✅ Structured Concurrency（make-scope, scope-go, cancel!, cancelled?, with-scope）
-22. ✅ parallel-do（複数式の並列実行）
+21. ✅ Structured Concurrency（make-scope, async/scope-go, cancel!, cancelled?, async/with-scope）
+22. ✅ async/parallel-do（複数式の並列実行）
 
 **フェーズ5.5: アプリケーション開発機能（✅ 完了）**
 23. ✅ ZIP圧縮・解凍モジュール（zip/create, zip/extract, zip/list, zip/add, zip/gzip, zip/gunzip）

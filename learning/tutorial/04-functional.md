@@ -273,7 +273,7 @@ users
 ; => true
 ```
 
-### partition / group-by
+### list/partition / list/group-by
 
 ```lisp
 ; n個ずつ分割
@@ -285,7 +285,7 @@ users
 ; => {0 [3 6 9] 1 [1 4 7] 2 [2 5 8]}
 ```
 
-### sort-by
+### list/sort-by
 
 ```lisp
 (def people

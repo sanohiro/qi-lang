@@ -42,7 +42,7 @@
 (def transformed
   (results
    |> (map (fn [u] (select-keys u ["name" "score"])))
-   |> (map (fn [u] (update-keys upper u)))
+   |> (map (fn [u] (map/update-keys upper u)))
    |> (filter (fn [u] (> (get u "SCORE") 100)))))
 
 (println "High scorers (>100):")
