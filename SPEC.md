@@ -4768,8 +4768,9 @@ Coreセクション「数学関数」を参照（詳細な例あり）
 - **拡張可能**: PostgreSQL、MySQL、DuckDB等は外部パッケージとして提供予定
 - **セキュアAPI**: プレースホルダー + サニタイズ機能
 
-✅ 実装済み:
+✅ 実装済み（Phase 1 & 2）:
 ```qi
+;; Phase 1: 基本操作
 db/connect              ;; データベースに接続
 db/query                ;; SQLクエリを実行（複数行）
 db/query-one            ;; SQLクエリを実行（1行のみ）
@@ -4781,14 +4782,16 @@ db/escape-like          ;; LIKE句のパターンをエスケープ
 db/begin                ;; トランザクション開始
 db/commit               ;; トランザクションコミット
 db/rollback             ;; トランザクションロールバック
-```
 
-**Phase 2 機能** (🚧 部分実装):
-- ✅ トランザクション: `db/begin`, `db/commit`, `db/rollback` - 実装済み
-- 🚧 メタデータAPI: `db/tables`, `db/columns`, `db/indexes`, `db/foreign-keys` - 未実装
-- 🚧 ストアド実行: `db/call` (関数のRETURN値、プロシージャのOUT/INOUT/結果セット対応) - 未実装
-- 🚧 クエリ情報: `db/query-info` - 未実装
-- 🚧 機能検出: `db/supports?`, `db/driver-info` - 未実装
+;; Phase 2: メタデータ・機能検出
+db/tables               ;; テーブル一覧を取得
+db/columns              ;; カラム情報を取得
+db/indexes              ;; インデックス一覧を取得
+db/foreign-keys         ;; 外部キー一覧を取得
+db/call                 ;; ストアドプロシージャ/ファンクション呼び出し（SQLiteは未サポート）
+db/supports?            ;; 機能のサポート確認
+db/driver-info          ;; ドライバー情報を取得
+```
 
 **Phase 3 機能** (🚧 未実装):
 - 🚧 コネクションプーリング - 未実装
@@ -4893,24 +4896,58 @@ db/rollback             ;; トランザクションロールバック
                      [(get row "name") (to-int (get row "age"))])))
 ```
 
-**将来の拡張（Phase 2+）**:
-```qi
-;; トランザクション（Phase 2）
-(db/transaction conn
-  (fn []
-    (db/exec conn "INSERT INTO accounts ..." [...])
-    (db/exec conn "UPDATE balance ..." [...]))
-  {"isolation" "serializable" "timeout" 10000})
+**Phase 2機能（✅ 実装済み）**:
 
-;; メタデータAPI（Phase 2）
+**メタデータAPI**:
+```qi
+;; テーブル一覧を取得
+(def conn (db/connect "sqlite:app.db"))
 (db/tables conn)
 ;; => ["users" "products" "orders"]
 
+;; カラム情報を取得
 (db/columns conn "users")
-;; => [{"name" "id" "type" "INTEGER" "nullable" false "primary-key" true}
-;;     {"name" "name" "type" "TEXT" "nullable" false}]
+;; => [{:name "id" :type "INTEGER" :nullable false :default nil :primary_key true}
+;;     {:name "name" :type "TEXT" :nullable false :default nil :primary_key false}
+;;     {:name "email" :type "TEXT" :nullable true :default nil :primary_key false}]
 
-;; ストアドプロシージャ/ファンクション実行（Phase 2）
+;; インデックス一覧を取得
+(db/indexes conn "users")
+;; => [{:name "idx_email" :table "users" :columns ["email"] :unique true}
+;;     {:name "idx_name" :table "users" :columns ["name"] :unique false}]
+
+;; 外部キー一覧を取得
+(db/foreign-keys conn "orders")
+;; => [{:name "fk_orders_0" :table "orders" :columns ["user_id"]
+;;      :referenced_table "users" :referenced_columns ["id"]}
+;;     {:name "fk_orders_1" :table "orders" :columns ["product_id"]
+;;      :referenced_table "products" :referenced_columns ["id"]}]
+```
+
+**機能検出API**:
+```qi
+;; データベース機能のサポート確認
+(db/supports? conn "transactions")
+;; => true
+
+(db/supports? conn "prepared_statements")
+;; => true
+
+(db/supports? conn "stored_procedures")
+;; => false (SQLite)
+;; => true  (PostgreSQL, MySQL - 将来実装予定)
+
+;; ドライバー情報を取得
+(db/driver-info conn)
+;; => {:name "sqlite" :version "0.32.0" :database_version "3.45.0"}
+```
+
+**ストアドプロシージャ/ファンクション呼び出し**:
+```qi
+;; db/call - ストアドプロシージャ/ファンクション呼び出し
+;; 注: SQLiteでは未サポート（エラーを返す）
+
+;; 将来のPostgreSQL/MySQL対応例:
 ;; 関数（RETURN値あり）
 (db/call conn "add" [1 2])
 ;; => 3
@@ -4918,23 +4955,31 @@ db/rollback             ;; トランザクションロールバック
 ;; プロシージャ（結果セット）
 (db/call conn "get_users_by_age" [25])
 ;; => [{"id" 1 "name" "Alice" "age" 30} ...]
+```
 
-;; プロシージャ（OUTパラメータ）
-(db/call conn "calc" [2 3] {"out" ["sum" "product"]})
-;; => {"out" {"sum" 5 "product" 6}}
+**マイグレーションツールの例**:
+```qi
+;; データベーススキーマの検査
+(defn inspect-database [conn]
+  (let [tables (db/tables conn)]
+    (map (fn [table]
+           {:table table
+            :columns (db/columns conn table)
+            :indexes (db/indexes conn table)
+            :foreign-keys (db/foreign-keys conn table)})
+         tables)))
 
-;; プロシージャ（INOUTパラメータ）
-(db/call conn "increment" [10] {"inout" ["value"]})
-;; => {"inout" {"value" 11}}
+(def schema (inspect-database conn))
+(println schema)
+```
 
-;; 複数結果セット + OUTパラメータ
-(db/call conn "complex_proc" [arg1] {"out" ["status" "message"]})
-;; => {"result-sets" [[rows1...] [rows2...]]
-;;     "out" {"status" 0 "message" "Success"}}
-
-;; 機能検出
-(db/supports? conn "stored-procedures")
-;; => true (PostgreSQL, MySQL) / false (SQLite)
+**将来の拡張（Phase 3+）**:
+```qi
+;; コネクションプーリング（Phase 3 - 未実装）
+(def pool (db/create-pool "sqlite:app.db" {:max-connections 10}))
+(def conn (db/get-connection pool))
+;; ... 処理 ...
+(db/release-connection pool conn)
 
 ;; 外部DB（外部パッケージとして提供予定）
 (db/connect "postgresql://localhost/mydb")

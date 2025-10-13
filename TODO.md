@@ -176,6 +176,99 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 
 ---
 
+## ✅ データベース機能の拡張（Phase 2） - 実装完了
+
+### 実装完了 (2025-01-13)
+
+データベースの**メタデータAPI**と**機能検出API**が実装されました。
+
+### 実装内容
+
+#### ✅ 1. メタデータAPI
+
+```qi
+;; テーブル一覧を取得
+(def conn (db/connect "sqlite:test.db"))
+(db/tables conn)
+;; => ["users" "posts" "comments"]
+
+;; カラム情報を取得
+(db/columns conn "users")
+;; => [{:name "id" :type "INTEGER" :nullable false :default nil :primary_key true}
+;;     {:name "name" :type "TEXT" :nullable false :default nil :primary_key false}
+;;     {:name "email" :type "TEXT" :nullable true :default nil :primary_key false}]
+
+;; インデックス一覧を取得
+(db/indexes conn "users")
+;; => [{:name "idx_email" :table "users" :columns ["email"] :unique true}]
+
+;; 外部キー一覧を取得
+(db/foreign-keys conn "posts")
+;; => [{:name "fk_posts_0" :table "posts" :columns ["user_id"]
+;;      :referenced_table "users" :referenced_columns ["id"]}]
+```
+
+#### ✅ 2. 機能検出API
+
+```qi
+;; データベース機能のサポート確認
+(db/supports? conn "transactions")      ;; => true
+(db/supports? conn "stored_procedures") ;; => false (SQLite)
+
+;; ドライバー情報を取得
+(db/driver-info conn)
+;; => {:name "sqlite" :version "0.32.0" :database_version "3.45.0"}
+```
+
+#### ✅ 3. ストアドプロシージャ/ファンクション呼び出し
+
+```qi
+;; db/call - ストアドプロシージャ/ファンクション呼び出し
+(db/call conn "my_function" [arg1 arg2])
+;; SQLiteでは未サポート（エラーを返す）
+;; PostgreSQL/MySQLでは実装予定
+```
+
+### 実装詳細
+
+**変更したファイル**:
+- `src/builtins/db.rs`:
+  - DbConnection traitに以下のメソッドを追加:
+    - `tables()`, `columns()`, `indexes()`, `foreign_keys()`
+    - `call()`, `supports()`, `driver_info()`
+  - 対応するQiビルトイン関数を実装:
+    - `native_tables()`, `native_columns()`, `native_indexes()`, `native_foreign_keys()`
+    - `native_call()`, `native_supports()`, `native_driver_info()`
+
+- `src/builtins/sqlite.rs`:
+  - SQLiteドライバーで全メソッドを実装
+  - `tables()`: sqlite_masterからテーブル一覧を取得
+  - `columns()`: PRAGMA table_info()でカラム情報を取得
+  - `indexes()`: PRAGMA index_list()とindex_info()でインデックス情報を取得
+  - `foreign_keys()`: PRAGMA foreign_key_list()で外部キー情報を取得
+  - `supports()`: SQLiteがサポートする機能を返却
+  - `driver_info()`: rusqliteとSQLiteのバージョン情報を返却
+  - `call()`: 未サポート（エラーを返す）
+
+- `src/builtins/mod.rs`:
+  - 7つの新しい関数を登録
+
+**サポートされる機能**:
+- SQLiteで確認できる機能:
+  - `"transactions"` → true
+  - `"prepared_statements"` → true
+  - `"blob"` → true
+  - `"foreign_keys"` → true
+  - `"stored_procedures"` → false
+  - `"stored_functions"` → false
+
+**メリット**:
+- データベーススキーマの動的な検査が可能
+- マイグレーションツールの実装が容易
+- データベース依存のコードを実行前に検出可能
+
+---
+
 ## 🚧 今後の実装予定機能
 
 以下は、SPEC.mdから抽出した未実装機能のリストです。
@@ -188,26 +281,16 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 
 ### 優先度: 中
 
-#### 2. データベース機能の拡張
+#### 1. コネクションプーリング（Phase 3）
 
-**Phase 2 機能**:
-- メタデータAPI
-  - `db/tables` - テーブル一覧取得
-  - `db/columns` - カラム情報取得
-  - `db/indexes` - インデックス情報取得
-  - `db/foreign-keys` - 外部キー情報取得
-- ストアド実行
-  - `db/call` - 関数のRETURN値、プロシージャのOUT/INOUT/結果セット対応
-- クエリ情報
-  - `db/query-info` - クエリのメタデータ取得
-- 機能検出
-  - `db/supports?` - データベース機能のサポート確認
-  - `db/driver-info` - ドライバー情報取得
+**目的**: 複数の接続を再利用してパフォーマンスを向上
 
-**Phase 3 機能**:
-- コネクションプーリング
+**現状**: 接続は1つずつ管理
 
-**関連**: SPEC.md line 4767-4776
+**実装内容**:
+- コネクションプールの実装
+- 接続の再利用
+- 最大接続数の制限
 
 ---
 
