@@ -117,12 +117,9 @@ fn format_float(f: f64) -> String {
 
 /// 文字列をフォーマット（エスケープ処理）
 fn format_string(s: &str) -> String {
-    // 改行を含む場合は複数行文字列を使用
-    if s.contains('\n') {
-        format!("\"\"\"{}\"\"\"", s)
-    } else {
-        format!("\"{}\"", escape_string(s))
-    }
+    // 常にエスケープシーケンスを使用
+    // 複数行文字列（"""）は使わず、\n等でエスケープする
+    format!("\"{}\"", escape_string(s))
 }
 
 /// 文字列をエスケープ

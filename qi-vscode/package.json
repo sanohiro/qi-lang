@@ -24,7 +24,9 @@
     "onLanguage:qi",
     "onCommand:qi.runFile",
     "onCommand:qi.startRepl",
-    "onCommand:qi.debugFile"
+    "onCommand:qi.debugFile",
+    "onCommand:qi.formatDocument",
+    "onCommand:qi.showDocs"
   ],
   "main": "./out/extension.js",
   "contributes": {
