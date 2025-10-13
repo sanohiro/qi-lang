@@ -3469,44 +3469,275 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
            (list ,a ,b ,c))))))
 ```
 
-## 10. モジュールシステム（✅ 基本機能実装済み）
+## 10. モジュールシステム（🚧 実装予定）
 
-### ✅ モジュール定義
+### 概要
+
+ファイル単位でモジュールを構成し、名前空間を分離します。
+
+- **モジュール名 = ファイルのbasename**（拡張子なし）
+- **use が自動ロード**: `use`でファイルを読み込み＋インポート
+- **load は副作用のみ**: 設定ファイル等を実行するだけ
+- **プライベート関数**: `defn-` でファイル内部のみで使える関数定義
+
+### モジュール定義
+
 ```qi
-;; http.qi
-(module http)
+;; http.qi - ファイル名がモジュール名になる
 
-(defn get [url] ...)
-(defn post [url data] ...)
+;; プライベートヘルパー（ファイル内のみアクセス可能）
+(defn- build-headers [opts]
+  (get opts :headers {}))
 
+;; パブリック関数（デフォルトでexport）
+(defn get [url & opts]
+  (let [headers (build-headers opts)]
+    (http/request "GET" url headers)))
+
+(defn post [url data & opts]
+  (let [headers (build-headers opts)]
+    (http/request "POST" url headers data)))
+
+;; 明示的にexportを宣言することも可能（推奨）
 (export get post)
 ```
 
-### インポート
+### インポート（use）
+
+`use`は**ファイルの読み込み＋シンボルのインポート**を行います。
+
 ```qi
-;; ✅ パターン1: 特定の関数のみ（推奨・実装済み）
+;; パターン1: 特定の関数のみインポート（推奨）
 (use http :only [get post])
-(get url)
+(get "https://...")                      ;; OK
 
-;; 🚧 パターン2: エイリアス（未実装）
+;; パターン2: エイリアス（module/function形式）
 (use http :as h)
-(h/get url)
+(h/get "https://...")                    ;; OK
 
-;; ✅ パターン3: 全てインポート（実装済み）
+;; パターン3: 全てインポート
 (use http :all)
-(get url)
+(get "https://...")                      ;; OK
+(post "https://..." {:data 123})         ;; OK
 
-;; 🚧 パターン4: リネーム（未実装）
-(use http :only [get :as fetch])
-(fetch url)
+;; パターン4: パス指定
+(use "lib/utils" :only [format-date])    ;; lib/utils.qi を読み込み
+(use "./vendor/json" :as json)           ;; 相対パス
 ```
 
-**実装状況メモ**:
-- ✅ `module` / `export` - モジュール定義・エクスポート
-- ✅ `use :only [...]` - 特定関数のインポート
-- ✅ `use :all` - 全てインポート
-- ✅ 循環参照検出
-- ✅ `use :as` - エイリアス機能（実装済み）
+### モジュール名の決定ルール
+
+```qi
+;; ケース1: モジュール名のみ → 自動探索
+(use http :only [get])
+;; => http.qi を探索（./http.qi, ~/.qi/modules/http.qi 等）
+;; => モジュール名: http
+
+;; ケース2: パス指定 → basenameがモジュール名
+(use "lib/http" :only [get])
+;; => lib/http.qi を読み込み
+;; => モジュール名: http (basename)
+;; => 使用: (http/get ...) または (get ...)
+
+;; ケース3: :as でエイリアス
+(use "lib/http" :as h)
+;; => モジュール名: h (エイリアス優先)
+;; => 使用: (h/get ...)
+```
+
+**名前衝突の処理**:
+```qi
+(use "lib1/utils")  ;; => モジュール名: utils
+(use "lib2/utils")  ;; => Error: module 'utils' already loaded
+
+;; 解決策: :as でエイリアスを指定
+(use "lib1/utils" :as utils1)
+(use "lib2/utils" :as utils2)
+```
+
+### load（副作用のみ実行）
+
+`load`はファイルを評価するだけで、シンボルはインポートしません。
+設定ファイルや初期化スクリプトの実行に使用します。
+
+```qi
+;; 設定ファイルを読み込み（副作用のみ）
+(load "config.qi")
+
+;; useとの違い
+(load "http.qi")           ;; http.qi を実行、シンボルはインポートされない
+(http/get ...)             ;; Error: undefined
+
+(use http :only [get])     ;; http.qi を実行、get をインポート
+(get ...)                  ;; OK
+```
+
+### プライベート関数（defn-）
+
+`defn-` はファイル内部でのみアクセス可能な関数を定義します。
+
+```qi
+;; utils.qi
+(defn- internal-helper [x]
+  (* x 2))
+
+(defn process [data]
+  (internal-helper data))
+
+(export process)
+
+;; app.qi
+(use utils :only [process])
+
+(process 5)           ;; => 10 (OK)
+(internal-helper 5)   ;; Error: undefined (プライベート)
+(utils/internal-helper 5)  ;; Error: not exported
+```
+
+### 実装状況
+
+- 🚧 `use` - ファイル読み込み＋インポート（未実装）
+- 🚧 `load` - ファイル実行のみ（未実装、REPLの`:load`はあり）
+- 🚧 `defn-` - プライベート関数定義（未実装）
+- 🚧 `export` - エクスポート宣言（未実装）
+- 🚧 `module` - モジュール宣言（未実装）
+- 🚧 モジュール探索パス
+- 🚧 循環参照検出
+- 🚧 名前衝突検出
+
+### 実践的な使用例
+
+```qi
+;; ========================================
+;; config.qi - 設定ファイル
+;; ========================================
+(def api-endpoint "https://api.example.com")
+(def timeout 30000)
+
+;; ========================================
+;; lib/db.qi - データベースモジュール
+;; ========================================
+
+;; プライベート：接続文字列構築
+(defn- build-connection-string [config]
+  (str "sqlite://" (get config :path)))
+
+;; パブリック：接続
+(defn connect [config]
+  (db/connect (build-connection-string config)))
+
+;; パブリック：クエリ実行
+(defn query [conn sql params]
+  (db/query conn sql params))
+
+(export connect query)
+
+;; ========================================
+;; lib/api.qi - APIクライアントモジュール
+;; ========================================
+
+;; プライベート：リトライロジック
+(defn- retry-request [f max-retries]
+  (try
+    (f)
+    (catch e
+      (if (> max-retries 0)
+        (retry-request f (dec max-retries))
+        (error e)))))
+
+;; パブリック：GET リクエスト
+(defn get [url]
+  (retry-request
+    (fn [] (http/get url))
+    3))
+
+(export get)
+
+;; ========================================
+;; app.qi - メインアプリケーション
+;; ========================================
+
+;; 設定ファイルを読み込み（副作用のみ）
+(load "config.qi")
+
+;; モジュールをインポート
+(use "lib/db" :as database)
+(use "lib/api" :only [get])
+
+;; データベース接続
+(def conn (database/connect {:path "data.db"}))
+
+;; APIからデータ取得
+(def users (get (str api-endpoint "/users")))
+
+;; データベースに保存
+(database/query conn
+  "INSERT INTO users (data) VALUES (?)"
+  [(json/stringify users)])
+
+(println "Done!")
+```
+
+### REPLでの使用
+
+```bash
+$ qi
+qi:1> :load lib/http.qi
+Loading: lib/http.qi
+Loaded! Module 'http' registered.
+Exported: get, post, put, delete
+
+qi:2> (http/get "https://api.example.com")
+{:status 200 :body "..."}
+
+qi:3> (use http :only [get])
+nil
+
+qi:4> (get "https://api.example.com")
+{:status 200 :body "..."}
+```
+
+### モジュール探索パス
+
+`use`でモジュール名のみを指定した場合、以下の順序でファイルを探索します：
+
+```qi
+(use http :only [get])
+```
+
+**探索順序**:
+1. `./http.qi` - カレントディレクトリ
+2. `./http/mod.qi` - ディレクトリとして（Rustスタイル）
+3. `~/.qi/modules/http.qi` - ユーザーグローバルモジュール
+4. `~/.qi/modules/http/mod.qi`
+5. `/usr/local/qi/modules/http.qi` - システムグローバル（将来）
+
+**パス指定時は探索なし**:
+```qi
+(use "lib/http")      ;; => ./lib/http.qi のみ
+(use "./utils")       ;; => ./utils.qi のみ
+(use "../common/db")  ;; => ../common/db.qi のみ
+```
+
+### defn-の展開
+
+`defn-`はマクロとして実装され、以下のように展開されます：
+
+```qi
+;; 書いたコード
+(defn- helper [x y]
+  (+ x y))
+
+;; ↓ 内部的に展開
+(def helper
+  ^{:private true}  ;; メタデータでプライベートフラグ
+  (fn [x y] (+ x y)))
+```
+
+プライベート関数は：
+- 同一ファイル内ではアクセス可能
+- `export`の対象外（自動的に除外）
+- 他モジュールから`module/func`形式でもアクセス不可
 
 ### 標準モジュール
 
