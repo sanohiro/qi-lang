@@ -184,6 +184,7 @@ impl Parser {
             match name.as_str() {
                 "def" => return self.parse_def(),
                 "defn" => return self.parse_defn(),
+                "defn-" => return self.parse_defn_private(),
                 "fn" => return self.parse_fn(),
                 "let" => return self.parse_let(),
                 "if" => return self.parse_if(),
@@ -399,6 +400,80 @@ impl Parser {
             Ok(Expr::Do(vec![doc_def, fn_def]))
         } else {
             Ok(Expr::Def(name, Box::new(fn_expr), false))
+        }
+    }
+
+    /// defn- を def + fn に展開（プライベート）
+    /// (defn- name [params] body) -> (def name (fn [params] body)) with is_private=true
+    /// (defn- name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body))) with is_private=true
+    fn parse_defn_private(&mut self) -> Result<Expr, String> {
+        self.advance(); // 'defn-'をスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(s)) => s.clone(),
+            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn-"]).to_string()),
+        };
+        self.advance();
+
+        // ドキュメント文字列/マップの処理
+        let doc_expr = if !matches!(self.current(), Some(Token::LBracket)) {
+            // パラメータリストでない場合はドキュメント
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        // パラメータリストのパース
+        self.expect(Token::LBracket)?;
+        let mut params = Vec::new();
+        let mut is_variadic = false;
+
+        while self.current() != Some(&Token::RBracket) {
+            if let Some(Token::Symbol(s)) = self.current() {
+                if s == "&" {
+                    self.advance();
+                    is_variadic = true;
+                    if let Some(Token::Symbol(vararg)) = self.current() {
+                        params.push(crate::value::FnParam::Simple(vararg.clone()));
+                        self.advance();
+                    } else {
+                        return Err(msg(MsgKey::VarargNeedsName).to_string());
+                    }
+                    break;
+                } else {
+                    params.push(crate::value::FnParam::Simple(s.clone()));
+                    self.advance();
+                }
+            } else if let Some(Token::LBracket) = self.current() {
+                // ベクタの分解パターン
+                params.push(self.parse_fn_param_vector()?);
+            } else {
+                return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn-"]).to_string());
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let body = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        // (fn [params] body) を構築
+        let fn_expr = Expr::Fn {
+            params,
+            body,
+            is_variadic,
+        };
+
+        // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...))) with is_private=true
+        // ない場合は (def name (fn ...)) with is_private=true
+        if let Some(doc) = doc_expr {
+            let doc_key = format!("__doc__{}", name);
+            let doc_def = Expr::Def(doc_key, Box::new(doc), true); // プライベート
+            let fn_def = Expr::Def(name, Box::new(fn_expr), true);  // プライベート
+            Ok(Expr::Do(vec![doc_def, fn_def]))
+        } else {
+            Ok(Expr::Def(name, Box::new(fn_expr), true)) // プライベート
         }
     }
 
@@ -1094,9 +1169,10 @@ impl Parser {
     fn parse_use(&mut self) -> Result<Expr, String> {
         self.advance(); // 'use'をスキップ
 
-        // モジュール名
+        // モジュール名（シンボルまたは文字列）
         let module = match self.current() {
             Some(Token::Symbol(n)) => n.clone(),
+            Some(Token::String(s)) => s.clone(),
             _ => return Err(msg(MsgKey::UseNeedsModuleName).to_string()),
         };
         self.advance();
@@ -1229,11 +1305,56 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_defn_private() {
+        let mut parser = Parser::new("(defn- helper [x] (+ x 1))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Def(name, value, is_private) => {
+                assert_eq!(name, "helper");
+                assert_eq!(is_private, true);
+                match *value {
+                    Expr::Fn { .. } => {}
+                    _ => panic!("Expected Fn inside Def"),
+                }
+            }
+            _ => panic!("Expected Def"),
+        }
+    }
+
+    #[test]
+    fn test_parse_defn_private_with_doc() {
+        let mut parser = Parser::new("(defn- helper \"Helper function\" [x] (+ x 1))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Do(exprs) => {
+                assert_eq!(exprs.len(), 2);
+                // 最初はドキュメント
+                match &exprs[0] {
+                    Expr::Def(name, _, is_private) => {
+                        assert!(name.starts_with("__doc__"));
+                        assert_eq!(*is_private, true);
+                    }
+                    _ => panic!("Expected doc Def"),
+                }
+                // 次は関数定義
+                match &exprs[1] {
+                    Expr::Def(name, _, is_private) => {
+                        assert_eq!(name, "helper");
+                        assert_eq!(*is_private, true);
+                    }
+                    _ => panic!("Expected fn Def"),
+                }
+            }
+            _ => panic!("Expected Do"),
+        }
+    }
+
+    #[test]
     fn test_parse_fn() {
         let mut parser = Parser::new("(fn [x y] (+ x y))").unwrap();
         match parser.parse().unwrap() {
             Expr::Fn { params, .. } => {
-                assert_eq!(params, vec!["x", "y"]);
+                assert_eq!(params.len(), 2);
+                assert_eq!(params[0], crate::value::FnParam::Simple("x".to_string()));
+                assert_eq!(params[1], crate::value::FnParam::Simple("y".to_string()));
             }
             _ => panic!("Expected Fn"),
         }

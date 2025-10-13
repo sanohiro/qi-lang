@@ -1,6 +1,6 @@
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::value::{Env, Expr, FStringPart, Function, Macro, MatchArm, NativeFunc, Pattern, Value};
+use crate::value::{Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -60,14 +60,6 @@ fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize
         .take(limit)
         .map(|(name, _)| name)
         .collect()
-}
-
-/// モジュール情報
-#[derive(Debug, Clone)]
-struct Module {
-    #[allow(dead_code)]
-    name: String,
-    exports: HashMap<String, Value>,
 }
 
 #[derive(Clone)]
@@ -397,20 +389,19 @@ impl Evaluator {
                     .clone()
                     .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
 
-                // エクスポートする値を収集
-                let mut exports = HashMap::new();
+                // シンボルの存在確認
                 for symbol in symbols {
-                    if let Some(value) = env.read().get(symbol) {
-                        exports.insert(symbol.clone(), value);
-                    } else {
+                    if env.read().get(symbol).is_none() {
                         return Err(fmt_msg(MsgKey::SymbolNotFound, &[symbol, &module_name]));
                     }
                 }
 
-                // モジュールを登録
+                // モジュールを登録または更新
                 let module = Module {
                     name: module_name.clone(),
-                    exports,
+                    file_path: None,
+                    env: env.clone(),
+                    exports: Some(symbols.clone()),
                 };
                 self.modules.write().insert(module_name, Arc::new(module));
 
@@ -2319,24 +2310,66 @@ impl Evaluator {
             UseMode::Only(names) => {
                 // 指定された関数のみインポート
                 for name in names {
-                    if let Some(value) = module.exports.get(name) {
-                        env.write().set(name.clone(), value.clone());
+                    if module.is_exported(name) {
+                        if let Some(value) = module.env.read().get(name) {
+                            env.write().set(name.clone(), value);
+                        } else {
+                            return Err(fmt_msg(MsgKey::SymbolNotFound, &[name, module_name]));
+                        }
                     } else {
                         return Err(fmt_msg(MsgKey::SymbolNotExported, &[name, module_name]));
                     }
                 }
             }
             UseMode::All => {
-                // 全てインポート
-                for (name, value) in &module.exports {
-                    env.write().set(name.clone(), value.clone());
+                // 全ての公開シンボルをインポート（デッドロック回避のため先に収集）
+                let bindings: Vec<(String, Value)> = {
+                    let env_guard = module.env.read();
+                    let all_bindings: Vec<_> = env_guard.all_bindings()
+                        .map(|(name, binding)| (name.clone(), binding.clone()))
+                        .collect();
+                    std::mem::drop(env_guard); // 明示的にロックを解放
+
+                    // exportリストに基づいてフィルタ
+                    all_bindings.into_iter()
+                        .filter(|(name, binding)| {
+                            match &module.exports {
+                                None => !binding.is_private, // exportなし = privateでなければ公開
+                                Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
+                            }
+                        })
+                        .map(|(name, binding)| (name, binding.value))
+                        .collect()
+                };
+
+                for (name, value) in bindings {
+                    env.write().set(name, value);
                 }
             }
             UseMode::As(alias) => {
-                // エイリアス機能: alias/name という形式で全ての関数をインポート
-                for (name, value) in &module.exports {
+                // エイリアス機能: alias/name という形式で全ての公開関数をインポート（デッドロック回避のため先に収集）
+                let bindings: Vec<(String, Value)> = {
+                    let env_guard = module.env.read();
+                    let all_bindings: Vec<_> = env_guard.all_bindings()
+                        .map(|(name, binding)| (name.clone(), binding.clone()))
+                        .collect();
+                    std::mem::drop(env_guard); // 明示的にロックを解放
+
+                    // exportリストに基づいてフィルタ
+                    all_bindings.into_iter()
+                        .filter(|(name, binding)| {
+                            match &module.exports {
+                                None => !binding.is_private, // exportなし = privateでなければ公開
+                                Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
+                            }
+                        })
+                        .map(|(name, binding)| (name, binding.value))
+                        .collect()
+                };
+
+                for (name, value) in bindings {
                     let aliased_name = format!("{}/{}", alias, name);
-                    env.write().set(aliased_name, value.clone());
+                    env.write().set(aliased_name, value);
                 }
             }
         }
@@ -2348,8 +2381,8 @@ impl Evaluator {
     fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
         let mut paths = Vec::new();
 
-        // 相対パスの場合はそのまま使用
-        if name.starts_with("./") || name.starts_with("../") {
+        // 絶対パスまたは相対パスの場合はそのまま使用
+        if name.starts_with("./") || name.starts_with("../") || name.starts_with("/") {
             paths.push(format!("{}.qi", name));
             return Ok(paths);
         }
@@ -2444,7 +2477,7 @@ impl Evaluator {
             eprintln!(
                 "[DEBUG] Loaded module '{}' from: {}",
                 name,
-                found_path.unwrap_or_default()
+                found_path.as_ref().map(|s| s.as_str()).unwrap_or_default()
             );
         }
 
@@ -2470,6 +2503,9 @@ impl Evaluator {
             module_env.write().set(key, value);
         }
 
+        // 現在のモジュール名をクリア（評価前の状態に戻す）
+        let prev_module = self.current_module.read().clone();
+
         // 式を順次評価
         for expr in exprs {
             self.eval_with_env(&expr, module_env.clone())?;
@@ -2478,12 +2514,41 @@ impl Evaluator {
         // ロード中リストから削除
         self.loading_modules.write().pop();
 
-        // モジュールが登録されているか確認
-        self.modules
-            .read()
-            .get(name)
-            .cloned()
-            .ok_or_else(|| fmt_msg(MsgKey::ModuleMustExport, &[name]))
+        // モジュールが登録されているか確認、なければデフォルトで全公開モジュールを作成
+        let module = {
+            let modules_guard = self.modules.read();
+            let existing = modules_guard.get(name).cloned();
+            std::mem::drop(modules_guard); // 明示的にロックを解放
+
+            if let Some(m) = existing {
+                m
+            } else {
+                // exportがない場合は全公開モジュールとして登録
+                let module_name = self.current_module.read().clone().unwrap_or_else(|| {
+                    // モジュール名が設定されていない場合はファイル名から取得
+                    std::path::Path::new(name)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or(name)
+                        .to_string()
+                });
+
+                let module = Arc::new(Module {
+                    name: module_name.clone(),
+                    file_path: found_path,
+                    env: module_env.clone(),
+                    exports: None, // None = 全公開（defn-以外）
+                });
+
+                self.modules.write().insert(name.to_string(), module.clone());
+                module
+            }
+        };
+
+        // 現在のモジュール名を元に戻す
+        *self.current_module.write() = prev_module;
+
+        Ok(module)
     }
 
     /// f-stringを評価
