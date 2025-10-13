@@ -1310,154 +1310,308 @@ Qiは**2層モジュール設計**を採用しています：
 ```
 
 #### 集約・分析（✅ 全て実装済み）
-```qi
-;; ✅ 実装済み
-list/sort-by                 ;; キー指定ソート: (list/sort-by :age users)
-frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
-list/count-by                ;; 述語でカウント: (list/count-by even? [1 2 3 4]) => {true: 2, false: 2}
-list/max-by list/min-by           ;; 条件に基づく最大/最小
-list/sum-by                  ;; キー関数で合計
-```
 
-**設計メモ**: `frequencies`と`list/count-by`はデータ分析でよく使う。`list/group-by`と組み合わせると強力。
+```qi
+;; === キー指定操作 ===
+
+;; list/max-by - キー関数で最大値を取得
+(list/max-by (fn [u] (get u :age)) [{:name "Alice" :age 30} {:name "Bob" :age 25}])
+;; => {:name "Alice" :age 30}
+
+;; list/min-by - キー関数で最小値を取得
+(list/min-by (fn [u] (get u :age)) [{:name "Alice" :age 30} {:name "Bob" :age 25}])
+;; => {:name "Bob" :age 25}
+
+;; list/sum-by - キー関数で合計
+(list/sum-by (fn [item] (get item :price)) [{:price 100} {:price 200} {:price 300}])
+;; => 600
+```
 
 #### 集合演算（✅ 実装済み）
+
 ```qi
-;; set/モジュールで実装済み
-set/union                   ;; 和集合: (set/union [1 2] [2 3]) => [1 2 3]
-set/intersect               ;; 積集合: (set/intersect [1 2 3] [2 3 4]) => [2 3]
-set/difference              ;; 差集合: (set/difference [1 2 3] [2]) => [1 3]
-set/symmetric-difference    ;; 対称差: (set/symmetric-difference [1 2 3] [2 3 4]) => [1 4]
-set/subset?                 ;; 部分集合判定
-set/superset?               ;; 上位集合判定
-set/disjoint?               ;; 互いに素判定
+;; このセクションの関数は set/ モジュールに属します
+
+;; set/union - 和集合
+(set/union [1 2] [2 3])             ;; => [1 2 3]
+
+;; set/intersect - 積集合
+(set/intersect [1 2 3] [2 3 4])     ;; => [2 3]
+
+;; set/difference - 差集合
+(set/difference [1 2 3] [2])        ;; => [1 3]
+
+;; set/symmetric-difference - 対称差
+(set/symmetric-difference [1 2 3] [2 3 4])  ;; => [1 4]
+
+;; set/subset? - 部分集合判定
+(set/subset? [1 2] [1 2 3])         ;; => true
+
+;; set/superset? - 上位集合判定
+(set/superset? [1 2 3] [1 2])       ;; => true
+
+;; set/disjoint? - 互いに素判定
+(set/disjoint? [1 2] [3 4])         ;; => true
 ```
 
-**Flow哲学との関係**: 集合演算はデータフィルタリングで頻出。パイプラインと相性が良い。
-
 #### チャンク・分割（✅ 実装済み）
-```qi
-;; ✅ 実装済み
-list/chunk                   ;; 固定サイズで分割: (list/chunk 3 [1 2 3 4 5]) => ([1 2 3] [4 5])
-take-while drop-while   ;; 述語が真の間取得/削除
 
-;; 🔜 優先度: 中
-list/partition-all           ;; partitionの全要素版
+```qi
+;; === チャンク ===
+
+;; list/chunk - 固定サイズで分割
+(list/chunk 3 [1 2 3 4 5])          ;; => ([1 2 3] [4 5])
+(list/chunk 2 [1 2 3 4 5 6])        ;; => ([1 2] [3 4] [5 6])
+
+;; === 条件付き取得 ===
+
+;; take-while - 述語が真の間取得
+(take-while (fn [x] (< x 5)) [1 2 3 6 7 4])    ;; => (1 2 3)
+
+;; drop-while - 述語が真の間削除
+(drop-while (fn [x] (< x 5)) [1 2 3 6 7 4])    ;; => (6 7 4)
 ```
 
 ### 数値・比較
 
 #### 算術演算（✅ 実装済み）
+
 ```qi
-+ - * / %               ;; 基本演算
-inc dec                 ;; インクリメント/デクリメント
-sum                     ;; 合計
-abs                     ;; 絶対値
-min max                 ;; 最小/最大
+;; === 基本演算 ===
+
+;; + - 加算・減算
+(+ 1 2 3)                           ;; => 6
+(- 10 3)                            ;; => 7
+
+;; * / - 乗算・除算
+(* 2 3 4)                           ;; => 24
+(/ 10 2)                            ;; => 5
+
+;; % - 剰余
+(% 10 3)                            ;; => 1
+
+;; inc dec - インクリメント/デクリメント
+(inc 5)                             ;; => 6
+(dec 5)                             ;; => 4
+
+;; === 集約 ===
+
+;; sum - 合計
+(sum [1 2 3 4 5])                   ;; => 15
+
+;; min max - 最小/最大
+(min 3 1 4 1 5)                     ;; => 1
+(max 3 1 4 1 5)                     ;; => 5
+
+;; abs - 絶対値
+(abs -5)                            ;; => 5
 ```
 
 #### 比較（✅ 実装済み）
+
 ```qi
-= != < > <= >=          ;; 比較演算子
+;; === 比較演算子 ===
+
+;; = - 等しい
+(= 1 1)                             ;; => true
+(= 1 2)                             ;; => false
+
+;; != - 等しくない
+(!= 1 2)                            ;; => true
+
+;; < > <= >= - 大小比較
+(< 1 2)                             ;; => true
+(> 3 2)                             ;; => true
+(<= 2 2)                            ;; => true
+(>= 3 2)                            ;; => true
 ```
 
 #### 数学関数（✅ 実装済み）
-```qi
-;; ✅ 実装済み（coreに含まれる）
-pow                     ;; べき乗: (math/pow 2 8) => 256
-sqrt                    ;; 平方根: (math/sqrt 16) => 4
-round floor ceil        ;; 丸め: (math/round 3.7) => 4
-clamp                   ;; 範囲制限: (math/clamp 1 10 15) => 10
-rand                    ;; 0.0以上1.0未満の乱数
-rand-int                ;; 0以上n未満の整数乱数
 
-;; 🔜 優先度: 中（mathモジュールでもOK）
-sin cos tan             ;; 三角関数
-log exp                 ;; 対数・指数
+```qi
+;; このセクションの関数は math/ モジュールに属します
+
+;; === べき乗・平方根 ===
+
+;; math/pow - べき乗
+(math/pow 2 8)                      ;; => 256
+(math/pow 10 3)                     ;; => 1000
+
+;; math/sqrt - 平方根
+(math/sqrt 16)                      ;; => 4
+(math/sqrt 2)                       ;; => 1.414...
+
+;; === 丸め ===
+
+;; math/round - 四捨五入
+(math/round 3.7)                    ;; => 4
+(math/round 3.2)                    ;; => 3
+
+;; math/floor - 切り捨て
+(math/floor 3.9)                    ;; => 3
+
+;; math/ceil - 切り上げ
+(math/ceil 3.1)                     ;; => 4
+
+;; === 範囲制限 ===
+
+;; math/clamp - 値を範囲内に制限
+(math/clamp 1 10 15)                ;; => 10
+(math/clamp 1 10 5)                 ;; => 5
+
+;; === 乱数 ===
+
+;; math/rand - 0.0以上1.0未満の乱数
+(math/rand)                         ;; => 0.742... (ランダム)
+
+;; math/rand-int - 0以上n未満の整数乱数
+(math/rand-int 10)                  ;; => 7 (0-9のランダム)
 ```
 
-**設計方針**: `pow`/`sqrt`/`round`/`clamp`/`rand`はcoreに。三角関数などは将来`math`モジュールへ。
-
 #### 統計（✅ 実装済み）
+
 ```qi
-;; stats/モジュールで実装済み
-stats/mean              ;; 平均
-stats/median            ;; 中央値
-stats/mode              ;; 最頻値
-stats/stddev            ;; 標準偏差
-stats/variance          ;; 分散
-stats/percentile        ;; パーセンタイル
+;; このセクションの関数は stats/ モジュールに属します
+
+;; stats/mean - 平均値
+(stats/mean [1 2 3 4 5])            ;; => 3
+
+;; stats/median - 中央値
+(stats/median [1 2 3 4 5])          ;; => 3
+
+;; stats/mode - 最頻値
+(stats/mode [1 2 2 3 3 3])          ;; => 3
+
+;; stats/stddev - 標準偏差
+(stats/stddev [1 2 3 4 5])          ;; => 1.414...
+
+;; stats/variance - 分散
+(stats/variance [1 2 3 4 5])        ;; => 2
+
+;; stats/percentile - パーセンタイル
+(stats/percentile 0.5 [1 2 3 4 5])  ;; => 3 (50パーセンタイル)
 ```
 
 ### 論理（✅ 全て実装済み）
+
 ```qi
-and or not
+;; === 論理演算子 ===
+
+;; and - 論理AND（短絡評価）
+(and true true)                     ;; => true
+(and true false)                    ;; => false
+
+;; or - 論理OR（短絡評価）
+(or false true)                     ;; => true
+(or false false)                    ;; => false
+
+;; not - 論理NOT
+(not true)                          ;; => false
+(not false)                         ;; => true
 ```
 
 ### マップ操作
 
 #### 基本操作（✅ 実装済み）
+
 ```qi
-get keys vals           ;; アクセス
-assoc dissoc            ;; キーの追加・削除
-merge                   ;; マージ: (merge {:a 1} {:b 2}) => {:a 1 :b 2}
-select-keys             ;; キー選択: (map/select-keys {:a 1 :b 2 :c 3} [:a :c]) => {:a 1 :c 3}
+;; === アクセス ===
+
+;; get - キーで値を取得
+(get {:name "Alice" :age 30} :name)     ;; => "Alice"
+(get {:name "Alice"} :age 0)            ;; => 0 (デフォルト値)
+
+;; keys - 全キーを取得
+(keys {:name "Alice" :age 30})          ;; => ("name" "age")
+
+;; vals - 全値を取得
+(vals {:name "Alice" :age 30})          ;; => ("Alice" 30)
+
+;; === 追加・削除 ===
+
+;; assoc - キーと値を追加
+(assoc {:name "Alice"} :age 30)         ;; => {:name "Alice" :age 30}
+
+;; dissoc - キーを削除
+(dissoc {:name "Alice" :age 30} :age)   ;; => {:name "Alice"}
+
+;; === マージ ===
+
+;; merge - マップを結合
+(merge {:a 1} {:b 2})                   ;; => {:a 1 :b 2}
+(merge {:a 1} {:a 2})                   ;; => {:a 2} (右が優先)
+
+;; map/select-keys - 指定したキーのみ抽出
+(map/select-keys {:a 1 :b 2 :c 3} [:a :c])  ;; => {:a 1 :c 3}
 ```
 
-#### ネスト操作（✅ 実装済み）⭐ **Flow哲学の核心**
+#### ネスト操作（✅ 実装済み）
+
 ```qi
-;; ✅ 実装済み（JSON/Web処理で必須）
-update                  ;; 値を関数で更新
-update-in               ;; ネスト更新: (update-in m [:user :age] inc)
-get-in                  ;; ネスト取得: (get-in m [:user :name] "default")
-assoc-in                ;; ネスト追加
-dissoc-in               ;; ネスト削除
+;; === 値の更新 ===
+
+;; update - 値を関数で更新
+(update {:name "Alice" :age 30} :age inc)
+;; => {:name "Alice" :age 31}
+
+;; update-in - ネストした値を更新
+(update-in {:user {:profile {:visits 10}}} [:user :profile :visits] inc)
+;; => {:user {:profile {:visits 11}}}
+
+;; === ネストアクセス ===
+
+;; get-in - ネストした値を取得
+(get-in {:user {:name "Bob"}} [:user :name])    ;; => "Bob"
+(get-in {} [:user :name] "guest")               ;; => "guest"
+
+;; map/assoc-in - ネストした位置に値を設定
+(map/assoc-in {:user {}} [:user :name] "Alice")
+;; => {:user {:name "Alice"}}
+
+;; map/dissoc-in - ネストした位置のキーを削除
+(map/dissoc-in {:user {:name "Alice" :age 30}} [:user :age])
+;; => {:user {:name "Alice"}}
+```
+
+**使用例: Web APIレスポンス処理**
+
+```qi
+(def state {:user {:profile {:visits 10 :last-seen nil}}})
+
+;; 訪問回数を増やして、最終訪問時刻を記録
+(state
+ |> (fn [s] (update-in s [:user :profile :visits] inc))
+ |> (fn [s] (map/assoc-in s [:user :profile :last-seen] (now))))
 ```
 
 #### マップ一括変換（✅ 実装済み）
+
 ```qi
-map/update-keys             ;; 全キーに関数適用: (map/update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
-map/update-vals             ;; 全値に関数適用: (map/update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
-zipmap                  ;; キーと値のリストからマップ生成: (list/zipmap [:a :b] [1 2]) => {:a 1 :b 2}
+;; このセクションの関数は map/ モジュールに属します
+
+;; map/update-keys - 全キーに関数を適用
+(map/update-keys str/upper {:name "Alice" :age 30})
+;; => {"NAME" "Alice" "AGE" 30}
+
+;; map/update-vals - 全値に関数を適用
+(map/update-vals (fn [v] (* v 2)) {:a 1 :b 2})
+;; => {:a 2 :b 4}
+
+;; list/zipmap - キーと値のリストからマップを生成
+(list/zipmap [:a :b :c] [1 2 3])    ;; => {:a 1 :b 2 :c 3}
 ```
 
-**使用例**:
+**使用例: データ変換パイプライン**
+
 ```qi
-;; すべてのキーを大文字に
-(map/update-keys upper {:name "Alice" :age 30})  ;; {"NAME" "Alice" "AGE" 30}
+(def prices {:apple 100 :banana 50 :orange 80})
 
-;; すべての値を2倍に
-(def prices {:apple 100 :banana 50})
-(map/update-vals (fn [p] (* p 2)) prices)  ;; {:apple 200 :banana 100}
-
-;; データ変換パイプライン
+;; 全商品を10%値上げして丸める
 (prices
- |> (map/update-vals (fn [p] (* p 1.1)))  ;; 10%値上げ
- |> (map/update-vals round))              ;; 丸める
+ |> (map/update-vals (fn [p] (* p 1.1)))
+ |> (map/update-vals math/round))
+;; => {:apple 110 :banana 55 :orange 88}
 ```
-
-**ネスト操作の使用例**:
-```qi
-;; update: 値を関数で変換
-(def user {:name "Alice" :age 30})
-(update user :age inc)  ;; {:name "Alice" :age 31}
-
-;; update-in: ネスト構造の更新（Web/JSON処理で超頻出）
-(def state {:user {:profile {:visits 10}}})
-(update-in state [:user :profile :visits] inc)
-;; {:user {:profile {:visits 11}}}
-
-;; get-in: ネストアクセス（デフォルト値付き）
-(get-in {:user {:name "Bob"}} [:user :name] "guest")  ;; "Bob"
-(get-in {} [:user :name] "guest")  ;; "guest"
-
-;; パイプラインで威力発揮
-(state
- |> (fn [s] (update-in s [:user :profile :visits] inc))
- |> (fn [s] (map/assoc-in s [:user :last-seen] (now))))
-```
-
-**設計メモ**: ネスト操作はQiの強み。JSONやWeb APIレスポンスの処理が直感的になる。一括変換関数と組み合わせることでデータ変換が簡潔に書ける。
 
 ### 関数型プログラミング基礎
 
