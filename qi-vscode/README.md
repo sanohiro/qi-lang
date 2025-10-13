@@ -28,13 +28,14 @@ Complete language support for **Qi - A Lisp that flows**.
 - Auto-closing pairs: `()`, `[]`, `{}`, `""`
 - Bracket matching
 - Comment toggling (`;` line comments)
+- **Code Formatting**: Automatic formatting using `qi fmt`
 
-### Commands (Planned)
-- **Run Qi File** (`Ctrl+F5` / `Cmd+F5`)
-- **Start Qi REPL** (`Ctrl+Shift+R` / `Cmd+Shift+R`)
-- **Debug Qi File** (`F5`)
-- **Format Document**
-- **Show Documentation**
+### Commands
+- **Run Qi File** (`Ctrl+F5` / `Cmd+F5`) - Execute current Qi file
+- **Start Qi REPL** (`Ctrl+Shift+R` / `Cmd+Shift+R`) - Start interactive REPL
+- **Debug Qi File** (`F5`) - Debug current file (planned)
+- **Format Document** - Format code according to STYLE_GUIDE.md
+- **Show Documentation** - Open Qi documentation
 
 ## Installation
 
@@ -47,9 +48,18 @@ Complete language support for **Qi - A Lisp that flows**.
 3. Reload VSCode
 
 ### Development
-1. Open this folder in VSCode
-2. Press `F5` to launch Extension Development Host
-3. Open a `.qi` file to see syntax highlighting
+1. Install dependencies:
+   ```bash
+   cd qi-vscode
+   npm install
+   ```
+2. Compile TypeScript:
+   ```bash
+   npm run compile
+   ```
+3. Open this folder in VSCode
+4. Press `F5` to launch Extension Development Host
+5. Open a `.qi` file to test the extension
 
 ## Configuration
 
@@ -63,6 +73,13 @@ The extension can be configured via VSCode settings:
   "qi.repl.autoStart": false
 }
 ```
+
+### Settings
+
+- **`qi.executablePath`** (string, default: `"qi"`) - Path to the Qi executable. If `qi` is in your PATH, you can use `"qi"`. Otherwise, specify the full path.
+- **`qi.enableFormatting`** (boolean, default: `true`) - Enable automatic code formatting with `qi fmt`.
+- **`qi.enableLinting`** (boolean, default: `true`) - Enable linting (planned).
+- **`qi.repl.autoStart`** (boolean, default: `false`) - Automatically start REPL when opening Qi files.
 
 ## Language Overview
 
