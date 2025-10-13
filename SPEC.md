@@ -3475,31 +3475,153 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ファイル単位でモジュールを構成し、名前空間を分離します。
 
-- **モジュール名 = ファイルのbasename**（拡張子なし）
+- **探索はファイル名、表示はmodule名**: `use`の探索はファイル名、モジュール名は`module`宣言で変更可
 - **use が自動ロード**: `use`でファイルを読み込み＋インポート
 - **load は副作用のみ**: 設定ファイル等を実行するだけ
-- **プライベート関数**: `defn-` でファイル内部のみで使える関数定義
+- **exportなし = 全公開**: `export`宣言がなければ全て公開（`defn-`除く）
+- **exportあり = 選択公開**: `export`宣言があれば、明示したもののみ公開
+- **defn- は完全非公開**: `export`に関係なく常に非公開
 
-### モジュール定義
+### module宣言
+
+`module`は**モジュールの表示名**を指定します（オプショナル）。
 
 ```qi
-;; http.qi - ファイル名がモジュール名になる
+;; http.qi
+(module web-api)  ;; 表示名を 'web-api' にする
 
-;; プライベートヘルパー（ファイル内のみアクセス可能）
-(defn- build-headers [opts]
-  (get opts :headers {}))
+(defn get [url] ...)
 
-;; パブリック関数（デフォルトでexport）
-(defn get [url & opts]
-  (let [headers (build-headers opts)]
-    (http/request "GET" url headers)))
+;; 探索は 'http.qi' で行われる
+;; アクセスは 'web-api/get' になる
+```
 
-(defn post [url data & opts]
-  (let [headers (build-headers opts)]
-    (http/request "POST" url headers data)))
+**仕様**:
+- **オプショナル**: なければファイル名（basename）がモジュール名
+- **探索には影響しない**: `use http` は `http.qi` を探す（module名ではない）
+- **表示名のみ変更**: アクセスする際のプレフィックスが変わる
+- **1ファイル1回のみ**: 複数の`module`宣言はエラー
+- **位置**: ファイル先頭推奨（技術的にはどこでもOK）
+- **戻り値**: `nil`
 
-;; 明示的にexportを宣言することも可能（推奨）
+```qi
+;; http.qi
+(module web-api)
+
+;; 使う側
+(use http)              ;; http.qi を探す → 成功
+(web-api/get "...")     ;; OK（module名でアクセス）
+(http/get "...")        ;; Error（ファイル名ではアクセスできない）
+```
+
+### export宣言
+
+`export`は**公開するシンボル**を制御します（オプショナル）。
+
+**2つのモード**:
+
+#### モードA: export宣言なし → **全て公開**（デフォルト）
+
+```qi
+;; utils.qi
+(defn add [a b] (+ a b))        ;; 公開（defnなので）
+(defn multiply [a b] (* a b))   ;; 公開（defnなので）
+(defn- helper [x] (* x 2))      ;; 非公開（defn-なので）
+
+;; 全てのdefnが自動的に公開される
+```
+
+#### モードB: export宣言あり → **選択公開**
+
+```qi
+;; utils.qi
+(defn add [a b] (+ a b))        ;; 非公開（exportにない）
+(defn multiply [a b] (* a b))   ;; 公開（exportにある）
+(defn- helper [x] (* x 2))      ;; 非公開（常に）
+
+(export multiply)  ;; multiplyのみ公開
+```
+
+**仕様**:
+- **デフォルト公開**: `export`なし → 全`defn`が公開、全`defn-`が非公開
+- **選択公開**: `export`あり → 明示したもののみ公開、それ以外は非公開
+- **defn-は常に非公開**: `export`に書いてもエラー
+- **複数宣言可**: 累積される
+- **位置**: どこでもOK（末尾推奨）
+- **戻り値**: `nil`
+
+```qi
+(defn get [url] ...)
+(defn post [url data] ...)
+(defn put [url data] ...)
+
+(export get)        ;; get のみ公開
+(export post put)   ;; post, put も追加（累積）
+;; 結果: get, post, put が全て公開
+```
+
+### 公開/非公開の決定フロー
+
+```
+関数定義の公開/非公開:
+
+defn- で定義
+  → 常に非公開（exportできない）
+
+defn で定義
+  → export宣言が存在するか？
+      YES → exportリストに含まれるか？
+              YES → 公開
+              NO  → 非公開
+      NO  → 公開（デフォルト）
+```
+
+### モジュール定義の例
+
+```qi
+;; ========================================
+;; パターン1: シンプル（exportなし）
+;; ========================================
+;; math.qi
+(defn add [a b] (+ a b))        ;; 公開
+(defn sub [a b] (- a b))        ;; 公開
+(defn- validate [x] (> x 0))    ;; 非公開
+
+;; 外部から: (math/add ...), (math/sub ...) OK
+;;          (math/validate ...) Error
+
+;; ========================================
+;; パターン2: 明示的export
+;; ========================================
+;; math.qi
+(defn add [a b] (+ a b))        ;; 公開（exportにある）
+(defn sub [a b] (- a b))        ;; 非公開（exportにない）
+(defn multiply [a b] (* a b))   ;; 非公開（exportにない）
+(defn- validate [x] (> x 0))    ;; 非公開（常に）
+
+(export add)  ;; addのみ公開
+
+;; 外部から: (math/add ...) OK
+;;          (math/sub ...), (math/multiply ...) Error
+
+;; ========================================
+;; パターン3: module宣言 + export
+;; ========================================
+;; http.qi
+(module web-client)  ;; 表示名を変更
+
+(defn- build-url [base path] (str base "/" path))
+(defn get [url] ...)
+(defn post [url data] ...)
+(defn internal-func [x] ...)  ;; exportしないので非公開
+
 (export get post)
+
+;; 外部から:
+;; (use http)  ;; http.qi を探す
+;; (web-client/get ...) OK（module名でアクセス）
+;; (web-client/post ...) OK
+;; (web-client/internal-func ...) Error（非公開）
 ```
 
 ### インポート（use）
@@ -3527,32 +3649,64 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ### モジュール名の決定ルール
 
+**探索はファイル名、アクセスはmodule名**の原則:
+
 ```qi
+;; ========================================
 ;; ケース1: モジュール名のみ → 自動探索
+;; ========================================
 (use http :only [get])
-;; => http.qi を探索（./http.qi, ~/.qi/modules/http.qi 等）
-;; => モジュール名: http
+;; 1. http.qi を探索（./http.qi, ~/.qi/modules/http.qi 等）
+;; 2. http.qi 内の module宣言を確認
+;;    - (module web-api) → アクセスは web-api/get
+;;    - なし → アクセスは http/get
 
-;; ケース2: パス指定 → basenameがモジュール名
+;; ========================================
+;; ケース2: パス指定 → basename で探索
+;; ========================================
 (use "lib/http" :only [get])
-;; => lib/http.qi を読み込み
-;; => モジュール名: http (basename)
-;; => 使用: (http/get ...) または (get ...)
+;; 1. lib/http.qi を読み込み
+;; 2. lib/http.qi 内の module宣言を確認
+;;    - (module web-api) → アクセスは web-api/get
+;;    - なし → アクセスは http/get (basename)
 
+;; ========================================
 ;; ケース3: :as でエイリアス
+;; ========================================
 (use "lib/http" :as h)
-;; => モジュール名: h (エイリアス優先)
-;; => 使用: (h/get ...)
+;; 1. lib/http.qi を読み込み
+;; 2. module宣言に関係なく、エイリアス 'h' を使用
+;; => アクセスは h/get
+
+;; ========================================
+;; ケース4: module宣言との組み合わせ
+;; ========================================
+;; lib/http.qi
+(module web-client)
+(defn get [url] ...)
+
+;; 使う側
+(use "lib/http")
+(web-client/get "...")  ;; OK（module名でアクセス）
+
+(use "lib/http" :as h)
+(h/get "...")           ;; OK（エイリアスが優先）
 ```
 
 **名前衝突の処理**:
 ```qi
-(use "lib1/utils")  ;; => モジュール名: utils
-(use "lib2/utils")  ;; => Error: module 'utils' already loaded
+;; lib1/utils.qi → (module string-utils)
+;; lib2/utils.qi → (module string-utils)  ← 同じmodule名！
 
-;; 解決策: :as でエイリアスを指定
+(use "lib1/utils")  ;; モジュール名: string-utils
+(use "lib2/utils")  ;; Error: module 'string-utils' already loaded
+
+;; 解決策1: :as でエイリアス
 (use "lib1/utils" :as utils1)
 (use "lib2/utils" :as utils2)
+
+;; 解決策2: ファイルのmodule宣言を変更
+;; lib2/utils.qi を (module text-utils) に変更
 ```
 
 ### load（副作用のみ実行）
@@ -3574,7 +3728,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ### プライベート関数（defn-）
 
-`defn-` はファイル内部でのみアクセス可能な関数を定義します。
+`defn-` は**常に非公開**の関数を定義します。`export`に関係なく、絶対に外部からアクセスできません。
 
 ```qi
 ;; utils.qi
@@ -3584,14 +3738,40 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 (defn process [data]
   (internal-helper data))
 
-(export process)
+(export process internal-helper)  ;; Error: cannot export private function 'internal-helper'
+
+;; ========================================
+;; 正しい使い方
+;; ========================================
+;; utils.qi
+(defn- internal-helper [x]
+  (* x 2))
+
+(defn process [data]
+  (internal-helper data))
+
+(export process)  ;; OK
 
 ;; app.qi
 (use utils :only [process])
 
-(process 5)           ;; => 10 (OK)
-(internal-helper 5)   ;; Error: undefined (プライベート)
-(utils/internal-helper 5)  ;; Error: not exported
+(process 5)                  ;; => 10 (OK)
+(internal-helper 5)          ;; Error: undefined
+(utils/internal-helper 5)    ;; Error: not exported
+```
+
+**defn vs defn- の違い**:
+
+```qi
+;; パターンA: exportなし
+(defn public-func [x] ...)   ;; 公開される
+(defn- private-func [x] ...) ;; 非公開
+
+;; パターンB: exportあり
+(defn maybe-public [x] ...)  ;; exportに書けば公開、なければ非公開
+(defn- always-private [x] ...)  ;; 常に非公開（exportに書けばエラー）
+
+(export maybe-public)
 ```
 
 ### 実装状況
@@ -3617,26 +3797,28 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ;; ========================================
 ;; lib/db.qi - データベースモジュール
 ;; ========================================
+(module database)  ;; モジュール名を 'database' にする
 
-;; プライベート：接続文字列構築
+;; プライベート：接続文字列構築（defn-なので常に非公開）
 (defn- build-connection-string [config]
   (str "sqlite://" (get config :path)))
 
-;; パブリック：接続
+;; パブリック関数
 (defn connect [config]
   (db/connect (build-connection-string config)))
 
-;; パブリック：クエリ実行
 (defn query [conn sql params]
   (db/query conn sql params))
 
+;; 明示的にexport（これがないとconnectもqueryも非公開になる）
 (export connect query)
 
 ;; ========================================
 ;; lib/api.qi - APIクライアントモジュール
 ;; ========================================
+;; module宣言なし → モジュール名は 'api' (basename)
 
-;; プライベート：リトライロジック
+;; プライベート：リトライロジック（defn-なので常に非公開）
 (defn- retry-request [f max-retries]
   (try
     (f)
@@ -3645,29 +3827,36 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
         (retry-request f (dec max-retries))
         (error e)))))
 
-;; パブリック：GET リクエスト
+;; パブリック関数
 (defn get [url]
   (retry-request
     (fn [] (http/get url))
     3))
 
+;; exportあり → get のみ公開（retry-requestは非公開）
 (export get)
 
 ;; ========================================
 ;; app.qi - メインアプリケーション
 ;; ========================================
 
-;; 設定ファイルを読み込み（副作用のみ）
+;; 設定ファイルを読み込み（副作用のみ、シンボルはインポートされない）
 (load "config.qi")
+;; → api-endpoint, timeout がグローバルに定義される
 
 ;; モジュールをインポート
 (use "lib/db" :as database)
+;; → lib/db.qi を読み込み
+;; → module宣言が 'database' なので、database/connect, database/query として使える
+
 (use "lib/api" :only [get])
+;; → lib/api.qi を読み込み
+;; → get のみインポート（api/get ではなく get として使える）
 
 ;; データベース接続
 (def conn (database/connect {:path "data.db"}))
 
-;; APIからデータ取得
+;; APIからデータ取得（config.qiで定義したapi-endpointを使用）
 (def users (get (str api-endpoint "/users")))
 
 ;; データベースに保存
@@ -3684,17 +3873,22 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 $ qi
 qi:1> :load lib/http.qi
 Loading: lib/http.qi
-Loaded! Module 'http' registered.
+Loaded! Module 'web-client' registered.  # module宣言があれば表示
 Exported: get, post, put, delete
 
-qi:2> (http/get "https://api.example.com")
+qi:2> (web-client/get "https://api.example.com")  # module名でアクセス
 {:status 200 :body "..."}
 
-qi:3> (use http :only [get])
+qi:3> (use http :only [get])  # http.qi を探して読み込み
 nil
 
-qi:4> (get "https://api.example.com")
+qi:4> (get "https://api.example.com")  # 短い名前で使える
 {:status 200 :body "..."}
+
+qi:5> :modules  # モジュール一覧（将来実装予定）
+Loaded modules:
+  web-client (from lib/http.qi)
+  core (builtin)
 ```
 
 ### モジュール探索パス
@@ -3738,6 +3932,29 @@ qi:4> (get "https://api.example.com")
 - 同一ファイル内ではアクセス可能
 - `export`の対象外（自動的に除外）
 - 他モジュールから`module/func`形式でもアクセス不可
+
+### クイックリファレンス
+
+| 構文 | 説明 | 例 |
+|------|------|-----|
+| `(module name)` | モジュール表示名を指定 | `(module web-api)` |
+| `(export sym ...)` | 公開シンボルを指定 | `(export get post)` |
+| `(defn name [...] ...)` | 関数定義（公開/非公開はexportによる） | `(defn add [a b] (+ a b))` |
+| `(defn- name [...] ...)` | プライベート関数定義（常に非公開） | `(defn- helper [x] (* x 2))` |
+| `(use mod :only [...])` | 特定シンボルのみインポート | `(use http :only [get])` |
+| `(use mod :as alias)` | エイリアスでインポート | `(use http :as h)` |
+| `(use mod :all)` | 全てインポート | `(use http :all)` |
+| `(use "path")` | パス指定でインポート | `(use "lib/utils")` |
+| `(load "path")` | ファイル実行のみ（インポートなし） | `(load "config.qi")` |
+
+**公開/非公開の決定ルール**:
+
+```
+defn-  → 常に非公開
+
+defn   → exportなし → 公開
+       → exportあり → exportリストにあれば公開、なければ非公開
+```
 
 ### 標準モジュール
 
