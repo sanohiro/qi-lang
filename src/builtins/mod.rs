@@ -431,7 +431,7 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "stream/file" => io::native_file_stream,
 
         // ========================================
-        // 専門モジュール: str（62個）
+        // 専門モジュール: str（64個）
         // ========================================
         "str/upper" => string::native_upper,
         "str/lower" => string::native_lower,
@@ -491,6 +491,8 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "str/re-find" => string::native_re_find,
         "str/re-matches" => string::native_re_matches,
         "str/re-replace" => string::native_re_replace,
+        "str/re-match-groups" => string::native_re_match_groups,
+        "str/re-split" => string::native_re_split,
         "str/format" => string::native_format,
         "str/format-decimal" => string::native_format_decimal,
         "str/format-comma" => string::native_format_comma,

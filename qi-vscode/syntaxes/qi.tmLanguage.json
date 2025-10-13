@@ -1,0 +1,78 @@
+{
+  "scopeName": "source.qi",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#special-forms" },
+    { "include": "#operators" },
+    { "include": "#constants" },
+    { "include": "#functions" },
+    { "include": "#modules" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "match": ";;.*$", "name": "comment.line.qi" },
+        { "begin": "#\\|", "end": "\\|#", "name": "comment.block.qi" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        { "begin": "\"", "end": "\"", "name": "string.quoted.double.qi" }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "match": "\\b[0-9]+(\\.[0-9]+)?\\b", "name": "constant.numeric.qi" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(def|defn|fn|let|if|do|match|try|defer|when|else|go|chan)\\b",
+          "name": "keyword.control.qi"
+        }
+      ]
+    },
+    "special-forms": {
+      "patterns": [
+        {
+          "match": "\\b(nil\\?|list\\?|map\\?|vector\\?|string\\?|integer\\?|float\\?|number\\?|true\\?|false\\?)\\b",
+          "name": "support.function.predicate.qi"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "match": "\\|>|\\|\\|>|\\|>\\?|~>|tap>",
+          "name": "keyword.operator.pipeline.qi"
+        },
+        {
+          "match": "(\\+|-|\\*|\\/|%|=|!=|<=|>=|<|>)",
+          "name": "keyword.operator.qi"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        { "match": "\\b(nil|true|false)\\b", "name": "constant.language.qi" }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "(?<=\\()[a-zA-Z_][a-zA-Z0-9\\-/]*",
+          "name": "entity.name.function.qi"
+        }
+      ]
+    },
+    "modules": {
+      "patterns": [
+        { "match": "[a-z]+/[a-zA-Z0-9\\-]+", "name": "support.module.qi" }
+      ]
+    }
+  }
+}

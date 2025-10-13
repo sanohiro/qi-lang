@@ -5587,56 +5587,88 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
  |> (io/write-file "COMBINED_REPORT.md"))
 ```
 
-#### ✅ regex - 正規表現（基本実装）
+#### ✅ regex - 正規表現（Phase 1実装完了）
 
 **実装済み機能**:
 - `str/re-find` - パターンマッチング（最初の一致を検索）
-- `str/re-matches` - 完全マッチチェック（文字列全体がパターンに一致するか）
+- `str/re-matches` - 全マッチの取得（リストで返す）
 - `str/re-replace` - 正規表現による置換
+- `str/re-match-groups` - グループキャプチャ（番号付き）✨ New!
+- `str/re-split` - 正規表現による分割 ✨ New!
 
 ```qi
 (use str :as s)
 
 ;; パターンマッチ - 最初の一致を検索
-(s/re-find "hello123world" "\\d+")
+(s/re-find "\\d+" "hello123world")
 ;; => "123"
 
-;; 完全マッチチェック - 文字列全体がパターンに一致するか
-(s/re-matches "hello123" "\\w+")
-;; => true
-
-(s/re-matches "hello 123" "\\w+")
-;; => false (スペースがあるため)
+;; 全マッチの取得
+(s/re-matches "\\d+" "abc123def456ghi")
+;; => ["123" "456"]
 
 ;; 置換 - パターンに一致する部分を置換
-(s/re-replace "hello123world456" "\\d+" "X")
+(s/re-replace "\\d+" "X" "hello123world456")
 ;; => "helloXworldX"
 
+;; ✨ グループキャプチャ - マッチとキャプチャグループを取得
+(s/re-match-groups "(\\d{4})-(\\d{2})-(\\d{2})" "2025-01-13")
+;; => {:match "2025-01-13" :groups ["2025" "01" "13"]}
+
+;; キャプチャグループを使った解析
+(def result (s/re-match-groups "(\\w+)@(\\w+\\.\\w+)" "alice@example.com"))
+(get result "match")    ;; => "alice@example.com"
+(nth (get result "groups") 0)  ;; => "alice"
+(nth (get result "groups") 1)  ;; => "example.com"
+
+;; マッチしない場合はnilを返す
+(s/re-match-groups "\\d+" "hello")
+;; => nil
+
+;; ✨ 正規表現分割 - パターンで文字列を分割
+(s/re-split "\\s+" "hello  world\t\ntest")
+;; => ["hello" "world" "test"]
+
+(s/re-split ",\\s*" "apple, orange,banana, grape")
+;; => ["apple" "orange" "banana" "grape"]
+
+;; 分割数の制限
+(s/re-split "\\s+" "a b c d e" 3)
+;; => ["a" "b" "c d e"]
+
+;; 実用例: ログ行のパース
+(def log-line "2025-01-13 14:30:45 [ERROR] Database connection failed")
+(def log-result (s/re-match-groups
+  "(\\d{4}-\\d{2}-\\d{2}) (\\d{2}:\\d{2}:\\d{2}) \\[(\\w+)\\] (.*)"
+  log-line))
+(def groups (get log-result "groups"))
+{:date (nth groups 0)
+ :time (nth groups 1)
+ :level (nth groups 2)
+ :message (nth groups 3)}
+;; => {:date "2025-01-13" :time "14:30:45" :level "ERROR"
+;;     :message "Database connection failed"}
+
+;; 実用例: CSVパース
+(defn parse-csv-line [line]
+  (s/re-split ",\\s*" line))
+
+(parse-csv-line "apple, orange, banana")
+;; => ["apple" "orange" "banana"]
+
 ;; パイプラインでの使用
-("hello123world" |> (s/re-find "\\d+"))
+("hello123world"
+  |> (s/re-find "\\d+"))
 ;; => "123"
-
-;; 実用例: メールアドレスの抽出
-(defn extract-email [text]
-  (s/re-find text "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"))
-
-(extract-email "Contact: test@example.com for details")
-;; => "test@example.com"
-
-;; 実用例: バリデーション
-(defn valid-username? [name]
-  (s/re-matches name "^[a-zA-Z0-9_]{3,16}$"))
-
-(valid-username? "user_123")  ;; => true
-(valid-username? "ab")        ;; => false (短すぎる)
 ```
 
-**将来の拡張（未実装）**:
-- グループキャプチャ（名前付き・番号付き）
-- `match-all` - 全マッチの取得
-- `split` - 正規表現による分割
-- `compile` - パターンのプリコンパイル
-- コールバック置換
+**将来の拡張（Phase 2以降）**:
+- **Phase 2**:
+  - `str/re-match-all` - 全マッチとキャプチャグループ
+  - `str/re-compile` - パターンのプリコンパイル
+- **Phase 3**:
+  - 名前付きキャプチャグループ (`:named`)
+  - `str/re-replace-fn` - コールバック置換
 ```
 
 #### 🔜 math - 数学関数（計画中）

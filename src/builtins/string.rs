@@ -1372,6 +1372,106 @@ pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
     Ok(Value::String(re.replace_all(text, replacement).to_string()))
 }
 
+/// re-match-groups - 正規表現マッチとキャプチャグループを取得
+pub fn native_re_match_groups(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["re-match-groups", "2", "(pattern, text)"],
+        ));
+    }
+
+    let pattern = match &args[0] {
+        Value::String(s) => s,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeString,
+                &["re-match-groups", "pattern"],
+            ))
+        }
+    };
+
+    let text = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-match-groups", "text"])),
+    };
+
+    let re = Regex::new(pattern)
+        .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-match-groups", &e.to_string()]))?;
+
+    match re.captures(text) {
+        Some(caps) => {
+            // 全体のマッチ
+            let full_match = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+
+            // キャプチャグループ（インデックス1から）
+            let groups: Vec<Value> = (1..caps.len())
+                .map(|i| {
+                    caps.get(i)
+                        .map(|m| Value::String(m.as_str().to_string()))
+                        .unwrap_or(Value::Nil)
+                })
+                .collect();
+
+            let mut result = std::collections::HashMap::new();
+            result.insert("match".to_string(), Value::String(full_match.to_string()));
+            result.insert("groups".to_string(), Value::Vector(groups));
+
+            Ok(Value::Map(result))
+        }
+        None => Ok(Value::Nil),
+    }
+}
+
+/// re-split - 正規表現パターンで文字列を分割
+pub fn native_re_split(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["re-split", "2-3", "(pattern, text [, limit])"],
+        ));
+    }
+
+    let pattern = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-split", "pattern"])),
+    };
+
+    let text = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-split", "text"])),
+    };
+
+    let limit = if args.len() == 3 {
+        match &args[2] {
+            Value::Integer(n) if *n > 0 => Some(*n as usize),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["re-split (3rd arg - limit)", "positive integer"],
+                ))
+            }
+        }
+    } else {
+        None
+    };
+
+    let re = Regex::new(pattern)
+        .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-split", &e.to_string()]))?;
+
+    let parts: Vec<Value> = if let Some(n) = limit {
+        re.splitn(text, n)
+            .map(|s| Value::String(s.to_string()))
+            .collect()
+    } else {
+        re.split(text)
+            .map(|s| Value::String(s.to_string()))
+            .collect()
+    };
+
+    Ok(Value::Vector(parts))
+}
+
 /// format - 文字列フォーマット（簡易実装）
 pub fn native_format(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {

@@ -344,16 +344,34 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
 
 ### 優先度: 中
 
-#### 1. 正規表現の拡張機能
+#### 1. 正規表現の拡張機能（Phase 1実装完了）
 
-**実装予定の機能**:
-- グループキャプチャ（名前付き・番号付き）
-- `match-all` - 全マッチの取得
-- `split` - 正規表現による分割
-- `compile` - パターンのプリコンパイル
-- コールバック置換
+**✅ Phase 1 - 実装完了 (2025-01-13)**:
+- `str/re-match-groups` - グループキャプチャ（番号付き）
+- `str/re-split` - 正規表現による分割
 
-**現状**: 基本的な正規表現マッチは実装済み
+**Phase 2（中優先度）- 未実装**:
+- `str/re-match-all` - 全マッチとキャプチャグループの取得
+- `str/re-compile` - パターンのプリコンパイル
+
+**Phase 3（低優先度）- 未実装**:
+- 名前付きキャプチャグループ (`:named`)
+- `str/re-replace-fn` - コールバック置換
+
+**実装済みの機能**:
+```qi
+;; str/re-match-groups - グループキャプチャ
+(str/re-match-groups "(\\d{4})-(\\d{2})-(\\d{2})" "2025-01-13")
+;=> {:match "2025-01-13" :groups ["2025" "01" "13"]}
+
+;; str/re-split - 正規表現分割
+(str/re-split "\\s+" "hello  world\t\ntest")
+;=> ["hello" "world" "test"]
+
+;; 分割数の制限
+(str/re-split "\\s+" "a b c d e" 3)
+;=> ["a" "b" "c d e"]
+```
 
 **関連**: SPEC.md line 5475-5479
 
