@@ -288,7 +288,7 @@ Qiはパイプライン演算子を段階的に拡張し、**データの流れ�
 
 ---
 
-### ✅ `|>?` Railway Pipeline（実装済み）⭐ **Phase 4.5の主要機能**
+### ✅ `|>?` Railway Pipeline（実装済み）
 
 **エラーハンドリングを流れの中に組み込む** - Railway Oriented Programming
 
@@ -1159,7 +1159,6 @@ tap                     ;; 副作用タップ（値を返しつつ副作用実�
 
 #### コレクション検索・述語（✅ 実装済み）
 ```qi
-;; ✅ Phase 4.5で実装
 find                    ;; 条件を満たす最初の要素: (find (fn [x] (> x 5)) [1 7 3]) => 7
 list/find-index              ;; 条件を満たす最初のインデックス: (list/find-index (fn [x] (> x 5)) [1 7 3]) => 1
 every?                  ;; 全要素が条件を満たすか: (every? (fn [x] (> x 0)) [1 2 3]) => true
@@ -1315,7 +1314,6 @@ dissoc-in               ;; ネスト削除
 
 #### マップ一括変換（✅ 実装済み）
 ```qi
-;; ✅ Phase 4.5で実装
 map/update-keys             ;; 全キーに関数適用: (map/update-keys (fn [k] (str k "!")) {:a 1}) => {"a!" 1}
 map/update-vals             ;; 全値に関数適用: (map/update-vals (fn [v] (* v 2)) {:a 1 :b 2}) => {:a 2 :b 4}
 zipmap                  ;; キーと値のリストからマップ生成: (list/zipmap [:a :b] [1 2]) => {:a 1 :b 2}
@@ -1750,7 +1748,6 @@ cmd/wait            ;; プロセスの終了を待つ
 
 #### JSON処理（✅ 実装済み）
 ```qi
-;; ✅ Phase 4.5で実装
 json/parse              ;; JSON文字列をパース: "{\"a\":1}" => {:ok {:a 1}}
 json/stringify          ;; 値をJSON化（コンパクト）
 json/pretty             ;; 値を整形JSON化
@@ -1834,7 +1831,6 @@ yaml/pretty             ;; 値を整形YAML化（yaml/stringifyと同じ）
 
 #### HTTP クライアント（✅ 実装済み）
 ```qi
-;; ✅ Phase 4.5で完全実装
 http/get                ;; HTTP GET: (http/get "https://...") => {:ok {:status 200 :body "..."}}
 http/post               ;; HTTP POST: (http/post "url" {:key "value"})
 http/put                ;; HTTP PUT
@@ -1944,7 +1940,7 @@ HTTP Basic AuthとBearer Token認証をサポートしています。
 - `server/with-basic-auth`: Basic認証ミドルウェア
 - `server/with-bearer`: Bearer Token抽出ミドルウェア
 
-#### HTTP サーバー（✅ 実装済み - Phase 5）
+#### HTTP サーバー（✅ 実装済み）
 
 **Flow-Oriented な Web アプリケーション構築**
 
@@ -2383,7 +2379,6 @@ server/static-dir         ;; ディレクトリから静的ファイルを配信
 
 #### デバッグ・計測（✅ 実装済み）
 ```qi
-;; ✅ Phase 4.5で実装
 inspect                 ;; 値を整形表示してそのまま返す（パイプライン用）
 time                    ;; 関数実行時間を計測
 ```
@@ -3630,7 +3625,7 @@ zip/gzip zip/gunzip
 args/all args/get args/parse args/count
 ```
 
-##### ✅ db - データベース（Phase 1: 基本操作）
+##### ✅ db - データベース
 
 **概要**:
 - **統一API**: 複数データベースに対する共通インターフェース
@@ -3638,7 +3633,7 @@ args/all args/get args/parse args/count
 - **拡張可能**: PostgreSQL、MySQL、DuckDB等は外部パッケージとして提供予定
 - **セキュアAPI**: プレースホルダー + サニタイズ機能
 
-**Phase 1 機能** (✅ 実装済み):
+✅ 実装済み:
 ```qi
 db/connect              ;; データベースに接続
 db/query                ;; SQLクエリを実行（複数行）
@@ -4483,9 +4478,9 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 ```
 
 **実装優先度**:
-- ✅ Phase 1: pow, sqrt, round, floor, ceil, clamp（実装済み）
-- ✅ Phase 2: random系（実装済み）
-- ✅ Phase 3: statsモジュール（独立モジュールとして実装済み）
+- ✅ pow, sqrt, round, floor, ceil, clamp（実装済み）
+- ✅ random系（実装済み）
+- ✅ statsモジュール（独立モジュールとして実装済み）
 - Phase 4: 三角関数・対数（必要になったら）
 
 #### ✅ stats - 統計関数（実装済み）
