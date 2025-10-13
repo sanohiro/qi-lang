@@ -3569,32 +3569,128 @@ map-lines
 #### 専門モジュール
 
 ##### ✅ list - 高度なリスト操作
+
 ```qi
-list/frequencies list/sort-by list/count-by
-list/max-by list/min-by list/sum-by list/find-index
-list/partition list/partition-by list/group-by list/keep
-list/zip list/chunk list/zipmap
-list/interleave list/take-nth list/dedupe
-list/split-at list/drop-last
+;; このセクションの関数は list/ モジュールに属します
+
+;; list/frequencies - 要素の出現回数をカウント
+(list/frequencies [1 2 2 3 3 3])        ;; => {1 1, 2 2, 3 3}
+
+;; list/sort-by - キー関数でソート
+(list/sort-by count ["aaa" "b" "cc"])   ;; => ["b" "cc" "aaa"]
+
+;; list/count-by - キー関数でグループ化してカウント
+(list/count-by even? [1 2 3 4 5 6])     ;; => {false 3, true 3}
+
+;; list/max-by - キー関数で最大値を持つ要素
+(list/max-by count ["a" "bbb" "cc"])    ;; => "bbb"
+
+;; list/min-by - キー関数で最小値を持つ要素
+(list/min-by count ["a" "bbb" "cc"])    ;; => "a"
+
+;; list/sum-by - キー関数で変換して合計
+(list/sum-by count ["a" "bb" "ccc"])    ;; => 6
+
+;; list/find-index - 条件を満たす最初の要素のインデックス
+(list/find-index even? [1 3 4 5])       ;; => 2
+
+;; list/partition - n個ずつのチャンクに分割
+(list/partition 2 [1 2 3 4 5 6])        ;; => ((1 2) (3 4) (5 6))
+
+;; list/partition-by - 関数の戻り値が変わる位置で分割
+(list/partition-by even? [1 1 2 2 3 3]) ;; => ((1 1) (2 2) (3 3))
+
+;; list/group-by - キー関数でグループ化
+(list/group-by even? [1 2 3 4 5 6])     ;; => {false [1 3 5], true [2 4 6]}
+
+;; list/keep - nilでない結果のみ保持
+(list/keep (fn [x] (if (even? x) x nil)) [1 2 3 4])  ;; => (2 4)
+
+;; list/zipmap - 2つのリストからマップを作成
+(list/zipmap ["a" "b" "c"] [1 2 3])     ;; => {"a" 1, "b" 2, "c" 3}
+
+;; list/chunk - n個ずつのチャンクに分割（partitionのエイリアス）
+(list/chunk 3 [1 2 3 4 5 6 7])          ;; => ((1 2 3) (4 5 6) (7))
+
+;; list/interleave - 複数のリストを交互に結合
+(list/interleave [1 2 3] [:a :b :c])    ;; => (1 :a 2 :b 3 :c)
+
+;; list/take-nth - n番目ごとの要素を取得
+(list/take-nth 2 [0 1 2 3 4 5])         ;; => (0 2 4)
+
+;; list/dedupe - 連続する重複を削除
+(list/dedupe [1 1 2 2 2 3 3 1])         ;; => (1 2 3 1)
+
+;; list/split-at - 指定位置で分割
+(list/split-at 3 [1 2 3 4 5])           ;; => ([1 2 3] [4 5])
+
+;; list/drop-last - 最後のn要素を削除
+(list/drop-last 2 [1 2 3 4 5])          ;; => (1 2 3)
 ```
 
 ##### ✅ map - 高度なマップ操作
+
 ```qi
-map/select-keys
-map/assoc-in map/dissoc-in
-map/update-keys map/update-vals
+;; このセクションの関数は map/ モジュールに属します
+
+;; map/select-keys - 指定したキーのみ抽出
+(map/select-keys {"a" 1 "b" 2 "c" 3} ["a" "c"])  ;; => {"a" 1, "c" 3}
+
+;; map/assoc-in - ネストしたマップに値を設定
+(map/assoc-in {} ["a" "b" "c"] 42)               ;; => {"a" {"b" {"c" 42}}}
+
+;; map/dissoc-in - ネストしたマップから値を削除
+(map/dissoc-in {"a" {"b" {"c" 1}}} ["a" "b" "c"])  ;; => {"a" {"b" {}}}
+
+;; map/update-keys - 全てのキーに関数を適用
+(map/update-keys str/upper {"a" 1 "b" 2})        ;; => {"A" 1, "B" 2}
+
+;; map/update-vals - 全ての値に関数を適用
+(map/update-vals inc {"a" 1 "b" 2})              ;; => {"a" 2, "b" 3}
 ```
 
 ##### ✅ fn - 高階関数
+
 ```qi
-fn/complement fn/juxt fn/tap>
+;; このセクションの関数は fn/ モジュールに属します
+
+;; fn/complement - 述語関数の否定を返す
+(def not-even? (fn/complement even?))
+(not-even? 3)                                    ;; => true
+
+;; fn/juxt - 複数の関数を並列適用
+(def stats (fn/juxt min max sum))
+(stats [1 2 3 4 5])                              ;; => (1 5 15)
+
+;; fn/tap> - パイプラインで値を渡しながら副作用実行
+([1 2 3] |> (fn/tap> println) |> sum)            ;; => 6
 ```
 
 ##### ✅ set - 集合演算
+
 ```qi
-set/union set/intersect set/difference
-set/subset? set/superset? set/disjoint?
-set/symmetric-difference
+;; このセクションの関数は set/ モジュールに属します
+
+;; set/union - 和集合
+(set/union #{1 2 3} #{3 4 5})                    ;; => #{1 2 3 4 5}
+
+;; set/intersect - 積集合
+(set/intersect #{1 2 3} #{2 3 4})                ;; => #{2 3}
+
+;; set/difference - 差集合
+(set/difference #{1 2 3} #{2 3 4})               ;; => #{1}
+
+;; set/subset? - 部分集合か判定
+(set/subset? #{1 2} #{1 2 3})                    ;; => true
+
+;; set/superset? - 上位集合か判定
+(set/superset? #{1 2 3} #{1 2})                  ;; => true
+
+;; set/disjoint? - 互いに素か判定
+(set/disjoint? #{1 2} #{3 4})                    ;; => true
+
+;; set/symmetric-difference - 対称差
+(set/symmetric-difference #{1 2 3} #{2 3 4})     ;; => #{1 4}
 ```
 
 ##### ✅ math - 数学関数
