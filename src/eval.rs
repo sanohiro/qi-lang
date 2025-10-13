@@ -23,7 +23,11 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
 
     for i in 1..=len1 {
         for j in 1..=len2 {
-            let cost = if s1_chars[i - 1] == s2_chars[j - 1] { 0 } else { 1 };
+            let cost = if s1_chars[i - 1] == s2_chars[j - 1] {
+                0
+            } else {
+                1
+            };
             matrix[i][j] = (matrix[i - 1][j] + 1)
                 .min(matrix[i][j - 1] + 1)
                 .min(matrix[i - 1][j - 1] + cost);
@@ -51,7 +55,8 @@ fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize
     candidates.sort_by_key(|(_, dist)| *dist);
 
     // 上位のみ取得
-    candidates.into_iter()
+    candidates
+        .into_iter()
         .take(limit)
         .map(|(name, _)| name)
         .collect()
@@ -214,7 +219,10 @@ impl Evaluator {
                     if let Some(existing) = env.read().get(name) {
                         match existing {
                             Value::NativeFunc(nf) => {
-                                eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name]));
+                                eprintln!(
+                                    "{}",
+                                    fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name])
+                                );
                             }
                             Value::Function(_) | Value::Macro(_) => {
                                 eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
@@ -361,8 +369,7 @@ impl Evaluator {
                     env: env.read().clone(),
                     is_variadic: *is_variadic,
                 };
-                env.write()
-                    .set(name.clone(), Value::Macro(Arc::new(mac)));
+                env.write().set(name.clone(), Value::Macro(Arc::new(mac)));
                 Ok(Value::Symbol(name.clone()))
             }
 
@@ -370,9 +377,7 @@ impl Evaluator {
 
             Expr::Unquote(_) => Err(msg(MsgKey::UnquoteOutsideQuasiquote).to_string()),
 
-            Expr::UnquoteSplice(_) => {
-                Err(msg(MsgKey::UnquoteSpliceOutsideQuasiquote).to_string())
-            }
+            Expr::UnquoteSplice(_) => Err(msg(MsgKey::UnquoteSpliceOutsideQuasiquote).to_string()),
 
             // モジュールシステム
             Expr::Module(name) => {
@@ -382,7 +387,10 @@ impl Evaluator {
 
             Expr::Export(symbols) => {
                 // 現在のモジュール名を取得
-                let module_name = self.current_module.read().clone()
+                let module_name = self
+                    .current_module
+                    .read()
+                    .clone()
                     .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
 
                 // エクスポートする値を収集
@@ -405,70 +413,68 @@ impl Evaluator {
                 Ok(Value::Nil)
             }
 
-            Expr::Use { module, mode } => {
-                self.eval_use(module, mode, env)
-            }
+            Expr::Use { module, mode } => self.eval_use(module, mode, env),
 
             Expr::Call { func, args } => {
                 // 高階関数と論理演算子、quoteの特別処理
                 if let Expr::Symbol(name) = func.as_ref() {
                     match name.as_str() {
-                        "defn" => return self.eval_defn(args, env),
                         "_railway-pipe" => return self.eval_railway_pipe(args, env),
-                        "time" => return self.eval_time(args, env),
-                        "tap" => return self.eval_tap(args, env),
-                        "branch" => return self.eval_branch(args, env),
-                        "map" => return self.eval_map(args, env),
-                        "filter" => return self.eval_filter(args, env),
-                        "reduce" => return self.eval_reduce(args, env),
-                        "pmap" => return self.eval_pmap(args, env),
+                        "and" => return self.eval_and(args, env),
+                        "apply" => return self.eval_apply(args, env),
+                        "async/catch" => return self.eval_catch(args, env),
+                        "async/parallel-do" => return self.eval_parallel_do(args, env),
                         "async/pfilter" => return self.eval_pfilter(args, env),
                         "async/preduce" => return self.eval_preduce(args, env),
-                        "list/partition" => return self.eval_partition(args, env),
-                        "list/group-by" => return self.eval_group_by(args, env),
-                        "map-lines" => return self.eval_map_lines(args, env),
-                        "take-while" => return self.eval_take_while(args, env),
-                        "drop-while" => return self.eval_drop_while(args, env),
-                        "find" => return self.eval_find(args, env),
-                        "list/find-index" => return self.eval_find_index(args, env),
-                        "every?" => return self.eval_every(args, env),
-                        "some?" => return self.eval_some(args, env),
-                        "map/update-keys" => return self.eval_update_keys(args, env),
-                        "map/update-vals" => return self.eval_update_vals(args, env),
-                        "list/partition-by" => return self.eval_partition_by(args, env),
-                        "list/keep" => return self.eval_keep(args, env),
-                        "list/drop-last" => return self.eval_drop_last(args, env),
-                        "list/split-at" => return self.eval_split_at(args, env),
-                        "update" => return self.eval_update(args, env),
-                        "update-in" => return self.eval_update_in(args, env),
+                        "async/scope-go" => return self.eval_scope_go(args, env),
+                        "async/select!" => return self.eval_select(args, env),
+                        "async/then" => return self.eval_then(args, env),
+                        "async/with-scope" => return self.eval_with_scope(args, env),
+                        "branch" => return self.eval_branch(args, env),
                         "comp" => return self.eval_comp(args, env),
-                        "apply" => return self.eval_apply(args, env),
-                        "list/sort-by" => return self.eval_sort_by(args, env),
+                        "defn" => return self.eval_defn(args, env),
+                        "drop-while" => return self.eval_drop_while(args, env),
+                        "eval" => return self.eval_eval(args, env),
+                        "every?" => return self.eval_every(args, env),
+                        "filter" => return self.eval_filter(args, env),
+                        "find" => return self.eval_find(args, env),
+                        "go" => return self.eval_go(args, env),
                         "list/chunk" => return self.eval_chunk(args, env),
                         "list/count-by" => return self.eval_count_by(args, env),
+                        "list/drop-last" => return self.eval_drop_last(args, env),
+                        "list/find-index" => return self.eval_find_index(args, env),
+                        "list/group-by" => return self.eval_group_by(args, env),
+                        "list/keep" => return self.eval_keep(args, env),
                         "list/max-by" => return self.eval_max_by(args, env),
                         "list/min-by" => return self.eval_min_by(args, env),
+                        "list/partition-by" => return self.eval_partition_by(args, env),
+                        "list/partition" => return self.eval_partition(args, env),
+                        "list/sort-by" => return self.eval_sort_by(args, env),
+                        "list/split-at" => return self.eval_split_at(args, env),
                         "list/sum-by" => return self.eval_sum_by(args, env),
-                        "swap!" => return self.eval_swap(args, env),
-                        "eval" => return self.eval_eval(args, env),
-                        "go" => return self.eval_go(args, env),
-                        "pipeline/pipeline" => return self.eval_pipeline(args, env),
-                        "pipeline/map" => return self.eval_pipeline_map(args, env),
+                        "map-lines" => return self.eval_map_lines(args, env),
+                        "map" => return self.eval_map(args, env),
+                        "map/update-keys" => return self.eval_update_keys(args, env),
+                        "map/update-vals" => return self.eval_update_vals(args, env),
+                        "or" => return self.eval_or(args, env),
                         "pipeline/filter" => return self.eval_pipeline_filter(args, env),
-                        "async/then" => return self.eval_then(args, env),
-                        "async/catch" => return self.eval_catch(args, env),
-                        "async/select!" => return self.eval_select(args, env),
-                        "async/scope-go" => return self.eval_scope_go(args, env),
-                        "async/with-scope" => return self.eval_with_scope(args, env),
-                        "async/parallel-do" => return self.eval_parallel_do(args, env),
+                        "pipeline/map" => return self.eval_pipeline_map(args, env),
+                        "pipeline/pipeline" => return self.eval_pipeline(args, env),
+                        "pmap" => return self.eval_pmap(args, env),
+                        "quote" => return self.eval_quote(args),
+                        "reduce" => return self.eval_reduce(args, env),
+                        "some?" => return self.eval_some(args, env),
+                        "stream/filter" => return self.eval_stream_filter(args, env),
                         "stream/iterate" => return self.eval_iterate(args, env),
                         "stream/map" => return self.eval_stream_map(args, env),
-                        "stream/filter" => return self.eval_stream_filter(args, env),
-                        "test/run" => return self.eval_test_run(args, env),
+                        "swap!" => return self.eval_swap(args, env),
+                        "take-while" => return self.eval_take_while(args, env),
+                        "tap" => return self.eval_tap(args, env),
                         "test/assert-throws" => return self.eval_test_assert_throws(args, env),
-                        "and" => return self.eval_and(args, env),
-                        "or" => return self.eval_or(args, env),
-                        "quote" => return self.eval_quote(args),
+                        "test/run" => return self.eval_test_run(args, env),
+                        "time" => return self.eval_time(args, env),
+                        "update-in" => return self.eval_update_in(args, env),
+                        "update" => return self.eval_update(args, env),
                         _ => {}
                     }
                 }
@@ -525,7 +531,12 @@ impl Evaluator {
             let mut bindings = HashMap::new();
             let mut transforms = Vec::new();
 
-            if self.match_pattern_with_transforms(&arm.pattern, value, &mut bindings, &mut transforms)? {
+            if self.match_pattern_with_transforms(
+                &arm.pattern,
+                value,
+                &mut bindings,
+                &mut transforms,
+            )? {
                 // ガード条件のチェック
                 if let Some(guard) = &arm.guard {
                     let mut guard_env = Env::with_parent(env.clone());
@@ -548,7 +559,8 @@ impl Evaluator {
 
                 // 変換を適用して環境を更新
                 for (var, transform_expr, original_val) in transforms {
-                    let result = self.apply_transform(&transform_expr, &original_val, match_env_rc.clone())?;
+                    let result =
+                        self.apply_transform(&transform_expr, &original_val, match_env_rc.clone())?;
                     match_env_rc.write().set(var, result);
                 }
 
@@ -576,7 +588,9 @@ impl Evaluator {
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
                         if let Some(val) = map.get(key) {
-                            if !self.match_pattern_with_transforms(pat, val, bindings, transforms)? {
+                            if !self
+                                .match_pattern_with_transforms(pat, val, bindings, transforms)?
+                            {
                                 return Ok(false);
                             }
                         } else {
@@ -603,7 +617,12 @@ impl Evaluator {
         }
     }
 
-    fn apply_transform(&self, transform: &Expr, value: &Value, env: Arc<RwLock<Env>>) -> Result<Value, String> {
+    fn apply_transform(
+        &self,
+        transform: &Expr,
+        value: &Value,
+        env: Arc<RwLock<Env>>,
+    ) -> Result<Value, String> {
         // 変換式を評価して値に適用
         // transform が関数の場合: (transform value)
         // transform がシンボルの場合: (symbol value)
@@ -622,7 +641,9 @@ impl Evaluator {
             Pattern::Nil => Ok(matches!(value, Value::Nil)),
             Pattern::Bool(b) => Ok(matches!(value, Value::Bool(vb) if vb == b)),
             Pattern::Integer(n) => Ok(matches!(value, Value::Integer(vn) if vn == n)),
-            Pattern::Float(f) => Ok(matches!(value, Value::Float(vf) if (vf - f).abs() < f64::EPSILON)),
+            Pattern::Float(f) => {
+                Ok(matches!(value, Value::Float(vf) if (vf - f).abs() < f64::EPSILON))
+            }
             Pattern::String(s) => Ok(matches!(value, Value::String(vs) if vs == s)),
             Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if vk == k)),
             Pattern::Var(name) => {
@@ -663,7 +684,8 @@ impl Evaluator {
 
                 // restパターンがある場合は残りの要素を束縛
                 if let Some(rest_pattern) = rest {
-                    let rest_values: Vec<Value> = values.iter().skip(patterns.len()).cloned().collect();
+                    let rest_values: Vec<Value> =
+                        values.iter().skip(patterns.len()).cloned().collect();
                     self.match_pattern(rest_pattern, &Value::List(rest_values), bindings)?;
                 } else if patterns.len() != values.len() {
                     // restパターンがない場合は要素数が一致しなければマッチ失敗
@@ -754,7 +776,10 @@ impl Evaluator {
 
         // パラメータリストと本体を確認
         if params_idx >= args.len() {
-            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "parameter list"]));
+            return Err(fmt_msg(
+                MsgKey::NeedAtLeastNArgs,
+                &["defn", "parameter list"],
+            ));
         }
 
         // ドキュメントを保存
@@ -770,7 +795,9 @@ impl Evaluator {
                 for param_expr in params_exprs {
                     match param_expr {
                         Expr::Symbol(s) => param_names.push(s.clone()),
-                        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "symbols"])),
+                        _ => {
+                            return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "symbols"]))
+                        }
                     }
                 }
                 param_names
@@ -914,7 +941,8 @@ impl Evaluator {
     }
 
     fn eval_comp(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let funcs: Result<Vec<_>, _> = args.iter()
+        let funcs: Result<Vec<_>, _> = args
+            .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect();
         builtins::comp(&funcs?, self)
@@ -949,7 +977,11 @@ impl Evaluator {
     }
 
     /// test/assert-throws - 式が例外を投げることをアサート
-    fn eval_test_assert_throws(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+    fn eval_test_assert_throws(
+        &self,
+        args: &[Expr],
+        env: Arc<RwLock<Env>>,
+    ) -> Result<Value, String> {
         if args.len() != 1 {
             return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
         }
@@ -1063,7 +1095,9 @@ impl Evaluator {
                     if let crate::value::FnParam::Simple(name) = &f.params[0] {
                         new_env.set(name.clone(), Value::List(args));
                     } else {
-                        return Err("内部エラー: variadic引数がSimpleパターンではありません".to_string());
+                        return Err(
+                            "内部エラー: variadic引数がSimpleパターンではありません".to_string()
+                        );
                     }
                 } else {
                     if f.params.len() != args.len() {
@@ -1084,7 +1118,9 @@ impl Evaluator {
                     let duration = start.elapsed();
 
                     // 関数名を取得（環境から逆引き）
-                    let func_name = self.get_function_name(func).unwrap_or_else(|| "<anonymous>".to_string());
+                    let func_name = self
+                        .get_function_name(func)
+                        .unwrap_or_else(|| "<anonymous>".to_string());
                     builtins::profile::record_call(&func_name, duration);
 
                     result
@@ -1241,7 +1277,10 @@ impl Evaluator {
 
     fn eval_pipeline_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-filter", "3", ""]));
+            return Err(fmt_msg(
+                MsgKey::NeedNArgsDesc,
+                &["pipeline-filter", "3", ""],
+            ));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1494,7 +1533,6 @@ impl Evaluator {
             .collect::<Result<Vec<_>, _>>()?;
         builtins::list::native_split_at(&vals)
     }
-
 }
 
 // eval.rs内でのみ必要な特別な組み込み関数
@@ -1532,13 +1570,19 @@ fn native_print(args: &[Value]) -> Result<Value, String> {
 /// number? - 数値かどうか判定
 fn native_is_number(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "number?");
-    Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::Integer(_) | Value::Float(_)
+    )))
 }
 
 /// fn? - 関数かどうか判定
 fn native_is_fn(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "fn?");
-    Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::Function(_) | Value::NativeFunc(_)
+    )))
 }
 
 #[cfg(test)]
@@ -1580,7 +1624,10 @@ mod tests {
 
     #[test]
     fn test_nested() {
-        assert_eq!(eval_str("(+ (* 2 3) (- 10 5))").unwrap(), Value::Integer(11));
+        assert_eq!(
+            eval_str("(+ (* 2 3) (- 10 5))").unwrap(),
+            Value::Integer(11)
+        );
     }
 
     #[test]
@@ -1591,10 +1638,7 @@ mod tests {
 
     #[test]
     fn test_fn() {
-        assert_eq!(
-            eval_str("((fn [x] (+ x 1)) 5)").unwrap(),
-            Value::Integer(6)
-        );
+        assert_eq!(eval_str("((fn [x] (+ x 1)) 5)").unwrap(), Value::Integer(6));
     }
 
     #[test]
@@ -1667,7 +1711,12 @@ mod tests {
         // ...restパターンのテスト
         assert_eq!(
             eval_str("(match [1 2 3 4 5] [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)])
+            Value::List(vec![
+                Value::Integer(2),
+                Value::Integer(3),
+                Value::Integer(4),
+                Value::Integer(5)
+            ])
         );
         // 1要素の場合
         assert_eq!(
@@ -1729,10 +1778,7 @@ mod tests {
     #[test]
     fn test_pipe_with_args() {
         // 引数ありの関数: (10 |> (+ 5)) は (+ 5 10) = 15
-        assert_eq!(
-            eval_str("(10 |> (+ 5))").unwrap(),
-            Value::Integer(15)
-        );
+        assert_eq!(eval_str("(10 |> (+ 5))").unwrap(), Value::Integer(15));
     }
 
     #[test]
@@ -1749,7 +1795,11 @@ mod tests {
         // mapのテスト
         assert_eq!(
             eval_str("(map (fn [x] (* x 2)) [1 2 3])").unwrap(),
-            Value::List(vec![Value::Integer(2), Value::Integer(4), Value::Integer(6)])
+            Value::List(vec![
+                Value::Integer(2),
+                Value::Integer(4),
+                Value::Integer(6)
+            ])
         );
     }
 
@@ -1758,7 +1808,11 @@ mod tests {
         // filterのテスト
         assert_eq!(
             eval_str("(filter (fn [x] (> x 2)) [1 2 3 4 5])").unwrap(),
-            Value::List(vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)])
+            Value::List(vec![
+                Value::Integer(3),
+                Value::Integer(4),
+                Value::Integer(5)
+            ])
         );
     }
 
@@ -1781,7 +1835,11 @@ mod tests {
         // consのテスト
         assert_eq!(
             eval_str("(cons 1 (list 2 3))").unwrap(),
-            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)])
+            Value::List(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3)
+            ])
         );
         assert_eq!(
             eval_str("(cons 1 nil)").unwrap(),
@@ -1794,11 +1852,20 @@ mod tests {
         // conjのテスト
         assert_eq!(
             eval_str("(conj [1 2] 3 4)").unwrap(),
-            Value::Vector(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4)])
+            Value::Vector(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3),
+                Value::Integer(4)
+            ])
         );
         assert_eq!(
             eval_str("(conj (list 1 2) 3)").unwrap(),
-            Value::List(vec![Value::Integer(3), Value::Integer(1), Value::Integer(2)])
+            Value::List(vec![
+                Value::Integer(3),
+                Value::Integer(1),
+                Value::Integer(2)
+            ])
         );
     }
 
@@ -1864,7 +1931,11 @@ mod tests {
         // パイプラインと新しい組み込み関数の組み合わせ
         assert_eq!(
             eval_str("[1 2 3 4 5] |> (filter (fn [x] (> x 2))) |> (map (fn [x] (* x 2)))").unwrap(),
-            Value::List(vec![Value::Integer(6), Value::Integer(8), Value::Integer(10)])
+            Value::List(vec![
+                Value::Integer(6),
+                Value::Integer(8),
+                Value::Integer(10)
+            ])
         );
     }
 
@@ -1907,17 +1978,22 @@ mod tests {
             eval_str("(quote x)").unwrap(),
             Value::Symbol("x".to_string())
         );
-        assert_eq!(
-            eval_str("'x").unwrap(),
-            Value::Symbol("x".to_string())
-        );
+        assert_eq!(eval_str("'x").unwrap(), Value::Symbol("x".to_string()));
         assert_eq!(
             eval_str("'(1 2 3)").unwrap(),
-            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)])
+            Value::List(vec![
+                Value::Integer(1),
+                Value::Integer(2),
+                Value::Integer(3)
+            ])
         );
         assert_eq!(
             eval_str("'(+ 1 2)").unwrap(),
-            Value::List(vec![Value::Symbol("+".to_string()), Value::Integer(1), Value::Integer(2)])
+            Value::List(vec![
+                Value::Symbol("+".to_string()),
+                Value::Integer(1),
+                Value::Integer(2)
+            ])
         );
     }
 
@@ -2023,7 +2099,11 @@ mod tests {
     fn test_reverse() {
         assert_eq!(
             eval_str("(reverse [1 2 3])").unwrap(),
-            Value::Vector(vec![Value::Integer(3), Value::Integer(2), Value::Integer(1)])
+            Value::Vector(vec![
+                Value::Integer(3),
+                Value::Integer(2),
+                Value::Integer(1)
+            ])
         );
         assert_eq!(
             eval_str("(reverse '(a b c))").unwrap(),
@@ -2088,7 +2168,7 @@ mod tests {
         // tapが元の値をそのまま返すことを確認
         assert_eq!(
             eval_str("(def x 42) (x |> (tap (fn [y] (+ y 1))))").unwrap(),
-            Value::Integer(42)  // 副作用の結果ではなく元の値
+            Value::Integer(42) // 副作用の結果ではなく元の値
         );
 
         // fn/tap>（高階関数版）のテスト
@@ -2165,18 +2245,26 @@ mod tests {
         let test_path = "/tmp/test_alias.qi";
 
         // モジュールファイルを作成
-        fs::write(module_path, r#"
+        fs::write(
+            module_path,
+            r#"
 (module test_alias_module)
 (def double (fn [x] (* x 2)))
 (def triple (fn [x] (* x 3)))
 (export double triple)
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // テストファイルを作成
-        fs::write(test_path, r#"
+        fs::write(
+            test_path,
+            r#"
 (use test_alias_module :as tm)
 (+ (tm/double 5) (tm/triple 3))
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // 評価
         let content = fs::read_to_string(test_path).unwrap();
@@ -2271,26 +2359,34 @@ impl Evaluator {
             if let Some(home) = dirs::home_dir() {
                 let packages_dir = home.join(".qi").join("packages").join(name);
 
-            // バージョンディレクトリを探す（最新版を使用）
-            if let Ok(entries) = std::fs::read_dir(&packages_dir) {
-                let mut versions: Vec<String> = entries
-                    .filter_map(|e| e.ok())
-                    .filter(|e| e.path().is_dir())
-                    .filter_map(|e| e.file_name().into_string().ok())
-                    .collect();
+                // バージョンディレクトリを探す（最新版を使用）
+                if let Ok(entries) = std::fs::read_dir(&packages_dir) {
+                    let mut versions: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .filter_map(|e| e.file_name().into_string().ok())
+                        .collect();
 
-                // セマンティックバージョニングでソート（簡易版）
-                versions.sort_by(|a, b| {
-                    let a_parts: Vec<u32> = a.split('.').filter_map(|s| s.parse().ok()).collect();
-                    let b_parts: Vec<u32> = b.split('.').filter_map(|s| s.parse().ok()).collect();
-                    b_parts.cmp(&a_parts) // 降順（新しい順）
-                });
+                    // セマンティックバージョニングでソート（簡易版）
+                    versions.sort_by(|a, b| {
+                        let a_parts: Vec<u32> =
+                            a.split('.').filter_map(|s| s.parse().ok()).collect();
+                        let b_parts: Vec<u32> =
+                            b.split('.').filter_map(|s| s.parse().ok()).collect();
+                        b_parts.cmp(&a_parts) // 降順（新しい順）
+                    });
 
-                // 最新バージョンのmod.qiを追加
-                if let Some(latest) = versions.first() {
-                    paths.push(packages_dir.join(latest).join("mod.qi").to_string_lossy().to_string());
+                    // 最新バージョンのmod.qiを追加
+                    if let Some(latest) = versions.first() {
+                        paths.push(
+                            packages_dir
+                                .join(latest)
+                                .join("mod.qi")
+                                .to_string_lossy()
+                                .to_string(),
+                        );
+                    }
                 }
-            }
             }
         }
 
@@ -2314,7 +2410,10 @@ impl Evaluator {
         {
             let loading = self.loading_modules.read();
             if loading.contains(&name.to_string()) {
-                return Err(fmt_msg(MsgKey::CircularDependency, &[&loading.join(" -> ")]));
+                return Err(fmt_msg(
+                    MsgKey::CircularDependency,
+                    &[&loading.join(" -> ")],
+                ));
             }
         }
 
@@ -2334,27 +2433,33 @@ impl Evaluator {
             }
         }
 
-        let content = content.ok_or_else(|| {
-            fmt_msg(MsgKey::ModuleNotFound, &[name])
-        })?;
+        let content = content.ok_or_else(|| fmt_msg(MsgKey::ModuleNotFound, &[name]))?;
 
         // デバッグ: ロードしたパスを表示（開発時のみ）
         if std::env::var("QI_DEBUG").is_ok() {
-            eprintln!("[DEBUG] Loaded module '{}' from: {}", name, found_path.unwrap_or_default());
+            eprintln!(
+                "[DEBUG] Loaded module '{}' from: {}",
+                name,
+                found_path.unwrap_or_default()
+            );
         }
 
         // パースして評価
         let mut parser = crate::parser::Parser::new(&content)
             .map_err(|e| fmt_msg(MsgKey::ModuleParserInitError, &[name, &e]))?;
 
-        let exprs = parser.parse_all()
+        let exprs = parser
+            .parse_all()
             .map_err(|e| fmt_msg(MsgKey::ModuleParseError, &[name, &e]))?;
 
         // 新しい環境で評価
         let module_env = Arc::new(RwLock::new(Env::new()));
 
         // グローバル環境から組み込み関数をコピー
-        let bindings: Vec<_> = self.global_env.read().bindings()
+        let bindings: Vec<_> = self
+            .global_env
+            .read()
+            .bindings()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         for (key, value) in bindings {
@@ -2370,7 +2475,10 @@ impl Evaluator {
         self.loading_modules.write().pop();
 
         // モジュールが登録されているか確認
-        self.modules.read().get(name).cloned()
+        self.modules
+            .read()
+            .get(name)
+            .cloned()
             .ok_or_else(|| fmt_msg(MsgKey::ModuleMustExport, &[name]))
     }
 
@@ -2383,10 +2491,12 @@ impl Evaluator {
                 FStringPart::Text(text) => result.push_str(text),
                 FStringPart::Code(code) => {
                     // コードをパースして評価
-                    let mut parser = crate::parser::Parser::new(code)
-                        .map_err(|e| crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e]))?;
-                    let expr = parser.parse()
-                        .map_err(|e| crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e]))?;
+                    let mut parser = crate::parser::Parser::new(code).map_err(|e| {
+                        crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e])
+                    })?;
+                    let expr = parser.parse().map_err(|e| {
+                        crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e])
+                    })?;
                     let value = self.eval_with_env(&expr, env.clone())?;
 
                     // 値を文字列に変換
@@ -2399,21 +2509,16 @@ impl Evaluator {
                         Value::Keyword(k) => format!(":{}", k),
                         Value::Symbol(s) => s,
                         Value::List(items) => {
-                            let strs: Vec<_> = items.iter()
-                                .map(|v| format!("{}", v))
-                                .collect();
+                            let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
                             format!("({})", strs.join(" "))
                         }
                         Value::Vector(items) => {
-                            let strs: Vec<_> = items.iter()
-                                .map(|v| format!("{}", v))
-                                .collect();
+                            let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
                             format!("[{}]", strs.join(" "))
                         }
                         Value::Map(m) => {
-                            let strs: Vec<_> = m.iter()
-                                .map(|(k, v)| format!(":{} {}", k, v))
-                                .collect();
+                            let strs: Vec<_> =
+                                m.iter().map(|(k, v)| format!(":{} {}", k, v)).collect();
                             format!("{{{}}}", strs.join(" "))
                         }
                         Value::Function(_) => "<function>".to_string(),
@@ -2475,7 +2580,7 @@ impl Evaluator {
                         if bindings.len() != new_values.len() {
                             return Err(fmt_msg(
                                 MsgKey::RecurArgCountMismatch,
-                                &[&bindings.len().to_string(), &new_values.len().to_string()]
+                                &[&bindings.len().to_string(), &new_values.len().to_string()],
                             ));
                         }
 
@@ -2495,16 +2600,22 @@ impl Evaluator {
     fn find_recur(expr: &Expr) -> Option<&Vec<Expr>> {
         match expr {
             Expr::Recur(args) => Some(args),
-            Expr::If { then, otherwise, .. } => {
-                Self::find_recur(then).or_else(|| otherwise.as_ref().and_then(|e| Self::find_recur(e)))
-            }
+            Expr::If {
+                then, otherwise, ..
+            } => Self::find_recur(then)
+                .or_else(|| otherwise.as_ref().and_then(|e| Self::find_recur(e))),
             Expr::Do(exprs) => exprs.iter().find_map(Self::find_recur),
             _ => None,
         }
     }
 
     /// quasiquoteを評価
-    fn eval_quasiquote(&self, expr: &Expr, env: Arc<RwLock<Env>>, depth: usize) -> Result<Value, String> {
+    fn eval_quasiquote(
+        &self,
+        expr: &Expr,
+        env: Arc<RwLock<Env>>,
+        depth: usize,
+    ) -> Result<Value, String> {
         match expr {
             Expr::Unquote(e) if depth == 0 => {
                 // depth 0のunquoteは評価
@@ -2530,7 +2641,11 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
+                                _ => {
+                                    return Err(
+                                        msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()
+                                    )
+                                }
                             }
                         } else {
                             let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
@@ -2563,7 +2678,11 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
+                                _ => {
+                                    return Err(
+                                        msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()
+                                    )
+                                }
                             }
                         } else {
                             let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
@@ -2577,7 +2696,11 @@ impl Evaluator {
                 Ok(Value::List(result))
             }
             // 特殊形式もリスト形式に変換
-            Expr::If { test, then, otherwise } => {
+            Expr::If {
+                test,
+                then,
+                otherwise,
+            } => {
                 let mut result = vec![Value::Symbol("if".to_string())];
                 result.push(self.eval_quasiquote(test, env.clone(), depth)?);
                 result.push(self.eval_quasiquote(then, env.clone(), depth)?);
@@ -2597,7 +2720,11 @@ impl Evaluator {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
                                 }
-                                _ => return Err(msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()),
+                                _ => {
+                                    return Err(
+                                        msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()
+                                    )
+                                }
                             }
                         } else {
                             result.push(self.eval_quasiquote(us, env.clone(), depth - 1)?);
@@ -2664,7 +2791,11 @@ impl Evaluator {
                 }
                 Ok(Value::List(items))
             }
-            Expr::If { test, then, otherwise } => {
+            Expr::If {
+                test,
+                then,
+                otherwise,
+            } => {
                 let mut items = vec![Value::Symbol("if".to_string())];
                 items.push(self.expr_to_value(test)?);
                 items.push(self.expr_to_value(then)?);
@@ -2680,13 +2811,11 @@ impl Evaluator {
                 }
                 Ok(Value::List(items))
             }
-            Expr::Def(name, value) => {
-                Ok(Value::List(vec![
-                    Value::Symbol("def".to_string()),
-                    Value::Symbol(name.clone()),
-                    self.expr_to_value(value)?,
-                ]))
-            }
+            Expr::Def(name, value) => Ok(Value::List(vec![
+                Value::Symbol("def".to_string()),
+                Value::Symbol(name.clone()),
+                self.expr_to_value(value)?,
+            ])),
             Expr::Let { bindings, body } => {
                 let mut items = vec![Value::Symbol("let".to_string())];
                 let mut binding_vec = Vec::new();
@@ -2698,17 +2827,24 @@ impl Evaluator {
                 items.push(self.expr_to_value(body)?);
                 Ok(Value::List(items))
             }
-            Expr::Fn { params, body, is_variadic } => {
+            Expr::Fn {
+                params,
+                body,
+                is_variadic,
+            } => {
                 let mut items = vec![Value::Symbol("fn".to_string())];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
-                    vec![Value::Symbol("&".to_string()), self.fn_param_to_value(&params[0])]
+                    vec![
+                        Value::Symbol("&".to_string()),
+                        self.fn_param_to_value(&params[0]),
+                    ]
                 } else if *is_variadic {
-                    let mut v: Vec<Value> = params[..params.len()-1]
+                    let mut v: Vec<Value> = params[..params.len() - 1]
                         .iter()
                         .map(|p| self.fn_param_to_value(p))
                         .collect();
                     v.push(Value::Symbol("&".to_string()));
-                    v.push(self.fn_param_to_value(&params[params.len()-1]));
+                    v.push(self.fn_param_to_value(&params[params.len() - 1]));
                     v
                 } else {
                     params.iter().map(|p| self.fn_param_to_value(p)).collect()
@@ -2717,36 +2853,42 @@ impl Evaluator {
                 items.push(self.expr_to_value(body)?);
                 Ok(Value::List(items))
             }
-            Expr::Quasiquote(e) => {
-                Ok(Value::List(vec![
-                    Value::Symbol("quasiquote".to_string()),
-                    self.expr_to_value(e)?,
-                ]))
-            }
-            Expr::Unquote(e) => {
-                Ok(Value::List(vec![
-                    Value::Symbol("unquote".to_string()),
-                    self.expr_to_value(e)?,
-                ]))
-            }
-            Expr::UnquoteSplice(e) => {
-                Ok(Value::List(vec![
-                    Value::Symbol("unquote-splice".to_string()),
-                    self.expr_to_value(e)?,
-                ]))
-            }
+            Expr::Quasiquote(e) => Ok(Value::List(vec![
+                Value::Symbol("quasiquote".to_string()),
+                self.expr_to_value(e)?,
+            ])),
+            Expr::Unquote(e) => Ok(Value::List(vec![
+                Value::Symbol("unquote".to_string()),
+                self.expr_to_value(e)?,
+            ])),
+            Expr::UnquoteSplice(e) => Ok(Value::List(vec![
+                Value::Symbol("unquote-splice".to_string()),
+                self.expr_to_value(e)?,
+            ])),
             // モジュール関連とtry、deferはquoteできない
-            Expr::Module(_) | Expr::Export(_) | Expr::Use { .. } | Expr::Try(_) | Expr::Defer(_) | Expr::Loop { .. } | Expr::Recur(_) | Expr::Match { .. } | Expr::Mac { .. } => {
-                Err(fmt_msg(MsgKey::CannotQuote, &["module/export/use/try/defer/loop/recur/match/mac"]))
-            }
-            Expr::FString(_) => {
-                Err(msg(MsgKey::FStringCannotBeQuoted).to_string())
-            }
+            Expr::Module(_)
+            | Expr::Export(_)
+            | Expr::Use { .. }
+            | Expr::Try(_)
+            | Expr::Defer(_)
+            | Expr::Loop { .. }
+            | Expr::Recur(_)
+            | Expr::Match { .. }
+            | Expr::Mac { .. } => Err(fmt_msg(
+                MsgKey::CannotQuote,
+                &["module/export/use/try/defer/loop/recur/match/mac"],
+            )),
+            Expr::FString(_) => Err(msg(MsgKey::FStringCannotBeQuoted).to_string()),
         }
     }
 
     /// マクロを展開
-    fn expand_macro(&self, mac: &Macro, args: &[Expr], _env: Arc<RwLock<Env>>) -> Result<Expr, String> {
+    fn expand_macro(
+        &self,
+        mac: &Macro,
+        args: &[Expr],
+        _env: Arc<RwLock<Env>>,
+    ) -> Result<Expr, String> {
         // マクロ用の環境を作成
         let parent_env = Arc::new(RwLock::new(mac.env.clone()));
         let mut new_env = Env::with_parent(parent_env);
@@ -2763,7 +2905,7 @@ impl Evaluator {
             if args.len() < fixed_count {
                 return Err(fmt_msg(
                     MsgKey::MacVariadicArgCountMismatch,
-                    &[&mac.name, &fixed_count.to_string(), &args.len().to_string()]
+                    &[&mac.name, &fixed_count.to_string(), &args.len().to_string()],
                 ));
             }
 
@@ -2784,7 +2926,11 @@ impl Evaluator {
             if mac.params.len() != args.len() {
                 return Err(fmt_msg(
                     MsgKey::MacArgCountMismatch,
-                    &[&mac.name, &mac.params.len().to_string(), &args.len().to_string()]
+                    &[
+                        &mac.name,
+                        &mac.params.len().to_string(),
+                        &args.len().to_string(),
+                    ],
                 ));
             }
             for (param, arg) in mac.params.iter().zip(args.iter()) {
@@ -2812,9 +2958,7 @@ impl Evaluator {
             Value::String(s) => Ok(Expr::String(s.clone())),
             Value::Symbol(s) => Ok(Expr::Symbol(s.clone())),
             Value::Keyword(k) => Ok(Expr::Keyword(k.clone())),
-            Value::List(items) if items.is_empty() => {
-                Ok(Expr::List(vec![]))
-            }
+            Value::List(items) if items.is_empty() => Ok(Expr::List(vec![])),
             Value::List(items) => {
                 // 先頭がシンボルの場合、特殊形式かチェック
                 if let Some(Value::Symbol(s)) = items.first() {
@@ -2831,7 +2975,8 @@ impl Evaluator {
                             });
                         }
                         "do" => {
-                            let exprs: Result<Vec<_>, _> = items[1..].iter().map(|v| self.value_to_expr(v)).collect();
+                            let exprs: Result<Vec<_>, _> =
+                                items[1..].iter().map(|v| self.value_to_expr(v)).collect();
                             return Ok(Expr::Do(exprs?));
                         }
                         "def" if items.len() == 3 || items.len() == 4 => {
@@ -2841,19 +2986,29 @@ impl Evaluator {
                                     // items[2]がドキュメント文字列
                                     if let Value::String(doc) = &items[2] {
                                         let doc_key = format!("__doc__{}", name);
-                                        self.global_env.write().set(doc_key, Value::String(doc.clone()));
+                                        self.global_env
+                                            .write()
+                                            .set(doc_key, Value::String(doc.clone()));
                                     } else if let Value::Map(doc_map) = &items[2] {
                                         // 構造化ドキュメント（マップ）
                                         if let Some(Value::String(desc)) = doc_map.get("desc") {
                                             let doc_key = format!("__doc__{}", name);
-                                            self.global_env.write().set(doc_key, Value::String(desc.clone()));
+                                            self.global_env
+                                                .write()
+                                                .set(doc_key, Value::String(desc.clone()));
                                         }
                                     }
                                     // 値はitems[3]
-                                    return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[3])?)));
+                                    return Ok(Expr::Def(
+                                        name.clone(),
+                                        Box::new(self.value_to_expr(&items[3])?),
+                                    ));
                                 } else {
                                     // 3要素の場合: (def name value)
-                                    return Ok(Expr::Def(name.clone(), Box::new(self.value_to_expr(&items[2])?)));
+                                    return Ok(Expr::Def(
+                                        name.clone(),
+                                        Box::new(self.value_to_expr(&items[2])?),
+                                    ));
                                 }
                             }
                         }
@@ -2873,17 +3028,18 @@ impl Evaluator {
                                     } else if let Value::Map(doc_map) = &items[2] {
                                         // 構造化ドキュメント（マップ）もサポート
                                         // 後で実装予定。今は文字列のみ
-                                        doc_string = doc_map.get("desc")
-                                            .and_then(|v| match v {
-                                                Value::String(s) => Some(s.clone()),
-                                                _ => None,
-                                            });
+                                        doc_string = doc_map.get("desc").and_then(|v| match v {
+                                            Value::String(s) => Some(s.clone()),
+                                            _ => None,
+                                        });
                                     }
                                     params_idx = 3;
                                 }
 
                                 // パラメータリストと本体を確認
-                                if params_idx < items.len() && matches!(&items[params_idx], Value::Vector(_)) {
+                                if params_idx < items.len()
+                                    && matches!(&items[params_idx], Value::Vector(_))
+                                {
                                     // ドキュメント文字列を保存
                                     if let Some(doc) = doc_string {
                                         let doc_key = format!("__doc__{}", name);
@@ -2894,7 +3050,8 @@ impl Evaluator {
                                     let body: Vec<Value> = items[params_idx + 1..].to_vec();
 
                                     // (fn [params] body...) を構築
-                                    let mut fn_items = vec![Value::Symbol("fn".to_string()), params];
+                                    let mut fn_items =
+                                        vec![Value::Symbol("fn".to_string()), params];
                                     fn_items.extend(body);
                                     let fn_value = Value::List(fn_items);
 
@@ -2916,7 +3073,8 @@ impl Evaluator {
                     }
                 }
                 // 通常のリストまたは関数呼び出し
-                let exprs: Result<Vec<_>, _> = items.iter().map(|v| self.value_to_expr(v)).collect();
+                let exprs: Result<Vec<_>, _> =
+                    items.iter().map(|v| self.value_to_expr(v)).collect();
                 let exprs = exprs?;
 
                 // 先頭がシンボルの場合はCallに変換（関数呼び出しとして扱う）
@@ -2936,7 +3094,8 @@ impl Evaluator {
                 }
             }
             Value::Vector(items) => {
-                let exprs: Result<Vec<_>, _> = items.iter().map(|v| self.value_to_expr(v)).collect();
+                let exprs: Result<Vec<_>, _> =
+                    items.iter().map(|v| self.value_to_expr(v)).collect();
                 Ok(Expr::Vector(exprs?))
             }
             _ => Err(msg(MsgKey::ValueCannotBeConverted).to_string()),

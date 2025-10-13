@@ -1061,13 +1061,14 @@ Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流�
 
 Qiは**2層モジュール設計**を採用しています：
 
-**Core（88個）** - グローバル名前空間、自動インポート
-- 特殊形式・演算子（11個）: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`
-- リスト操作（29個）: `first`, `rest`, `last`, `nth`, `take`, `drop`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every`, `some`, etc.
+**Core（110個）** - グローバル名前空間、自動インポート
+- 特殊形式・演算子（12個）: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`, `~>`
+- リスト操作（27個）: `first`, `rest`, `last`, `nth`, `len`, `count`, `take`, `drop`, `cons`, `conj`, `concat`, `flatten`, `range`, `reverse`, `sort`, `distinct`, `zip`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every?`, `some?`, `take-while`, `drop-while`
+- 高階関数（6個）: `identity`, `comp`, `partial`, `apply`, `constantly`, `branch`
 - マップ操作（9個）: `get`, `keys`, `vals`, `assoc`, `dissoc`, `merge`, `get-in`, `update-in`, `update`
 - 数値・比較（17個）: `+`, `-`, `*`, `/`, `%`, `inc`, `dec`, `abs`, `min`, `max`, `sum`, `=`, `!=`, `<`, `>`, `<=`, `>=`
 - 文字列（3個）: `str`, `split`, `join`
-- 述語・型判定（22個）: `nil?`, `list?`, `vector?`, `map?`, `string?`, `integer?`, `float?`, `number?`, etc.
+- 述語・型判定（22個）: `nil?`, `list?`, `vector?`, `map?`, `string?`, `integer?`, `float?`, `number?`, `keyword?`, `function?`, `atom?`, `coll?`, `sequential?`, `empty?`, `some?`, `true?`, `false?`, `even?`, `odd?`, `positive?`, `negative?`, `zero?`
 - 並行処理（5個）: `go`, `chan`, `send!`, `recv!`, `close!`
 - 論理・I/O（4個）: `not`, `print`, `println`, `error` (※ `and`, `or`は特殊形式)
 - 状態管理（4個）: `atom`, `deref`, `swap!`, `reset!`
@@ -1075,6 +1076,7 @@ Qiは**2層モジュール設計**を採用しています：
 - 型変換（3個）: `to-int`, `to-float`, `to-string`
 - 日時（3個）: `now`, `timestamp`, `sleep`
 - デバッグ（2個）: `time`, `inspect`
+- その他（1個）: `map-lines`
 
 **専門モジュール** - 明示的インポートまたは `module/function` 形式で使用
 - **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
@@ -3066,39 +3068,35 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 ### 標準モジュール
 
-#### ✅ core（自動インポート・86個）
+#### ✅ core（自動インポート・110個）
 Coreモジュールは自動的にグローバル名前空間にインポートされます。
 
 ```qi
-;; 特殊形式・演算子（11個）
+;; 特殊形式・演算子（12個）
 def fn let do if match try defer
-|> ||> |>?
+|> ||> |>? ~>
 
-;; リスト操作（29個）
-first rest last nth len count
-take drop cons conj concat flatten range reverse
-map filter reduce pmap tap
-find every some take-while drop-while
-sort distinct
-identity comp partial apply constantly
+;; リスト操作（27個）
+first rest last nth len count take drop cons conj concat
+flatten range reverse sort distinct zip map filter reduce
+pmap tap find every? some? take-while drop-while
+
+;; 高階関数（6個）
+identity comp partial apply constantly branch
 
 ;; マップ操作（9個）
-get keys vals assoc dissoc merge
-get-in update-in update
+get keys vals assoc dissoc merge get-in update-in update
 
 ;; 数値・比較（17個）
-+ - * / % inc dec abs min max sum
-= != < > <= >=
++ - * / % inc dec abs min max sum = != < > <= >=
 
 ;; 文字列（3個）
 str split join
 
 ;; 述語・型判定（22個）
-nil? list? vector? map? string?
-integer? float? number? keyword?
-function? atom? coll? sequential?
-empty? some? true? false?
-even? odd? positive? negative? zero?
+nil? list? vector? map? string? integer? float? number?
+keyword? function? atom? coll? sequential? empty? some?
+true? false? even? odd? positive? negative? zero?
 
 ;; 並行処理（5個）
 go chan send! recv! close!
@@ -3118,6 +3116,12 @@ to-int to-float to-string
 
 ;; 日時（3個）
 now timestamp sleep
+
+;; デバッグ（2個）
+time inspect
+
+;; その他（1個）
+map-lines
 ```
 
 #### 専門モジュール
