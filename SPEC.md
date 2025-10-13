@@ -1118,93 +1118,195 @@ Qiは**2層モジュール設計**を採用しています：
 ### リスト操作
 
 #### 基本操作（✅ 実装済み）
+
 ```qi
-;; アクセス
-first rest last         ;; 最初、残り、最後
-nth                     ;; n番目の要素取得
-take drop               ;; 部分取得
-len count empty?        ;; 長さ、空チェック（count は len のエイリアス）
+;; === アクセス ===
 
-;; 追加・結合
-cons conj               ;; 要素追加
-concat                  ;; リスト連結
-flatten                 ;; 平坦化（全階層）
+;; first - 最初の要素を返す
+(first [10 20 30])              ;; => 10
 
-;; 生成・変換
-range                   ;; (range 10) => (0 1 2 ... 9)
-reverse                 ;; 反転
+;; rest - 最初以外の要素を返す
+(rest [10 20 30])               ;; => (20 30)
+
+;; last - 最後の要素を返す
+(last [10 20 30])               ;; => 30
+
+;; nth - n番目の要素を取得（0から開始）
+(nth 1 [10 20 30])              ;; => 20
+
+;; take - 最初のn個を取得
+(take 2 [10 20 30 40])          ;; => (10 20)
+
+;; drop - 最初のn個をスキップ
+(drop 2 [10 20 30 40])          ;; => (30 40)
+
+;; === サイズ・状態 ===
+
+;; len - 要素数を返す
+(len [10 20 30])                ;; => 3
+
+;; count - 要素数を返す（lenのエイリアス）
+(count [10 20 30])              ;; => 3
+
+;; empty? - 空かどうかを判定
+(empty? [])                     ;; => true
+(empty? [1])                    ;; => false
+
+;; === 追加・結合 ===
+
+;; cons - 先頭に要素を追加
+(cons 0 [10 20 30])             ;; => (0 10 20 30)
+
+;; conj - 末尾に要素を追加
+(conj [10 20 30] 40)            ;; => (10 20 30 40)
+
+;; concat - リストを連結
+(concat [10 20] [30 40])        ;; => (10 20 30 40)
+
+;; flatten - ネストを平坦化
+(flatten [[1 2] [3 [4 5]]])     ;; => (1 2 3 4 5)
+
+;; === 生成・変換 ===
+
+;; range - 数値の範囲を生成
+(range 5)                       ;; => (0 1 2 3 4)
+(range 2 5)                     ;; => (2 3 4)
+
+;; reverse - 順序を反転
+(reverse [10 20 30])            ;; => (30 20 10)
 ```
 
 #### 高階関数（✅ 実装済み）
+
 ```qi
-map filter reduce       ;; 基本の高階関数
-pmap                    ;; 並列map（現在はシングルスレッド実装）
-tap                     ;; 副作用タップ（値を返しつつ副作用実行）
+;; === 基本高階関数 ===
+
+;; map - 各要素に関数を適用
+(map inc [1 2 3])                ;; => (2 3 4)
+(map str [1 2 3])                ;; => ("1" "2" "3")
+
+;; filter - 条件を満たす要素のみ抽出
+(filter even? [1 2 3 4 5])       ;; => (2 4)
+(filter (fn [x] (> x 10)) [5 15 3 20])  ;; => (15 20)
+
+;; reduce - 畳み込み（累積計算）
+(reduce + 0 [1 2 3 4])           ;; => 10
+(reduce * 1 [2 3 4])             ;; => 24
+
+;; pmap - 並列map
+(pmap (fn [x] (* x 2)) [1 2 3])  ;; => (2 4 6)
+
+;; tap - 副作用タップ（値を返しつつ副作用実行）
+(tap println [1 2 3])            ;; [1 2 3]を出力して、そのまま返す
 ```
 
-**tapの使用例**:
+**使用例: パイプラインでのデバッグ**
+
 ```qi
-;; パイプライン内でのデバッグ
+;; パイプライン内でデータの流れを観察
 ([1 2 3]
  |> (map inc)
  |> (tap println)       ;; (2 3 4)を出力して、そのまま次に渡す
  |> sum)                ;; => 9
 
-;; データの流れを観察
+;; マップデータの観察
 (def data {:name "Alice" :age 30})
 (data
- |> (tap println)       ;; Map({"name": String("Alice"), "age": Integer(30)})
- |> keys)               ;; => (:name :age)
+ |> (tap inspect)       ;; データを整形表示して次に渡す
+ |> keys)               ;; => ("name" "age")
 ```
 
 #### コレクション検索・述語（✅ 実装済み）
+
 ```qi
-find                    ;; 条件を満たす最初の要素: (find (fn [x] (> x 5)) [1 7 3]) => 7
-list/find-index              ;; 条件を満たす最初のインデックス: (list/find-index (fn [x] (> x 5)) [1 7 3]) => 1
-every?                  ;; 全要素が条件を満たすか: (every? (fn [x] (> x 0)) [1 2 3]) => true
-some?                   ;; いずれかが条件を満たすか: (some? (fn [x] (> x 5)) [1 7 3]) => true
+;; === 検索 ===
+
+;; find - 条件を満たす最初の要素を返す
+(find (fn [x] (> x 5)) [1 7 3])     ;; => 7
+(find even? [1 3 4 5])              ;; => 4
+
+;; list/find-index - 条件を満たす最初のインデックスを返す
+(list/find-index (fn [x] (> x 5)) [1 7 3])  ;; => 1
+(list/find-index even? [1 3 4 5])           ;; => 2
+
+;; === 述語（全体チェック） ===
+
+;; every? - 全要素が条件を満たすか
+(every? (fn [x] (> x 0)) [1 2 3])   ;; => true
+(every? even? [2 4 6])              ;; => true
+(every? even? [2 3 4])              ;; => false
+
+;; some? - いずれかの要素が条件を満たすか
+(some? (fn [x] (> x 5)) [1 7 3])    ;; => true
+(some? even? [1 3 5])               ;; => false
 ```
 
-**使用例**:
+**使用例: ユーザー検索**
+
 ```qi
-;; ユーザーを探す
 (def users [{:name "Alice" :age 30} {:name "Bob" :age 25}])
-(find (fn [u] (= (get u :name) "Bob")) users)  ;; {:name "Bob" :age 25}
+
+;; ユーザーを名前で探す
+(find (fn [u] (= (get u :name) "Bob")) users)
+;; => {:name "Bob" :age 25}
 
 ;; 全員成人か確認
-(every? (fn [u] (>= (get u :age) 20)) users)  ;; true
+(every? (fn [u] (>= (get u :age) 20)) users)
+;; => true
 
-;; データパイプラインでの活用
+;; パイプラインで検索
 (users
  |> (filter (fn [u] (>= (get u :age) 25)))
- |> (find (fn [u] (= (get u :name) "Alice"))))
+ |> (map (fn [u] (get u :name))))
+;; => ("Alice" "Bob")
 ```
 
 #### ソート・集約（✅ 実装済み）
+
 ```qi
-sort                    ;; ソート（整数・浮動小数点・文字列対応）
-list/sort-by                 ;; キー指定ソート: (list/sort-by :age users)
-distinct                ;; 重複排除
-list/partition               ;; 述語で2分割: (list/partition even? [1 2 3 4]) => [(2 4) (1 3)]
-list/group-by                ;; キー関数でグループ化
-frequencies             ;; 出現頻度: [1 2 2 3] => {1: 1, 2: 2, 3: 1}
-list/count-by                ;; 述語でカウント: (list/count-by even? [1 2 3 4]) => {true: 2, false: 2}
+;; === ソート ===
+
+;; sort - 昇順ソート（整数・浮動小数点・文字列対応）
+(sort [3 1 4 1 5])                  ;; => (1 1 3 4 5)
+(sort ["zebra" "apple" "banana"])   ;; => ("apple" "banana" "zebra")
+
+;; list/sort-by - キー指定ソート
+(list/sort-by (fn [u] (get u :age)) [{:name "Bob" :age 25} {:name "Alice" :age 30}])
+;; => ({:name "Bob" :age 25} {:name "Alice" :age 30})
+
+;; distinct - 重複を排除
+(distinct [1 2 2 3 3 3])            ;; => (1 2 3)
+
+;; === グループ化 ===
+
+;; list/group-by - キー関数でグループ化
+(list/group-by even? [1 2 3 4 5 6])
+;; => {true [2 4 6], false [1 3 5]}
+
+;; list/partition - 述語で2分割
+(list/partition even? [1 2 3 4])    ;; => [[2 4] [1 3]]
+
+;; === 頻度・カウント ===
+
+;; list/frequencies - 出現頻度を集計
+(list/frequencies [1 2 2 3 3 3])    ;; => {1 1, 2 2, 3 3}
+
+;; list/count-by - 述語でカウント
+(list/count-by even? [1 2 3 4])     ;; => {true 2, false 2}
 ```
 
-**使用例**:
-```qi
-;; ソート
-(sort [3 1 4 1 5])  ;; (1 1 3 4 5)
-(sort ["zebra" "apple" "banana"])  ;; ("apple" "banana" "zebra")
+**使用例: データ分析パイプライン**
 
+```qi
 ;; 重複排除してソート
 ([5 2 8 2 9 1 3 8 4]
  |> distinct
- |> sort)  ;; (1 2 3 4 5 8 9)
+ |> sort)
+;; => (1 2 3 4 5 8 9)
 
-;; グループ化
+;; グループ化して集計
 (list/group-by (fn [n] (% n 3)) [1 2 3 4 5 6 7 8 9])
-;; {0: (3 6 9), 1: (1 4 7), 2: (2 5 8)}
+;; => {0 (3 6 9), 1 (1 4 7), 2 (2 5 8)}
 ```
 
 #### 集約・分析（✅ 全て実装済み）
