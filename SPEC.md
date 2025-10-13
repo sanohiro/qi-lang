@@ -1060,45 +1060,45 @@ Qiの組み込み関数は**Flow-oriented**哲学に基づき、データの流�
 
 Qiは**2層モジュール設計**を採用しています：
 
-**Core（110個）** - グローバル名前空間、自動インポート
-- 特殊形式・演算子（12個）: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`, `~>`
-- リスト操作（27個）: `first`, `rest`, `last`, `nth`, `len`, `count`, `take`, `drop`, `cons`, `conj`, `concat`, `flatten`, `range`, `reverse`, `sort`, `distinct`, `zip`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every?`, `some?`, `take-while`, `drop-while`
-- 高階関数（6個）: `identity`, `comp`, `partial`, `apply`, `constantly`, `branch`
-- マップ操作（9個）: `get`, `keys`, `vals`, `assoc`, `dissoc`, `merge`, `get-in`, `update-in`, `update`
-- 数値・比較（17個）: `+`, `-`, `*`, `/`, `%`, `inc`, `dec`, `abs`, `min`, `max`, `sum`, `=`, `!=`, `<`, `>`, `<=`, `>=`
-- 文字列（3個）: `str`, `split`, `join`
-- 述語・型判定（22個）: `nil?`, `list?`, `vector?`, `map?`, `string?`, `integer?`, `float?`, `number?`, `keyword?`, `function?`, `atom?`, `coll?`, `sequential?`, `empty?`, `some?`, `true?`, `false?`, `even?`, `odd?`, `positive?`, `negative?`, `zero?`
-- 並行処理（5個）: `go`, `chan`, `send!`, `recv!`, `close!`
-- 論理・I/O（4個）: `not`, `print`, `println`, `error` (※ `and`, `or`は特殊形式)
-- 状態管理（4個）: `atom`, `deref`, `swap!`, `reset!`
-- メタプログラミング（4個）: `eval`, `uvar`, `variable`, `macro?`
-- 型変換（3個）: `to-int`, `to-float`, `to-string`
-- 日時（3個）: `now`, `timestamp`, `sleep`
-- デバッグ（2個）: `time`, `inspect`
-- その他（1個）: `map-lines`
+**Core** - グローバル名前空間、自動インポート
+- 特殊形式・演算子: `def`, `fn`, `let`, `do`, `if`, `match`, `try`, `defer`, `|>`, `||>`, `|>?`, `~>`
+- リスト操作: `first`, `rest`, `last`, `nth`, `len`, `count`, `take`, `drop`, `cons`, `conj`, `concat`, `flatten`, `range`, `reverse`, `sort`, `distinct`, `zip`, `map`, `filter`, `reduce`, `pmap`, `tap`, `find`, `every?`, `some?`, `take-while`, `drop-while`
+- 高階関数: `identity`, `comp`, `partial`, `apply`, `constantly`, `branch`
+- マップ操作: `get`, `keys`, `vals`, `assoc`, `dissoc`, `merge`, `get-in`, `update-in`, `update`
+- 数値・比較: `+`, `-`, `*`, `/`, `%`, `inc`, `dec`, `abs`, `min`, `max`, `sum`, `=`, `!=`, `<`, `>`, `<=`, `>=`
+- 文字列: `str`, `split`, `join`
+- 述語・型判定: `nil?`, `list?`, `vector?`, `map?`, `string?`, `integer?`, `float?`, `number?`, `keyword?`, `function?`, `atom?`, `coll?`, `sequential?`, `empty?`, `some?`, `true?`, `false?`, `even?`, `odd?`, `positive?`, `negative?`, `zero?`
+- 並行処理: `go`, `chan`, `send!`, `recv!`, `close!`
+- 論理・I/O: `not`, `print`, `println`, `error` (※ `and`, `or`は特殊形式)
+- 状態管理: `atom`, `deref`, `swap!`, `reset!`
+- メタプログラミング: `eval`, `uvar`, `variable`, `macro?`
+- 型変換: `to-int`, `to-float`, `to-string`
+- 日時: `now`, `timestamp`, `sleep`
+- デバッグ: `time`, `inspect`
+- その他: `map-lines`
 
 **専門モジュール** - 明示的インポートまたは `module/function` 形式で使用
-- **list**: 高度なリスト操作（18個）- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
-- **map**: 高度なマップ操作（5個）- `map/select-keys`, `map/update-keys`, etc.
-- **fn**: 高階関数（3個）- `fn/complement`, `fn/juxt`, `fn/tap>`
-- **set**: 集合演算（7個）- `set/union`, `set/intersect`, `set/difference`, etc.
-- **math**: 数学関数（10個）- `math/pow`, `math/sqrt`, `math/round`, etc.
-- **io**: ファイルI/O（19個）- `io/read-file`, `io/write-file`, `io/list-dir`, `io/temp-file`, etc.
-- **path**: パス操作（9個）- `path/join`, `path/basename`, `path/dirname`, etc.
-- **env**: 環境変数（4個）- `env/get`, `env/set`, `env/load-dotenv`, etc.
-- **log**: 構造化ログ（6個）- `log/info`, `log/warn`, `log/error`, `log/set-level`, etc.
-- **async**: 並行処理（高度）（16個）- `async/await`, `async/then`, `async/pfilter`, etc.
-- **pipeline**: パイプライン処理（5個）- `pipeline/pipeline`, `pipeline/map`, etc.
-- **stream**: ストリーム処理（11個）- `stream/stream`, `stream/map`, etc.
-- **str**: 文字列操作（62個）- `str/upper`, `str/lower`, `str/snake`, etc.
-- **json**: JSON処理（3個）- `json/parse`, `json/stringify`, `json/pretty`
-- **yaml**: YAML処理（3個）- `yaml/parse`, `yaml/stringify`, `yaml/pretty`
-- **http**: HTTPクライアント（11個）- `http/get`, `http/post`, `http/get-stream`, etc.
-- **server**: HTTPサーバー（16個）- `server/serve`, `server/router`, `server/ok`, `server/json`, ミドルウェア、静的ファイル配信など
-- **csv**: CSV処理（5個）- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
-- **zip**: ZIP圧縮・解凍（6個）- `zip/create`, `zip/extract`, `zip/list`, `zip/gzip`, etc.
-- **args**: コマンドライン引数パース（4個）- `args/all`, `args/get`, `args/parse`, `args/count`
-- **db**: データベース（11個）- `db/connect`, `db/query`, `db/exec`, `db/begin`, `db/commit`, etc.
+- **list**: 高度なリスト操作- `list/frequencies`, `list/sort-by`, `list/group-by`, etc.
+- **map**: 高度なマップ操作- `map/select-keys`, `map/update-keys`, etc.
+- **fn**: 高階関数- `fn/complement`, `fn/juxt`, `fn/tap>`
+- **set**: 集合演算- `set/union`, `set/intersect`, `set/difference`, etc.
+- **math**: 数学関数- `math/pow`, `math/sqrt`, `math/round`, etc.
+- **io**: ファイルI/O- `io/read-file`, `io/write-file`, `io/list-dir`, `io/temp-file`, etc.
+- **path**: パス操作- `path/join`, `path/basename`, `path/dirname`, etc.
+- **env**: 環境変数- `env/get`, `env/set`, `env/load-dotenv`, etc.
+- **log**: 構造化ログ- `log/info`, `log/warn`, `log/error`, `log/set-level`, etc.
+- **async**: 並行処理（高度）- `async/await`, `async/then`, `async/pfilter`, etc.
+- **pipeline**: パイプライン処理- `pipeline/pipeline`, `pipeline/map`, etc.
+- **stream**: ストリーム処理- `stream/stream`, `stream/map`, etc.
+- **str**: 文字列操作- `str/upper`, `str/lower`, `str/snake`, etc.
+- **json**: JSON処理- `json/parse`, `json/stringify`, `json/pretty`
+- **yaml**: YAML処理- `yaml/parse`, `yaml/stringify`, `yaml/pretty`
+- **http**: HTTPクライアント- `http/get`, `http/post`, `http/get-stream`, etc.
+- **server**: HTTPサーバー- `server/serve`, `server/router`, `server/ok`, `server/json`, ミドルウェア、静的ファイル配信など
+- **csv**: CSV処理- `csv/parse`, `csv/stringify`, `csv/read-file`, etc.
+- **zip**: ZIP圧縮・解凍- `zip/create`, `zip/extract`, `zip/list`, `zip/gzip`, etc.
+- **args**: コマンドライン引数パース- `args/all`, `args/get`, `args/parse`, `args/count`
+- **db**: データベース- `db/connect`, `db/query`, `db/exec`, `db/begin`, `db/commit`, etc.
 
 **使用例**:
 ```qi
@@ -3066,61 +3066,61 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 Coreモジュールは自動的にグローバル名前空間にインポートされます。
 
 ```qi
-;; 特殊形式・演算子（12個）
+;; 特殊形式・演算子
 def fn let do if match try defer
 |> ||> |>? ~>
 
-;; リスト操作（27個）
+;; リスト操作
 first rest last nth len count take drop cons conj concat
 flatten range reverse sort distinct zip map filter reduce
 pmap tap find every? some? take-while drop-while
 
-;; 高階関数（6個）
+;; 高階関数
 identity comp partial apply constantly branch
 
-;; マップ操作（9個）
+;; マップ操作
 get keys vals assoc dissoc merge get-in update-in update
 
-;; 数値・比較（17個）
+;; 数値・比較
 + - * / % inc dec abs min max sum = != < > <= >=
 
-;; 文字列（3個）
+;; 文字列
 str split join
 
-;; 述語・型判定（22個）
+;; 述語・型判定
 nil? list? vector? map? string? integer? float? number?
 keyword? function? atom? coll? sequential? empty? some?
 true? false? even? odd? positive? negative? zero?
 
-;; 並行処理（5個）
+;; 並行処理
 go chan send! recv! close!
 
-;; 論理・I/O（4個）
+;; 論理・I/O
 not print println error
 ;; 注: and, or は特殊形式（遅延評価のため）
 
-;; 状態管理（4個）
+;; 状態管理
 atom deref swap! reset!
 
-;; メタプログラミング（4個）
+;; メタプログラミング
 eval uvar variable macro?
 
-;; 型変換（3個）
+;; 型変換
 to-int to-float to-string
 
-;; 日時（3個）
+;; 日時
 now timestamp sleep
 
-;; デバッグ（2個）
+;; デバッグ
 time inspect
 
-;; その他（1個）
+;; その他
 map-lines
 ```
 
 #### 専門モジュール
 
-##### ✅ list - 高度なリスト操作（18個）
+##### ✅ list - 高度なリスト操作
 ```qi
 list/frequencies list/sort-by list/count-by
 list/max-by list/min-by list/sum-by list/find-index
@@ -3130,33 +3130,33 @@ list/interleave list/take-nth list/dedupe
 list/split-at list/drop-last
 ```
 
-##### ✅ map - 高度なマップ操作（5個）
+##### ✅ map - 高度なマップ操作
 ```qi
 map/select-keys
 map/assoc-in map/dissoc-in
 map/update-keys map/update-vals
 ```
 
-##### ✅ fn - 高階関数（3個）
+##### ✅ fn - 高階関数
 ```qi
 fn/complement fn/juxt fn/tap>
 ```
 
-##### ✅ set - 集合演算（7個）
+##### ✅ set - 集合演算
 ```qi
 set/union set/intersect set/difference
 set/subset? set/superset? set/disjoint?
 set/symmetric-difference
 ```
 
-##### ✅ math - 数学関数（10個）
+##### ✅ math - 数学関数
 ```qi
 math/pow math/sqrt
 math/round math/floor math/ceil math/clamp
 math/rand math/rand-int
 ```
 
-##### ✅ time - 日付・時刻（25個）
+##### ✅ time - 日付・時刻
 ```qi
 time/now-iso time/today
 time/from-unix time/to-unix time/format time/parse
@@ -3168,7 +3168,7 @@ time/year time/month time/day
 time/hour time/minute time/second time/weekday
 ```
 
-##### ✅ io - ファイルI/O（19個） - グローバルエンコーディング対応（日中韓欧露）
+##### ✅ io - ファイルI/O - グローバルエンコーディング対応（日中韓欧露）
 
 **ファイル読み書き**:
 - `io/read-file` - ファイル読み込み（エンコーディング指定・自動検出対応）
@@ -3442,7 +3442,7 @@ time/hour time/minute time/second time/weekday
 
 **注意**: パイプラインでキーワード引数を使う場合は無名関数でラップしてください。
 
-##### ✅ path - パス操作（9個）
+##### ✅ path - パス操作
 
 プラットフォーム非依存のパス操作を提供。
 
@@ -3492,7 +3492,7 @@ time/hour time/minute time/second time/weekday
  |> (map (fn [dst] (io/copy-file (path/join "logs" (path/basename dst)) dst))))
 ```
 
-##### ✅ env - 環境変数（4個）
+##### ✅ env - 環境変数
 
 アプリケーション設定や環境依存の値を管理。dotenvファイルサポート。
 
@@ -3535,7 +3535,7 @@ time/hour time/minute time/second time/weekday
    :debug (= (env/get "DEBUG" "false") "true")})
 ```
 
-##### ✅ log - 構造化ログ（6個）
+##### ✅ log - 構造化ログ
 
 プロダクション対応の構造化ログ出力。レベルフィルタリング、JSON形式対応。
 
@@ -3585,7 +3585,7 @@ time/hour time/minute time/second time/weekday
                :ip (get request :ip)})))
 ```
 
-##### ✅ async - 並行処理（高度）（16個）
+##### ✅ async - 並行処理（高度）
 ```qi
 ;; チャネル拡張
 async/try-recv! async/select!
@@ -3601,26 +3601,26 @@ async/pfilter async/preduce async/parallel-do
 async/await async/then async/catch async/all async/race
 ```
 
-##### ✅ pipeline - パイプライン処理（5個）
+##### ✅ pipeline - パイプライン処理
 ```qi
 pipeline/pipeline pipeline/map pipeline/filter
 pipeline/fan-out pipeline/fan-in
 ```
 
-##### ✅ stream - ストリーム処理（11個）
+##### ✅ stream - ストリーム処理
 ```qi
 stream/stream stream/range stream/repeat stream/cycle
 stream/take stream/drop stream/realize stream/iterate
 stream/map stream/filter stream/file
 ```
 
-##### ✅ zip - ZIP圧縮・解凍（6個）
+##### ✅ zip - ZIP圧縮・解凍
 ```qi
 zip/create zip/extract zip/list zip/add
 zip/gzip zip/gunzip
 ```
 
-##### ✅ args - コマンドライン引数パース（4個）
+##### ✅ args - コマンドライン引数パース
 ```qi
 args/all args/get args/parse args/count
 ```
@@ -4803,7 +4803,7 @@ Markdownドキュメントの生成・加工・解析機能を提供。特にLLM
 - Flow-oriented設計でパイプラインと組み合わせ可能
 - CLIツールとサーバーアプリケーション両方で使用可能
 
-#### ✅ time - 日付・時刻（25個）（実装済み）
+#### ✅ time - 日付・時刻（実装済み）
 
 **設計方針**: ISO 8601準拠。Flow-orientedな変換・操作。
 
