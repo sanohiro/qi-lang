@@ -223,10 +223,101 @@ impl fmt::Debug for NativeFunc {
     }
 }
 
+/// モジュール
+#[derive(Debug, Clone)]
+pub struct Module {
+    pub name: String,
+    pub file_path: Option<String>,
+    pub env: Arc<RwLock<Env>>,
+    pub exports: Option<Vec<String>>, // Noneの場合は全公開、Some([])の場合は明示的export
+}
+
+impl Module {
+    pub fn new(name: String, file_path: Option<String>) -> Self {
+        Module {
+            name,
+            file_path,
+            env: Arc::new(RwLock::new(Env::new())),
+            exports: None, // デフォルトは全公開
+        }
+    }
+
+    /// exportリストを設定
+    pub fn set_exports(&mut self, exports: Vec<String>) {
+        match &mut self.exports {
+            None => self.exports = Some(exports),
+            Some(existing) => existing.extend(exports),
+        }
+    }
+
+    /// シンボルが公開されているかチェック
+    pub fn is_exported(&self, name: &str) -> bool {
+        match &self.exports {
+            None => {
+                // exportリストがない = デフォルト全公開
+                // ただしprivateフラグがあれば非公開
+                self.env
+                    .read()
+                    .get_binding(name)
+                    .map(|b| !b.is_private)
+                    .unwrap_or(false)
+            }
+            Some(list) => {
+                // exportリストがある = 明示的export
+                list.contains(&name.to_string())
+            }
+        }
+    }
+
+    /// 公開シンボルの一覧を取得
+    pub fn get_exports(&self) -> Vec<(String, Value)> {
+        let env = self.env.read();
+        env.all_bindings()
+            .filter(|(name, _)| self.is_exported(name))
+            .map(|(name, binding)| (name.clone(), binding.value.clone()))
+            .collect()
+    }
+}
+
+impl PartialEq for Module {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && Arc::ptr_eq(&self.env, &other.env)
+    }
+}
+
+/// バインディング（値 + メタデータ）
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub value: Value,
+    pub is_private: bool,
+}
+
+impl Binding {
+    pub fn public(value: Value) -> Self {
+        Binding {
+            value,
+            is_private: false,
+        }
+    }
+
+    pub fn private(value: Value) -> Self {
+        Binding {
+            value,
+            is_private: true,
+        }
+    }
+}
+
+impl PartialEq for Binding {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value && self.is_private == other.is_private
+    }
+}
+
 /// 環境（変数の束縛を保持）
 #[derive(Debug, Clone)]
 pub struct Env {
-    bindings: HashMap<String, Value>,
+    bindings: HashMap<String, Binding>,
     parent: Option<Arc<RwLock<Env>>>,
 }
 
@@ -262,16 +353,37 @@ impl Env {
     pub fn get(&self, name: &str) -> Option<Value> {
         self.bindings
             .get(name)
-            .cloned()
+            .map(|b| b.value.clone())
             .or_else(|| self.parent.as_ref().and_then(|p| p.read().get(name)))
     }
 
+    pub fn get_binding(&self, name: &str) -> Option<Binding> {
+        self.bindings.get(name).cloned().or_else(|| {
+            self.parent
+                .as_ref()
+                .and_then(|p| p.read().get_binding(name))
+        })
+    }
+
     pub fn set(&mut self, name: String, value: Value) {
-        self.bindings.insert(name, value);
+        self.bindings.insert(name, Binding::public(value));
+    }
+
+    pub fn set_private(&mut self, name: String, value: Value) {
+        self.bindings.insert(name, Binding::private(value));
+    }
+
+    pub fn set_binding(&mut self, name: String, binding: Binding) {
+        self.bindings.insert(name, binding);
     }
 
     /// バインディングの反復子を取得（モジュールシステム用）
     pub fn bindings(&self) -> impl Iterator<Item = (&String, &Value)> {
+        self.bindings.iter().map(|(k, b)| (k, &b.value))
+    }
+
+    /// バインディング（メタデータ含む）の反復子を取得
+    pub fn all_bindings(&self) -> impl Iterator<Item = (&String, &Binding)> {
         self.bindings.iter()
     }
 }
@@ -305,7 +417,7 @@ pub enum Expr {
     Map(Vec<(Expr, Expr)>),
 
     // 特殊形式
-    Def(String, Box<Expr>),
+    Def(String, Box<Expr>, bool), // (name, value, is_private)
     Fn {
         params: Vec<FnParam>,
         body: Box<Expr>,

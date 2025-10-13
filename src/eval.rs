@@ -213,7 +213,7 @@ impl Evaluator {
                 Ok(Value::Map(map))
             }
 
-            Expr::Def(name, value) => {
+            Expr::Def(name, value, is_private) => {
                 // 名前衝突チェック（ただし__doc__で始まる変数は除外）
                 if !name.starts_with("__doc__") {
                     if let Some(existing) = env.read().get(name) {
@@ -235,8 +235,12 @@ impl Evaluator {
                 }
 
                 let val = self.eval_with_env(value, env.clone())?;
-                // 現在の環境に定義（モジュール内ならmodule_env、通常ならglobal_env）
-                env.write().set(name.clone(), val.clone());
+                // 現在の環境に定義（プライベートフラグに応じて）
+                if *is_private {
+                    env.write().set_private(name.clone(), val.clone());
+                } else {
+                    env.write().set(name.clone(), val.clone());
+                }
                 Ok(val)
             }
 
@@ -828,8 +832,8 @@ impl Evaluator {
             is_variadic: false,
         };
 
-        // defに展開
-        let def_expr = Expr::Def(name, Box::new(fn_expr));
+        // defに展開（publicとして）
+        let def_expr = Expr::Def(name, Box::new(fn_expr), false);
 
         // 評価
         self.eval_with_env(&def_expr, env)
@@ -2811,7 +2815,7 @@ impl Evaluator {
                 }
                 Ok(Value::List(items))
             }
-            Expr::Def(name, value) => Ok(Value::List(vec![
+            Expr::Def(name, value, _is_private) => Ok(Value::List(vec![
                 Value::Symbol("def".to_string()),
                 Value::Symbol(name.clone()),
                 self.expr_to_value(value)?,
@@ -3002,12 +3006,14 @@ impl Evaluator {
                                     return Ok(Expr::Def(
                                         name.clone(),
                                         Box::new(self.value_to_expr(&items[3])?),
+                                        false,
                                     ));
                                 } else {
                                     // 3要素の場合: (def name value)
                                     return Ok(Expr::Def(
                                         name.clone(),
                                         Box::new(self.value_to_expr(&items[2])?),
+                                        false,
                                     ));
                                 }
                             }

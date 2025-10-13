@@ -325,7 +325,7 @@ impl Parser {
         let value = Box::new(self.parse_expr()?);
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Def(name, value))
+        Ok(Expr::Def(name, value, false))
     }
 
     /// defn を def + fn に展開
@@ -394,11 +394,11 @@ impl Parser {
         // ない場合は (def name (fn ...))
         if let Some(doc) = doc_expr {
             let doc_key = format!("__doc__{}", name);
-            let doc_def = Expr::Def(doc_key, Box::new(doc));
-            let fn_def = Expr::Def(name, Box::new(fn_expr));
+            let doc_def = Expr::Def(doc_key, Box::new(doc), false);
+            let fn_def = Expr::Def(name, Box::new(fn_expr), false);
             Ok(Expr::Do(vec![doc_def, fn_def]))
         } else {
-            Ok(Expr::Def(name, Box::new(fn_expr)))
+            Ok(Expr::Def(name, Box::new(fn_expr), false))
         }
     }
 
@@ -1219,9 +1219,10 @@ mod tests {
     fn test_parse_def() {
         let mut parser = Parser::new("(def x 42)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Def(name, value) => {
+            Expr::Def(name, value, is_private) => {
                 assert_eq!(name, "x");
                 assert_eq!(*value, Expr::Integer(42));
+                assert_eq!(is_private, false);
             }
             _ => panic!("Expected Def"),
         }
