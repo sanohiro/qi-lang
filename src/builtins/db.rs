@@ -376,8 +376,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
     };
 
     let opts = if args.len() == 2 {
-        ConnectionOptions::from_value(&args[1])
-            .map_err(|e| e.message)?
+        ConnectionOptions::from_value(&args[1]).map_err(|e| e.message)?
     } else {
         ConnectionOptions::default()
     };
@@ -390,14 +389,16 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
         }
         #[cfg(not(feature = "db-sqlite"))]
         {
-            return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &["sqlite (feature not enabled)"]));
+            return Err(fmt_msg(
+                MsgKey::DbUnsupportedUrl,
+                &["sqlite (feature not enabled)"],
+            ));
         }
     } else {
         return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &[url]));
     };
 
-    let conn = driver.connect(url, &opts)
-        .map_err(|e| e.message)?;
+    let conn = driver.connect(url, &opts).map_err(|e| e.message)?;
 
     // 接続を保存
     let conn_id = gen_conn_id();
@@ -409,7 +410,10 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
 /// db/query - SQLクエリを実行
 pub fn native_query(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/query", &args.len().to_string()]));
+        return Err(fmt_msg(
+            MsgKey::DbNeed2To4Args,
+            &["db/query", &args.len().to_string()],
+        ));
     }
 
     let sql = match &args[1] {
@@ -433,13 +437,15 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
     let rows = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
             let connections = CONNECTIONS.lock();
-            let conn = connections.get(&conn_id)
+            let conn = connections
+                .get(&conn_id)
                 .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
             conn.query(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
             let transactions = TRANSACTIONS.lock();
-            let tx = transactions.get(&tx_id)
+            let tx = transactions
+                .get(&tx_id)
                 .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
             tx.query(sql, &params, &opts).map_err(|e| e.message)?
         }
@@ -451,13 +457,21 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
 /// db/query-one - SQLクエリを実行して最初の1行のみ取得
 pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/query-one", &args.len().to_string()]));
+        return Err(fmt_msg(
+            MsgKey::DbNeed2To4Args,
+            &["db/query-one", &args.len().to_string()],
+        ));
     }
 
     let conn_id = extract_conn_id(&args[0])?;
     let sql = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/query-one", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/query-one", "string"],
+            ))
+        }
     };
 
     let params = if args.len() >= 3 {
@@ -473,11 +487,11 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
     };
 
     let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
+    let conn = connections
+        .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
-    let row = conn.query_one(sql, &params, &opts)
-        .map_err(|e| e.message)?;
+    let row = conn.query_one(sql, &params, &opts).map_err(|e| e.message)?;
 
     Ok(row.map(row_to_value).unwrap_or(Value::Nil))
 }
@@ -485,7 +499,10 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
 /// db/exec - SQL文を実行
 pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
-        return Err(fmt_msg(MsgKey::DbNeed2To4Args, &["db/exec", &args.len().to_string()]));
+        return Err(fmt_msg(
+            MsgKey::DbNeed2To4Args,
+            &["db/exec", &args.len().to_string()],
+        ));
     }
 
     let sql = match &args[1] {
@@ -509,13 +526,15 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     let affected = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
             let connections = CONNECTIONS.lock();
-            let conn = connections.get(&conn_id)
+            let conn = connections
+                .get(&conn_id)
                 .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
             conn.exec(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
             let transactions = TRANSACTIONS.lock();
-            let tx = transactions.get(&tx_id)
+            let tx = transactions
+                .get(&tx_id)
                 .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
             tx.exec(sql, &params, &opts).map_err(|e| e.message)?
         }
@@ -533,7 +552,8 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
     let conn_id = extract_conn_id(&args[0])?;
 
     let mut connections = CONNECTIONS.lock();
-    let conn = connections.remove(&conn_id)
+    let conn = connections
+        .remove(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     conn.close().map_err(|e| e.message)?;
@@ -554,7 +574,8 @@ pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
     };
 
     let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
+    let conn = connections
+        .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.sanitize(value)))
@@ -569,11 +590,17 @@ pub fn native_sanitize_identifier(args: &[Value]) -> Result<Value, String> {
     let conn_id = extract_conn_id(&args[0])?;
     let name = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/sanitize-identifier", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/sanitize-identifier", "string"],
+            ))
+        }
     };
 
     let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
+    let conn = connections
+        .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.sanitize_identifier(name)))
@@ -588,11 +615,17 @@ pub fn native_escape_like(args: &[Value]) -> Result<Value, String> {
     let conn_id = extract_conn_id(&args[0])?;
     let pattern = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/escape-like", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/escape-like", "string"],
+            ))
+        }
     };
 
     let connections = CONNECTIONS.lock();
-    let conn = connections.get(&conn_id)
+    let conn = connections
+        .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
 
     Ok(Value::String(conn.escape_like(pattern)))
@@ -604,7 +637,10 @@ fn extract_conn_id(value: &Value) -> Result<String, String> {
         Value::String(s) if s.starts_with("DbConnection:") => {
             Ok(s.strip_prefix("DbConnection:").unwrap().to_string())
         }
-        _ => Err(fmt_msg(MsgKey::DbExpectedConnection, &[&format!("{:?}", value)])),
+        _ => Err(fmt_msg(
+            MsgKey::DbExpectedConnection,
+            &[&format!("{:?}", value)],
+        )),
     }
 }
 
@@ -617,13 +653,16 @@ enum ConnOrTx {
 /// 接続IDまたはトランザクションIDを抽出
 fn extract_conn_or_tx(value: &Value) -> Result<ConnOrTx, String> {
     match value {
-        Value::String(s) if s.starts_with("DbConnection:") => {
-            Ok(ConnOrTx::Conn(s.strip_prefix("DbConnection:").unwrap().to_string()))
-        }
-        Value::String(s) if s.starts_with("DbTransaction:") => {
-            Ok(ConnOrTx::Tx(s.strip_prefix("DbTransaction:").unwrap().to_string()))
-        }
-        _ => Err(fmt_msg(MsgKey::DbExpectedConnectionOrTransaction, &[&format!("{:?}", value)])),
+        Value::String(s) if s.starts_with("DbConnection:") => Ok(ConnOrTx::Conn(
+            s.strip_prefix("DbConnection:").unwrap().to_string(),
+        )),
+        Value::String(s) if s.starts_with("DbTransaction:") => Ok(ConnOrTx::Tx(
+            s.strip_prefix("DbTransaction:").unwrap().to_string(),
+        )),
+        _ => Err(fmt_msg(
+            MsgKey::DbExpectedConnectionOrTransaction,
+            &[&format!("{:?}", value)],
+        )),
     }
 }
 
@@ -641,7 +680,10 @@ fn extract_tx_id(value: &Value) -> Result<String, String> {
         Value::String(s) if s.starts_with("DbTransaction:") => {
             Ok(s.strip_prefix("DbTransaction:").unwrap().to_string())
         }
-        _ => Err(fmt_msg(MsgKey::DbExpectedTransaction, &[&format!("{:?}", value)])),
+        _ => Err(fmt_msg(
+            MsgKey::DbExpectedTransaction,
+            &[&format!("{:?}", value)],
+        )),
     }
 }
 
@@ -725,7 +767,7 @@ pub fn native_tables(args: &[Value]) -> Result<Value, String> {
     let tables = conn.tables().map_err(|e| e.message)?;
 
     Ok(Value::Vector(
-        tables.into_iter().map(Value::String).collect()
+        tables.into_iter().map(Value::String).collect(),
     ))
 }
 
@@ -815,7 +857,12 @@ pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
     let conn_id = extract_conn_id(&args[0])?;
     let table = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/foreign-keys", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/foreign-keys", "string"],
+            ))
+        }
     };
 
     let connections = CONNECTIONS.lock();
@@ -885,9 +932,9 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
     let result = match call_result {
         CallResult::Value(v) => v,
         CallResult::Rows(rows) => rows_to_value(rows),
-        CallResult::Multiple(multiple) => Value::Vector(
-            multiple.into_iter().map(rows_to_value).collect()
-        ),
+        CallResult::Multiple(multiple) => {
+            Value::Vector(multiple.into_iter().map(rows_to_value).collect())
+        }
     };
 
     Ok(result)
@@ -902,7 +949,12 @@ pub fn native_supports(args: &[Value]) -> Result<Value, String> {
     let conn_id = extract_conn_id(&args[0])?;
     let feature = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/supports?", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["db/supports?", "string"],
+            ))
+        }
     };
 
     let connections = CONNECTIONS.lock();

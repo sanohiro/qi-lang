@@ -146,7 +146,12 @@ pub fn native_stream_map(args: &[Value], evaluator: &Evaluator) -> Result<Value,
     let func = args[0].clone();
     let source_stream = match &args[1] {
         Value::Stream(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["stream-map (2nd arg)", "a stream"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::ArgMustBeType,
+                &["stream-map (2nd arg)", "a stream"],
+            ))
+        }
     };
 
     let evaluator = evaluator.clone();
@@ -173,7 +178,12 @@ pub fn native_stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Val
     let pred = args[0].clone();
     let source_stream = match &args[1] {
         Value::Stream(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["stream-filter (2nd arg)", "a stream"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::ArgMustBeType,
+                &["stream-filter (2nd arg)", "a stream"],
+            ))
+        }
     };
 
     let evaluator = evaluator.clone();
@@ -208,12 +218,22 @@ pub fn native_stream_take(args: &[Value]) -> Result<Value, String> {
 
     let n = match &args[0] {
         Value::Integer(n) if *n >= 0 => *n as usize,
-        _ => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["stream-take", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["stream-take", "first argument"],
+            ))
+        }
     };
 
     let source_stream = match &args[1] {
         Value::Stream(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["stream-take (2nd arg)", "a stream"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::ArgMustBeType,
+                &["stream-take (2nd arg)", "a stream"],
+            ))
+        }
     };
 
     let count = Arc::new(RwLock::new(0));
@@ -242,12 +262,22 @@ pub fn native_stream_drop(args: &[Value]) -> Result<Value, String> {
 
     let n = match &args[0] {
         Value::Integer(n) if *n >= 0 => *n as usize,
-        _ => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["stream-drop", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["stream-drop", "first argument"],
+            ))
+        }
     };
 
     let source_stream = match &args[1] {
         Value::Stream(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["stream-drop (2nd arg)", "a stream"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::ArgMustBeType,
+                &["stream-drop (2nd arg)", "a stream"],
+            ))
+        }
     };
 
     let skipped = Arc::new(RwLock::new(false));

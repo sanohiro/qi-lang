@@ -20,12 +20,20 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
 
     let queue = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/enqueue", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeQueue,
+                &["queue/enqueue", "first argument"],
+            ))
+        }
     };
 
     // キューであることを確認
     if !matches!(queue.get("type"), Some(Value::Keyword(k)) if k == "queue") {
-        return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/enqueue", "first argument"]));
+        return Err(fmt_msg(
+            MsgKey::MustBeQueue,
+            &["queue/enqueue", "first argument"],
+        ));
     }
 
     let items = match queue.get("items") {
@@ -98,7 +106,10 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Ok(Value::Nil),
     };
 
-    items.first().cloned().ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["queue/peek", "queue"]))
+    items
+        .first()
+        .cloned()
+        .ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["queue/peek", "queue"]))
 }
 
 /// queue/empty? - キューが空かチェック
@@ -163,11 +174,19 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
 
     let stack = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/push", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeStack,
+                &["stack/push", "first argument"],
+            ))
+        }
     };
 
     if !matches!(stack.get("type"), Some(Value::Keyword(k)) if k == "stack") {
-        return Err(fmt_msg(MsgKey::MustBeStack, &["stack/push", "first argument"]));
+        return Err(fmt_msg(
+            MsgKey::MustBeStack,
+            &["stack/push", "first argument"],
+        ));
     }
 
     let items = match stack.get("items") {
@@ -239,7 +258,10 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Ok(Value::Nil),
     };
 
-    items.first().cloned().ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["stack/peek", "stack"]))
+    items
+        .first()
+        .cloned()
+        .ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["stack/peek", "stack"]))
 }
 
 /// stack/empty? - スタックが空かチェック

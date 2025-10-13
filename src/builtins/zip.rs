@@ -30,8 +30,12 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
     };
 
     // ZIPファイル作成
-    let file = File::create(zip_path)
-        .map_err(|e| format!("zip/create: failed to create zip file '{}': {}", zip_path, e))?;
+    let file = File::create(zip_path).map_err(|e| {
+        format!(
+            "zip/create: failed to create zip file '{}': {}",
+            zip_path, e
+        )
+    })?;
     let mut zip = ZipWriter::new(file);
 
     let options = FileOptions::default()
@@ -47,7 +51,10 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
 
         let path = Path::new(path_str);
         if !path.exists() {
-            return Err(fmt_msg(MsgKey::ZipPathDoesNotExist, &["zip/create", path_str]));
+            return Err(fmt_msg(
+                MsgKey::ZipPathDoesNotExist,
+                &["zip/create", path_str],
+            ));
         }
 
         if path.is_file() {
@@ -79,11 +86,21 @@ fn add_file_to_zip<W: Write + std::io::Seek>(
     zip.start_file(name, *options)
         .map_err(|e| format!("zip/create: failed to start file: {}", e))?;
 
-    let mut f = File::open(file_path)
-        .map_err(|e| format!("zip/create: failed to open file '{}': {}", file_path.display(), e))?;
+    let mut f = File::open(file_path).map_err(|e| {
+        format!(
+            "zip/create: failed to open file '{}': {}",
+            file_path.display(),
+            e
+        )
+    })?;
     let mut buffer = Vec::new();
-    f.read_to_end(&mut buffer)
-        .map_err(|e| format!("zip/create: failed to read file '{}': {}", file_path.display(), e))?;
+    f.read_to_end(&mut buffer).map_err(|e| {
+        format!(
+            "zip/create: failed to read file '{}': {}",
+            file_path.display(),
+            e
+        )
+    })?;
 
     zip.write_all(&buffer)
         .map_err(|e| format!("zip/create: failed to write file to zip: {}", e))?;
@@ -98,12 +115,16 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
     base_path: &Path,
     options: &FileOptions<()>,
 ) -> Result<(), String> {
-    let entries = fs::read_dir(dir_path)
-        .map_err(|e| format!("zip/create: failed to read directory '{}': {}", dir_path.display(), e))?;
+    let entries = fs::read_dir(dir_path).map_err(|e| {
+        format!(
+            "zip/create: failed to read directory '{}': {}",
+            dir_path.display(),
+            e
+        )
+    })?;
 
     for entry in entries {
-        let entry = entry
-            .map_err(|e| format!("zip/create: failed to read entry: {}", e))?;
+        let entry = entry.map_err(|e| format!("zip/create: failed to read entry: {}", e))?;
         let path = entry.path();
 
         if path.is_file() {
@@ -127,13 +148,23 @@ pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
 
     let zip_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["zip/extract", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["zip/extract", "a string"],
+            ))
+        }
     };
 
     let dest_dir = if args.len() == 2 {
         match &args[1] {
             Value::String(s) => PathBuf::from(s),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/extract", "a string"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::SecondArgMustBe,
+                    &["zip/extract", "a string"],
+                ))
+            }
         }
     } else {
         PathBuf::from(".")
@@ -151,21 +182,33 @@ pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
 
     // 各ファイルを展開
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i)
+        let mut file = archive
+            .by_index(i)
             .map_err(|e| format!("zip/extract: failed to read entry {}: {}", i, e))?;
 
         let outpath = dest_dir.join(file.name());
 
         if file.is_dir() {
-            fs::create_dir_all(&outpath)
-                .map_err(|e| format!("zip/extract: failed to create directory '{}': {}", outpath.display(), e))?;
+            fs::create_dir_all(&outpath).map_err(|e| {
+                format!(
+                    "zip/extract: failed to create directory '{}': {}",
+                    outpath.display(),
+                    e
+                )
+            })?;
         } else {
             if let Some(parent) = outpath.parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| format!("zip/extract: failed to create parent directory: {}", e))?;
+                fs::create_dir_all(parent).map_err(|e| {
+                    format!("zip/extract: failed to create parent directory: {}", e)
+                })?;
             }
-            let mut outfile = File::create(&outpath)
-                .map_err(|e| format!("zip/extract: failed to create file '{}': {}", outpath.display(), e))?;
+            let mut outfile = File::create(&outpath).map_err(|e| {
+                format!(
+                    "zip/extract: failed to create file '{}': {}",
+                    outpath.display(),
+                    e
+                )
+            })?;
             std::io::copy(&mut file, &mut outfile)
                 .map_err(|e| format!("zip/extract: failed to extract file: {}", e))?;
         }
@@ -194,13 +237,17 @@ pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
 
     let mut entries = Vec::new();
     for i in 0..archive.len() {
-        let file = archive.by_index(i)
+        let file = archive
+            .by_index(i)
             .map_err(|e| format!("zip/list: failed to read entry {}: {}", i, e))?;
 
         let mut info = std::collections::HashMap::new();
         info.insert("name".to_string(), Value::String(file.name().to_string()));
         info.insert("size".to_string(), Value::Integer(file.size() as i64));
-        info.insert("compressed-size".to_string(), Value::Integer(file.compressed_size() as i64));
+        info.insert(
+            "compressed-size".to_string(),
+            Value::Integer(file.compressed_size() as i64),
+        );
         info.insert("is-dir".to_string(), Value::Bool(file.is_dir()));
 
         entries.push(Value::Map(info));
@@ -240,7 +287,8 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
 
     // 既存ファイルをコピー
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i)
+        let mut file = archive
+            .by_index(i)
             .map_err(|e| format!("zip/add: failed to read entry {}: {}", i, e))?;
 
         zip.start_file(file.name(), options)
@@ -308,19 +356,28 @@ pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
     };
 
     // 入力ファイルを読み込み
-    let mut input = File::open(input_path)
-        .map_err(|e| format!("zip/gzip: failed to open input file '{}': {}", input_path, e))?;
+    let mut input = File::open(input_path).map_err(|e| {
+        format!(
+            "zip/gzip: failed to open input file '{}': {}",
+            input_path, e
+        )
+    })?;
 
     // 出力ファイルを作成
-    let output = File::create(&output_path)
-        .map_err(|e| format!("zip/gzip: failed to create output file '{}': {}", output_path, e))?;
+    let output = File::create(&output_path).map_err(|e| {
+        format!(
+            "zip/gzip: failed to create output file '{}': {}",
+            output_path, e
+        )
+    })?;
 
     // gzip圧縮
     let mut encoder = GzEncoder::new(output, Compression::default());
     std::io::copy(&mut input, &mut encoder)
         .map_err(|e| format!("zip/gzip: failed to compress file: {}", e))?;
 
-    encoder.finish()
+    encoder
+        .finish()
         .map_err(|e| format!("zip/gzip: failed to finish compression: {}", e))?;
 
     Ok(Value::String(output_path))
@@ -343,7 +400,12 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
     let output_path = if args.len() == 2 {
         match &args[1] {
             Value::String(s) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/gunzip", "a string"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::SecondArgMustBe,
+                    &["zip/gunzip", "a string"],
+                ))
+            }
         }
     } else {
         // .gz拡張子を除去
@@ -355,15 +417,23 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
     };
 
     // 入力ファイルを読み込み
-    let input = File::open(input_path)
-        .map_err(|e| format!("zip/gunzip: failed to open input file '{}': {}", input_path, e))?;
+    let input = File::open(input_path).map_err(|e| {
+        format!(
+            "zip/gunzip: failed to open input file '{}': {}",
+            input_path, e
+        )
+    })?;
 
     // gzip解凍
     let mut decoder = GzDecoder::new(input);
 
     // 出力ファイルに書き込み
-    let mut output = File::create(&output_path)
-        .map_err(|e| format!("zip/gunzip: failed to create output file '{}': {}", output_path, e))?;
+    let mut output = File::create(&output_path).map_err(|e| {
+        format!(
+            "zip/gunzip: failed to create output file '{}': {}",
+            output_path, e
+        )
+    })?;
 
     std::io::copy(&mut decoder, &mut output)
         .map_err(|e| format!("zip/gunzip: failed to decompress file: {}", e))?;

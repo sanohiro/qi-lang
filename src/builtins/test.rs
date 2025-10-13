@@ -87,7 +87,10 @@ pub fn native_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Val
                 Err(fmt_msg(MsgKey::AssertExpectedException, &[]))
             }
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["test/assert-throws", "a function"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["test/assert-throws", "a function"],
+        )),
     }
 }
 
@@ -122,7 +125,10 @@ pub fn native_test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             }
         }
         _ => {
-            return Err(fmt_msg(MsgKey::SecondArgMustBe, &["test/run", "a function"]));
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["test/run", "a function"],
+            ));
         }
     };
 

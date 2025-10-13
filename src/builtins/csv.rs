@@ -32,7 +32,7 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
             _ => return Err(fmt_msg(MsgKey::CsvInvalidDelimiterArg, &[])),
         }
     } else {
-        ','  // デフォルト
+        ',' // デフォルト
     };
 
     let records = parse_csv_with_delimiter(csv_str, delimiter)?;
@@ -40,14 +40,7 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
     // Vec<Vec<String>> を Value::List(Vec<Value::List(Vec<Value::String>)>) に変換
     let result = records
         .into_iter()
-        .map(|record| {
-            Value::List(
-                record
-                    .into_iter()
-                    .map(Value::String)
-                    .collect()
-            )
-        })
+        .map(|record| Value::List(record.into_iter().map(Value::String).collect()))
         .collect();
 
     Ok(Value::List(result))
@@ -61,7 +54,12 @@ pub fn native_csv_stringify(args: &[Value]) -> Result<Value, String> {
 
     let records = match &args[0] {
         Value::List(records) | Value::Vector(records) => records,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["csv/stringify", "list or vector"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["csv/stringify", "list or vector"],
+            ))
+        }
     };
 
     // Value::List を Vec<Vec<String>> に変換
@@ -77,7 +75,12 @@ pub fn native_csv_stringify(args: &[Value]) -> Result<Value, String> {
                         Value::Float(f) => f.to_string(),
                         Value::Bool(b) => b.to_string(),
                         Value::Nil => String::new(),
-                        _ => return Err(fmt_msg(MsgKey::CsvCannotSerialize, &[&format!("{:?}", field)])),
+                        _ => {
+                            return Err(fmt_msg(
+                                MsgKey::CsvCannotSerialize,
+                                &[&format!("{:?}", field)],
+                            ))
+                        }
                     };
                     string_fields.push(s);
                 }
@@ -110,14 +113,7 @@ pub fn native_csv_read_file(args: &[Value]) -> Result<Value, String> {
 
     let result = records
         .into_iter()
-        .map(|record| {
-            Value::List(
-                record
-                    .into_iter()
-                    .map(Value::String)
-                    .collect()
-            )
-        })
+        .map(|record| Value::List(record.into_iter().map(Value::String).collect()))
         .collect();
 
     Ok(Value::List(result))
@@ -146,14 +142,10 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
 
     let stream = Stream {
         next_fn: Box::new(move || {
-            records.write().next().map(|record| {
-                Value::List(
-                    record
-                        .into_iter()
-                        .map(Value::String)
-                        .collect()
-                )
-            })
+            records
+                .write()
+                .next()
+                .map(|record| Value::List(record.into_iter().map(Value::String).collect()))
         }),
     };
 
@@ -175,13 +167,21 @@ pub fn native_csv_write_file(args: &[Value]) -> Result<Value, String> {
     // ファイルに書き込み
     let path = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["csv/write-file (2nd arg)", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["csv/write-file (2nd arg)", "string"],
+            ))
+        }
     };
 
-    std::fs::write(path, match csv_str {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::CsvWriteFileStringifyFailed, &[])),
-    })
+    std::fs::write(
+        path,
+        match csv_str {
+            Value::String(s) => s,
+            _ => return Err(fmt_msg(MsgKey::CsvWriteFileStringifyFailed, &[])),
+        },
+    )
     .map_err(|e| fmt_msg(MsgKey::CsvWriteFileFailedToWrite, &[path, &e.to_string()]))?;
 
     Ok(Value::Nil)
@@ -274,7 +274,10 @@ fn stringify_csv_with_delimiter(records: &[Vec<String>], delimiter: char) -> Str
     for (i, record) in records.iter().enumerate() {
         for (j, field) in record.iter().enumerate() {
             // フィールドにdelimiter、ダブルクォート、改行が含まれている場合はクォートで囲む
-            let needs_quoting = field.contains(delimiter) || field.contains('"') || field.contains('\n') || field.contains('\r');
+            let needs_quoting = field.contains(delimiter)
+                || field.contains('"')
+                || field.contains('\n')
+                || field.contains('\r');
 
             if needs_quoting {
                 result.push('"');
@@ -376,16 +379,17 @@ mod tests {
 
     #[test]
     fn test_csv_stringify_quoted_fields() {
-        let data = Value::List(vec![
-            Value::List(vec![
-                Value::String("a,b".to_string()),
-                Value::String("c\"d".to_string()),
-                Value::String("e\nf".to_string()),
-            ]),
-        ]);
+        let data = Value::List(vec![Value::List(vec![
+            Value::String("a,b".to_string()),
+            Value::String("c\"d".to_string()),
+            Value::String("e\nf".to_string()),
+        ])]);
 
         let result = native_csv_stringify(&[data]).unwrap();
-        assert_eq!(result, Value::String("\"a,b\",\"c\"\"d\",\"e\nf\"".to_string()));
+        assert_eq!(
+            result,
+            Value::String("\"a,b\",\"c\"\"d\",\"e\nf\"".to_string())
+        );
     }
 
     #[test]

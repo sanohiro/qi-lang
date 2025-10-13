@@ -47,7 +47,8 @@ pub fn native_branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
                     // 関数の場合、値を渡して評価
                     Value::Function(_) | Value::NativeFunc(_) => {
-                        let cond_result = evaluator.apply_function(condition, std::slice::from_ref(value))?;
+                        let cond_result =
+                            evaluator.apply_function(condition, std::slice::from_ref(value))?;
                         is_truthy(&cond_result)
                     }
 
@@ -112,7 +113,10 @@ mod tests {
           [:else (fn [x] "zero")]))
         "#;
 
-        assert_eq!(eval_str(code).unwrap(), Value::String("positive".to_string()));
+        assert_eq!(
+            eval_str(code).unwrap(),
+            Value::String("positive".to_string())
+        );
     }
 
     #[test]
@@ -127,7 +131,10 @@ mod tests {
           [:else (fn [x] "zero")]))
         "#;
 
-        assert_eq!(eval_str(code).unwrap(), Value::String("negative".to_string()));
+        assert_eq!(
+            eval_str(code).unwrap(),
+            Value::String("negative".to_string())
+        );
     }
 
     #[test]

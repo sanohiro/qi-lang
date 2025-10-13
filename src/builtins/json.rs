@@ -29,12 +29,9 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
     match serde_json::from_str::<serde_json::Value>(json_str) {
         Ok(json) => Ok(Value::Map(
-            [(
-                "ok".to_string(),
-                json_to_value(json),
-            )]
-            .into_iter()
-            .collect(),
+            [("ok".to_string(), json_to_value(json))]
+                .into_iter()
+                .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -62,9 +59,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 
     match serde_json::to_string(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [("ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
+            [("ok".to_string(), Value::String(s))].into_iter().collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -92,9 +87,7 @@ pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [("ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
+            [("ok".to_string(), Value::String(s))].into_iter().collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -139,19 +132,13 @@ fn value_to_json(value: &Value) -> serde_json::Value {
         Value::Nil => serde_json::Value::Null,
         Value::Bool(b) => serde_json::Value::Bool(*b),
         Value::Integer(i) => serde_json::Value::Number((*i).into()),
-        Value::Float(f) => {
-            serde_json::Number::from_f64(*f)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null)
-        }
+        Value::Float(f) => serde_json::Number::from_f64(*f)
+            .map(serde_json::Value::Number)
+            .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s.clone()),
         Value::Keyword(s) => serde_json::Value::String(s.clone()),
-        Value::Vector(v) => {
-            serde_json::Value::Array(v.iter().map(value_to_json).collect())
-        }
-        Value::List(l) => {
-            serde_json::Value::Array(l.iter().map(value_to_json).collect())
-        }
+        Value::Vector(v) => serde_json::Value::Array(v.iter().map(value_to_json).collect()),
+        Value::List(l) => serde_json::Value::Array(l.iter().map(value_to_json).collect()),
         Value::Map(m) => serde_json::Value::Object(
             m.iter()
                 .map(|(k, v)| (k.clone(), value_to_json(v)))

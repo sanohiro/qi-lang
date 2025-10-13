@@ -27,7 +27,12 @@ pub fn native_union(args: &[Value]) -> Result<Value, String> {
                     }
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["union", "lists or vectors"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::AllElementsMustBe,
+                    &["union", "lists or vectors"],
+                ))
+            }
         }
     }
 
@@ -43,28 +48,35 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
     // 最初のリストをベースにする
     let first = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["intersect", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["intersect", "lists or vectors"],
+            ))
+        }
     };
 
-    let mut result: HashSet<String> = first.iter()
-        .map(|v| format!("{:?}", v))
-        .collect();
+    let mut result: HashSet<String> = first.iter().map(|v| format!("{:?}", v)).collect();
 
     // 他のリストとの積集合を取る
     for arg in &args[1..] {
         match arg {
             Value::List(items) | Value::Vector(items) => {
-                let set: HashSet<String> = items.iter()
-                    .map(|v| format!("{:?}", v))
-                    .collect();
+                let set: HashSet<String> = items.iter().map(|v| format!("{:?}", v)).collect();
                 result.retain(|k| set.contains(k));
             }
-            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["intersect", "lists or vectors"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::AllElementsMustBe,
+                    &["intersect", "lists or vectors"],
+                ))
+            }
         }
     }
 
     // 元の値を復元
-    let values: Vec<Value> = first.iter()
+    let values: Vec<Value> = first
+        .iter()
         .filter(|v| result.contains(&format!("{:?}", v)))
         .cloned()
         .collect();
@@ -80,7 +92,12 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
 
     let first = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["difference", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["difference", "lists or vectors"],
+            ))
+        }
     };
 
     let mut exclude = HashSet::new();
@@ -91,11 +108,17 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
                     exclude.insert(format!("{:?}", item));
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["difference", "lists or vectors"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::AllElementsMustBe,
+                    &["difference", "lists or vectors"],
+                ))
+            }
         }
     }
 
-    let values: Vec<Value> = first.iter()
+    let values: Vec<Value> = first
+        .iter()
         .filter(|v| !exclude.contains(&format!("{:?}", v)))
         .cloned()
         .collect();
@@ -111,17 +134,25 @@ pub fn native_subset(args: &[Value]) -> Result<Value, String> {
 
     let subset = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["subset?", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["subset?", "lists or vectors"],
+            ))
+        }
     };
 
     let superset = match &args[1] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["subset?", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["subset?", "lists or vectors"],
+            ))
+        }
     };
 
-    let superset_keys: HashSet<String> = superset.iter()
-        .map(|v| format!("{:?}", v))
-        .collect();
+    let superset_keys: HashSet<String> = superset.iter().map(|v| format!("{:?}", v)).collect();
 
     for item in subset {
         if !superset_keys.contains(&format!("{:?}", item)) {
@@ -150,17 +181,25 @@ pub fn native_disjoint(args: &[Value]) -> Result<Value, String> {
 
     let set1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["disjoint?", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["disjoint?", "lists or vectors"],
+            ))
+        }
     };
 
     let set2 = match &args[1] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["disjoint?", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["disjoint?", "lists or vectors"],
+            ))
+        }
     };
 
-    let keys1: HashSet<String> = set1.iter()
-        .map(|v| format!("{:?}", v))
-        .collect();
+    let keys1: HashSet<String> = set1.iter().map(|v| format!("{:?}", v)).collect();
 
     for item in set2 {
         if keys1.contains(&format!("{:?}", item)) {
@@ -179,21 +218,27 @@ pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
 
     let set1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["symmetric-difference", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["symmetric-difference", "lists or vectors"],
+            ))
+        }
     };
 
     let set2 = match &args[1] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["symmetric-difference", "lists or vectors"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["symmetric-difference", "lists or vectors"],
+            ))
+        }
     };
 
-    let keys1: HashSet<String> = set1.iter()
-        .map(|v| format!("{:?}", v))
-        .collect();
+    let keys1: HashSet<String> = set1.iter().map(|v| format!("{:?}", v)).collect();
 
-    let keys2: HashSet<String> = set2.iter()
-        .map(|v| format!("{:?}", v))
-        .collect();
+    let keys2: HashSet<String> = set2.iter().map(|v| format!("{:?}", v)).collect();
 
     let mut result = Vec::new();
     let mut seen = HashSet::new();

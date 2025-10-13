@@ -22,9 +22,7 @@ pub fn native_first(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["first"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
-            Ok(v.first().cloned().unwrap_or(Value::Nil))
-        }
+        Value::List(v) | Value::Vector(v) => Ok(v.first().cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["first", "lists or vectors"])),
     }
 }
@@ -59,9 +57,7 @@ pub fn native_last(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["last"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
-            Ok(v.last().cloned().unwrap_or(Value::Nil))
-        }
+        Value::List(v) | Value::Vector(v) => Ok(v.last().cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["last", "lists or vectors"])),
     }
 }
@@ -76,9 +72,7 @@ pub fn native_nth(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["nth", "an integer"])),
     };
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
-            Ok(v.get(index).cloned().unwrap_or(Value::Nil))
-        }
+        Value::List(v) | Value::Vector(v) => Ok(v.get(index).cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["nth", "lists or vectors"])),
     }
 }
@@ -92,7 +86,10 @@ pub fn native_len(args: &[Value]) -> Result<Value, String> {
         Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
         Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
         Value::String(s) => Ok(Value::Integer(s.len() as i64)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["len", "strings or collections"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["len", "strings or collections"],
+        )),
     }
 }
 
@@ -250,15 +247,13 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
             let mut sorted = v.clone();
-            sorted.sort_by(|a, b| {
-                match (a, b) {
-                    (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-                    (Value::Float(x), Value::Float(y)) => {
-                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                    }
-                    (Value::String(x), Value::String(y)) => x.cmp(y),
-                    _ => std::cmp::Ordering::Equal,
+            sorted.sort_by(|a, b| match (a, b) {
+                (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                (Value::Float(x), Value::Float(y)) => {
+                    x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
                 }
+                (Value::String(x), Value::String(y)) => x.cmp(y),
+                _ => std::cmp::Ordering::Equal,
             });
             Ok(Value::List(sorted))
         }
@@ -404,7 +399,7 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
             new_map.extend(
                 m.iter()
                     .filter(|(k, _)| !keys_to_remove.contains(*k))
-                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .map(|(k, v)| (k.clone(), v.clone())),
             );
 
             Ok(Value::Map(new_map))
@@ -435,7 +430,10 @@ pub fn native_merge(args: &[Value]) -> Result<Value, String> {
 /// get-in - ネストしたマップから値を取得
 pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["get-in", "2 or 3", "(map, path, default?)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["get-in", "2 or 3", "(map, path, default?)"],
+        ));
     }
 
     let map = &args[0];

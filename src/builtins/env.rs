@@ -2,9 +2,9 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::collections::HashMap;
 
 /// get - 環境変数を取得
 /// 引数: (key [default]) - 環境変数名、オプションでデフォルト値
@@ -49,7 +49,13 @@ pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
         Value::String(s) => s,
         Value::Integer(i) => &i.to_string(),
         Value::Float(f) => &f.to_string(),
-        Value::Bool(b) => if *b { "true" } else { "false" },
+        Value::Bool(b) => {
+            if *b {
+                "true"
+            } else {
+                "false"
+            }
+        }
         _ => return Err(fmt_msg(MsgKey::ValueMustBeStringNumberBool, &["env/set"])),
     };
 
@@ -87,7 +93,12 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
     } else {
         match &args[0] {
             Value::String(s) => s.as_str(),
-            _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["env/load-dotenv", "a string"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::FirstArgMustBe,
+                    &["env/load-dotenv", "a string"],
+                ))
+            }
         }
     };
 
@@ -109,8 +120,9 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
             let mut value = line[eq_pos + 1..].trim();
 
             // クオートを除去
-            if (value.starts_with('"') && value.ends_with('"')) ||
-               (value.starts_with('\'') && value.ends_with('\'')) {
+            if (value.starts_with('"') && value.ends_with('"'))
+                || (value.starts_with('\'') && value.ends_with('\''))
+            {
                 value = &value[1..value.len() - 1];
             }
 
@@ -121,7 +133,7 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
         } else {
             return Err(fmt_msg(
                 MsgKey::EnvLoadDotenvInvalidFormat,
-                &[&(line_num + 1).to_string(), line]
+                &[&(line_num + 1).to_string(), line],
             ));
         }
     }

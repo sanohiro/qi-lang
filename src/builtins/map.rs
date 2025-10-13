@@ -27,14 +27,20 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["select-keys", "map and list/vector"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["select-keys", "map and list/vector"],
+        )),
     }
 }
 
 /// assoc-in - ネストしたマップに値を設定
 pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["assoc-in", "3", "(map, path, value)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["assoc-in", "3", "(map, path, value)"],
+        ));
     }
 
     let map = &args[0];
@@ -75,7 +81,10 @@ fn assoc_in_helper(
         map.insert(key, value.clone());
     } else {
         // 中間のキー：再帰的に処理
-        let next_val = map.get(&key).cloned().unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+        let next_val = map
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
         match next_val {
             Value::Map(mut inner_map) => {
                 assoc_in_helper(&mut inner_map, path, index + 1, value)?;
@@ -95,7 +104,10 @@ fn assoc_in_helper(
 /// dissoc-in - ネストしたマップからキーを削除
 pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["dissoc-in", "2", "(map, path)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["dissoc-in", "2", "(map, path)"],
+        ));
     }
 
     let map = &args[0];
@@ -144,9 +156,15 @@ fn dissoc_in_helper(
 }
 
 /// update-keys - マップのすべてのキーに関数を適用
-pub fn native_update_keys(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_update_keys(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-keys", "2", "(key-fn, map)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["update-keys", "2", "(key-fn, map)"],
+        ));
     }
 
     let key_fn = &args[0];
@@ -167,14 +185,23 @@ pub fn native_update_keys(args: &[Value], evaluator: &crate::eval::Evaluator) ->
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeMap, &["update-keys", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeMap,
+            &["update-keys", "second argument"],
+        )),
     }
 }
 
 /// update-vals - マップのすべての値に関数を適用
-pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_update_vals(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-vals", "2", "(val-fn, map)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["update-vals", "2", "(val-fn, map)"],
+        ));
     }
 
     let val_fn = &args[0];
@@ -189,6 +216,9 @@ pub fn native_update_vals(args: &[Value], evaluator: &crate::eval::Evaluator) ->
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeMap, &["update-vals", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeMap,
+            &["update-vals", "second argument"],
+        )),
     }
 }

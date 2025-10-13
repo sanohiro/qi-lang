@@ -27,7 +27,10 @@ pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
             .map(Value::Integer)
             .map_err(|_| fmt_msg(MsgKey::CannotParseAsInt, &["to-int", s])),
         Value::Bool(b) => Ok(Value::Integer(if *b { 1 } else { 0 })),
-        _ => Err(fmt_msg(MsgKey::CannotConvertToInt, &["to-int", &format!("{:?}", args[0])])),
+        _ => Err(fmt_msg(
+            MsgKey::CannotConvertToInt,
+            &["to-int", &format!("{:?}", args[0])],
+        )),
     }
 }
 
@@ -44,7 +47,10 @@ pub fn native_to_float(args: &[Value]) -> Result<Value, String> {
             .parse::<f64>()
             .map(Value::Float)
             .map_err(|_| fmt_msg(MsgKey::CannotParseAsFloat, &["to-float", s])),
-        _ => Err(fmt_msg(MsgKey::CannotConvertToFloat, &["to-float", &format!("{:?}", args[0])])),
+        _ => Err(fmt_msg(
+            MsgKey::CannotConvertToFloat,
+            &["to-float", &format!("{:?}", args[0])],
+        )),
     }
 }
 

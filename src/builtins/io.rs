@@ -10,11 +10,19 @@ use std::sync::Arc;
 
 #[cfg(feature = "encoding-extended")]
 use encoding_rs::{
-    Encoding, UTF_8, UTF_16LE, UTF_16BE,
-    SHIFT_JIS, EUC_JP, ISO_2022_JP,  // 日本語
-    GBK, GB18030, BIG5,               // 中国語（簡体字・繁体字）
-    EUC_KR,                           // 韓国語
-    WINDOWS_1252, WINDOWS_1251,       // 欧州（西欧・ロシア）
+    Encoding,
+    BIG5, // 中国語（簡体字・繁体字）
+    EUC_JP,
+    EUC_KR, // 韓国語
+    GB18030,
+    GBK,
+    ISO_2022_JP, // 日本語
+    SHIFT_JIS,
+    UTF_16BE,
+    UTF_16LE,
+    UTF_8,
+    WINDOWS_1251, // 欧州（西欧・ロシア）
+    WINDOWS_1252,
 };
 
 // ============================================
@@ -75,7 +83,10 @@ fn strip_bom(bytes: &[u8]) -> (&[u8], Option<&'static Encoding>) {
 fn decode_bytes(bytes: &[u8], encoding: &'static Encoding, path: &str) -> Result<String, String> {
     let (decoded, _, had_errors) = encoding.decode(bytes);
     if had_errors {
-        Err(fmt_msg(MsgKey::IoFailedToDecodeAs, &[path, encoding.name()]))
+        Err(fmt_msg(
+            MsgKey::IoFailedToDecodeAs,
+            &[path, encoding.name()],
+        ))
     } else {
         Ok(decoded.into_owned())
     }
@@ -163,7 +174,10 @@ fn encode_string(content: &str, encoding: &'static Encoding, add_bom: bool) -> V
 }
 
 /// キーワード引数からオプションを抽出
-fn parse_keyword_args(args: &[Value], start_idx: usize) -> Result<std::collections::HashMap<String, Value>, String> {
+fn parse_keyword_args(
+    args: &[Value],
+    start_idx: usize,
+) -> Result<std::collections::HashMap<String, Value>, String> {
     let mut opts = std::collections::HashMap::new();
     let mut i = start_idx;
 
@@ -177,7 +191,10 @@ fn parse_keyword_args(args: &[Value], start_idx: usize) -> Result<std::collectio
                 i += 2;
             }
             _ => {
-                return Err(fmt_msg(MsgKey::ExpectedKeywordArg, &[&format!("{:?}", args[i])]));
+                return Err(fmt_msg(
+                    MsgKey::ExpectedKeywordArg,
+                    &[&format!("{:?}", args[i])],
+                ));
             }
         }
     }
@@ -200,7 +217,12 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
 
     let path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["read-file (1st arg)", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["read-file (1st arg)", "string"],
+            ))
+        }
     };
 
     // キーワード引数を解析
@@ -211,16 +233,17 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     };
 
     // エンコーディングオプションを取得
-    let encoding_keyword = opts.get("encoding")
+    let encoding_keyword = opts
+        .get("encoding")
         .and_then(|v| match v {
             Value::Keyword(k) => Some(k.as_str()),
-            _ => None
+            _ => None,
         })
         .unwrap_or("utf-8");
 
     // ファイルをバイト列として読み込み
-    let bytes = fs::read(path)
-        .map_err(|e| fmt_msg(MsgKey::IoFileError, &[path, &e.to_string()]))?;
+    let bytes =
+        fs::read(path).map_err(|e| fmt_msg(MsgKey::IoFileError, &[path, &e.to_string()]))?;
 
     // エンコーディングに応じてデコード
     #[cfg(feature = "encoding-extended")]
@@ -242,11 +265,13 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     #[cfg(not(feature = "encoding-extended"))]
     let content = {
         // encoding-extendedがない場合はUTF-8のみサポート
-        if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" && encoding_keyword != "auto" {
+        if encoding_keyword != "utf-8"
+            && encoding_keyword != "utf-8-bom"
+            && encoding_keyword != "auto"
+        {
             return Err(format!("Encoding '{}' is not supported. Only UTF-8 is available in minimal build. Enable 'encoding-extended' feature for more encodings.", encoding_keyword));
         }
-        String::from_utf8(bytes)
-            .map_err(|_| fmt_msg(MsgKey::IoFailedToDecodeUtf8, &[path]))?
+        String::from_utf8(bytes).map_err(|_| fmt_msg(MsgKey::IoFailedToDecodeUtf8, &[path]))?
     };
 
     Ok(Value::String(content))
@@ -275,12 +300,22 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
 
     let content = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["write-file (1st arg - content)", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["write-file (1st arg - content)", "string"],
+            ))
+        }
     };
 
     let path = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["write-file (2nd arg - path)", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["write-file (2nd arg - path)", "string"],
+            ))
+        }
     };
 
     // キーワード引数を解析
@@ -291,26 +326,29 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     };
 
     // エンコーディングオプション
-    let encoding_keyword = opts.get("encoding")
+    let encoding_keyword = opts
+        .get("encoding")
         .and_then(|v| match v {
             Value::Keyword(k) => Some(k.as_str()),
-            _ => None
+            _ => None,
         })
         .unwrap_or("utf-8");
 
     // if-existsオプション
-    let if_exists = opts.get("if-exists")
+    let if_exists = opts
+        .get("if-exists")
         .and_then(|v| match v {
             Value::Keyword(k) => Some(k.as_str()),
-            _ => None
+            _ => None,
         })
         .unwrap_or("overwrite");
 
     // create-dirsオプション
-    let create_dirs = opts.get("create-dirs")
+    let create_dirs = opts
+        .get("create-dirs")
         .and_then(|v| match v {
             Value::Bool(b) => Some(*b),
-            _ => None
+            _ => None,
         })
         .unwrap_or(false);
 
@@ -320,8 +358,12 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     if create_dirs {
         if let Some(parent) = path_obj.parent() {
             if !parent.exists() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| fmt_msg(MsgKey::IoFailedToCreateDir, &[&parent.display().to_string(), &e.to_string()]))?;
+                fs::create_dir_all(parent).map_err(|e| {
+                    fmt_msg(
+                        MsgKey::IoFailedToCreateDir,
+                        &[&parent.display().to_string(), &e.to_string()],
+                    )
+                })?;
             }
         }
     }
@@ -347,7 +389,10 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 #[cfg(not(feature = "encoding-extended"))]
                 let bytes = {
                     if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-                        return Err(format!("Encoding '{}' is not supported in minimal build", encoding_keyword));
+                        return Err(format!(
+                            "Encoding '{}' is not supported in minimal build",
+                            encoding_keyword
+                        ));
                     }
                     content.as_bytes().to_vec()
                 };
@@ -355,7 +400,9 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 let mut file = fs::OpenOptions::new()
                     .append(true)
                     .open(path)
-                    .map_err(|e| fmt_msg(MsgKey::IoFailedToOpenForAppend, &[path, &e.to_string()]))?;
+                    .map_err(|e| {
+                        fmt_msg(MsgKey::IoFailedToOpenForAppend, &[path, &e.to_string()])
+                    })?;
 
                 file.write_all(&bytes)
                     .map_err(|e| fmt_msg(MsgKey::IoFailedToAppend, &[path, &e.to_string()]))?;
@@ -382,7 +429,10 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     #[cfg(not(feature = "encoding-extended"))]
     let bytes = {
         if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-            return Err(format!("Encoding '{}' is not supported in minimal build", encoding_keyword));
+            return Err(format!(
+                "Encoding '{}' is not supported in minimal build",
+                encoding_keyword
+            ));
         }
         content.as_bytes().to_vec()
     };
@@ -404,16 +454,23 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
     match (&args[0], &args[1]) {
         (Value::String(content), Value::String(path)) => {
             match fs::OpenOptions::new().create(true).append(true).open(path) {
-                Ok(mut file) => {
-                    match file.write_all(content.as_bytes()) {
-                        Ok(_) => Ok(Value::Nil),
-                        Err(e) => Err(fmt_msg(MsgKey::IoAppendFileFailedToWrite, &[path, &e.to_string()])),
-                    }
-                }
-                Err(e) => Err(fmt_msg(MsgKey::IoAppendFileFailedToOpen, &[path, &e.to_string()])),
+                Ok(mut file) => match file.write_all(content.as_bytes()) {
+                    Ok(_) => Ok(Value::Nil),
+                    Err(e) => Err(fmt_msg(
+                        MsgKey::IoAppendFileFailedToWrite,
+                        &[path, &e.to_string()],
+                    )),
+                },
+                Err(e) => Err(fmt_msg(
+                    MsgKey::IoAppendFileFailedToOpen,
+                    &[path, &e.to_string()],
+                )),
             }
         }
-        _ => Err(fmt_msg(MsgKey::NeedNArgsDesc, &["append-file", "2", "(content: string, path: string)"])),
+        _ => Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["append-file", "2", "(content: string, path: string)"],
+        )),
     }
 }
 
@@ -441,18 +498,19 @@ pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::String(path) => {
-            match fs::read_to_string(path) {
-                Ok(content) => {
-                    let lines: Vec<Value> = content
-                        .lines()
-                        .map(|line| Value::String(line.to_string()))
-                        .collect();
-                    Ok(Value::List(lines))
-                }
-                Err(e) => Err(fmt_msg(MsgKey::IoReadLinesFailedToRead, &[path, &e.to_string()])),
+        Value::String(path) => match fs::read_to_string(path) {
+            Ok(content) => {
+                let lines: Vec<Value> = content
+                    .lines()
+                    .map(|line| Value::String(line.to_string()))
+                    .collect();
+                Ok(Value::List(lines))
             }
-        }
+            Err(e) => Err(fmt_msg(
+                MsgKey::IoReadLinesFailedToRead,
+                &[path, &e.to_string()],
+            )),
+        },
         _ => Err(fmt_msg(MsgKey::MustBeString, &["read-lines", "argument"])),
     }
 }
@@ -464,9 +522,7 @@ pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::String(path) => {
-            Ok(Value::Bool(std::path::Path::new(path).exists()))
-        }
+        Value::String(path) => Ok(Value::Bool(std::path::Path::new(path).exists())),
         _ => Err(fmt_msg(MsgKey::MustBeString, &["file-exists?", "argument"])),
     }
 }
@@ -506,7 +562,7 @@ fn create_file_line_stream(path: &str) -> Result<Value, String> {
             let mut reader = reader.write();
             let mut line = String::new();
             match reader.read_line(&mut line) {
-                Ok(0) => None,  // EOF
+                Ok(0) => None, // EOF
                 Ok(_) => {
                     // 末尾の改行を削除
                     if line.ends_with('\n') {
@@ -540,11 +596,12 @@ fn create_file_byte_stream(path: &str) -> Result<Value, String> {
             let mut reader = reader.write();
             let mut buffer = vec![0u8; CHUNK_SIZE];
             match reader.read(&mut buffer) {
-                Ok(0) => None,  // EOF
+                Ok(0) => None, // EOF
                 Ok(n) => {
                     buffer.truncate(n);
                     // バイト配列をIntegerのVectorに変換
-                    let bytes: Vec<Value> = buffer.iter().map(|&b| Value::Integer(b as i64)).collect();
+                    let bytes: Vec<Value> =
+                        buffer.iter().map(|&b| Value::Integer(b as i64)).collect();
                     Some(Value::Vector(bytes))
                 }
                 Err(_) => None,
@@ -566,12 +623,22 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
 
     let stream = match &args[0] {
         Value::Stream(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["write-stream (1st arg)", "a stream"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::ArgMustBeType,
+                &["write-stream (1st arg)", "a stream"],
+            ))
+        }
     };
 
     let path = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["write-stream (2nd arg)", "string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["write-stream (2nd arg)", "string"],
+            ))
+        }
     };
 
     // ファイルを開く
@@ -597,8 +664,9 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
                     _ => format!("{:?}", val),
                 };
 
-                writeln!(file, "{}", line)
-                    .map_err(|e| fmt_msg(MsgKey::WriteStreamFailedToWrite, &[path, &e.to_string()]))?;
+                writeln!(file, "{}", line).map_err(|e| {
+                    fmt_msg(MsgKey::WriteStreamFailedToWrite, &[path, &e.to_string()])
+                })?;
                 count += 1;
             }
             None => break,
@@ -624,7 +692,12 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
 
     let dir_path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/list-dir", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["io/list-dir", "a string"],
+            ))
+        }
     };
 
     // キーワード引数を解析
@@ -635,17 +708,17 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
     };
 
     // パターンオプション
-    let pattern = opts.get("pattern")
-        .and_then(|v| match v {
-            Value::String(s) => Some(s.as_str()),
-            _ => None
-        });
+    let pattern = opts.get("pattern").and_then(|v| match v {
+        Value::String(s) => Some(s.as_str()),
+        _ => None,
+    });
 
     // recursiveオプション
-    let recursive = opts.get("recursive")
+    let recursive = opts
+        .get("recursive")
         .and_then(|v| match v {
             Value::Bool(b) => Some(*b),
-            _ => None
+            _ => None,
         })
         .unwrap_or(false);
 
@@ -664,7 +737,12 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
 
     // グロブでファイル一覧を取得
     let entries: Result<Vec<Value>, String> = glob::glob(&glob_pattern)
-        .map_err(|e| fmt_msg(MsgKey::IoListDirInvalidPattern, &[&glob_pattern, &e.to_string()]))?
+        .map_err(|e| {
+            fmt_msg(
+                MsgKey::IoListDirInvalidPattern,
+                &[&glob_pattern, &e.to_string()],
+            )
+        })?
         .map(|entry| {
             entry
                 .map(|path| Value::String(path.to_string_lossy().to_string()))
@@ -686,7 +764,12 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
 
     let path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/create-dir", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["io/create-dir", "a string"],
+            ))
+        }
     };
 
     // キーワード引数を解析
@@ -697,10 +780,11 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
     };
 
     // parentsオプション（デフォルトtrue）
-    let parents = opts.get("parents")
+    let parents = opts
+        .get("parents")
         .and_then(|v| match v {
             Value::Bool(b) => Some(*b),
-            _ => None
+            _ => None,
         })
         .unwrap_or(true);
 
@@ -728,7 +812,10 @@ pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
                 .map_err(|e| fmt_msg(MsgKey::IoDeleteFileFailed, &[path, &e.to_string()]))?;
             Ok(Value::Nil)
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/delete-file", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["io/delete-file", "a string"],
+        )),
     }
 }
 
@@ -743,7 +830,12 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
 
     let path = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["io/delete-dir", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["io/delete-dir", "a string"],
+            ))
+        }
     };
 
     // キーワード引数を解析
@@ -754,10 +846,11 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
     };
 
     // recursiveオプション
-    let recursive = opts.get("recursive")
+    let recursive = opts
+        .get("recursive")
         .and_then(|v| match v {
             Value::Bool(b) => Some(*b),
-            _ => None
+            _ => None,
         })
         .unwrap_or(false);
 
@@ -834,13 +927,19 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
             // 更新日時
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
-                    info.insert("modified".to_string(), Value::Integer(duration.as_secs() as i64));
+                    info.insert(
+                        "modified".to_string(),
+                        Value::Integer(duration.as_secs() as i64),
+                    );
                 }
             }
 
             Ok(Value::Map(info))
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/file-info", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["io/file-info", "a string"],
+        )),
     }
 }
 

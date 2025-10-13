@@ -74,7 +74,10 @@ pub fn native_number_q(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["number?"]));
     }
-    Ok(Value::Bool(matches!(args[0], Value::Integer(_) | Value::Float(_))))
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::Integer(_) | Value::Float(_)
+    )))
 }
 
 /// keyword? - キーワードかどうか判定
@@ -90,7 +93,10 @@ pub fn native_function_q(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["function?"]));
     }
-    Ok(Value::Bool(matches!(args[0], Value::Function(_) | Value::NativeFunc(_))))
+    Ok(Value::Bool(matches!(
+        args[0],
+        Value::Function(_) | Value::NativeFunc(_)
+    )))
 }
 
 /// atom? - atom判定
@@ -137,7 +143,10 @@ pub fn native_empty(args: &[Value]) -> Result<Value, String> {
         Value::List(v) | Value::Vector(v) => Ok(Value::Bool(v.is_empty())),
         Value::Map(m) => Ok(Value::Bool(m.is_empty())),
         Value::String(s) => Ok(Value::Bool(s.is_empty())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["empty?", "strings or collections"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["empty?", "strings or collections"],
+        )),
     }
 }
 

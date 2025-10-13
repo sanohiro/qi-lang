@@ -2,8 +2,8 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// now - 現在時刻（UNIXタイムスタンプ秒）
 pub fn native_now(args: &[Value]) -> Result<Value, String> {
@@ -34,7 +34,10 @@ pub fn native_timestamp(args: &[Value]) -> Result<Value, String> {
 /// sleep - 指定ミリ秒スリープ
 pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["sleep", "1", "(milliseconds)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["sleep", "1", "(milliseconds)"],
+        ));
     }
 
     let millis = match &args[0] {
@@ -59,7 +62,10 @@ pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
 /// json-parse - JSON文字列をパース
 pub fn native_json_parse(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["json-parse", "1", "(JSON string)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["json-parse", "1", "(JSON string)"],
+        ));
     }
 
     let json_str = match &args[0] {
@@ -81,8 +87,12 @@ pub fn native_json_stringify(args: &[Value]) -> Result<Value, String> {
     }
 
     let json_value = value_to_json(&args[0])?;
-    let json_str = serde_json::to_string(&json_value)
-        .map_err(|e| fmt_msg(MsgKey::JsonStringifyError2, &["json-stringify", &e.to_string()]))?;
+    let json_str = serde_json::to_string(&json_value).map_err(|e| {
+        fmt_msg(
+            MsgKey::JsonStringifyError2,
+            &["json-stringify", &e.to_string()],
+        )
+    })?;
 
     Ok(Value::String(json_str))
 }
@@ -95,8 +105,12 @@ pub fn native_json_pretty(args: &[Value]) -> Result<Value, String> {
     }
 
     let json_value = value_to_json(&args[0])?;
-    let json_str = serde_json::to_string_pretty(&json_value)
-        .map_err(|e| fmt_msg(MsgKey::JsonStringifyError2, &["json-pretty", &e.to_string()]))?;
+    let json_str = serde_json::to_string_pretty(&json_value).map_err(|e| {
+        fmt_msg(
+            MsgKey::JsonStringifyError2,
+            &["json-pretty", &e.to_string()],
+        )
+    })?;
 
     Ok(Value::String(json_str))
 }
@@ -151,7 +165,10 @@ fn value_to_json(value: &Value) -> Result<serde_json::Value, String> {
             }
             Ok(serde_json::Value::Object(obj))
         }
-        _ => Err(fmt_msg(MsgKey::CannotConvertToJson, &[&format!("{:?}", value)])),
+        _ => Err(fmt_msg(
+            MsgKey::CannotConvertToJson,
+            &[&format!("{:?}", value)],
+        )),
     }
 }
 
@@ -164,13 +181,15 @@ pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Integer(i) => Ok(Value::Integer(*i)),
         Value::Float(f) => Ok(Value::Integer(*f as i64)),
-        Value::String(s) => {
-            s.parse::<i64>()
-                .map(Value::Integer)
-                .map_err(|_| fmt_msg(MsgKey::CannotParseAsInt, &["to-int", s]))
-        }
+        Value::String(s) => s
+            .parse::<i64>()
+            .map(Value::Integer)
+            .map_err(|_| fmt_msg(MsgKey::CannotParseAsInt, &["to-int", s])),
         Value::Bool(b) => Ok(Value::Integer(if *b { 1 } else { 0 })),
-        _ => Err(fmt_msg(MsgKey::CannotConvertToInt, &["to-int", &format!("{:?}", args[0])])),
+        _ => Err(fmt_msg(
+            MsgKey::CannotConvertToInt,
+            &["to-int", &format!("{:?}", args[0])],
+        )),
     }
 }
 
@@ -183,12 +202,14 @@ pub fn native_to_float(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Integer(i) => Ok(Value::Float(*i as f64)),
         Value::Float(f) => Ok(Value::Float(*f)),
-        Value::String(s) => {
-            s.parse::<f64>()
-                .map(Value::Float)
-                .map_err(|_| fmt_msg(MsgKey::CannotParseAsFloat, &["to-float", s]))
-        }
-        _ => Err(fmt_msg(MsgKey::CannotConvertToFloat, &["to-float", &format!("{:?}", args[0])])),
+        Value::String(s) => s
+            .parse::<f64>()
+            .map(Value::Float)
+            .map_err(|_| fmt_msg(MsgKey::CannotParseAsFloat, &["to-float", s])),
+        _ => Err(fmt_msg(
+            MsgKey::CannotConvertToFloat,
+            &["to-float", &format!("{:?}", args[0])],
+        )),
     }
 }
 
@@ -244,7 +265,10 @@ pub fn native_atom_p(args: &[Value]) -> Result<Value, String> {
 /// _railway-pipe - Railway Oriented Programming用の内部関数
 ///
 /// {:ok value}なら関数に渡し、{:error e}ならそのまま返す
-pub fn native_railway_pipe(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_railway_pipe(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["_railway-pipe"]));
     }
@@ -262,8 +286,7 @@ pub fn native_railway_pipe(args: &[Value], evaluator: &crate::eval::Evaluator) -
             // {:error e}の場合はそのまま返す(ショートサーキット)
             else if m.contains_key("error") {
                 Ok(result.clone())
-            }
-            else {
+            } else {
                 Err(fmt_msg(MsgKey::RailwayRequiresOkError, &[]))
             }
         }
@@ -291,7 +314,12 @@ fn pretty_print(value: &Value, indent: usize) -> String {
             }
             let mut lines = vec!["{".to_string()];
             for (k, v) in m {
-                lines.push(format!("{}  \"{}\": {}", indent_str, k, pretty_print(v, indent + 1)));
+                lines.push(format!(
+                    "{}  \"{}\": {}",
+                    indent_str,
+                    k,
+                    pretty_print(v, indent + 1)
+                ));
             }
             lines.push(format!("{}}}", indent_str));
             lines.join("\n")
@@ -302,7 +330,11 @@ fn pretty_print(value: &Value, indent: usize) -> String {
             }
             let mut lines = vec!["[".to_string()];
             for item in v {
-                lines.push(format!("{}  {}", indent_str, pretty_print(item, indent + 1)));
+                lines.push(format!(
+                    "{}  {}",
+                    indent_str,
+                    pretty_print(item, indent + 1)
+                ));
             }
             lines.push(format!("{}]", indent_str));
             lines.join("\n")
@@ -313,13 +345,17 @@ fn pretty_print(value: &Value, indent: usize) -> String {
             }
             let mut lines = vec!["(".to_string()];
             for item in l {
-                lines.push(format!("{}  {}", indent_str, pretty_print(item, indent + 1)));
+                lines.push(format!(
+                    "{}  {}",
+                    indent_str,
+                    pretty_print(item, indent + 1)
+                ));
             }
             lines.push(format!("{})", indent_str));
             lines.join("\n")
         }
         Value::String(s) => format!("\"{}\"", s),
-        _ => value.to_string()
+        _ => value.to_string(),
     }
 }
 

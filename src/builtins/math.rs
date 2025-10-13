@@ -9,7 +9,10 @@ use rand::Rng;
 /// pow - べき乗
 pub fn native_pow(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pow", "2", "(base, exponent)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["pow", "2", "(base, exponent)"],
+        ));
     }
 
     let base_f = match &args[0] {
@@ -90,7 +93,10 @@ pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
 /// clamp - 値を範囲内に制限
 pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["clamp", "3", "(value, min, max)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["clamp", "3", "(value, min, max)"],
+        ));
     }
 
     match (&args[0], &args[1], &args[2]) {
@@ -134,13 +140,19 @@ pub fn native_rand(args: &[Value]) -> Result<Value, String> {
 #[cfg(feature = "std-math")]
 pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["rand-int", "1", "(upper bound)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["rand-int", "1", "(upper bound)"],
+        ));
     }
 
     match &args[0] {
         Value::Integer(n) => {
             if *n <= 0 {
-                return Err(fmt_msg(MsgKey::MustBePositive, &["rand-int", "upper bound"]));
+                return Err(fmt_msg(
+                    MsgKey::MustBePositive,
+                    &["rand-int", "upper bound"],
+                ));
             }
             let mut rng = rand::rng();
             Ok(Value::Integer(rng.random_range(0..*n)))
@@ -153,7 +165,10 @@ pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
 #[cfg(feature = "std-math")]
 pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["random-range", "2", "(min, max)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["random-range", "2", "(min, max)"],
+        ));
     }
 
     match (&args[0], &args[1]) {

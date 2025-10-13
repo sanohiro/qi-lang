@@ -176,7 +176,9 @@ impl PartialEq for Function {
     fn eq(&self, other: &Self) -> bool {
         // 関数の等価性はパラメータ、ボディ、可変長フラグで判定
         // 環境は比較しない（クロージャの等価性は意味論的に困難）
-        self.params == other.params && self.body == other.body && self.is_variadic == other.is_variadic
+        self.params == other.params
+            && self.body == other.body
+            && self.is_variadic == other.is_variadic
     }
 }
 

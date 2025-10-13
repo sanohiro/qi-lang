@@ -32,8 +32,14 @@ impl Parser {
                 self.advance();
                 Ok(())
             }
-            Some(token) => Err(fmt_msg(MsgKey::ExpectedToken, &[&format!("{:?}", expected), &format!("{:?}", token)])),
-            None => Err(fmt_msg(MsgKey::ExpectedToken, &[&format!("{:?}", expected), "EOF"])),
+            Some(token) => Err(fmt_msg(
+                MsgKey::ExpectedToken,
+                &[&format!("{:?}", expected), &format!("{:?}", token)],
+            )),
+            None => Err(fmt_msg(
+                MsgKey::ExpectedToken,
+                &[&format!("{:?}", expected), "EOF"],
+            )),
         }
     }
 
@@ -197,13 +203,14 @@ impl Parser {
         }
 
         // 通常のリスト（関数呼び出し）
-        let first_expr = self.parse_primary()?;  // パイプラインを含まない
+        let first_expr = self.parse_primary()?; // パイプラインを含まない
 
         // パイプラインのチェック
         if self.current() == Some(&Token::Pipe)
             || self.current() == Some(&Token::PipeRailway)
             || self.current() == Some(&Token::ParallelPipe)
-            || self.current() == Some(&Token::AsyncPipe) {
+            || self.current() == Some(&Token::AsyncPipe)
+        {
             let mut expr = first_expr;
             let mut is_async = false;
 
@@ -733,7 +740,8 @@ impl Parser {
             // パイプラインをパース
             while self.current() == Some(&Token::Pipe)
                 || self.current() == Some(&Token::PipeRailway)
-                || self.current() == Some(&Token::ParallelPipe) {
+                || self.current() == Some(&Token::ParallelPipe)
+            {
                 match self.current() {
                     Some(Token::Pipe) => {
                         self.advance();
@@ -788,13 +796,15 @@ impl Parser {
             // パイプラインのチェック
             if self.current() == Some(&Token::Pipe)
                 || self.current() == Some(&Token::PipeRailway)
-                || self.current() == Some(&Token::ParallelPipe) {
+                || self.current() == Some(&Token::ParallelPipe)
+            {
                 let mut expr = first;
 
                 // パイプラインをパース
                 while self.current() == Some(&Token::Pipe)
                     || self.current() == Some(&Token::PipeRailway)
-                    || self.current() == Some(&Token::ParallelPipe) {
+                    || self.current() == Some(&Token::ParallelPipe)
+                {
                     match self.current() {
                         Some(Token::Pipe) => {
                             self.advance();
@@ -939,7 +949,10 @@ impl Parser {
             }
             Some(Token::LBracket) => self.parse_vector_pattern(),
             Some(Token::LBrace) => self.parse_map_pattern(),
-            Some(token) => Err(fmt_msg(MsgKey::UnexpectedPattern, &[&format!("{:?}", token)])),
+            Some(token) => Err(fmt_msg(
+                MsgKey::UnexpectedPattern,
+                &[&format!("{:?}", token)],
+            )),
             None => Err(msg(MsgKey::UnexpectedEof).to_string()),
         }
     }
@@ -954,7 +967,7 @@ impl Parser {
             // ...rest パターンのチェック
             if self.current() == Some(&Token::Ellipsis) {
                 self.advance(); // ...
-                // 次は変数名でなければならない
+                                // 次は変数名でなければならない
                 match self.current() {
                     Some(Token::Symbol(s)) => {
                         rest = Some(Box::new(Pattern::Var(s.clone())));
@@ -990,7 +1003,7 @@ impl Parser {
             if let Some(Token::Keyword(k)) = self.current() {
                 if k == "as" {
                     self.advance(); // :as
-                    // 次は変数名
+                                    // 次は変数名
                     match self.current() {
                         Some(Token::Symbol(var)) => {
                             as_var = Some(var.clone());
@@ -1146,19 +1159,25 @@ impl Parser {
         match expr {
             Expr::Symbol(s) if s == "_" => value,
             Expr::Call { func, args } => {
-                let new_args = args.into_iter()
+                let new_args = args
+                    .into_iter()
                     .map(|arg| Self::replace_placeholder(arg, value.clone()))
                     .collect();
-                Expr::Call { func, args: new_args }
+                Expr::Call {
+                    func,
+                    args: new_args,
+                }
             }
             Expr::Vector(items) => {
-                let new_items = items.into_iter()
+                let new_items = items
+                    .into_iter()
                     .map(|item| Self::replace_placeholder(item, value.clone()))
                     .collect();
                 Expr::Vector(new_items)
             }
             Expr::List(items) => {
-                let new_items = items.into_iter()
+                let new_items = items
+                    .into_iter()
                     .map(|item| Self::replace_placeholder(item, value.clone()))
                     .collect();
                 Expr::List(new_items)
@@ -1247,7 +1266,10 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Use { module, mode } => {
                 assert_eq!(module, "http");
-                assert_eq!(mode, UseMode::Only(vec!["get".to_string(), "post".to_string()]));
+                assert_eq!(
+                    mode,
+                    UseMode::Only(vec!["get".to_string(), "post".to_string()])
+                );
             }
             _ => panic!("Expected Use"),
         }

@@ -29,12 +29,9 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
     match serde_yaml::from_str::<serde_yaml::Value>(yaml_str) {
         Ok(yaml) => Ok(Value::Map(
-            [(
-                "ok".to_string(),
-                yaml_to_value(yaml),
-            )]
-            .into_iter()
-            .collect(),
+            [("ok".to_string(), yaml_to_value(yaml))]
+                .into_iter()
+                .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -62,9 +59,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [("ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
+            [("ok".to_string(), Value::String(s))].into_iter().collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -135,24 +130,15 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Nil => serde_yaml::Value::Null,
         Value::Bool(b) => serde_yaml::Value::Bool(*b),
         Value::Integer(i) => serde_yaml::Value::Number((*i).into()),
-        Value::Float(f) => {
-            serde_yaml::Value::Number(serde_yaml::Number::from(*f))
-        }
+        Value::Float(f) => serde_yaml::Value::Number(serde_yaml::Number::from(*f)),
         Value::String(s) => serde_yaml::Value::String(s.clone()),
         Value::Keyword(s) => serde_yaml::Value::String(s.clone()),
-        Value::Vector(v) => {
-            serde_yaml::Value::Sequence(v.iter().map(value_to_yaml).collect())
-        }
-        Value::List(l) => {
-            serde_yaml::Value::Sequence(l.iter().map(value_to_yaml).collect())
-        }
+        Value::Vector(v) => serde_yaml::Value::Sequence(v.iter().map(value_to_yaml).collect()),
+        Value::List(l) => serde_yaml::Value::Sequence(l.iter().map(value_to_yaml).collect()),
         Value::Map(m) => {
             let mut mapping = serde_yaml::Mapping::new();
             for (k, v) in m.iter() {
-                mapping.insert(
-                    serde_yaml::Value::String(k.clone()),
-                    value_to_yaml(v),
-                );
+                mapping.insert(serde_yaml::Value::String(k.clone()), value_to_yaml(v));
             }
             serde_yaml::Value::Mapping(mapping)
         }

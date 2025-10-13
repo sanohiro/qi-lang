@@ -114,7 +114,7 @@ pub fn record_call(name: &str, duration: Duration) {
         call_count: 0,
         total_time: Duration::ZERO,
     });
-    
+
     entry.call_count += 1;
     entry.total_time += duration;
 }

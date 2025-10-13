@@ -7,9 +7,15 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// take-while - 条件を満たす間要素を取得
-pub fn native_take_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_take_while(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["take-while", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["take-while", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred = &args[0];
@@ -27,14 +33,23 @@ pub fn native_take_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> 
             }
             Ok(Value::List(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["take-while (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["take-while (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// drop-while - 条件を満たす間要素をスキップ
-pub fn native_drop_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_drop_while(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["drop-while", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["drop-while", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred = &args[0];
@@ -56,14 +71,20 @@ pub fn native_drop_while(args: &[Value], evaluator: &crate::eval::Evaluator) -> 
             }
             Ok(Value::List(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["drop-while (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["drop-while (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// split-at - 指定位置でリストを分割
 pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["split-at", "2", "(index, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["split-at", "2", "(index, collection)"],
+        ));
     }
 
     let index = match &args[0] {
@@ -78,7 +99,10 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
             let right = items[split_point..].to_vec();
             Ok(Value::Vector(vec![Value::List(left), Value::List(right)]))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["split-at (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["split-at (2nd arg)", "second argument"],
+        )),
     }
 }
 
@@ -90,12 +114,22 @@ pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
 
     let list1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["interleave (1st arg)", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["interleave (1st arg)", "first argument"],
+            ))
+        }
     };
 
     let list2 = match &args[1] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["interleave (2nd arg)", "second argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["interleave (2nd arg)", "second argument"],
+            ))
+        }
     };
 
     let mut result = Vec::new();
@@ -130,14 +164,20 @@ pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["frequencies", "argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["frequencies", "argument"],
+        )),
     }
 }
 
 /// sort-by - キー関数でソート
 pub fn native_sort_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["sort-by", "2", "(key-fn, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["sort-by", "2", "(key-fn, collection)"],
+        ));
     }
 
     let key_fn = &args[0];
@@ -153,34 +193,38 @@ pub fn native_sort_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Res
             }
 
             // キーでソート
-            keyed.sort_by(|a, b| {
-                match (&a.0, &b.0) {
-                    (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-                    (Value::Float(x), Value::Float(y)) => {
-                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                    }
-                    (Value::String(x), Value::String(y)) => x.cmp(y),
-                    (Value::Integer(x), Value::Float(y)) => {
-                        (*x as f64).partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                    }
-                    (Value::Float(x), Value::Integer(y)) => {
-                        x.partial_cmp(&(*y as f64)).unwrap_or(std::cmp::Ordering::Equal)
-                    }
-                    _ => std::cmp::Ordering::Equal,
+            keyed.sort_by(|a, b| match (&a.0, &b.0) {
+                (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                (Value::Float(x), Value::Float(y)) => {
+                    x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
                 }
+                (Value::String(x), Value::String(y)) => x.cmp(y),
+                (Value::Integer(x), Value::Float(y)) => (*x as f64)
+                    .partial_cmp(y)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+                (Value::Float(x), Value::Integer(y)) => x
+                    .partial_cmp(&(*y as f64))
+                    .unwrap_or(std::cmp::Ordering::Equal),
+                _ => std::cmp::Ordering::Equal,
             });
 
             let result: Vec<Value> = keyed.into_iter().map(|(_, v)| v).collect();
             Ok(Value::List(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["sort-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["sort-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// chunk - 固定サイズでリストを分割
 pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["chunk", "2", "(size, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["chunk", "2", "(size, collection)"],
+        ));
     }
 
     let size = match &args[0] {
@@ -197,14 +241,20 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::List(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["chunk (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["chunk (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// max-by - キー関数で最大値を取得
 pub fn native_max_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["max-by", "2", "(key-fn, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["max-by", "2", "(key-fn, collection)"],
+        ));
     }
 
     let key_fn = &args[0];
@@ -239,14 +289,20 @@ pub fn native_max_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
 
             Ok(max_item.clone())
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["max-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["max-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// min-by - キー関数で最小値を取得
 pub fn native_min_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["min-by", "2", "(key-fn, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["min-by", "2", "(key-fn, collection)"],
+        ));
     }
 
     let key_fn = &args[0];
@@ -281,14 +337,20 @@ pub fn native_min_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
 
             Ok(min_item.clone())
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["min-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["min-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// sum-by - キー関数で合計
 pub fn native_sum_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["sum-by", "2", "(key-fn, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["sum-by", "2", "(key-fn, collection)"],
+        ));
     }
 
     let key_fn = &args[0];
@@ -328,14 +390,20 @@ pub fn native_sum_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
                 Ok(Value::Integer(int_sum))
             }
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["sum-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["sum-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// find - 条件を満たす最初の要素を返す
 pub fn native_find(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["find", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["find", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred_fn = &args[0];
@@ -351,14 +419,23 @@ pub fn native_find(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
             }
             Ok(Value::Nil)
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["find (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["find (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// find-index - 条件を満たす最初の要素のインデックスを返す
-pub fn native_find_index(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_find_index(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["find-index", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["find-index", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred_fn = &args[0];
@@ -374,14 +451,20 @@ pub fn native_find_index(args: &[Value], evaluator: &crate::eval::Evaluator) -> 
             }
             Ok(Value::Nil)
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["find-index (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["find-index (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// every? - すべての要素が条件を満たすか
 pub fn native_every(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["every?", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["every?", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred_fn = &args[0];
@@ -397,14 +480,20 @@ pub fn native_every(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resul
             }
             Ok(Value::Bool(true))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["every? (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["every? (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// some? - いずれかの要素が条件を満たすか
 pub fn native_some(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["some?", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["some?", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred_fn = &args[0];
@@ -420,24 +509,40 @@ pub fn native_some(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
             }
             Ok(Value::Bool(false))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["some? (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["some? (2nd arg)", "second argument"],
+        )),
     }
 }
 
 /// zipmap - 2つのコレクションからマップを作成
 pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["zipmap", "2", "(keys, vals)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["zipmap", "2", "(keys, vals)"],
+        ));
     }
 
     let keys = match &args[0] {
         Value::List(v) | Value::Vector(v) => v,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["zipmap (1st arg)", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["zipmap (1st arg)", "first argument"],
+            ))
+        }
     };
 
     let vals = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["zipmap (2nd arg)", "second argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["zipmap (2nd arg)", "second argument"],
+            ))
+        }
     };
 
     let mut result = std::collections::HashMap::new();
@@ -454,9 +559,15 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
 }
 
 /// partition-by - 連続する値を述語関数でグループ化
-pub fn native_partition_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
+pub fn native_partition_by(
+    args: &[Value],
+    evaluator: &crate::eval::Evaluator,
+) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["partition-by", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["partition-by", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred_fn = &args[0];
@@ -477,8 +588,7 @@ pub fn native_partition_by(args: &[Value], evaluator: &crate::eval::Evaluator) -
 
                 if let Some(ref last) = last_pred_result {
                     // 述語の結果が変わったら新しいグループを開始
-                    if !values_equal(last, &pred_result)
-                        && !current_group.is_empty() {
+                    if !values_equal(last, &pred_result) && !current_group.is_empty() {
                         result.push(Value::List(current_group.clone()));
                         current_group.clear();
                     }
@@ -495,7 +605,10 @@ pub fn native_partition_by(args: &[Value], evaluator: &crate::eval::Evaluator) -
 
             Ok(Value::List(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["partition-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["partition-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
@@ -514,7 +627,10 @@ fn values_equal(a: &Value, b: &Value) -> bool {
 /// take-nth - n番目ごとの要素を取得
 pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["take-nth", "2", "(n, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["take-nth", "2", "(n, collection)"],
+        ));
     }
 
     let n = match &args[0] {
@@ -524,12 +640,22 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
             }
             *i as usize
         }
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["take-nth", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeInteger,
+                &["take-nth", "first argument"],
+            ))
+        }
     };
 
     let collection = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["take-nth (2nd arg)", "second argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["take-nth (2nd arg)", "second argument"],
+            ))
+        }
     };
 
     let result: Vec<Value> = collection
@@ -545,13 +671,21 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
 /// keep - nilを除外してmap
 pub fn native_keep(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["keep", "2", "(function, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["keep", "2", "(function, collection)"],
+        ));
     }
 
     let func = &args[0];
     let collection = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["keep (2nd arg)", "second argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["keep (2nd arg)", "second argument"],
+            ))
+        }
     };
 
     let mut result: Vec<Value> = Vec::new();
@@ -600,7 +734,10 @@ pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
 /// drop-last - 最後のn要素を削除
 pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["drop-last", "2", "(n, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["drop-last", "2", "(n, collection)"],
+        ));
     }
 
     let n = match &args[0] {
@@ -610,12 +747,22 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
             }
             *i as usize
         }
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["drop-last", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeInteger,
+                &["drop-last", "first argument"],
+            ))
+        }
     };
 
     let collection = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["drop-last (2nd arg)", "second argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["drop-last (2nd arg)", "second argument"],
+            ))
+        }
     };
 
     let take_count = if collection.len() > n {

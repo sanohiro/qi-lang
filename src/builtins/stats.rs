@@ -17,7 +17,10 @@ pub fn native_mean(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["stats/mean", "collection"]));
+                return Err(fmt_msg(
+                    MsgKey::MustNotBeEmpty,
+                    &["stats/mean", "collection"],
+                ));
             }
 
             let mut sum = 0.0;
@@ -33,13 +36,21 @@ pub fn native_mean(args: &[Value]) -> Result<Value, String> {
                         sum += f;
                         count += 1;
                     }
-                    _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["stats/mean", "numbers"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::AllElementsMustBe,
+                            &["stats/mean", "numbers"],
+                        ))
+                    }
                 }
             }
 
             Ok(Value::Float(sum / count as f64))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/mean", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["stats/mean", "lists or vectors"],
+        )),
     }
 }
 
@@ -52,7 +63,10 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["stats/median", "collection"]));
+                return Err(fmt_msg(
+                    MsgKey::MustNotBeEmpty,
+                    &["stats/median", "collection"],
+                ));
             }
 
             let mut numbers: Vec<f64> = Vec::new();
@@ -60,7 +74,12 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
                     Value::Float(f) => numbers.push(*f),
-                    _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["stats/median", "numbers"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::AllElementsMustBe,
+                            &["stats/median", "numbers"],
+                        ))
+                    }
                 }
             }
 
@@ -75,7 +94,10 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::Float(median))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/median", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["stats/median", "lists or vectors"],
+        )),
     }
 }
 
@@ -88,7 +110,10 @@ pub fn native_mode(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["stats/mode", "collection"]));
+                return Err(fmt_msg(
+                    MsgKey::MustNotBeEmpty,
+                    &["stats/mode", "collection"],
+                ));
             }
 
             let mut freq: HashMap<String, (usize, Value)> = HashMap::new();
@@ -101,7 +126,12 @@ pub fn native_mode(args: &[Value]) -> Result<Value, String> {
                             .and_modify(|(count, _)| *count += 1)
                             .or_insert((1, item.clone()));
                     }
-                    _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["stats/mode", "numbers"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::AllElementsMustBe,
+                            &["stats/mode", "numbers"],
+                        ))
+                    }
                 }
             }
 
@@ -118,7 +148,10 @@ pub fn native_mode(args: &[Value]) -> Result<Value, String> {
 
             Ok(mode_value.clone())
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/mode", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["stats/mode", "lists or vectors"],
+        )),
     }
 }
 
@@ -131,7 +164,10 @@ pub fn native_variance(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["stats/variance", "collection"]));
+                return Err(fmt_msg(
+                    MsgKey::MustNotBeEmpty,
+                    &["stats/variance", "collection"],
+                ));
             }
 
             let mut numbers: Vec<f64> = Vec::new();
@@ -139,7 +175,12 @@ pub fn native_variance(args: &[Value]) -> Result<Value, String> {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
                     Value::Float(f) => numbers.push(*f),
-                    _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["stats/variance", "numbers"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::AllElementsMustBe,
+                            &["stats/variance", "numbers"],
+                        ))
+                    }
                 }
             }
 
@@ -148,13 +189,15 @@ pub fn native_variance(args: &[Value]) -> Result<Value, String> {
             let mean = sum / numbers.len() as f64;
 
             // 分散を計算
-            let variance: f64 = numbers.iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f64>() / numbers.len() as f64;
+            let variance: f64 =
+                numbers.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / numbers.len() as f64;
 
             Ok(Value::Float(variance))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/variance", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["stats/variance", "lists or vectors"],
+        )),
     }
 }
 
@@ -187,13 +230,21 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
             }
             *f
         }
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["stats/percentile (percentile)", "numbers"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["stats/percentile (percentile)", "numbers"],
+            ))
+        }
     };
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Err(fmt_msg(MsgKey::MustNotBeEmpty, &["stats/percentile", "collection"]));
+                return Err(fmt_msg(
+                    MsgKey::MustNotBeEmpty,
+                    &["stats/percentile", "collection"],
+                ));
             }
 
             let mut numbers: Vec<f64> = Vec::new();
@@ -201,7 +252,12 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
                     Value::Float(f) => numbers.push(*f),
-                    _ => return Err(fmt_msg(MsgKey::AllElementsMustBe, &["stats/percentile", "numbers"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::AllElementsMustBe,
+                            &["stats/percentile", "numbers"],
+                        ))
+                    }
                 }
             }
 
@@ -221,7 +277,10 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::Float(result))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["stats/percentile", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["stats/percentile", "lists or vectors"],
+        )),
     }
 }
 
@@ -231,7 +290,13 @@ mod tests {
 
     #[test]
     fn test_mean() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_mean(&[Value::Vector(data)]).unwrap();
         assert_eq!(result, Value::Float(3.0));
     }
@@ -240,55 +305,111 @@ mod tests {
     fn test_mean_mixed() {
         let data = vec![Value::Integer(1), Value::Float(2.5), Value::Integer(3)];
         let result = native_mean(&[Value::Vector(data)]).unwrap();
-        assert!((match result { Value::Float(f) => f, _ => 0.0 } - 2.166666).abs() < 0.001);
+        assert!(
+            (match result {
+                Value::Float(f) => f,
+                _ => 0.0,
+            } - 2.166666)
+                .abs()
+                < 0.001
+        );
     }
 
     #[test]
     fn test_median_odd() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_median(&[Value::Vector(data)]).unwrap();
         assert_eq!(result, Value::Float(3.0));
     }
 
     #[test]
     fn test_median_even() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+        ];
         let result = native_median(&[Value::Vector(data)]).unwrap();
         assert_eq!(result, Value::Float(2.5));
     }
 
     #[test]
     fn test_mode() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(2), Value::Integer(3), Value::Integer(3), Value::Integer(3)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(3),
+            Value::Integer(3),
+        ];
         let result = native_mode(&[Value::Vector(data)]).unwrap();
         assert_eq!(result, Value::Integer(3));
     }
 
     #[test]
     fn test_variance() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_variance(&[Value::Vector(data)]).unwrap();
         assert_eq!(result, Value::Float(2.0));
     }
 
     #[test]
     fn test_stddev() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_stddev(&[Value::Vector(data)]).unwrap();
         let expected = 2.0_f64.sqrt();
-        assert!((match result { Value::Float(f) => f, _ => 0.0 } - expected).abs() < 0.0001);
+        assert!(
+            (match result {
+                Value::Float(f) => f,
+                _ => 0.0,
+            } - expected)
+                .abs()
+                < 0.0001
+        );
     }
 
     #[test]
     fn test_percentile_50() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_percentile(&[Value::Vector(data), Value::Integer(50)]).unwrap();
         assert_eq!(result, Value::Float(3.0));
     }
 
     #[test]
     fn test_percentile_95() {
-        let data = vec![Value::Integer(1), Value::Integer(2), Value::Integer(3), Value::Integer(4), Value::Integer(5)];
+        let data = vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+            Value::Integer(5),
+        ];
         let result = native_percentile(&[Value::Vector(data), Value::Integer(95)]).unwrap();
         assert_eq!(result, Value::Float(4.8));
     }

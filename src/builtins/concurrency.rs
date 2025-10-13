@@ -26,7 +26,9 @@ pub fn native_chan(args: &[Value]) -> Result<Value, String> {
     } else if args.len() == 1 {
         match &args[0] {
             Value::Integer(n) if *n >= 0 => Some(*n as usize),
-            Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["chan", "capacity"])),
+            Value::Integer(_) => {
+                return Err(fmt_msg(MsgKey::MustBeNonNegative, &["chan", "capacity"]))
+            }
             _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["chan", "capacity"])),
         }
     } else {
@@ -106,7 +108,9 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
                                 let timeout = std::time::Duration::from_millis(*ms as u64);
                                 Ok(ch.receiver.recv_timeout(timeout).unwrap_or(Value::Nil))
                             }
-                            Value::Integer(_) => Err(fmt_msg(MsgKey::MustBeNonNegative, &["recv!", "timeout"])),
+                            Value::Integer(_) => {
+                                Err(fmt_msg(MsgKey::MustBeNonNegative, &["recv!", "timeout"]))
+                            }
                             _ => Err(fmt_msg(MsgKey::TimeoutMustBeMs, &["recv!"])),
                         }
                     }
@@ -224,12 +228,20 @@ pub fn native_await(args: &[Value]) -> Result<Value, String> {
 /// ```
 pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["then", "2", "(promise, fn)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["then", "2", "(promise, fn)"],
+        ));
     }
 
     let promise = match &args[0] {
         Value::Channel(ch) => ch.clone(),
-        _ => return Err(fmt_msg(MsgKey::MustBePromise, &["then (1st arg)", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBePromise,
+                &["then (1st arg)", "first argument"],
+            ))
+        }
     };
 
     let f = args[1].clone();
@@ -271,12 +283,20 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 /// ```
 pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["catch", "2", "(promise, handler)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["catch", "2", "(promise, handler)"],
+        ));
     }
 
     let promise = match &args[0] {
         Value::Channel(ch) => ch.clone(),
-        _ => return Err(fmt_msg(MsgKey::MustBePromise, &["catch (1st arg)", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBePromise,
+                &["catch (1st arg)", "first argument"],
+            ))
+        }
     };
 
     let handler = args[1].clone();
@@ -299,7 +319,8 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
             }
             Err(_) => {
                 // エラーの場合はハンドラを呼び出す
-                let result = eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
+                let result =
+                    eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
                 let _ = sender.send(result.unwrap_or(Value::Nil));
             }
         }
@@ -323,7 +344,10 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
 /// ```
 pub fn native_all(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["all", "1", "(list of promises)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["all", "1", "(list of promises)"],
+        ));
     }
 
     let promises = match &args[0] {
@@ -376,7 +400,10 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
 /// ```
 pub fn native_race(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["race", "1", "(list of promises)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["race", "1", "(list of promises)"],
+        ));
     }
 
     let promises = match &args[0] {
@@ -402,7 +429,10 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
                 }
             });
         } else {
-            return Err(fmt_msg(MsgKey::AllElementsMustBe, &["race", "promises (channels)"]));
+            return Err(fmt_msg(
+                MsgKey::AllElementsMustBe,
+                &["race", "promises (channels)"],
+            ));
         }
     }
 
@@ -434,7 +464,10 @@ pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
 
     // 結果を返すチャネルを作成
     let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel { sender: sender.clone(), receiver });
+    let result_channel = Arc::new(Channel {
+        sender: sender.clone(),
+        receiver,
+    });
 
     // 実行する式
     let expr = args[0].clone();
@@ -590,7 +623,10 @@ pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
 /// ```
 pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline", "3", "(n, xf, in-ch)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["pipeline", "3", "(n, xf, in-ch)"],
+        ));
     }
 
     let n = match &args[0] {
@@ -654,7 +690,10 @@ pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// ```
 pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-map", "3", "(n, f, coll)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["pipeline-map", "3", "(n, f, coll)"],
+        ));
     }
 
     let n = match &args[0] {
@@ -667,7 +706,12 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 
     let items = match &args[2] {
         Value::List(items) | Value::Vector(items) => items.clone(),
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["pipeline-map (3rd arg)", "third argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["pipeline-map (3rd arg)", "third argument"],
+            ))
+        }
     };
 
     // 入出力チャネルを作成
@@ -747,12 +791,17 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 /// ```
 pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-filter", "3", "(n, pred, coll)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["pipeline-filter", "3", "(n, pred, coll)"],
+        ));
     }
 
     let n = match &args[0] {
         Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBePositive, &["pipeline-filter", "n"])),
+        Value::Integer(_) => {
+            return Err(fmt_msg(MsgKey::MustBePositive, &["pipeline-filter", "n"]))
+        }
         _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["pipeline-filter", "n"])),
     };
 
@@ -760,7 +809,12 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 
     let items = match &args[2] {
         Value::List(items) | Value::Vector(items) => items.clone(),
-        _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["pipeline-filter (3rd arg)", "third argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeListOrVector,
+                &["pipeline-filter (3rd arg)", "third argument"],
+            ))
+        }
     };
 
     // 入出力チャネルを作成
@@ -789,7 +843,10 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
                                 Ok(result) if result.is_truthy() => {
                                     // マッチした場合は送信
                                     if out_sender
-                                        .send(Value::Vector(vec![Value::Integer(idx), vec[1].clone()]))
+                                        .send(Value::Vector(vec![
+                                            Value::Integer(idx),
+                                            vec[1].clone(),
+                                        ]))
                                         .is_err()
                                     {
                                         break;
@@ -857,7 +914,10 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 /// ```
 pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["select!", "1", "(a list of cases)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["select!", "1", "(a list of cases)"],
+        ));
     }
 
     let cases = match &args[0] {
@@ -893,7 +953,12 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                                 timeout_ms = Some(*ms);
                                 timeout_handler = Some(parts[2].clone());
                             }
-                            Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["select!", "timeout"])),
+                            Value::Integer(_) => {
+                                return Err(fmt_msg(
+                                    MsgKey::MustBeNonNegative,
+                                    &["select!", "timeout"],
+                                ))
+                            }
                             _ => return Err(fmt_msg(MsgKey::TimeoutMustBeMs, &["select!"])),
                         }
                     }
@@ -954,13 +1019,14 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
     // 通常のチャネルケースが選択された
     if index < channels.len() {
-        let value = oper.recv(&channels[index].receiver).map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["select!"]))?;
+        let value = oper
+            .recv(&channels[index].receiver)
+            .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["select!"]))?;
         return evaluator.apply_function(&handlers[index], &[value]);
     }
 
     Err(fmt_msg(MsgKey::UnexpectedError, &["select!"]))
 }
-
 
 /// make-scope - スコープを作成
 ///
@@ -1004,12 +1070,20 @@ pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
 /// ```
 pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["scope-go", "2", "(scope, function)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["scope-go", "2", "(scope, function)"],
+        ));
     }
 
     let _scope = match &args[0] {
         Value::Scope(s) => s.clone(),
-        _ => return Err(fmt_msg(MsgKey::MustBeScope, &["scope-go (1st arg)", "first argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeScope,
+                &["scope-go (1st arg)", "first argument"],
+            ))
+        }
     };
 
     let func = args[1].clone();
@@ -1106,7 +1180,10 @@ pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
 /// ```
 pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["with-scope", "1", "(function)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["with-scope", "1", "(function)"],
+        ));
     }
 
     let func = &args[0];
@@ -1178,9 +1255,12 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
     // 全ての結果を収集
     let results: Result<Vec<_>, _> = channels
         .iter()
-        .map(|ch| ch.receiver.recv().map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["parallel-do"])))
+        .map(|ch| {
+            ch.receiver
+                .recv()
+                .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["parallel-do"]))
+        })
         .collect();
 
     Ok(Value::Vector(results?))
 }
-

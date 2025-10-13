@@ -108,10 +108,7 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 
     let mut result = HashMap::new();
     result.insert("flags".to_string(), Value::List(flags));
-    result.insert(
-        "options".to_string(),
-        Value::Map(options),
-    );
+    result.insert("options".to_string(), Value::Map(options));
     result.insert("args".to_string(), Value::List(positional));
 
     Ok(Value::Map(result))

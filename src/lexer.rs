@@ -11,7 +11,11 @@ pub struct Span {
 
 impl Span {
     pub fn new(line: usize, column: usize, offset: usize) -> Self {
-        Span { line, column, offset }
+        Span {
+            line,
+            column,
+            offset,
+        }
     }
 }
 
@@ -22,7 +26,7 @@ pub enum Token {
     Integer(i64),
     Float(f64),
     String(String),
-    FString(Vec<FStringPart>),  // f"hello {name}"
+    FString(Vec<FStringPart>), // f"hello {name}"
     Symbol(String),
     Keyword(String),
     True,
@@ -30,27 +34,27 @@ pub enum Token {
     Nil,
 
     // 括弧
-    LParen,  // (
-    RParen,  // )
-    LBracket,  // [
-    RBracket,  // ]
-    LBrace,  // {
-    RBrace,  // }
+    LParen,   // (
+    RParen,   // )
+    LBracket, // [
+    RBracket, // ]
+    LBrace,   // {
+    RBrace,   // }
 
     // その他
-    Quote,  // '
-    Backquote,  // `
-    Unquote,    // ,
-    UnquoteSplice,  // ,@
-    At,     // @
-    Arrow,  // ->
-    FatArrow, // =>
-    Bar,    // | (or pattern用)
-    Pipe,   // |>
-    PipeRailway,  // |>?
+    Quote,         // '
+    Backquote,     // `
+    Unquote,       // ,
+    UnquoteSplice, // ,@
+    At,            // @
+    Arrow,         // ->
+    FatArrow,      // =>
+    Bar,           // | (or pattern用)
+    Pipe,          // |>
+    PipeRailway,   // |>?
     ParallelPipe,  // ||>
-    AsyncPipe,  // ~>
-    Ellipsis,  // ...
+    AsyncPipe,     // ~>
+    Ellipsis,      // ...
 
     // ファイル終端
     Eof,
@@ -516,7 +520,11 @@ impl Lexer {
                     return Ok(Token::Ellipsis);
                 }
                 // 複数行f-string: f"""..."""
-                Some('f') if self.peek(1) == Some('"') && self.peek(2) == Some('"') && self.peek(3) == Some('"') => {
+                Some('f')
+                    if self.peek(1) == Some('"')
+                        && self.peek(2) == Some('"')
+                        && self.peek(3) == Some('"') =>
+                {
                     let parts = self.read_multiline_fstring()?;
                     return Ok(Token::FString(parts));
                 }
@@ -571,23 +579,44 @@ mod tests {
     #[test]
     fn test_strings() {
         let mut lexer = Lexer::new(r#""hello" "world\n""#);
-        assert_eq!(lexer.next_token().unwrap(), Token::String("hello".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::String("world\n".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("hello".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("world\n".to_string())
+        );
     }
 
     #[test]
     fn test_symbols() {
         let mut lexer = Lexer::new("foo bar+ baz?");
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("foo".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("bar+".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("baz?".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("foo".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("bar+".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("baz?".to_string())
+        );
     }
 
     #[test]
     fn test_keywords() {
         let mut lexer = Lexer::new(":name :age");
-        assert_eq!(lexer.next_token().unwrap(), Token::Keyword("name".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Keyword("age".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Keyword("name".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Keyword("age".to_string())
+        );
     }
 
     #[test]
@@ -610,8 +639,10 @@ mod tests {
 
     #[test]
     fn test_multiline_string() {
-        let mut lexer = Lexer::new(r#""""hello
-world""""#);
+        let mut lexer = Lexer::new(
+            r#""""hello
+world""""#,
+        );
         match lexer.next_token().unwrap() {
             Token::String(s) => assert_eq!(s, "hello\nworld"),
             _ => panic!("Expected multiline string"),

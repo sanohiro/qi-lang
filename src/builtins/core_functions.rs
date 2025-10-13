@@ -37,7 +37,10 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
 /// partial - 部分適用
 pub fn native_partial(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["partial", "2+", "(function and at least 1 arg)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["partial", "2+", "(function and at least 1 arg)"],
+        ));
     }
 
     let func = args[0].clone();
@@ -88,14 +91,18 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
 /// 注意: この関数はEvaluatorを必要とするため、mod.rsでの登録時に特別な処理が必要です
 pub fn native_apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["apply", "2", "(function and list)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["apply", "2", "(function and list)"],
+        ));
     }
 
     let func = &args[0];
     match &args[1] {
-        Value::List(items) | Value::Vector(items) => {
-            evaluator.apply_function(func, items)
-        }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["apply (2nd arg)", "second argument"])),
+        Value::List(items) | Value::Vector(items) => evaluator.apply_function(func, items),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["apply (2nd arg)", "second argument"],
+        )),
     }
 }

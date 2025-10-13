@@ -25,12 +25,10 @@ pub fn native_from_unix(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::Integer(timestamp) => {
-            match Utc.timestamp_opt(*timestamp, 0) {
-                chrono::LocalResult::Single(dt) => Ok(Value::String(dt.to_rfc3339())),
-                _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/from-unix"])),
-            }
-        }
+        Value::Integer(timestamp) => match Utc.timestamp_opt(*timestamp, 0) {
+            chrono::LocalResult::Single(dt) => Ok(Value::String(dt.to_rfc3339())),
+            _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/from-unix"])),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["time/from-unix", "integers"])),
     }
 }
@@ -42,12 +40,10 @@ pub fn native_to_unix(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::String(s) => {
-            match DateTime::parse_from_rfc3339(s) {
-                Ok(dt) => Ok(Value::Integer(dt.timestamp())),
-                Err(_) => Err(fmt_msg(MsgKey::InvalidDateFormat, &["time/to-unix", s])),
-            }
-        }
+        Value::String(s) => match DateTime::parse_from_rfc3339(s) {
+            Ok(dt) => Ok(Value::Integer(dt.timestamp())),
+            Err(_) => Err(fmt_msg(MsgKey::InvalidDateFormat, &["time/to-unix", s])),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["time/to-unix", "strings"])),
     }
 }
@@ -61,19 +57,20 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
     }
 
     let dt = match &args[0] {
-        Value::Integer(timestamp) => {
-            match Utc.timestamp_opt(*timestamp, 0) {
-                chrono::LocalResult::Single(dt) => dt,
-                _ => return Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/format"])),
-            }
+        Value::Integer(timestamp) => match Utc.timestamp_opt(*timestamp, 0) {
+            chrono::LocalResult::Single(dt) => dt,
+            _ => return Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/format"])),
+        },
+        Value::String(s) => match DateTime::parse_from_rfc3339(s) {
+            Ok(dt) => dt.with_timezone(&Utc),
+            Err(_) => return Err(fmt_msg(MsgKey::InvalidDateFormat, &["time/format", s])),
+        },
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["time/format (timestamp)", "integers or strings"],
+            ))
         }
-        Value::String(s) => {
-            match DateTime::parse_from_rfc3339(s) {
-                Ok(dt) => dt.with_timezone(&Utc),
-                Err(_) => return Err(fmt_msg(MsgKey::InvalidDateFormat, &["time/format", s])),
-            }
-        }
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["time/format (timestamp)", "integers or strings"])),
     };
 
     match &args[1] {
@@ -81,7 +78,10 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
             let formatted = dt.format(format_str).to_string();
             Ok(Value::String(formatted))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["time/format (format)", "strings"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["time/format (format)", "strings"],
+        )),
     }
 }
 
@@ -264,12 +264,23 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
     let format_str = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["time/parse (format)", "strings"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["time/parse (format)", "strings"],
+            ))
+        }
     };
 
-    match DateTime::parse_from_str(&format!("{} +0000", date_str), &format!("{} %z", format_str)) {
+    match DateTime::parse_from_str(
+        &format!("{} +0000", date_str),
+        &format!("{} %z", format_str),
+    ) {
         Ok(dt) => Ok(Value::Integer(dt.timestamp())),
-        Err(_) => Err(fmt_msg(MsgKey::TimeParseFailedToParse, &[date_str, format_str])),
+        Err(_) => Err(fmt_msg(
+            MsgKey::TimeParseFailedToParse,
+            &[date_str, format_str],
+        )),
     }
 }
 
@@ -352,18 +363,14 @@ pub fn native_weekday(args: &[Value]) -> Result<Value, String> {
 /// DateTimeにパース（UnixタイムスタンプまたはISO 8601文字列）
 fn parse_datetime(value: &Value, context: &str) -> Result<DateTime<Utc>, String> {
     match value {
-        Value::Integer(timestamp) => {
-            match Utc.timestamp_opt(*timestamp, 0) {
-                chrono::LocalResult::Single(dt) => Ok(dt),
-                _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &[context])),
-            }
-        }
-        Value::String(s) => {
-            match DateTime::parse_from_rfc3339(s) {
-                Ok(dt) => Ok(dt.with_timezone(&Utc)),
-                Err(_) => Err(fmt_msg(MsgKey::InvalidDateFormat, &[context, s])),
-            }
-        }
+        Value::Integer(timestamp) => match Utc.timestamp_opt(*timestamp, 0) {
+            chrono::LocalResult::Single(dt) => Ok(dt),
+            _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &[context])),
+        },
+        Value::String(s) => match DateTime::parse_from_rfc3339(s) {
+            Ok(dt) => Ok(dt.with_timezone(&Utc)),
+            Err(_) => Err(fmt_msg(MsgKey::InvalidDateFormat, &[context, s])),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &[context, "integers or strings"])),
     }
 }

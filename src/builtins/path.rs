@@ -2,8 +2,8 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use std::path::{Path, PathBuf, Component};
 use std::env;
+use std::path::{Component, Path, PathBuf};
 
 /// join - パスを結合
 /// 引数: (parts...) - 結合するパス要素のリスト
@@ -40,7 +40,10 @@ pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/basename", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/basename", "a string"],
+        )),
     }
 }
 
@@ -60,7 +63,10 @@ pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/dirname", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/dirname", "a string"],
+        )),
     }
 }
 
@@ -80,7 +86,10 @@ pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
                 None => Ok(Value::String(String::new())),
             }
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/extension", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/extension", "a string"],
+        )),
     }
 }
 
@@ -125,7 +134,10 @@ pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::String(abs_path.to_string_lossy().to_string()))
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/absolute", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/absolute", "a string"],
+        )),
     }
 }
 
@@ -159,7 +171,10 @@ pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
 
             Ok(Value::String(normalized.to_string_lossy().to_string()))
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/normalize", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/normalize", "a string"],
+        )),
     }
 }
 
@@ -168,7 +183,10 @@ pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/is-absolute? "/usr/bin") => true
 pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/is-absolute?", "1"]));
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["path/is-absolute?", "1"],
+        ));
     }
 
     match &args[0] {
@@ -176,7 +194,10 @@ pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
             let path = Path::new(s);
             Ok(Value::Bool(path.is_absolute()))
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/is-absolute?", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/is-absolute?", "a string"],
+        )),
     }
 }
 
@@ -185,7 +206,10 @@ pub fn native_path_is_absolute(args: &[Value]) -> Result<Value, String> {
 /// 例: (path/is-relative? "data/file.txt") => true
 pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/is-relative?", "1"]));
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["path/is-relative?", "1"],
+        ));
     }
 
     match &args[0] {
@@ -193,6 +217,9 @@ pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
             let path = Path::new(s);
             Ok(Value::Bool(path.is_relative()))
         }
-        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["path/is-relative?", "a string"])),
+        _ => Err(fmt_msg(
+            MsgKey::ArgMustBeType,
+            &["path/is-relative?", "a string"],
+        )),
     }
 }

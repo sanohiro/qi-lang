@@ -44,15 +44,15 @@
 pub mod lazy_init;
 
 // Coreモジュール
-pub mod core_numeric;
 pub mod core_collections;
+pub mod core_concurrency;
+pub mod core_functions;
+pub mod core_io_logic;
+pub mod core_numeric;
 pub mod core_predicates;
+pub mod core_state_meta;
 pub mod core_string;
 pub mod core_util;
-pub mod core_io_logic;
-pub mod core_functions;
-pub mod core_state_meta;
-pub mod core_concurrency;
 
 // 専門モジュール
 pub mod hof;
@@ -64,12 +64,12 @@ pub mod io;
 
 #[cfg(feature = "format-json")]
 pub mod json;
-#[cfg(feature = "format-yaml")]
-pub mod yaml;
 pub mod list;
 pub mod map;
 pub mod math;
 pub mod path;
+#[cfg(feature = "format-yaml")]
+pub mod yaml;
 
 #[cfg(feature = "std-set")]
 pub mod set;
@@ -84,11 +84,11 @@ pub mod string;
 pub mod time;
 
 pub mod concurrency;
-pub mod util;
 pub mod csv;
-pub mod flow;
 pub mod env;
+pub mod flow;
 pub mod log;
+pub mod util;
 
 #[cfg(feature = "util-zip")]
 pub mod zip;
@@ -104,9 +104,9 @@ pub mod cmd;
 #[cfg(feature = "format-markdown")]
 pub mod markdown;
 
-pub mod test;
-pub mod profile;
 pub mod ds;
+pub mod profile;
+pub mod test;
 
 #[cfg(feature = "db-sqlite")]
 pub mod db;

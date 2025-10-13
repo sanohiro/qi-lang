@@ -2,8 +2,6 @@ use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::value::Value;
-use std::io::Read;
-use std::sync::atomic::{AtomicBool, Ordering};
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
@@ -11,6 +9,8 @@ use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
+use std::io::Read;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -153,11 +153,26 @@ fn print_help() {
     println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpExamples));
-    println!("    qi                       {}", ui_msg(UiMsg::ExampleStartRepl));
-    println!("    qi script.qi             {}", ui_msg(UiMsg::ExampleRunScript));
-    println!("    qi -e '(+ 1 2 3)'        {}", ui_msg(UiMsg::ExampleExecuteCode));
-    println!("    echo '(println 42)' | qi -    {}", ui_msg(UiMsg::ExampleStdin));
-    println!("    qi -l utils.qi           {}", ui_msg(UiMsg::ExampleLoadFile));
+    println!(
+        "    qi                       {}",
+        ui_msg(UiMsg::ExampleStartRepl)
+    );
+    println!(
+        "    qi script.qi             {}",
+        ui_msg(UiMsg::ExampleRunScript)
+    );
+    println!(
+        "    qi -e '(+ 1 2 3)'        {}",
+        ui_msg(UiMsg::ExampleExecuteCode)
+    );
+    println!(
+        "    echo '(println 42)' | qi -    {}",
+        ui_msg(UiMsg::ExampleStdin)
+    );
+    println!(
+        "    qi -l utils.qi           {}",
+        ui_msg(UiMsg::ExampleLoadFile)
+    );
     println!();
     println!("{}:", ui_msg(UiMsg::HelpEnvVars));
     println!("    QI_LANG              {}", ui_msg(UiMsg::EnvLangQi));
@@ -501,7 +516,8 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
         ":vars" => {
             if let Some(env) = evaluator.get_env() {
                 let env = env.read();
-                let mut vars: Vec<_> = env.bindings()
+                let mut vars: Vec<_> = env
+                    .bindings()
                     .filter(|(_, v)| !matches!(v, Value::Function(_) | Value::NativeFunc(_)))
                     .map(|(name, _)| name.clone())
                     .collect();
@@ -520,7 +536,8 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
         ":funcs" => {
             if let Some(env) = evaluator.get_env() {
                 let env = env.read();
-                let mut funcs: Vec<_> = env.bindings()
+                let mut funcs: Vec<_> = env
+                    .bindings()
                     .filter(|(_, v)| matches!(v, Value::Function(_)))
                     .map(|(name, _)| name.clone())
                     .collect();
@@ -564,7 +581,8 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 let doc_key_lang = format!("__doc__{}_{}", name, lang);
                 let doc_key = format!("__doc__{}", name);
 
-                let doc = env.get(&doc_key_lang)
+                let doc = env
+                    .get(&doc_key_lang)
                     .or_else(|| env.get(&doc_key))
                     .or_else(|| {
                         // enの場合はenフォールバックをスキップ（既にチェック済み）
@@ -589,8 +607,11 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                             println!("\nParameters:");
                             for param in params {
                                 if let Value::Map(pm) = param {
-                                    if let (Some(Value::String(pname)), Some(Value::String(pdesc))) =
-                                        (pm.get("name"), pm.get("desc")) {
+                                    if let (
+                                        Some(Value::String(pname)),
+                                        Some(Value::String(pdesc)),
+                                    ) = (pm.get("name"), pm.get("desc"))
+                                    {
                                         println!("  {} - {}", pname, pdesc);
                                     }
                                 }
@@ -615,7 +636,8 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
         ":builtins" => {
             if let Some(env) = evaluator.get_env() {
                 let env = env.read();
-                let mut builtins: Vec<_> = env.bindings()
+                let mut builtins: Vec<_> = env
+                    .bindings()
                     .filter(|(_, v)| matches!(v, Value::NativeFunc(_)))
                     .map(|(name, _)| name.clone())
                     .collect();
@@ -636,7 +658,10 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                             }
                             print!("{:<20}", name);
                         }
-                        println!("\n\n{}", fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()]));
+                        println!(
+                            "\n\n{}",
+                            fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()])
+                        );
                     }
                 } else {
                     // 全表示
@@ -647,7 +672,10 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                         }
                         print!("{:<20}", name);
                     }
-                    println!("\n\n{}", fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()]));
+                    println!(
+                        "\n\n{}",
+                        fmt_ui_msg(UiMsg::ReplBuiltinTotal, &[&builtins.len().to_string()])
+                    );
                     println!("\n{}", ui_msg(UiMsg::ReplBuiltinTip));
                 }
             }

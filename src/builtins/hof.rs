@@ -22,7 +22,10 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
             }
             Ok(Value::List(results))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["map (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["map (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -46,7 +49,10 @@ pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
             }
             Ok(Value::List(results))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["filter (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["filter (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -81,7 +87,10 @@ pub fn native_reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
             }
             Ok(acc)
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["reduce (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["reduce (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -113,7 +122,10 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
                 _ => unreachable!(),
             }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pmap (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["pmap (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -150,7 +162,10 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
                 _ => unreachable!(),
             }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pfilter (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["pfilter (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -180,14 +195,17 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
                 .par_iter()
                 .try_fold(
                     || init.clone(),
-                    |acc, item| evaluator.apply_function(func, &[acc, item.clone()])
+                    |acc, item| evaluator.apply_function(func, &[acc, item.clone()]),
                 )
                 .try_reduce(
                     || init.clone(),
-                    |a, b| evaluator.apply_function(func, &[a, b])
+                    |a, b| evaluator.apply_function(func, &[a, b]),
                 )
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["preduce (3rd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["preduce (3rd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -212,12 +230,12 @@ pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
                     falsy.push(item.clone());
                 }
             }
-            Ok(Value::Vector(vec![
-                Value::List(truthy),
-                Value::List(falsy),
-            ]))
+            Ok(Value::Vector(vec![Value::List(truthy), Value::List(falsy)]))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["partition (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["partition (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -247,7 +265,10 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["group-by (2nd arg)", "lists or vectors"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["group-by (2nd arg)", "lists or vectors"],
+        )),
     }
 }
 
@@ -269,19 +290,28 @@ pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
                 if let Value::String(transformed) = result {
                     results.push(transformed);
                 } else {
-                    return Err(fmt_msg(MsgKey::FuncMustReturnType, &["map-lines", "string"]));
+                    return Err(fmt_msg(
+                        MsgKey::FuncMustReturnType,
+                        &["map-lines", "string"],
+                    ));
                 }
             }
             Ok(Value::String(results.join("\n")))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["map-lines (2nd arg)", "strings"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["map-lines (2nd arg)", "strings"],
+        )),
     }
 }
 
 /// update - マップの値を関数で更新
 pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update", "3", "(map, key, fn)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["update", "3", "(map, key, fn)"],
+        ));
     }
 
     let map = &args[0];
@@ -310,7 +340,10 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 /// update-in - ネストしたマップの値を関数で更新
 pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["update-in", "3", "(map, path, fn)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["update-in", "3", "(map, path, fn)"],
+        ));
     }
 
     let map = &args[0];
@@ -354,7 +387,10 @@ fn update_in_helper(
         map.insert(key, new_value);
     } else {
         // 中間のキー：再帰的に処理
-        let next_val = map.get(&key).cloned().unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+        let next_val = map
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
         match next_val {
             Value::Map(mut inner_map) => {
                 update_in_helper(&mut inner_map, path, index + 1, func, evaluator)?;
@@ -376,7 +412,10 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
     use std::collections::HashMap;
 
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["count-by", "2", "(predicate, collection)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["count-by", "2", "(predicate, collection)"],
+        ));
     }
 
     let pred = &args[0];
@@ -397,7 +436,10 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             }
             Ok(Value::Map(result))
         }
-        _ => Err(fmt_msg(MsgKey::MustBeListOrVector, &["count-by (2nd arg)", "second argument"])),
+        _ => Err(fmt_msg(
+            MsgKey::MustBeListOrVector,
+            &["count-by (2nd arg)", "second argument"],
+        )),
     }
 }
 
@@ -406,7 +448,10 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["complement", "1", "(function)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["complement", "1", "(function)"],
+        ));
     }
 
     let func = args[0].clone();

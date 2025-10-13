@@ -100,8 +100,10 @@ fn format_unix_timestamp(secs: u64, millis: u32) -> String {
     }
     let day = remaining_days + 1;
 
-    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
-        year, month, day, hours, minutes, seconds, millis)
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
+        year, month, day, hours, minutes, seconds, millis
+    )
 }
 
 /// うるう年判定
@@ -311,7 +313,12 @@ pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
 
     let level_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/set-level", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["log/set-level", "a string"],
+            ))
+        }
     };
 
     let level = LogLevel::from_str(level_str)
@@ -331,7 +338,12 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
 
     let format_str = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/set-format", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["log/set-format", "a string"],
+            ))
+        }
     };
 
     let format = match format_str.to_lowercase().as_str() {

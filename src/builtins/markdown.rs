@@ -22,12 +22,22 @@ pub fn native_markdown_header(args: &[Value]) -> Result<Value, String> {
                 &[&args[0].to_string()],
             ))
         }
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/header", "an integer"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/header", "an integer"],
+            ))
+        }
     };
 
     let text = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["markdown/header", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["markdown/header", "a string"],
+            ))
+        }
     };
 
     let header = format!("{} {}", "#".repeat(level), text);
@@ -44,7 +54,12 @@ pub fn native_markdown_list(args: &[Value]) -> Result<Value, String> {
 
     let items = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/list", "a list or vector"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/list", "a list or vector"],
+            ))
+        }
     };
 
     let mut lines = Vec::new();
@@ -72,10 +87,12 @@ pub fn native_markdown_ordered_list(args: &[Value]) -> Result<Value, String> {
 
     let items = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
-        _ => return Err(fmt_msg(
-            MsgKey::FirstArgMustBe,
-            &["markdown/ordered-list", "a list or vector"],
-        )),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/ordered-list", "a list or vector"],
+            ))
+        }
     };
 
     let mut lines = Vec::new();
@@ -100,7 +117,12 @@ pub fn native_markdown_table(args: &[Value]) -> Result<Value, String> {
 
     let rows = match &args[0] {
         Value::List(rows) | Value::Vector(rows) => rows,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/table", "a list or vector"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/table", "a list or vector"],
+            ))
+        }
     };
 
     if rows.is_empty() {
@@ -137,13 +159,22 @@ pub fn native_markdown_table(args: &[Value]) -> Result<Value, String> {
     for (i, row) in rows.iter().skip(1).enumerate() {
         let cells = match row {
             Value::List(cells) | Value::Vector(cells) => cells,
-            _ => return Err(fmt_msg(MsgKey::MdTableRowMustBeList, &[&(i + 1).to_string()])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::MdTableRowMustBeList,
+                    &[&(i + 1).to_string()],
+                ))
+            }
         };
 
         if cells.len() != col_count {
             return Err(fmt_msg(
                 MsgKey::MdTableColumnMismatch,
-                &[&(i + 1).to_string(), &cells.len().to_string(), &col_count.to_string()],
+                &[
+                    &(i + 1).to_string(),
+                    &cells.len().to_string(),
+                    &col_count.to_string(),
+                ],
             ));
         }
 
@@ -174,12 +205,22 @@ pub fn native_markdown_code_block(args: &[Value]) -> Result<Value, String> {
     let lang = match &args[0] {
         Value::String(s) => s.clone(),
         Value::Nil => String::new(),
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/code-block", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/code-block", "a string"],
+            ))
+        }
     };
 
     let code = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["markdown/code-block", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["markdown/code-block", "a string"],
+            ))
+        }
     };
 
     let block = if lang.is_empty() {
@@ -201,7 +242,12 @@ pub fn native_markdown_join(args: &[Value]) -> Result<Value, String> {
 
     let parts = match &args[0] {
         Value::List(parts) | Value::Vector(parts) => parts,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/join", "a list or vector"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/join", "a list or vector"],
+            ))
+        }
     };
 
     let text_parts: Vec<String> = parts
@@ -225,12 +271,22 @@ pub fn native_markdown_link(args: &[Value]) -> Result<Value, String> {
 
     let text = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/link", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/link", "a string"],
+            ))
+        }
     };
 
     let url = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["markdown/link", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["markdown/link", "a string"],
+            ))
+        }
     };
 
     Ok(Value::String(format!("[{}]({})", text, url)))
@@ -246,33 +302,36 @@ pub fn native_markdown_image(args: &[Value]) -> Result<Value, String> {
 
     let alt = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["markdown/image", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/image", "a string"],
+            ))
+        }
     };
 
     let src = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["markdown/image", "a string"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::SecondArgMustBe,
+                &["markdown/image", "a string"],
+            ))
+        }
     };
 
     Ok(Value::String(format!("![{}]({})", alt, src)))
 }
 
 // 正規表現パターン（遅延初期化）
-static CODE_BLOCK_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"```([^\n]*)\n([\s\S]*?)```").unwrap()
-});
+static CODE_BLOCK_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"```([^\n]*)\n([\s\S]*?)```").unwrap());
 
-static HEADER_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^(#{1,6})\s+(.+)$").unwrap()
-});
+static HEADER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+)$").unwrap());
 
-static LIST_ITEM_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[-*+]\s+(.+)$").unwrap()
-});
+static LIST_ITEM_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[-*+]\s+(.+)$").unwrap());
 
-static ORDERED_LIST_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\d+\.\s+(.+)$").unwrap()
-});
+static ORDERED_LIST_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d+\.\s+(.+)$").unwrap());
 
 /// extract-code-blocks - Markdownからコードブロックを抽出
 /// 引数: (text) - Markdown文字列
@@ -288,10 +347,12 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
 
     let text = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(
-            MsgKey::FirstArgMustBe,
-            &["markdown/extract-code-blocks", "a string"],
-        )),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/extract-code-blocks", "a string"],
+            ))
+        }
     };
 
     let mut blocks = Vec::new();
@@ -323,18 +384,17 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
 /// 例: (markdown/parse "# Title\n\nHello") → [{:type "header" :level 1 :text "Title"} {:type "paragraph" :text "Hello"}]
 pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(
-            MsgKey::NeedExactlyNArgs,
-            &["markdown/parse", "1"],
-        ));
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/parse", "1"]));
     }
 
     let text = match &args[0] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(
-            MsgKey::FirstArgMustBe,
-            &["markdown/parse", "a string"],
-        )),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["markdown/parse", "a string"],
+            ))
+        }
     };
 
     let mut blocks = Vec::new();

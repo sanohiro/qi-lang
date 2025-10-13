@@ -4,10 +4,10 @@ use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
 #[cfg(feature = "string-encoding")]
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 
 #[cfg(feature = "string-crypto")]
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 #[cfg(feature = "string-crypto")]
 use uuid::Uuid;
@@ -113,7 +113,9 @@ pub fn native_starts_with(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["starts-with?"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(prefix)) => Ok(Value::Bool(s.starts_with(prefix.as_str()))),
+        (Value::String(s), Value::String(prefix)) => {
+            Ok(Value::Bool(s.starts_with(prefix.as_str())))
+        }
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
@@ -135,12 +137,10 @@ pub fn native_index_of(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["index-of"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(sub)) => {
-            match s.find(sub.as_str()) {
-                Some(idx) => Ok(Value::Integer(idx as i64)),
-                None => Ok(Value::Integer(-1)),
-            }
-        }
+        (Value::String(s), Value::String(sub)) => match s.find(sub.as_str()) {
+            Some(idx) => Ok(Value::Integer(idx as i64)),
+            None => Ok(Value::Integer(-1)),
+        },
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
@@ -151,12 +151,10 @@ pub fn native_last_index_of(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["last-index-of"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(sub)) => {
-            match s.rfind(sub.as_str()) {
-                Some(idx) => Ok(Value::Integer(idx as i64)),
-                None => Ok(Value::Integer(-1)),
-            }
-        }
+        (Value::String(s), Value::String(sub)) => match s.rfind(sub.as_str()) {
+            Some(idx) => Ok(Value::Integer(idx as i64)),
+            None => Ok(Value::Integer(-1)),
+        },
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
@@ -177,7 +175,10 @@ pub fn native_slice(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::String(chars[start_idx..end_idx].iter().collect()))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["slice", "string and two integers"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["slice", "string and two integers"],
+        )),
     }
 }
 
@@ -192,7 +193,10 @@ pub fn native_take_str(args: &[Value]) -> Result<Value, String> {
             let take_count = (*n).max(0) as usize;
             Ok(Value::String(chars.iter().take(take_count).collect()))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["take-str", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["take-str", "string and integer"],
+        )),
     }
 }
 
@@ -207,7 +211,10 @@ pub fn native_drop_str(args: &[Value]) -> Result<Value, String> {
             let drop_count = (*n).max(0) as usize;
             Ok(Value::String(chars.iter().skip(drop_count).collect()))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["drop-str", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["drop-str", "string and integer"],
+        )),
     }
 }
 
@@ -217,12 +224,10 @@ pub fn native_sub_before(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["sub-before"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(delim)) => {
-            match s.find(delim.as_str()) {
-                Some(idx) => Ok(Value::String(s[..idx].to_string())),
-                None => Ok(Value::String(s.clone())),
-            }
-        }
+        (Value::String(s), Value::String(delim)) => match s.find(delim.as_str()) {
+            Some(idx) => Ok(Value::String(s[..idx].to_string())),
+            None => Ok(Value::String(s.clone())),
+        },
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
@@ -233,12 +238,10 @@ pub fn native_sub_after(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["sub-after"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::String(delim)) => {
-            match s.find(delim.as_str()) {
-                Some(idx) => Ok(Value::String(s[idx + delim.len()..].to_string())),
-                None => Ok(Value::String(String::new())),
-            }
-        }
+        (Value::String(s), Value::String(delim)) => match s.find(delim.as_str()) {
+            Some(idx) => Ok(Value::String(s[idx + delim.len()..].to_string())),
+            None => Ok(Value::String(String::new())),
+        },
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
 }
@@ -262,19 +265,20 @@ pub fn native_replace_first(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Or3Args, &["replace-first"]));
     }
     match (&args[0], &args[1], &args[2]) {
-        (Value::String(s), Value::String(from), Value::String(to)) => {
-            match s.find(from.as_str()) {
-                Some(idx) => {
-                    let mut result = String::new();
-                    result.push_str(&s[..idx]);
-                    result.push_str(to);
-                    result.push_str(&s[idx + from.len()..]);
-                    Ok(Value::String(result))
-                }
-                None => Ok(Value::String(s.clone())),
+        (Value::String(s), Value::String(from), Value::String(to)) => match s.find(from.as_str()) {
+            Some(idx) => {
+                let mut result = String::new();
+                result.push_str(&s[..idx]);
+                result.push_str(to);
+                result.push_str(&s[idx + from.len()..]);
+                Ok(Value::String(result))
             }
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["replace-first", "three strings"])),
+            None => Ok(Value::String(s.clone())),
+        },
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["replace-first", "three strings"],
+        )),
     }
 }
 
@@ -362,7 +366,10 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
     match (&args[0], &args[1]) {
         (Value::String(s), Value::Integer(n)) => {
             if *n < 0 {
-                return Err(fmt_msg(MsgKey::TypeOnly, &["repeat", "non-negative integer"]));
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["repeat", "non-negative integer"],
+                ));
             }
             Ok(Value::String(s.repeat(*n as usize)))
         }
@@ -398,7 +405,9 @@ pub fn native_digit_p(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["digit?"]));
     }
     match &args[0] {
-        Value::String(s) => Ok(Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_ascii_digit()))),
+        Value::String(s) => Ok(Value::Bool(
+            !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()),
+        )),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["digit?", "strings"])),
     }
 }
@@ -409,7 +418,9 @@ pub fn native_alpha_p(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["alpha?"]));
     }
     match &args[0] {
-        Value::String(s) => Ok(Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_alphabetic()))),
+        Value::String(s) => Ok(Value::Bool(
+            !s.is_empty() && s.chars().all(|c| c.is_alphabetic()),
+        )),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["alpha?", "strings"])),
     }
 }
@@ -420,7 +431,9 @@ pub fn native_alnum_p(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["alnum?"]));
     }
     match &args[0] {
-        Value::String(s) => Ok(Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_alphanumeric()))),
+        Value::String(s) => Ok(Value::Bool(
+            !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()),
+        )),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["alnum?", "strings"])),
     }
 }
@@ -431,7 +444,9 @@ pub fn native_space_p(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["space?"]));
     }
     match &args[0] {
-        Value::String(s) => Ok(Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_whitespace()))),
+        Value::String(s) => Ok(Value::Bool(
+            !s.is_empty() && s.chars().all(|c| c.is_whitespace()),
+        )),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["space?", "strings"])),
     }
 }
@@ -444,7 +459,10 @@ pub fn native_lower_p(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let has_alpha = s.chars().any(|c| c.is_alphabetic());
-            let all_lower = s.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_lowercase());
+            let all_lower = s
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .all(|c| c.is_lowercase());
             Ok(Value::Bool(has_alpha && all_lower))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["lower?", "strings"])),
@@ -459,7 +477,10 @@ pub fn native_upper_p(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let has_alpha = s.chars().any(|c| c.is_alphabetic());
-            let all_upper = s.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_uppercase());
+            let all_upper = s
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .all(|c| c.is_uppercase());
             Ok(Value::Bool(has_alpha && all_upper))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["upper?", "strings"])),
@@ -476,7 +497,12 @@ pub fn native_pad_left(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["pad-left (3rd arg)", "single character"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["pad-left (3rd arg)", "single character"],
+                        ))
+                    }
                 }
             } else {
                 ' '
@@ -490,7 +516,10 @@ pub fn native_pad_left(args: &[Value]) -> Result<Value, String> {
             let padded = pad_char.to_string().repeat(pad_count) + s;
             Ok(Value::String(padded))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pad-left", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["pad-left", "string and integer"],
+        )),
     }
 }
 
@@ -504,7 +533,12 @@ pub fn native_pad_right(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["pad-right (3rd arg)", "single character"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["pad-right (3rd arg)", "single character"],
+                        ))
+                    }
                 }
             } else {
                 ' '
@@ -519,7 +553,10 @@ pub fn native_pad_right(args: &[Value]) -> Result<Value, String> {
             padded.push_str(&pad_char.to_string().repeat(pad_count));
             Ok(Value::String(padded))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["pad-right", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["pad-right", "string and integer"],
+        )),
     }
 }
 
@@ -533,7 +570,12 @@ pub fn native_pad(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["pad (3rd arg)", "single character"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["pad (3rd arg)", "single character"],
+                        ))
+                    }
                 }
             } else {
                 ' '
@@ -546,7 +588,8 @@ pub fn native_pad(args: &[Value]) -> Result<Value, String> {
             let total_pad = width - chars.len();
             let left_pad = total_pad / 2;
             let right_pad = total_pad - left_pad;
-            let padded = pad_char.to_string().repeat(left_pad) + s + &pad_char.to_string().repeat(right_pad);
+            let padded =
+                pad_char.to_string().repeat(left_pad) + s + &pad_char.to_string().repeat(right_pad);
             Ok(Value::String(padded))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["pad", "string and integer"])),
@@ -560,10 +603,7 @@ pub fn native_squish(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::String(s) => {
-            let squished = s
-                .split_whitespace()
-                .collect::<Vec<&str>>()
-                .join(" ");
+            let squished = s.split_whitespace().collect::<Vec<&str>>().join(" ");
             Ok(Value::String(squished))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["squish", "strings"])),
@@ -580,7 +620,12 @@ pub fn native_expand_tabs(args: &[Value]) -> Result<Value, String> {
             let tab_width = if args.len() == 2 {
                 match &args[1] {
                     Value::Integer(n) if *n > 0 => *n as usize,
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["expand-tabs (2nd arg)", "positive integer"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["expand-tabs (2nd arg)", "positive integer"],
+                        ))
+                    }
                 }
             } else {
                 4
@@ -637,10 +682,7 @@ pub fn native_chars(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::String(s) => {
-            let chars: Vec<Value> = s
-                .chars()
-                .map(|c| Value::String(c.to_string()))
-                .collect();
+            let chars: Vec<Value> = s.chars().map(|c| Value::String(c.to_string())).collect();
             Ok(Value::Vector(chars))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["chars", "strings"])),
@@ -688,7 +730,8 @@ pub fn native_snake(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
-            let result = words.iter()
+            let result = words
+                .iter()
                 .map(|w| w.to_lowercase())
                 .collect::<Vec<_>>()
                 .join("_");
@@ -732,7 +775,8 @@ pub fn native_kebab(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
-            let result = words.iter()
+            let result = words
+                .iter()
                 .map(|w| w.to_lowercase())
                 .collect::<Vec<_>>()
                 .join("-");
@@ -772,9 +816,7 @@ pub fn native_split_camel(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
-            let result: Vec<Value> = words.iter()
-                .map(|w| Value::String(w.clone()))
-                .collect();
+            let result: Vec<Value> = words.iter().map(|w| Value::String(w.clone())).collect();
             Ok(Value::Vector(result))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["split-camel", "strings"])),
@@ -803,11 +845,17 @@ pub fn native_truncate(args: &[Value]) -> Result<Value, String> {
             if chars.len() <= max_len {
                 Ok(Value::String(s.clone()))
             } else {
-                let truncated: String = chars.iter().take(max_len.saturating_sub(suffix.len())).collect();
+                let truncated: String = chars
+                    .iter()
+                    .take(max_len.saturating_sub(suffix.len()))
+                    .collect();
                 Ok(Value::String(truncated + &suffix))
             }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["truncate", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["truncate", "string and integer"],
+        )),
     }
 }
 
@@ -821,7 +869,12 @@ pub fn native_trunc_words(args: &[Value]) -> Result<Value, String> {
             let suffix = if args.len() == 3 {
                 match &args[2] {
                     Value::String(suf) => suf.clone(),
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["trunc-words (3rd arg)", "string"])),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["trunc-words (3rd arg)", "string"],
+                        ))
+                    }
                 }
             } else {
                 "...".to_string()
@@ -833,11 +886,19 @@ pub fn native_trunc_words(args: &[Value]) -> Result<Value, String> {
             if words.len() <= max_words {
                 Ok(Value::String(s.clone()))
             } else {
-                let truncated = words.iter().take(max_words).copied().collect::<Vec<_>>().join(" ");
+                let truncated = words
+                    .iter()
+                    .take(max_words)
+                    .copied()
+                    .collect::<Vec<_>>()
+                    .join(" ");
                 Ok(Value::String(truncated + &suffix))
             }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["trunc-words", "string and integer"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["trunc-words", "string and integer"],
+        )),
     }
 }
 
@@ -847,7 +908,12 @@ pub fn native_splice(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["splice", "4"]));
     }
     match (&args[0], &args[1], &args[2], &args[3]) {
-        (Value::String(s), Value::Integer(start), Value::Integer(end), Value::String(replacement)) => {
+        (
+            Value::String(s),
+            Value::Integer(start),
+            Value::Integer(end),
+            Value::String(replacement),
+        ) => {
             let chars: Vec<char> = s.chars().collect();
             let len = chars.len() as i64;
             let start_idx = (*start).max(0).min(len) as usize;
@@ -859,7 +925,10 @@ pub fn native_splice(args: &[Value]) -> Result<Value, String> {
             result.extend(chars.iter().skip(end_idx));
             Ok(Value::String(result))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["splice", "string, two integers, and string"])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["splice", "string, two integers, and string"],
+        )),
     }
 }
 
@@ -932,8 +1001,15 @@ pub fn native_indent(args: &[Value]) -> Result<Value, String> {
             let indent_count = (*n).max(0) as usize;
             let indent = indent_str.repeat(indent_count);
 
-            let result = s.lines()
-                .map(|line| if line.is_empty() { line.to_string() } else { indent.clone() + line })
+            let result = s
+                .lines()
+                .map(|line| {
+                    if line.is_empty() {
+                        line.to_string()
+                    } else {
+                        indent.clone() + line
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             Ok(Value::String(result))
@@ -982,12 +1058,13 @@ pub fn native_parse_int(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["parse-int"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            match s.trim().parse::<i64>() {
-                Ok(n) => Ok(Value::Integer(n)),
-                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["parse-int", "valid integer string"])),
-            }
-        }
+        Value::String(s) => match s.trim().parse::<i64>() {
+            Ok(n) => Ok(Value::Integer(n)),
+            Err(_) => Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["parse-int", "valid integer string"],
+            )),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["parse-int", "strings"])),
     }
 }
@@ -998,12 +1075,13 @@ pub fn native_parse_float(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["parse-float"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            match s.trim().parse::<f64>() {
-                Ok(n) => Ok(Value::Float(n)),
-                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["parse-float", "valid float string"])),
-            }
-        }
+        Value::String(s) => match s.trim().parse::<f64>() {
+            Ok(n) => Ok(Value::Float(n)),
+            Err(_) => Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["parse-float", "valid float string"],
+            )),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["parse-float", "strings"])),
     }
 }
@@ -1075,17 +1153,19 @@ pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["from-base64"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            match general_purpose::STANDARD.decode(s) {
-                Ok(bytes) => {
-                    match String::from_utf8(bytes) {
-                        Ok(result) => Ok(Value::String(result)),
-                        Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "valid UTF-8 bytes"])),
-                    }
-                }
-                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "valid base64 string"])),
-            }
-        }
+        Value::String(s) => match general_purpose::STANDARD.decode(s) {
+            Ok(bytes) => match String::from_utf8(bytes) {
+                Ok(result) => Ok(Value::String(result)),
+                Err(_) => Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["from-base64", "valid UTF-8 bytes"],
+                )),
+            },
+            Err(_) => Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["from-base64", "valid base64 string"],
+            )),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["from-base64", "strings"])),
     }
 }
@@ -1097,9 +1177,7 @@ pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["url-encode"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            Ok(Value::String(urlencoding::encode(s).to_string()))
-        }
+        Value::String(s) => Ok(Value::String(urlencoding::encode(s).to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["url-encode", "strings"])),
     }
 }
@@ -1111,12 +1189,13 @@ pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["url-decode"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            match urlencoding::decode(s) {
-                Ok(decoded) => Ok(Value::String(decoded.to_string())),
-                Err(_) => Err(fmt_msg(MsgKey::TypeOnly, &["url-decode", "valid URL-encoded string"])),
-            }
-        }
+        Value::String(s) => match urlencoding::decode(s) {
+            Ok(decoded) => Ok(Value::String(decoded.to_string())),
+            Err(_) => Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["url-decode", "valid URL-encoded string"],
+            )),
+        },
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["url-decode", "strings"])),
     }
 }
@@ -1128,9 +1207,7 @@ pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["html-encode"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            Ok(Value::String(html_escape::encode_text(s).to_string()))
-        }
+        Value::String(s) => Ok(Value::String(html_escape::encode_text(s).to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-encode", "strings"])),
     }
 }
@@ -1142,9 +1219,9 @@ pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["html-decode"]));
     }
     match &args[0] {
-        Value::String(s) => {
-            Ok(Value::String(html_escape::decode_html_entities(s).to_string()))
-        }
+        Value::String(s) => Ok(Value::String(
+            html_escape::decode_html_entities(s).to_string(),
+        )),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-decode", "strings"])),
     }
 }
@@ -1205,7 +1282,10 @@ pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
 /// re-find - 正規表現で最初のマッチを検索
 pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-find", "2", "(pattern, text)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["re-find", "2", "(pattern, text)"],
+        ));
     }
 
     let pattern = match &args[0] {
@@ -1230,7 +1310,10 @@ pub fn native_re_find(args: &[Value]) -> Result<Value, String> {
 /// re-matches - 正規表現で全てのマッチを検索
 pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-matches", "2", "(pattern, text)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["re-matches", "2", "(pattern, text)"],
+        ));
     }
 
     let pattern = match &args[0] {
@@ -1246,7 +1329,8 @@ pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
     let re = Regex::new(pattern)
         .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["re-matches", &e.to_string()]))?;
 
-    let matches: Vec<Value> = re.find_iter(text)
+    let matches: Vec<Value> = re
+        .find_iter(text)
         .map(|m| Value::String(m.as_str().to_string()))
         .collect();
 
@@ -1256,7 +1340,10 @@ pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
 /// re-replace - 正規表現で置換
 pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["re-replace", "3", "(pattern, replacement, text)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["re-replace", "3", "(pattern, replacement, text)"],
+        ));
     }
 
     let pattern = match &args[0] {
@@ -1266,7 +1353,12 @@ pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
 
     let replacement = match &args[1] {
         Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::MustBeString, &["re-replace", "replacement"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeString,
+                &["re-replace", "replacement"],
+            ))
+        }
     };
 
     let text = match &args[2] {
@@ -1283,7 +1375,10 @@ pub fn native_re_replace(args: &[Value]) -> Result<Value, String> {
 /// format - 文字列フォーマット（簡易実装）
 pub fn native_format(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["format", "1+", "(format string)"]));
+        return Err(fmt_msg(
+            MsgKey::NeedNArgsDesc,
+            &["format", "1+", "(format string)"],
+        ));
     }
 
     let fmt_str = match &args[0] {
@@ -1317,13 +1412,26 @@ pub fn native_format_decimal(args: &[Value]) -> Result<Value, String> {
 
     let decimals = match &args[0] {
         Value::Integer(n) if *n >= 0 => *n as usize,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-decimal (1st arg - decimals)", "non-negative integer"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "format-decimal (1st arg - decimals)",
+                    "non-negative integer",
+                ],
+            ))
+        }
     };
 
     let number = match &args[1] {
         Value::Integer(n) => *n as f64,
         Value::Float(f) => *f,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-decimal (2nd arg - number)", "number"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["format-decimal (2nd arg - number)", "number"],
+            ))
+        }
     };
 
     Ok(Value::String(format!("{:.prec$}", number, prec = decimals)))
@@ -1404,12 +1512,25 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
         // 2引数: (format-percent decimals number) - パイプライン用
         let decimals = match &args[0] {
             Value::Integer(n) if *n >= 0 => *n as usize,
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (1st arg - decimals)", "non-negative integer"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &[
+                        "format-percent (1st arg - decimals)",
+                        "non-negative integer",
+                    ],
+                ))
+            }
         };
         let number = match &args[1] {
             Value::Integer(n) => (*n as f64) * 100.0,
             Value::Float(f) => f * 100.0,
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (2nd arg - number)", "number"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["format-percent (2nd arg - number)", "number"],
+                ))
+            }
         };
         (number, decimals)
     } else {
@@ -1417,10 +1538,19 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
         let number = match &args[0] {
             Value::Integer(n) => (*n as f64) * 100.0,
             Value::Float(f) => f * 100.0,
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["format-percent (1st arg - number)", "number"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["format-percent (1st arg - number)", "number"],
+                ))
+            }
         };
         (number, 0)
     };
 
-    Ok(Value::String(format!("{:.prec$}%", number, prec = decimals)))
+    Ok(Value::String(format!(
+        "{:.prec$}%",
+        number,
+        prec = decimals
+    )))
 }

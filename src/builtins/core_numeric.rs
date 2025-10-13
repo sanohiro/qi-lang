@@ -17,7 +17,12 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => sum += n,
-            _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["+", "integers", &format!("{:?}", arg)])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnlyWithDebug,
+                    &["+", "integers", &format!("{:?}", arg)],
+                ))
+            }
         }
     }
     Ok(Value::Integer(sum))
@@ -38,13 +43,21 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
                 for arg in &args[1..] {
                     match arg {
                         Value::Integer(n) => result -= n,
-                        _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["-", "integers", &format!("{:?}", arg)])),
+                        _ => {
+                            return Err(fmt_msg(
+                                MsgKey::TypeOnlyWithDebug,
+                                &["-", "integers", &format!("{:?}", arg)],
+                            ))
+                        }
                     }
                 }
                 Ok(Value::Integer(result))
             }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["-", "integers", &format!("{:?}", args[0])])),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnlyWithDebug,
+            &["-", "integers", &format!("{:?}", args[0])],
+        )),
     }
 }
 
@@ -54,7 +67,12 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::Integer(n) => product *= n,
-            _ => return Err(fmt_msg(MsgKey::TypeOnlyWithDebug, &["*", "integers", &format!("{:?}", arg)])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnlyWithDebug,
+                    &["*", "integers", &format!("{:?}", arg)],
+                ))
+            }
         }
     }
     Ok(Value::Integer(product))
@@ -210,7 +228,9 @@ fn values_equal(a: &Value, b: &Value) -> bool {
             a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_equal(x, y))
         }
         (Value::Map(a), Value::Map(b)) => {
-            a.len() == b.len() && a.iter().all(|(k, v)| b.get(k).is_some_and(|bv| values_equal(v, bv)))
+            a.len() == b.len()
+                && a.iter()
+                    .all(|(k, v)| b.get(k).is_some_and(|bv| values_equal(v, bv)))
         }
         (Value::Function(a), Value::Function(b)) => ptr::eq(&**a, &**b),
         (Value::NativeFunc(a), Value::NativeFunc(b)) => a.name == b.name,

@@ -257,7 +257,10 @@ pub fn native_stream_lines(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/stream-lines", "1"]));
+        return Err(fmt_msg(
+            MsgKey::NeedExactlyNArgs,
+            &["cmd/stream-lines", "1"],
+        ));
     }
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
@@ -292,9 +295,10 @@ pub fn native_stream_lines(args: &[Value]) -> Result<Value, String> {
         Err(e) => return Err(fmt_msg(MsgKey::CmdExecutionFailed, &[&e.to_string()])),
     };
 
-    let stdout = child.stdout.take().ok_or_else(|| {
-        fmt_msg(MsgKey::CmdExecutionFailed, &["Failed to capture stdout"])
-    })?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| fmt_msg(MsgKey::CmdExecutionFailed, &["Failed to capture stdout"]))?;
 
     let reader = Arc::new(RwLock::new(BufReader::new(stdout).lines()));
 
@@ -331,7 +335,12 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
     let chunk_size = if args.len() == 2 {
         match &args[1] {
             Value::Integer(n) if *n > 0 => *n as usize,
-            _ => return Err(fmt_msg(MsgKey::MustBePositiveInteger, &["cmd/stream-bytes", "chunk size"])),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::MustBePositiveInteger,
+                    &["cmd/stream-bytes", "chunk size"],
+                ))
+            }
         }
     } else {
         4096
@@ -367,9 +376,10 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
         Err(e) => return Err(fmt_msg(MsgKey::CmdExecutionFailed, &[&e.to_string()])),
     };
 
-    let stdout = child.stdout.take().ok_or_else(|| {
-        fmt_msg(MsgKey::CmdExecutionFailed, &["Failed to capture stdout"])
-    })?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| fmt_msg(MsgKey::CmdExecutionFailed, &["Failed to capture stdout"]))?;
 
     let reader = Arc::new(RwLock::new(stdout));
 
@@ -501,7 +511,12 @@ pub fn native_proc_write(args: &[Value]) -> Result<Value, String> {
 
     let handle = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/write", "a process handle"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["cmd/write", "a process handle"],
+            ))
+        }
     };
 
     let pid = match handle.get("pid") {
@@ -544,7 +559,12 @@ pub fn native_proc_read_line(args: &[Value]) -> Result<Value, String> {
 
     let handle = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/read-line", "a process handle"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["cmd/read-line", "a process handle"],
+            ))
+        }
     };
 
     let pid = match handle.get("pid") {
@@ -589,7 +609,12 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 
     let handle = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/wait", "a process handle"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["cmd/wait", "a process handle"],
+            ))
+        }
     };
 
     let pid = match handle.get("pid") {

@@ -159,7 +159,8 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
 
     let body = opts.get("body");
 
-    let mut headers = opts.get("headers")
+    let mut headers = opts
+        .get("headers")
         .and_then(|v| match v {
             Value::Map(m) => Some(m.clone()),
             _ => None,
@@ -170,20 +171,30 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     if let Some(Value::Vector(v)) = opts.get("basic-auth") {
         if v.len() == 2 {
             if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::{engine::general_purpose, Engine as _};
                 let credentials = format!("{}:{}", user, pass);
                 let encoded = general_purpose::STANDARD.encode(credentials);
-                headers.insert("authorization".to_string(), Value::String(format!("Basic {}", encoded)));
+                headers.insert(
+                    "authorization".to_string(),
+                    Value::String(format!("Basic {}", encoded)),
+                );
             }
         }
     }
 
     // Bearer Token処理
     if let Some(Value::String(token)) = opts.get("bearer-token") {
-        headers.insert("authorization".to_string(), Value::String(format!("Bearer {}", token)));
+        headers.insert(
+            "authorization".to_string(),
+            Value::String(format!("Bearer {}", token)),
+        );
     }
 
-    let headers_ref = if headers.is_empty() { None } else { Some(&headers) };
+    let headers_ref = if headers.is_empty() {
+        None
+    } else {
+        Some(&headers)
+    };
 
     let timeout = opts
         .get("timeout")
@@ -257,9 +268,9 @@ fn http_request(
     timeout_ms: u64,
 ) -> Result<Value, String> {
     let client = Client::builder()
-        .gzip(true)      // gzip自動解凍を有効化
-        .deflate(true)   // deflate自動解凍を有効化
-        .brotli(true)    // brotli自動解凍を有効化
+        .gzip(true) // gzip自動解凍を有効化
+        .deflate(true) // deflate自動解凍を有効化
+        .brotli(true) // brotli自動解凍を有効化
         .timeout(Duration::from_millis(timeout_ms))
         .build()
         .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
@@ -314,8 +325,9 @@ fn http_request(
                     if let Some(Value::String(s)) = m.get("ok") {
                         if should_compress {
                             // JSON を圧縮して送信
-                            let compressed = compress_gzip(s.as_bytes())
-                                .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
+                            let compressed = compress_gzip(s.as_bytes()).map_err(|e| {
+                                fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
+                            })?;
                             request = request
                                 .header("Content-Type", "application/json")
                                 .body(compressed);
@@ -445,7 +457,12 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let config = match &args[0] {
         Value::Map(m) => m,
-        _ => return Err(fmt_msg(MsgKey::MustBeMap, &["http/request-stream", "argument"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::MustBeMap,
+                &["http/request-stream", "argument"],
+            ))
+        }
     };
 
     let method = match config.get("method") {
@@ -466,11 +483,16 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 }
 
 /// HTTPストリーミングの共通実装
-fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) -> Result<Value, String> {
+fn http_stream(
+    method: &str,
+    url: &str,
+    body: Option<&Value>,
+    is_bytes: bool,
+) -> Result<Value, String> {
     let client = Client::builder()
-        .gzip(true)      // gzip自動解凍を有効化
-        .deflate(true)   // deflate自動解凍を有効化
-        .brotli(true)    // brotli自動解凍を有効化
+        .gzip(true) // gzip自動解凍を有効化
+        .deflate(true) // deflate自動解凍を有効化
+        .brotli(true) // brotli自動解凍を有効化
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| fmt_msg(MsgKey::HttpStreamClientError, &[&e.to_string()]))?;
@@ -510,7 +532,10 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
         .map_err(|e| fmt_msg(MsgKey::HttpStreamRequestFailed, &[&e.to_string()]))?;
 
     if !response.status().is_success() {
-        return Err(fmt_msg(MsgKey::HttpStreamError, &[&response.status().to_string()]));
+        return Err(fmt_msg(
+            MsgKey::HttpStreamError,
+            &[&response.status().to_string()],
+        ));
     }
 
     if is_bytes {
@@ -535,7 +560,8 @@ fn http_stream(method: &str, url: &str, body: Option<&Value>, is_bytes: bool) ->
                     let chunk = &chunks[*idx];
                     *idx += 1;
                     // バイト配列をIntegerのVectorに変換
-                    let bytes: Vec<Value> = chunk.iter().map(|&b| Value::Integer(b as i64)).collect();
+                    let bytes: Vec<Value> =
+                        chunk.iter().map(|&b| Value::Integer(b as i64)).collect();
                     Some(Value::Vector(bytes))
                 } else {
                     None
