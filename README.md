@@ -1,5 +1,9 @@
 # Qi - A Lisp that flows
 
+<p align="center">
+  <img src="./assets/logo/qi-logo-full.svg" alt="Qi Logo" width="400">
+</p>
+
 シンプル、高速、簡潔なモダンLisp系言語。パイプライン、パターンマッチング、並行・並列処理に強い。
 
 ## 特徴

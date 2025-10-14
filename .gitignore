@@ -24,3 +24,6 @@ reports
 
 # VSCode
 *.vsix
+
+# Logo source files (copied to assets/logo/)
+qi_logo_pack/
