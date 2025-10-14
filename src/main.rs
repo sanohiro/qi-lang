@@ -1,5 +1,4 @@
 use qi_lang::eval::Evaluator;
-use qi_lang::formatter;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::value::Value;
@@ -12,7 +11,6 @@ use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::{fs, io};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -117,25 +115,6 @@ fn main() {
             }
             run_code(&args[2]);
         }
-        "fmt" => {
-            // フォーマッター
-            if args.len() < 3 {
-                eprintln!("Usage: qi fmt [--check] <file>");
-                std::process::exit(1);
-            }
-
-            let (check_mode, file_path) = if args[2] == "--check" {
-                if args.len() < 4 {
-                    eprintln!("Usage: qi fmt --check <file>");
-                    std::process::exit(1);
-                }
-                (true, &args[3])
-            } else {
-                (false, &args[2])
-            };
-
-            run_formatter(file_path, check_mode);
-        }
         "-" => {
             // 標準入力からスクリプト実行
             run_stdin();
@@ -169,7 +148,6 @@ fn print_help() {
     println!("{}:", ui_msg(UiMsg::HelpOptions));
     println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
     println!("    -                   {}", ui_msg(UiMsg::OptStdin));
-    println!("    fmt <file>          Format Qi code (use --check to print to stdout)");
     println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
     println!("    -h, --help          {}", ui_msg(UiMsg::OptHelp));
     println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
@@ -786,50 +764,3 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
     }
 }
 
-/// フォーマッターを実行
-fn run_formatter(file_path: &str, check_mode: bool) {
-    let (content, config, target_path) = if file_path == "-" {
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer).unwrap_or_else(|e| {
-            eprintln!("stdin read error: {}", e);
-            std::process::exit(1);
-        });
-        let cfg = formatter::load_config(None);
-        (buffer, cfg, None)
-    } else {
-        let content = fs::read_to_string(file_path).unwrap_or_else(|e| {
-            eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
-            std::process::exit(1);
-        });
-
-        let config_path = std::path::Path::new(file_path)
-            .parent()
-            .and_then(|dir| dir.join(".qi-format.edn").to_str().map(|s| s.to_string()));
-        let cfg = config_path
-            .as_deref()
-            .map(|path| formatter::load_config(Some(path)))
-            .unwrap_or_else(|| formatter::load_config(None));
-        (content, cfg, Some(file_path))
-    };
-
-    let formatted = match formatter::format_source(&content, &config) {
-        Ok(result) => result,
-        Err(e) => {
-            eprintln!("{}:{}", ui_msg(UiMsg::ErrorInput), e);
-            std::process::exit(1);
-        }
-    };
-
-    if target_path.is_some() && !check_mode {
-        if let Some(path) = target_path {
-            if let Err(e) = fs::write(path, formatted) {
-                eprintln!("Failed to write file: {}", e);
-                std::process::exit(1);
-            }
-            println!("Formatted: {}", path);
-        }
-    } else {
-        // --check または stdin の場合は標準出力へ
-        print!("{}", formatted);
-    }
-}

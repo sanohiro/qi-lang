@@ -1,12 +1,11 @@
 ; モジュールシステムのテスト
-
 (print "=== モジュールシステムのテスト ===")
 
 ; パターン1: :only で特定の関数のみインポート
 (use math_utils :only [square cube])
 
-(print (str "square(5) = " (square 5)))     ; 25
-(print (str "cube(3) = " (cube 3)))         ; 27
+(print (str "square(5) = " (square 5)))  ; 25
+(print (str "cube(3) = " (cube 3)))      ; 27
 
 ; パターン2: :all で全てインポート
 (use math_utils :all)

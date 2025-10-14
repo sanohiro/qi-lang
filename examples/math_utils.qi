@@ -1,20 +1,29 @@
 ; math_utils.qi - 数学ユーティリティモジュール
-
 (module math_utils)
 
 ; 二乗
-(def square (fn [x] (* x x)))
+(def square
+  (fn [x]
+    (* x x)))
 
 ; 立方
-(def cube (fn [x] (* x x x)))
+(def cube
+  (fn [x]
+    (* x x x)))
 
 ; 平均
-(def average (fn [a b] (/ (+ a b) 2)))
+(def average
+  (fn [a b]
+    (/ (+ a b) 2)))
 
 ; 偶数判定
-(def even (fn [x] (= (% x 2) 0)))
+(def even
+  (fn [x]
+    (= (% x 2) 0)))
 
 ; 奇数判定
-(def odd (fn [x] (!= (% x 2) 0)))
+(def odd
+  (fn [x]
+    (!= (% x 2) 0)))
 
 (export square cube average even odd)
