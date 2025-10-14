@@ -1,259 +1,242 @@
-## ソースコードルール
+# AGENTS.md
+
+**AI開発者向けガイド - Qiプログラミング言語**
+
+このドキュメントは、AIエージェント（LLMベースの開発支援ツール）がQi言語プロジェクトを支援する際のガイドラインです。
+
+---
+
+## プロジェクト概要
+
+**Qi（キー）** は、Flow-Oriented Programmingを核とした実用的なLisp方言です。
+
+### 言語の特徴
+
+1. **Flow-Oriented Programming** - データは流れ、プログラムは流れを設計する
+   - パイプライン演算子: `|>`, `||>`, `|>?`, `tap>`, `~>`
+   - Railway Oriented Programming（Result型統合）
+   - データフローを可視化する構文
+
+2. **並行・並列処理の第一級サポート**
+   - 3層アーキテクチャ: go/chan（Layer 1）、pipeline（Layer 2）、async/await（Layer 3）
+   - スレッドセーフな設計（Arc<RwLock<_>>）
+   - 自然な並列化（`||>`、`pmap`）
+
+3. **パターンマッチング**
+   - データ構造の分解
+   - ガード条件、orパターン、:as束縛
+   - Railway Pipeline（`|>?`）との統合
+
+4. **シンプルさ**
+   - 9つの特殊形式のみ（def, defn, fn, let, do, if, match, loop/recur, mac）
+   - Lisp-1名前空間
+   - 実用性重視の設計
+
+---
+
+## ドキュメント構造
+
+### 実装済み機能: `docs/spec/`
+
+| ファイル | 内容 |
+|---------|------|
+| `README.md` | ドキュメント索引、読み方ガイド |
+| `01-overview.md` | Qiの概要、言語哲学 |
+| `02-flow-pipes.md` | パイプライン演算子（★売り） |
+| `03-concurrency.md` | 並行・並列処理（★売り） |
+| `04-match.md` | パターンマッチング（★売り） |
+| `05-syntax-basics.md` | 基本構文、特殊形式 |
+| `06-data-structures.md` | ベクター、リスト、マップ、セット |
+| `07-functions.md` | 関数、クロージャ、高階関数 |
+| `08-error-handling.md` | Result型、try/catch、defer |
+| `09-modules.md` | モジュールシステム |
+| `10-stdlib-string.md` | 文字列操作（60以上の関数） |
+| `11-stdlib-http.md` | HTTPクライアント/サーバー |
+| `12-stdlib-json.md` | JSON/YAML処理 |
+| `13-stdlib-io.md` | ファイルI/O（エンコーディング対応） |
+
+**重要**: `docs/spec/`に記載されているのは**実装済み機能のみ**です。すべてのコード例は動作します。
+
+### 未実装機能: `ROADMAP.md`
+
+未実装機能や将来の計画は `ROADMAP.md` を参照してください：
+- **優先度高**: テストフレームワーク、PostgreSQL/MySQL、認証・認可、ファイル監視等
+- **優先度中**: flow DSL、match拡張、regex拡張、タイムゾーン対応
+- **優先度低**: JITコンパイル、名前空間システム
+
+---
+
+## コーディング規約
 
 ### 基本原則
-- 必要以上に長ったらしい名前（関数、変数）は使わないこと
-- なるべくならコードは短く書くこと
-- わかりやすく簡潔に書くこと
-- 必ず関数などにはドキュメントコメントを記述すること
-- Rustの文化を尊重すること
-- ソースはモダンな書き方をすること。なるべく新しい書き方で（その方が簡潔なコードになると思うから）
 
-### フォーマット
-- Rustファイル（`.rs`）の変更が完了したら、必ず`cargo fmt`を実行すること
-- IDEの自動フォーマットと一致させるため、コミット前にフォーマットを適用する
-- 複数のRustファイルを変更した場合は、最後にまとめて`cargo fmt`を実行してもよい
+1. **簡潔性**: 冗長なコードを避け、必要最小限の記述で目的を達成する
+2. **Flow-Oriented**: データの流れを意識した設計
+3. **スレッドセーフ**: 並行処理を常に考慮
+4. **Rustの文化を尊重**: モダンなRustコードを書く
+5. **Pure Rust**: C/C++依存ライブラリは避ける
 
-### Lazy初期化 (LazyLock)
+### Rustコーディングスタイル
 
-グローバルな状態管理には`std::sync::LazyLock`を使用する。以下の場合に適用：
+- **必ずドキュメントコメントを書く**（`///` or `//!`）
+- **変更後は `cargo fmt` を実行**
+- **グローバル状態は `LazyLock` を使用**
+- **オプショナル機能は条件付きコンパイル** (`#[cfg(feature = "...")]`)
 
-#### 使用すべきケース
-- **グローバル状態管理**: ログ設定、プロファイラーデータ、グローバルキャッシュなど
-- **一度だけ初期化**: 静的な設定、共有リソース、シングルトンパターン
-- **スレッドセーフが必要**: 複数スレッドからアクセスされる可能性がある共有データ
-- **初期化コストが高い**: 起動時に初期化すると遅延が発生するリソース
+### i18n（国際化）
 
-#### 実装例
-```rust
-use std::sync::LazyLock;
-use parking_lot::RwLock;
+すべてのユーザー向けメッセージは多言語対応すること：
+- エラーメッセージ: `fmt_msg(MsgKey::XxxError, &[...])`
+- UIメッセージ: `ui_msg(UiMsg::XxxMessage)`
+- ハードコードされた文字列は禁止
 
-// ✅ 良い例: グローバルログ設定
-static LOG_CONFIG: LazyLock<RwLock<LogConfig>> = LazyLock::new(|| {
-    RwLock::new(LogConfig {
-        level: LogLevel::Info,
-        format: LogFormat::Text,
-    })
-});
+---
 
-// ✅ 良い例: グローバルキャッシュ
-static CONNECTIONS: LazyLock<Mutex<HashMap<String, Connection>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+## ビルド・テスト
+
+### 基本コマンド
+
+```bash
+# ビルド
+cargo build
+
+# テスト
+cargo test
+
+# フォーマット
+cargo fmt
+
+# 実行
+cargo run -- -e '(+ 1 2 3)'
 ```
 
-#### 避けるべきケース
-- **ローカルな初期化**: 関数内で完結する初期化は通常の変数で十分
-- **const で書ける場合**: 定数で表現できるものはconstを使う
+### Feature Flags
 
-### 条件付きコンパイル (Feature Gates)
+```bash
+# 最小構成ビルド
+cargo build --no-default-features --features minimal
 
-オプショナルな機能や依存クレートには条件付きコンパイルを使用する。
-
-#### モジュールレベルの条件付きコンパイル
-
-モジュール全体が特定の機能に依存する場合、ファイルの先頭に記述：
-
-```rust
-//! ZIP圧縮・解凍関数
-//!
-//! このモジュールは `util-zip` feature でコンパイルされます。
-
-#![cfg(feature = "util-zip")]
-
-use crate::value::Value;
-// ... モジュール全体の実装
+# 特定機能を有効化
+cargo build --features db-sqlite,http-server
 ```
 
-対応する`mod.rs`でのインポート：
-```rust
-#[cfg(feature = "util-zip")]
-pub mod zip;
-```
+---
 
-#### 関数レベルの条件付きコンパイル
+## 実装時のチェックリスト
 
-モジュール内の一部の関数だけが依存する場合：
+新しい機能を追加する際は、以下を確認：
 
-```rust
-// base64, urlencoding, html-escape に依存する関数
-#[cfg(feature = "string-encoding")]
-use base64::{Engine as _, engine::general_purpose};
+- [ ] **ドキュメント更新**: `docs/spec/` の対応ファイルを更新
+- [ ] **テスト追加**: 機能追加時は必ずテストを書く
+- [ ] **i18n対応**: ユーザー向けメッセージは多言語化
+- [ ] **Feature Gate**: オプショナルな機能は条件付きコンパイル
+- [ ] **スレッドセーフ**: 並行処理でも安全か確認
+- [ ] **言語文化**: Flow-Oriented Programmingの原則に従う
+- [ ] **フォーマット**: `cargo fmt` を実行
+- [ ] **警告解消**: コンパイル警告がないことを確認
 
-#[cfg(feature = "string-encoding")]
-pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
-    // ... 実装
-}
+---
 
-// feature がない場合の代替実装（オプション）
-#[cfg(not(feature = "string-encoding"))]
-pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
-    Err("base64 encoding is not available. Enable 'string-encoding' feature.".to_string())
-}
-```
+## 言語文化
 
-#### 関数登録の条件付きコンパイル
+Qiの設計原則を理解し、尊重してください：
 
-`mod.rs`の`register_all()`で、feature-gated関数を別ブロックで登録：
+### Flow-Oriented Programming
 
-```rust
-pub fn register_all(env: &Arc<RwLock<Env>>) {
-    // 常に有効な関数
-    register_native!(env.write(),
-        "math/pow" => math::native_pow,
-        "math/sqrt" => math::native_sqrt,
-        // ...
-    );
-
-    // 乱数関数（4個）- std-math feature が必要
-    #[cfg(feature = "std-math")]
-    register_native!(env.write(),
-        "math/rand" => math::native_rand,
-        "math/rand-int" => math::native_rand_int,
-        "math/random-range" => math::native_random_range,
-        "math/shuffle" => math::native_shuffle,
-    );
-}
-```
-
-#### 条件付きコンパイルを使うべきケース
-
-1. **オプショナルな依存クレート**
-   - 外部ライブラリに依存する機能（例: `rusqlite`, `reqwest`, `chrono`）
-
-2. **特定環境では不要な機能**
-   - 組み込み環境やWASMでは不要な機能（例: ファイルI/O拡張、REPL）
-
-3. **バイナリサイズ削減が必要**
-   - 最小構成ビルド（`minimal` feature）で除外したい機能
-
-4. **Pure Rustのみで実装できない機能**
-   - C/C++ライブラリ依存（将来的に追加予定の機能）
-
-#### Cargo.tomlでのfeature定義
-
-```toml
-[features]
-default = ["std-math", "string-encoding", ...]  # 通常ビルドで有効
-minimal = ["io-glob"]  # 最小構成（基本的なI/Oのみ）
-
-# 個別機能
-std-math = ["dep:rand"]
-string-encoding = ["dep:base64", "dep:urlencoding", "dep:html-escape"]
-db-sqlite = ["dep:rusqlite"]
-```
-
-#### 実装時のチェックリスト
-
-新しい機能を追加する際は以下を確認：
-
-- [ ] オプショナルな依存クレートを使うか？ → `#[cfg(feature = "...")]`
-- [ ] グローバル状態を管理するか？ → `LazyLock`
-- [ ] スレッドセーフが必要か？ → `LazyLock` + `RwLock`/`Mutex`
-- [ ] `mod.rs`で関数登録を条件付きにしたか？
-- [ ] `Cargo.toml`の`default` featureに追加したか？（通常ビルドで有効にする場合）
-- [ ] 依存クレートを`optional = true`にしたか？
-- [ ] ドキュメントコメントにfeature要件を記載したか？
-
-### テスト・品質
-- ソースコードは必ずテストすること
-- ビルド時に警告が出たら対応してほしい
-
-### 設計・拡張性
-- あとから拡張しやすくすること
-- 共通化できるものは共通化すること
-- プログラミング言語実装のセオリーはなるべく守り、実装の学習もしやすくすること
-
-### 並行処理
-- 並列、並行をネイティブを第一級としているため、スレッドセーフは常に意識すること
-
-### 依存関係
-- クレートはよほどのことがない限りPure Rustのものを使用すること(C/C++のライブラリやコンパイルが必要なものは使用しないこと)
-
-### 言語仕様との整合性
-- SPEC.mdにかかれている言語仕様を元に作成すること
-- SPEC.mdにかかれている言語の文化は守ること
-<!-- ドキュメント同期は手動で行う（自動同期は無効化）
-- SPEC.md はソースコードが変わった場合、更新が必要なら更新すること
-- README.md はソースコードが変わった場合、更新が必要なら更新すること
-
-### 標準ライブラリドキュメント（std/docs）の更新
-
-ビルトイン関数やモジュールに変更があった場合は、必ず対応するドキュメントも更新すること：
-
-#### 更新が必要なケース
-- **関数追加時**: `std/docs/en/` と `std/docs/ja/` に対応するドキュメントを追加
-- **モジュール追加時**: 新しい `.qi` ファイルを作成（例: `foo.qi`）
-- **関数インターフェース変更時**:
-  - 引数の追加・削除・型変更
-  - 戻り値の型変更
-  - 関数の動作変更
-
-#### ドキュメントファイルの構造
 ```qi
-(def __doc__function-name
-  {:desc "関数の説明"
-   :params [{:name "arg1" :type "type" :desc "引数の説明"}
-            {:name "arg2" :type "type" :desc "引数の説明"}]
-   :returns {:type "type" :desc "戻り値の説明"}
-   :examples ["(function-name arg1 arg2) ;=> result"
-              "(function-name ...) ;=> ..."]})
+;; データは流れる
+(data
+ |> parse
+ |> (filter valid?)
+ |> (map transform)
+ |> save)
+
+;; エラーも流れる（Railway Pipeline）
+(url
+ |> http/get
+ |>? json/parse
+ |>? (fn [data] {:ok (get data "result")}))
 ```
 
-#### 注意点
-- 英語版（`en/`）と日本語版（`ja/`）の両方を更新すること
-- ドキュメントファイルは動的に読み込まれるため、main.rsの編集は不要
-- どちらか一方にしかファイルがなくても動作する（段階的追加可能）
-- `:doc` コマンドで確認できることを確認すること
--->
+### シンプルさ
 
-## i18nルール（重要）
+- 複雑な機能より、組み合わせ可能なシンプルな機能
+- 特殊形式は増やさない（現在9個のみ）
+- データ駆動設計（コードではなくデータで表現）
 
-ユーザー向けのメッセージは必ずi18n化すること。以下のルールを厳守すること：
+### 実用性
 
-### 基本原則
-- **すべてのエラーメッセージ・UIメッセージはi18n化する**
-- プログラムが出力するものは多言語対応すること(今は英語と日本語のみでいい)
-- ハードコードされた文字列でErrやformat!を書かない
-- `Err("...")`や`format!("...")`の代わりに`fmt_msg(MsgKey::XxxError, &[...])`を使う
-- `map_err(|e| format!("...", e))`も`map_err(|e| fmt_msg(MsgKey::XxxError, &[&e.to_string()]))`に変換する
+- 理論より実用性を優先
+- Web開発、データ処理、スクリプティングに最適化
+- 学習コストを最小限に
 
-### メッセージの分類
-- **MsgKey**: エラーメッセージ用（fmt_msg関数で使用）
-  - パーサーエラー、ランタイムエラー、I/Oエラー、HTTPエラーなど
-  - 例: `MsgKey::FileNotFound`, `MsgKey::InvalidArgument`
-- **UiMsg**: UIメッセージ用（ui_msg/fmt_ui_msg関数で使用）
-  - ヘルプメッセージ、バージョン情報、プロンプトなど
-  - 例: `UiMsg::Version`, `UiMsg::HelpUsage`
+---
 
-### i18n.rsへの追加手順
-1. **MsgKey enumに新しいキーを追加**（コメントで英語の例を書く）
-2. **英語メッセージを追加**（`Lang::En`セクション）
-3. **日本語メッセージを追加**（`Lang::Ja`セクション）
-4. **重複チェック**: 既存のキーで代用できないか確認する
-5. **まとめられるか検討**: 似たようなメッセージは共通化できないか考える
+## サンプルコード
 
-### パラメータ埋め込み
-- プレースホルダー（`{0}`, `{1}`, `{2}`など）の使用を推奨
-- 例: `fmt_msg(MsgKey::FileNotFound, &["/path/to/file"])`
-- ただし、パラメータの使用は必須ではない（固定メッセージもOK）
+### パイプライン処理
 
-### 例外
-- **HTTPサーバーのレスポンスメッセージ**: 英語のままでOK
-  - クライアントに返すエラーレスポンスなど
-  - 例: `"Not Found"`, `"Internal Server Error"`などはハードコード可
-- **テストコードのpanic!やassert!**: i18n化不要
-
-### 実装例
-```rust
-// ❌ 悪い例
-Err("File not found".to_string())
-.map_err(|e| format!("Failed to read: {}", e))
-
-// ✅ 良い例
-Err(fmt_msg(MsgKey::FileNotFound, &[path]))
-.map_err(|e| fmt_msg(MsgKey::FailedToRead, &[&e.to_string()]))
+```qi
+;; GitHub APIからユーザー情報を取得
+("https://api.github.com/users/octocat"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})
+ |>? json/parse
+ |>? (fn [data] {:ok (get data "name")}))
+;; => {:ok "The Octocat"}
 ```
 
-## チャット
+### 並列処理
 
-- 出力は日本語で行うこと
+```qi
+;; 複数URLを並列取得
+(def urls ["https://api.github.com/users/user1"
+           "https://api.github.com/users/user2"
+           "https://api.github.com/users/user3"])
+
+(urls ||> http/get ||> json/parse)
+;; => [result1 result2 result3]
+```
+
+### パターンマッチング
+
+```qi
+(match response
+  {:ok {:status 200 :body body}} -> (process-body body)
+  {:ok {:status 404}} -> nil
+  {:error e} -> (log/error e))
+```
+
+---
+
+## 開発時の注意
+
+### やるべきこと
+
+- **実装済み機能を追加**: `docs/spec/` を更新
+- **未実装機能を計画**: `ROADMAP.md` に追加
+- **テストを書く**: すべての機能にテストを追加
+- **フォーマット**: `cargo fmt` を実行
+
+### やってはいけないこと
+
+- **Phase表記の追加**: `docs/spec/` にPhaseマーカー（✅、🚧）を書かない
+- **未実装機能の記載**: `docs/spec/` には実装済み機能のみ
+- **C/C++依存**: Pure Rustクレートのみ使用
+- **ハードコード**: ユーザー向けメッセージは必ずi18n化
+
+---
+
+## リファレンス
+
+- **言語仕様**: `docs/spec/README.md`
+- **ロードマップ**: `ROADMAP.md`
+- **スタイルガイド**: `STYLE_GUIDE.md`
+- **プロジェクト概要**: `README.md`
+- **開発者向け詳細**: `CLAUDE.md`（Claude Code専用）
+
+---
+
+## 問い合わせ
+
+このドキュメントは、AIエージェントがQiプロジェクトを理解し、開発を支援するためのものです。人間の開発者は `README.md` と `CLAUDE.md` を参照してください。

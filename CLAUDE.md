@@ -170,8 +170,37 @@ db-sqlite = ["dep:rusqlite"]
 - クレートはよほどのことがない限りPure Rustのものを使用すること(C/C++のライブラリやコンパイルが必要なものは使用しないこと)
 
 ### 言語仕様との整合性
-- SPEC.mdにかかれている言語仕様を元に作成すること
-- SPEC.mdにかかれている言語の文化は守ること
+
+**重要**: SPEC.mdは `docs/spec/` ディレクトリに分割されました。以下の構造を参照すること：
+
+#### 仕様ドキュメント構造
+
+- **実装済み機能**: `docs/spec/` ディレクトリ
+  - `README.md` - ドキュメント索引
+  - `01-overview.md` - Qiの概要、言語哲学
+  - `02-flow-pipes.md` - パイプライン演算子（★売り）
+  - `03-concurrency.md` - 並行・並列処理（★売り）
+  - `04-match.md` - パターンマッチング（★売り）
+  - `05-syntax-basics.md` - 基本構文
+  - `06-data-structures.md` - データ構造
+  - `07-functions.md` - 関数
+  - `08-error-handling.md` - エラー処理
+  - `09-modules.md` - モジュールシステム
+  - `10-stdlib-string.md` - 文字列操作（60以上の関数）
+  - `11-stdlib-http.md` - HTTPクライアント/サーバー
+  - `12-stdlib-json.md` - JSON/YAML処理
+  - `13-stdlib-io.md` - ファイルI/O（エンコーディング対応）
+
+- **未実装機能**: `ROADMAP.md`
+  - 次期実装予定（テストフレームワーク、PostgreSQL/MySQL、認証・認可等）
+  - 将来検討（flow DSL、match拡張、JITコンパイル等）
+
+#### ドキュメント更新時の注意
+
+- **実装済み機能を追加した場合**: `docs/spec/` の対応するファイルを更新
+- **新しい機能を計画する場合**: `ROADMAP.md` に追加
+- **言語の文化を守ること**: Flow-Oriented Programming、シンプルさを重視
+- **元のSPEC.md**: アーカイブファイル（`SPEC.md.archive`）として保持、参照不要
 <!-- ドキュメント同期は手動で行う（自動同期は無効化）
 - SPEC.md はソースコードが変わった場合、更新が必要なら更新すること
 - README.md はソースコードが変わった場合、更新が必要なら更新すること

@@ -1,0 +1,288 @@
+# 標準ライブラリ - HTTP
+
+**HTTPクライアントとサーバー**
+
+---
+
+## HTTPクライアント（http/）
+
+### 基本メソッド
+
+```qi
+;; http/get - HTTP GETリクエスト
+(http/get "https://httpbin.org/get")
+;; => {:ok {"status" 200 "headers" {...} "body" "..."}}
+
+;; http/post - HTTP POSTリクエスト
+(http/post "https://api.example.com/users" {"name" "Alice" "email" "alice@example.com"})
+;; => {:ok {"status" 201 "body" "..."}}
+
+;; http/put - HTTP PUTリクエスト
+(http/put "https://api.example.com/users/1" {"name" "Alice Updated"})
+
+;; http/delete - HTTP DELETEリクエスト
+(http/delete "https://api.example.com/users/1")
+
+;; http/patch - HTTP PATCHリクエスト
+(http/patch "https://api.example.com/users/1" {"email" "newemail@example.com"})
+
+;; http/head - HTTP HEADリクエスト
+(http/head "https://api.example.com/status")
+
+;; http/options - HTTP OPTIONSリクエスト
+(http/options "https://api.example.com")
+```
+
+### 詳細設定
+
+```qi
+;; http/request - カスタムリクエスト
+(http/request {
+  "method" "POST"
+  "url" "https://api.example.com/data"
+  "headers" {"Authorization" "Bearer token123"}
+  "body" {"data" "value"}
+  "timeout" 5000
+})
+```
+
+### 認証
+
+```qi
+;; Basic認証
+(http/request {
+  "url" "https://api.example.com/data"
+  "basic-auth" ["username" "password"]
+})
+
+;; Bearer Token認証
+(http/request {
+  "url" "https://api.example.com/data"
+  "bearer-token" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+})
+```
+
+### コンテンツ圧縮
+
+```qi
+;; 自動解凍（デフォルトで有効）
+(http/get "https://example.com/api")  ;; gzip/deflate/brotli を自動解凍
+
+;; 送信時の圧縮
+(http/post "https://example.com/api"
+  {"data" "large payload"}
+  {"headers" {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮
+```
+
+### Railway Pipelineとの統合
+
+```qi
+;; GitHub APIからユーザー名を取得
+("https://api.github.com/users/octocat"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})
+ |>? json/parse
+ |>? (fn [data] {:ok (get data "name")}))
+;; => {:ok "The Octocat"}
+
+;; エラーハンドリング（自動的にエラー伝播）
+("https://invalid.com/api"
+ |> http/get
+ |>? (fn [resp] {:ok (get resp "body")})  ;; 実行されない
+ |>? json/parse)                          ;; 実行されない
+;; => {:error {"type" "connection" "message" "..."}}
+```
+
+---
+
+## HTTPサーバー（server/）
+
+**Flow-Oriented な Web アプリケーション構築**
+
+### レスポンスヘルパー
+
+```qi
+;; server/ok - 200 OKレスポンス
+(server/ok "Hello, World!")
+;; => {"status" 200 "headers" {...} "body" "Hello, World!"}
+
+;; server/json - JSONレスポンス
+(server/json {"message" "hello" "status" "success"})
+;; => {"status" 200 "headers" {"Content-Type" "application/json"} "body" "{...}"}
+
+;; server/not-found - 404 Not Foundレスポンス
+(server/not-found "Page not found")
+
+;; server/no-content - 204 No Contentレスポンス
+(server/no-content)
+```
+
+### ルーティング
+
+```qi
+;; server/router - ルーター作成
+(server/router [["/" {"get" hello-handler}]
+                ["/api/users" {"get" list-users "post" create-user}]
+                ["/api/users/:id" {"get" get-user}]])
+
+;; server/serve - サーバー起動
+(server/serve app {"port" 3000})
+;; => HTTP server started on http://127.0.0.1:3000
+
+;; server/serve - 詳細設定
+(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+```
+
+### ミドルウェア
+
+```qi
+;; server/with-logging - リクエスト/レスポンスをログ出力
+(def handler (server/with-logging (fn [req] (server/ok "Hello"))))
+
+;; server/with-cors - CORSヘッダーを追加
+(def handler (server/with-cors (fn [req] (server/json {...}))))
+
+;; server/with-json-body - リクエストボディを自動的にJSONパース
+(def handler (server/with-json-body (fn [req] (get req "json"))))
+
+;; server/with-compression - レスポンスボディをgzip圧縮
+(def handler (server/with-compression (fn [req] (server/ok "..."))))
+
+;; server/with-basic-auth - Basic認証
+(def handler (server/with-basic-auth (fn [req] ...) "user" "pass"))
+
+;; server/with-bearer - Bearer Token抽出
+(def handler (server/with-bearer (fn [req] (get req "token"))))
+
+;; server/with-no-cache - キャッシュ無効化ヘッダーを追加
+(def handler (server/with-no-cache (fn [req] (server/ok "..."))))
+
+;; server/with-cache-control - カスタムCache-Controlヘッダーを追加
+(def handler (server/with-cache-control (fn [req] ...) "public, max-age=3600"))
+```
+
+### 静的ファイル配信
+
+```qi
+;; server/static-file - 単一ファイル配信
+(server/static-file "index.html")
+
+;; server/static-dir - ディレクトリ配信
+(server/static-dir "public")
+```
+
+---
+
+## 実用例
+
+### シンプルなサーバー
+
+```qi
+;; ハンドラー（リクエスト -> レスポンス）
+(def hello-handler
+  (fn [req] (server/ok "Hello, World!")))
+
+;; ルート定義（データ駆動）
+(def routes [["/" {"get" hello-handler}]])
+
+;; アプリ起動
+(def app (server/router routes))
+(server/serve app {"port" 3000})
+```
+
+### JSON API with パスパラメータ
+
+```qi
+;; ハンドラー定義
+(def list-users
+  (fn [req]
+    (server/json {"users" [{"id" 1 "name" "Alice"}
+                           {"id" 2 "name" "Bob"}]})))
+
+(def get-user
+  (fn [req]
+    (let [user-id (get-in req ["params" "id"])]
+      (server/json {"id" user-id "name" "Alice"}))))
+
+(def create-user
+  (fn [req]
+    (server/json {"status" "created"} {"status" 201})))
+
+;; ルート定義（パスパラメータ: /users/:id 形式）
+(def routes
+  [["/api/users" {"get" list-users "post" create-user}]
+   ["/api/users/:id" {"get" get-user}]
+   ["/api/users/:user_id/posts/:post_id" {"get" get-post}]])
+
+;; アプリ起動
+(def app (server/router routes))
+(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+```
+
+### ミドルウェアの組み合わせ
+
+```qi
+;; 複数のミドルウェアを重ねる
+(def api-handler
+  (-> (fn [req]
+        (let [json-data (get req "json")]
+          (server/json {"received" json-data})))
+      server/with-json-body
+      server/with-cors
+      server/with-logging
+      server/with-compression))
+
+;; または comp を使った関数合成
+(def protected-api
+  (comp
+    server/with-logging
+    server/with-cors
+    (partial server/with-basic-auth _ "admin" "secret")
+    server/with-json-body))
+
+(def routes
+  [["/api/data" {"post" (protected-api handle-data)}]])
+```
+
+### リクエスト/レスポンスオブジェクト
+
+```qi
+;; リクエスト構造
+{"method" "get"                      ;; HTTPメソッド（小文字）
+ "path" "/api/users/123"             ;; リクエストパス
+ "query" "page=1&limit=10"           ;; クエリ文字列（生）
+ "query-params" {"page" "1"          ;; クエリパラメータ（自動パース）
+                 "limit" "10"}
+ "headers" {"content-type" "application/json" ...}
+ "body" "..."                        ;; リクエストボディ（文字列）
+ "params" {"id" "123"}}              ;; パスパラメータ（マッチした場合のみ）
+
+;; レスポンス構造
+{"status" 200                        ;; HTTPステータスコード
+ "headers" {"Content-Type" "text/plain; charset=utf-8" ...}
+ "body" "Hello, World!"}             ;; レスポンスボディ（文字列、JSON、HTML等）
+
+;; レスポンス構造（ストリーミング配信）
+{"status" 200
+ "headers" {"Content-Type" "video/mp4" ...}
+ "body-file" "/path/to/large-file.mp4"}  ;; ファイルパス（大きなファイル用）
+```
+
+---
+
+## 実装済み機能
+
+- ✅ **データ駆動**: ルーティングは検査・変換可能なデータ構造
+- ✅ **パイプライン**: ハンドラーは `|>` で流れが明確
+- ✅ **合成可能**: すべてが関数で、ミドルウェアも関数
+- ✅ **スレッドセーフ**: 並列リクエスト処理に対応
+- ✅ **パスパラメータ**: `/users/:id` 形式をサポート（複数パラメータ対応）
+- ✅ **クエリパラメータ**: `?page=1&limit=10` を自動パース、配列対応、URLデコード
+- ✅ **タイムアウト**: リクエストタイムアウトを設定可能（デフォルト30秒）
+- ✅ **ミドルウェア**: ロギング、CORS、JSONボディパース（複数重ね可能）
+- ✅ **静的ファイル配信**: HTML、CSS、JS、画像、フォントなどのバイナリファイル対応
+- ✅ **ストリーミング配信**: 大きなファイル（動画、PDF等）をメモリ効率的に配信（`:body-file`キー）
+- ✅ **コンテンツ圧縮**: gzip/deflate/brotli圧縮をサポート
+- ✅ **認証**: Basic Auth、Bearer Token抽出
+- ✅ **キャッシュ制御**: Cache-Control、グレースフルシャットダウン
