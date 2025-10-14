@@ -16,7 +16,7 @@ use std::sync::Arc;
 /// - チャネル
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ch (chan))      ;; 無制限バッファ
 /// (def ch (chan 10))   ;; バッファサイズ10
 /// ```
@@ -54,7 +54,7 @@ pub fn native_chan(args: &[Value]) -> Result<Value, String> {
 /// - 送信した値
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ch (chan))
 /// (send! ch 42)
 /// ```
@@ -85,7 +85,7 @@ pub fn native_send(args: &[Value]) -> Result<Value, String> {
 /// - 受信した値（チャネルがクローズまたはタイムアウトならnil）
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ch (chan))
 /// (recv! ch)                    ;; ブロックして待つ
 /// (recv! ch :timeout 1000)      ;; 最大1秒待つ
@@ -136,7 +136,7 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
 /// - 受信した値、またはnil（値がない場合）
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ch (chan))
 /// (try-recv! ch)  ;; すぐに返る（nilまたは値）
 /// ```
@@ -160,7 +160,7 @@ pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
 /// - nil
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ch (chan))
 /// (close! ch)
 /// ```
@@ -193,7 +193,7 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
 /// - Promiseの結果
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def p (go (fn [] (+ 1 2))))
 /// (await p)  ;; => 3
 /// ```
@@ -221,7 +221,7 @@ pub fn native_await(args: &[Value]) -> Result<Value, String> {
 /// - 新しいPromise
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def p (go (fn [] 10)))
 /// (def p2 (then p (fn [x] (* x 2))))
 /// (await p2)  ;; => 20
@@ -277,7 +277,7 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 /// - 新しいPromise
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def p (go (fn [] (error "oops"))))
 /// (def p2 (catch p (fn [e] (println "Error:" e))))
 /// ```
@@ -338,7 +338,7 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
 /// - 全ての結果を含むリストを返すPromise
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def promises [(go (fn [] 1)) (go (fn [] 2)) (go (fn [] 3))])
 /// (def result (await (all promises)))  ;; => [1 2 3]
 /// ```
@@ -394,7 +394,7 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
 /// - 最初に完了したPromiseの結果を返すPromise
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def promises [(go (fn [] (sleep 100) 1)) (go (fn [] 2))])
 /// (def result (await (race promises)))  ;; => 2 (最速)
 /// ```
@@ -452,7 +452,7 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
 /// - future（結果を取得できるチャネル）
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (go (println "async!"))
 /// (def result (go (+ 1 2)))
 /// (recv! result)  ;; => 3
@@ -504,7 +504,7 @@ pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
 /// - 分岐したチャネルのリスト
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def in-ch (chan))
 /// (def out-chs (fan-out in-ch 3))  ;; 3つに分岐
 /// ```
@@ -565,7 +565,7 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
 /// - 統合されたチャネル
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def chs [(chan) (chan) (chan)])
 /// (def merged (fan-in chs))
 /// ```
@@ -617,7 +617,7 @@ pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
 /// - 出力チャネル
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def in-ch (chan))
 /// (def out-ch (pipeline 4 (fn [x] (* x x)) in-ch))
 /// ```
@@ -685,7 +685,7 @@ pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// - 変換後のリスト
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (pipeline-map 4 (fn [x] (* x x)) [1 2 3 4 5])
 /// ```
 pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -786,7 +786,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 /// - フィルタ後のリスト
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (pipeline-filter 4 even? [1 2 3 4 5 6])
 /// ```
 pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -906,7 +906,7 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 /// - 選択されたハンドラーの実行結果
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (select!
 ///   [[ch1 (fn [v] (println "ch1:" v))]
 ///    [ch2 (fn [v] (println "ch2:" v))]
@@ -1037,7 +1037,7 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 /// - スコープオブジェクト
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ctx (make-scope))
 /// (scope-go ctx task1)
 /// (cancel! ctx)  ;; 全てキャンセル
@@ -1064,7 +1064,7 @@ pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
 /// - チャネル（結果を受信可能）
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ctx (make-scope))
 /// (scope-go ctx (fn [] (println "running")))
 /// ```
@@ -1115,7 +1115,7 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// - nil
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ctx (make-scope))
 /// (cancel! ctx)
 /// ```
@@ -1142,7 +1142,7 @@ pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
 /// - true/false
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (def ctx (make-scope))
 /// (cancelled? ctx)  ;; => false
 /// (cancel! ctx)
@@ -1171,7 +1171,7 @@ pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
 /// - 関数の戻り値
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (with-scope (fn [ctx]
 ///   (scope-go ctx (fn [] (println "task 1")))
 ///   (scope-go ctx (fn [] (println "task 2")))
@@ -1212,7 +1212,7 @@ pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 /// - 全ての結果をベクタで返す
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (parallel-do
 ///   (http/get "url1")
 ///   (http/get "url2")

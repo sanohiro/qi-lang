@@ -9,7 +9,7 @@ use crate::value::Value;
 /// branch - 条件分岐
 ///
 /// 使い方:
-/// ```lisp
+/// ```qi
 /// (data |> (branch
 ///   [condition1 handler1]
 ///   [condition2 handler2]

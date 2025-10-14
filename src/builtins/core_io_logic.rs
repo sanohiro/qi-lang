@@ -71,7 +71,7 @@ pub fn native_not(args: &[Value]) -> Result<Value, String> {
 /// - 常にエラーを返す
 ///
 /// 例:
-/// ```lisp
+/// ```qi
 /// (error "something went wrong")
 /// (error "file not found")
 /// ```

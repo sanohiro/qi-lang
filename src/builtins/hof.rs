@@ -499,7 +499,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
 /// データフローを止めずに副作用（ログ、デバッグ出力など）を実行します。
 ///
 /// 使用例:
-/// ```lisp
+/// ```qi
 /// (data
 ///  |> process
 ///  |> ((fn/tap> print))  ;; データを表示しつつ通過させる
@@ -534,7 +534,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
 /// パイプライン内で`|> (tap print)`と書ける。
 ///
 /// 使用例:
-/// ```lisp
+/// ```qi
 /// ([1 2 3]
 ///  |> (map inc)
 ///  |> (tap print)  ;; 括弧1つでOK
