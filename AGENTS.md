@@ -231,7 +231,7 @@ Qiの設計原則を理解し、尊重してください：
 
 - **言語仕様**: `docs/spec/README.md`
 - **ロードマップ**: `ROADMAP.md`
-- **スタイルガイド**: `STYLE_GUIDE.md`
+- **スタイルガイド**: `docs/style-guide.md`
 - **プロジェクト概要**: `README.md`
 - **開発者向け詳細**: `CLAUDE.md`（Claude Code専用）
 

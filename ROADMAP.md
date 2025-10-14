@@ -351,7 +351,7 @@
 - **[docs/spec/](docs/spec/)** - 実装済み機能の完全仕様
 - **[README.md](README.md)** - プロジェクト概要
 - **[CLAUDE.md](CLAUDE.md)** - 開発者向けガイド
-- **[STYLE_GUIDE.md](STYLE_GUIDE.md)** - コーディングスタイルガイド
+- **[docs/style-guide.md](docs/style-guide.md)** - コーディングスタイルガイド
 
 ---
 

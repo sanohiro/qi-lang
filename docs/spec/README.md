@@ -157,9 +157,9 @@
 
 ## 🔗 関連ドキュメント
 
-- **[SPEC.md](../../SPEC.md)** - 元の統合仕様書（アーカイブ予定）
-- **[ROADMAP.md](../../ROADMAP.md)** - 未実装機能とロードマップ（作成予定）
-- **[STYLE_GUIDE.md](../../STYLE_GUIDE.md)** - コーディングスタイルガイド
+- **[SPEC.md.archive](../../SPEC.md.archive)** - 元の統合仕様書（アーカイブ）
+- **[ROADMAP.md](../../ROADMAP.md)** - 未実装機能とロードマップ
+- **[style-guide.md](../style-guide.md)** - コーディングスタイルガイド
 - **[README.md](../../README.md)** - プロジェクト全体の説明
 
 ---

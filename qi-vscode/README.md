@@ -34,7 +34,7 @@ Complete language support for **Qi - A Lisp that flows**.
 - **Run Qi File** (`Ctrl+F5` / `Cmd+F5`) - Execute current Qi file
 - **Start Qi REPL** (`Ctrl+Shift+R` / `Cmd+Shift+R`) - Start interactive REPL
 - **Debug Qi File** (`F5`) - Debug current file (planned)
-- **Format Document** - Format code according to STYLE_GUIDE.md
+- **Format Document** - Format code according to docs/style-guide.md
 - **Show Documentation** - Open Qi documentation
 
 ## Installation
