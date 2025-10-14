@@ -19,14 +19,10 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
   - リスト表示、アイコン用
 
 - **`qi-logo-full-64.png`** - 最小サイズ（64px）
-  - ファビコン、小アイコン用
+  - 小アイコン用
 
 - **`qi-logo-full-48.png`, `qi-logo-full-32.png`** - 極小サイズ
   - システムアイコン、通知用
-
-### ファビコン
-
-- **`favicon.ico`** - マルチサイズファビコン（標準形式）
 
 ---
 
@@ -61,12 +57,6 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 <img src="./assets/logo/qi-logo-full-256.png" alt="Qi Logo" width="200">
 ```
 
-### ファビコン設定
-
-```html
-<link rel="icon" href="/assets/logo/favicon.ico">
-```
-
 ---
 
 ## 💡 Tips
@@ -84,7 +74,6 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 | README表示 | 400-600px幅 | `qi-logo-full-512.png` |
 | ヘッダー | 200-300px幅 | `qi-logo-full-256.png` |
 | アイコン | 64-128px | `qi-logo-full-128.png` |
-| ファビコン | 32x32px | `favicon.ico` |
 | SNSカード | 1200x630px | （要作成） |
 
 ---
