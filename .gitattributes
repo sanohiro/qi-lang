@@ -1,0 +1,2 @@
+# Qi language files - treat as Lisp for syntax highlighting
+*.qi linguist-language=Lisp
