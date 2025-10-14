@@ -4,29 +4,25 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 
 ## 🎨 ファイル構成
 
-### メインロゴ（SVG - 推奨）
+### PNG画像（高解像度）
 
-- **`qi-logo-full.svg`** - フルロックアップ（カワウソ + "Qi" + 流れる尾）
-  - README タイトル、ヒーローバナー用
-  - **推奨用途**: プロジェクトREADME、ドキュメントのトップ
+- **`qi-logo-full-1024.png`** - 最高解像度（1024px）
+  - 高解像度印刷、大型ディスプレイ用
 
-- **`qi-logo-horizontal.svg`** - コンパクトな横レイアウト
-  - ウェブサイトヘッダー用
+- **`qi-logo-full-512.png`** - 標準サイズ（512px）
+  - **推奨**: README、ドキュメントのトップ表示用
 
-- **`qi-icon.svg`** - アイコンのみ（円形背景付き）
-  - アバター、アプリアイコン用
+- **`qi-logo-full-256.png`** - 中サイズ（256px）
+  - ウェブサイトヘッダー、サムネイル用
 
-- **`qi-mark.svg`** - ミニマルマーク（`|>` 風の流れる尾）
-  - ファビコン、小さいスペース用
+- **`qi-logo-full-128.png`** - 小サイズ（128px）
+  - リスト表示、アイコン用
 
-- **`qi-light.svg` / `qi-dark.svg`** - ライト/ダークモード用バリアント
+- **`qi-logo-full-64.png`** - 最小サイズ（64px）
+  - ファビコン、小アイコン用
 
-### PNG エクスポート（高解像度）
-
-- **`qi-logo-full-[1024|512|256|128|64|48|32].png`** - すぐに使えるラスター画像
-  - 1024px: 高解像度印刷、大型ディスプレイ
-  - 512px: 標準的なREADME表示
-  - 256px以下: サムネイル、リスト表示
+- **`qi-logo-full-48.png`, `qi-logo-full-32.png`** - 極小サイズ
+  - システムアイコン、通知用
 
 ### ファビコン
 
@@ -47,22 +43,22 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 
 ## 📖 使用方法
 
-### README.mdでの使用（SVG推奨）
+### README.mdでの使用
 
 ```markdown
 <p align="center">
-  <img src="./assets/logo/qi-logo-full.svg" alt="Qi Logo" width="400">
+  <img src="./assets/logo/qi-logo-full-512.png" alt="Qi Logo" width="400">
 </p>
 ```
 
 ### HTMLでの使用
 
 ```html
-<!-- SVG版（スケーラブル） -->
-<img src="./assets/logo/qi-logo-full.svg" alt="Qi Logo" width="400">
-
-<!-- PNG版（固定サイズ） -->
+<!-- 標準サイズ -->
 <img src="./assets/logo/qi-logo-full-512.png" alt="Qi Logo" width="400">
+
+<!-- 小サイズ -->
+<img src="./assets/logo/qi-logo-full-256.png" alt="Qi Logo" width="200">
 ```
 
 ### ファビコン設定
@@ -71,23 +67,13 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 <link rel="icon" href="/assets/logo/favicon.ico">
 ```
 
-### ダークモード対応
-
-```html
-<picture>
-  <source srcset="./assets/logo/qi-dark.svg" media="(prefers-color-scheme: dark)">
-  <img src="./assets/logo/qi-light.svg" alt="Qi Logo" width="400">
-</picture>
-```
-
 ---
 
 ## 💡 Tips
 
-- **SVGを優先**: ドキュメントやウェブサイトではSVGを使用（完全にスケール可能）
-- **アイコン用途**: `qi-icon.svg` をソーシャルアバターやアプリアイコンに
+- **Retina対応**: 表示サイズの2倍の解像度を選択（例: 200px表示 → 400px画像）
+- **README推奨**: 400-600px幅で`qi-logo-full-512.png`を使用
 - **尾のデザイン**: カワウソの尾がQiのパイプライン演算子 `|>` を表現
-- **PNG使用時**: 表示サイズの2倍の解像度を選択（Retina対応）
 
 ---
 
@@ -95,9 +81,9 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 
 | 用途 | 推奨サイズ | ファイル |
 |------|----------|---------|
-| README表示 | 400-600px幅 | `qi-logo-full.svg` |
-| ヘッダー | 200-300px幅 | `qi-logo-horizontal.svg` |
-| アイコン | 32-512px | `qi-icon.svg` |
+| README表示 | 400-600px幅 | `qi-logo-full-512.png` |
+| ヘッダー | 200-300px幅 | `qi-logo-full-256.png` |
+| アイコン | 64-128px | `qi-logo-full-128.png` |
 | ファビコン | 32x32px | `favicon.ico` |
 | SNSカード | 1200x630px | （要作成） |
 
@@ -114,8 +100,7 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 ### ⚠️ 注意事項
 - ロゴの改変は避けてください
 - 縦横比を保ってください
-- 背景色に応じて適切な版（light/dark）を選択してください
-- 小さいサイズでは `qi-mark.svg` を推奨
+- 背景色に応じて適切なサイズを選択してください
 
 ### ❌ 禁止事項
 - 商用利用（要相談）
@@ -134,5 +119,6 @@ Qiプログラミング言語のロゴファイル集です。カワウソをモ
 
 ## 📝 更新履歴
 
+- 2025-01-15: PNG版のみに変更（SVG削除）
 - 2025-01-15: ロゴパック (Otter Edition) 追加
 - 2025-01-15: ロゴアセット構造作成
