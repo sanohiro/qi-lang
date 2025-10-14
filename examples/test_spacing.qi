@@ -1,0 +1,7 @@
+(def x 10)
+(def y 20)
+(print x)
+(print y)
+(print (+ x y))
+(def z 30)
+(print z)

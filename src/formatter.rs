@@ -612,9 +612,35 @@ fn format_call(func: &Expr, args: &[Expr], config: &FormatConfig, indent: usize)
 
 /// 複数の式をフォーマット（トップレベル用）
 pub fn format_exprs(exprs: &[Expr]) -> String {
-    exprs
-        .iter()
-        .map(format_expr)
-        .collect::<Vec<_>>()
-        .join("\n\n") // トップレベル定義間は1行空行
+    if exprs.is_empty() {
+        return String::new();
+    }
+
+    let mut result = Vec::new();
+    let formatted: Vec<String> = exprs.iter().map(format_expr).collect();
+
+    for (i, expr_str) in formatted.iter().enumerate() {
+        result.push(expr_str.clone());
+
+        // 次の式があれば、空行を入れるか判断
+        if i + 1 < exprs.len() {
+            let current_is_def = is_definition(&exprs[i]);
+            let next_is_def = is_definition(&exprs[i + 1]);
+
+            // 両方が定義、または現在が定義で次が定義以外の場合は空行
+            if current_is_def || next_is_def {
+                result.push(String::new()); // 空行
+            }
+        }
+    }
+
+    result.join("\n")
+}
+
+/// 式が定義（def, defn, defn-）かどうか判定
+fn is_definition(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Def(_, _, _) | Expr::Module(_) | Expr::Export(_) | Expr::Use { .. }
+    )
 }
