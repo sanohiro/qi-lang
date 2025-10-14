@@ -12,6 +12,7 @@ use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::{fs, io};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -787,39 +788,48 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
 
 /// フォーマッターを実行
 fn run_formatter(file_path: &str, check_mode: bool) {
-    // ファイルを読み込む
-    let content = std::fs::read_to_string(file_path).unwrap_or_else(|e| {
-        eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
-        std::process::exit(1);
-    });
+    let (content, config, target_path) = if file_path == "-" {
+        let mut buffer = String::new();
+        io::stdin().read_to_string(&mut buffer).unwrap_or_else(|e| {
+            eprintln!("stdin read error: {}", e);
+            std::process::exit(1);
+        });
+        let cfg = formatter::load_config(None);
+        (buffer, cfg, None)
+    } else {
+        let content = fs::read_to_string(file_path).unwrap_or_else(|e| {
+            eprintln!("{}: {}", ui_msg(UiMsg::ErrorFailedToRead), e);
+            std::process::exit(1);
+        });
 
-    // パーサーでASTに変換
-    let exprs = match Parser::new(&content) {
-        Ok(mut parser) => match parser.parse_all() {
-            Ok(exprs) => exprs,
-            Err(e) => {
-                eprintln!("{}:{}: {}", file_path, ui_msg(UiMsg::ErrorParse), e);
-                std::process::exit(1);
-            }
-        },
+        let config_path = std::path::Path::new(file_path)
+            .parent()
+            .and_then(|dir| dir.join(".qi-format.edn").to_str().map(|s| s.to_string()));
+        let cfg = config_path
+            .as_deref()
+            .map(|path| formatter::load_config(Some(path)))
+            .unwrap_or_else(|| formatter::load_config(None));
+        (content, cfg, Some(file_path))
+    };
+
+    let formatted = match formatter::format_source(&content, &config) {
+        Ok(result) => result,
         Err(e) => {
-            eprintln!("{}:{}: {}", file_path, ui_msg(UiMsg::ErrorLexer), e);
+            eprintln!("{}:{}", ui_msg(UiMsg::ErrorInput), e);
             std::process::exit(1);
         }
     };
 
-    // フォーマット
-    let formatted = formatter::format_exprs(&exprs);
-
-    if check_mode {
-        // --checkモード: 標準出力に出力
-        println!("{}", formatted);
-    } else {
-        // 通常モード: ファイルに書き込み
-        if let Err(e) = std::fs::write(file_path, formatted) {
-            eprintln!("Failed to write file: {}", e);
-            std::process::exit(1);
+    if target_path.is_some() && !check_mode {
+        if let Some(path) = target_path {
+            if let Err(e) = fs::write(path, formatted) {
+                eprintln!("Failed to write file: {}", e);
+                std::process::exit(1);
+            }
+            println!("Formatted: {}", path);
         }
-        println!("Formatted: {}", file_path);
+    } else {
+        // --check または stdin の場合は標準出力へ
+        print!("{}", formatted);
     }
 }

@@ -328,6 +328,8 @@ You can write it naturally without worrying about line breaks.
   """)
 ```
 
+> `qi fmt` は文字列リテラルの改行・クォート・エスケープ表現を再構成せず、入力時の形を尊重します。
+
 ### 1.8 コメント
 
 #### 行コメント
@@ -342,6 +344,8 @@ You can write it naturally without worrying about line breaks.
 ;; ✅ インライン: セミコロン1つ（前に2スペース）
 (def x 10)  ; This is an inline comment
 ```
+
+> コメントは削除・結合されません。必要な説明は安心して書き残してください。
 
 #### セクション区切り
 
@@ -367,17 +371,37 @@ You can write it naturally without worrying about line breaks.
 
 ### 1.9 空行
 
-#### トップレベル定義の間: **1行**
+#### トップレベル定義の間: **推奨1行（0〜2行許容）**
+
+通常は 1 行の空行で区切りますが、読みやすさのために 0〜2 行の範囲で調整して構いません。
 
 ```qi
 (def x 10)
 
 (def y 20)
 
-(defn func1 []
+(def config
+  {:host "localhost"
+   :port 8080})
+```
+
+#### `def` / `defn` / `defn-` の前: **必ず1行空ける（コメントは除外）**
+
+トップレベルの定義フォーム（`def`、`defn`、`defn-`）の直前には最低 1 行の空行を入れてブロックを明確にします。説明用コメントを直前に置く場合は、そのコメントに続けて定義を書いて構いません。
+
+```qi
+(def cache (atom {}))
+
+(defn clear-cache []
   ...)
 
-(defn func2 []
+;; kick entry point
+(defn main []
+  ...)
+
+;; internal helper
+;; コメントの直後に defn- を書いても良い
+(defn- build-index [entries]
   ...)
 ```
 
@@ -432,6 +456,16 @@ You can write it naturally without worrying about line breaks.
    helper-function
    utility-function])
 ```
+
+### 1.11 フォーマッターポリシー
+
+Qi のフォーマッタは「コードの意味を変えず、作者が意図したテキスト表現を尊重する」ことを目的とします。
+
+- コメントや空白は削除・結合せず、設定範囲内で最小限の調整にとどめる
+- 文字列リテラルの再エスケープや正規化は行わない
+- トップレベル定義の区切りは `.qi-format.edn` の `blank-lines-between-defs` を基準に正規化する
+- `def`/`defn`/`defn-` の直前には最低 1 行の空行を確保し、コメント直後の定義を許容する
+- ガイド未定義のケースは既存のレイアウトを可能な限り保持し、将来的にルールを追加する
 
 ---
 
@@ -700,8 +734,20 @@ You can write it naturally without worrying about line breaks.
 | `match-arrow-spacing` | `:both` | matchアローのスペース（`:both`, `:before`, `:after`, `:none`） |
 | `align-map-values` | `true` | マップの値を揃えるか |
 | `sort-use-declarations` | `false` | use宣言をソートするか |
-| `blank-lines-between-defs` | `1` | トップレベル定義間の空行数 |
+| `blank-lines-between-defs` | `1` | トップレベル定義間の空行を 0〜2 行の範囲で正規化（`def`/`defn`/`defn-` 前は最低 1 行確保） |
 | `blank-lines-between-sections` | `2` | セクション間の空行数 |
+
+現行スタイルガイドの値がデフォルトですが、チームポリシーに合わせて `.qi-format.edn` で上書きしても問題ありません。
+
+`.qi-format.edn` はフォームを含むディレクトリ、またはカレントディレクトリのルートに配置します。次のような EDN マップを書いてください：
+
+```clojure
+{:indent-width 2
+ :blank-lines-between-defs 1
+ :max-line-length 100}
+```
+
+数値以外の値や未対応キーは無視され、パーサーエラーになった場合はデフォルト値にフォールバックします。
 
 ### 5.3 使用方法
 
@@ -718,6 +764,16 @@ qi fmt src/
 # 標準入力からフォーマット
 cat src/main.qi | qi fmt --stdin
 ```
+
+### 5.4 フォーマッターチェックリスト
+
+`qi fmt` は以下のポイントを満たすよう実装されています（設定値で挙動が変化するものは `.qi-format.edn` 参照）。
+
+- 文字列リテラルの改行・クォート・エスケープ表現は入力を尊重し再エンコードしない
+- コメントを削除・結合せず、意味を壊さない範囲で位置を維持する
+- `blank-lines-between-defs` に従ってトップレベル定義間の空行数を 0〜2 行に正規化する
+- `def`/`defn`/`defn-` 直前には最低 1 行の空行を確保し、直前コメントを許容する
+- 本ガイドで定義されていないレイアウトは、既存の構造を極力保持する
 
 ---
 

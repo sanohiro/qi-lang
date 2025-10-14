@@ -96,7 +96,7 @@
     "keywords": {
       "patterns": [
         {
-          "match": "\\b(def|defn|defn-|fn|let|if|do|match|try|defer|use|export|module)\\b",
+          "match": "\\b(def|defn|defn-|fn|let|if|do|match|try|defer|loop|recur|mac|flow|quote|quasiquote|unquote|unquote-splice|use|export|module)\\b",
           "name": "keyword.control.qi"
         }
       ]
@@ -148,7 +148,7 @@
     "functions": {
       "patterns": [
         {
-          "match": "\\b(go|chan|send!|recv!|close!|atom|deref|swap!|reset!|print|println|error)\\b",
+          "match": "\\b(go|chan|send!|recv!|close!|atom|deref|swap!|reset!|print|println|error|tap)\\b",
           "name": "support.function.builtin.qi"
         },
         {

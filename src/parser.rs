@@ -2,6 +2,9 @@ use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::{Lexer, Token};
 use crate::value::{Expr, MatchArm, Pattern, UseMode};
 
+// NOTE: Qi の構文ルールを追加・変更する際は `src/formatter/tokenizer.rs` と
+// `src/formatter/doc.rs` も必ず同期させること。
+
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,

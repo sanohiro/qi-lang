@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Qi Language Extension is now active');
@@ -66,13 +67,19 @@ function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
 
   const qiPath = config.get<string>('executablePath', 'qi');
   const text = document.getText();
+  const dir = path.dirname(document.uri.fsPath);
+  const tmpFileName = `.qi-format-${Date.now()}-${Math.random()
+    .toString(16)
+    .slice(2)}${path.extname(document.uri.fsPath) || '.qi'}`;
+  const tempPath = path.join(dir, tmpFileName);
 
   try {
-    // 一時ファイルに書き込んで qi fmt を実行
-    const tempFile = document.uri.fsPath;
-    const result = cp.execSync(`${qiPath} fmt --check "${tempFile}"`, {
-      encoding: 'utf-8',
-      timeout: 10000
+    fs.writeFileSync(tempPath, text, 'utf8');
+
+    const result = cp.execFileSync(qiPath, ['fmt', '--check', tempPath], {
+      encoding: 'utf8',
+      timeout: 10000,
+      cwd: dir
     });
 
     // フォーマット結果で置換
@@ -82,9 +89,18 @@ function formatDocument(document: vscode.TextDocument): vscode.TextEdit[] {
     );
 
     return [vscode.TextEdit.replace(fullRange, result)];
-  } catch (error: any) {
-    vscode.window.showErrorMessage(`Failed to format: ${error.message}`);
+  } catch (error) {
+    const err = error as { stderr?: unknown; message?: string };
+    const stderr = (err.stderr ?? '').toString();
+    const message = stderr.trim() || err.message || 'Unknown error';
+    vscode.window.showErrorMessage(`Failed to format: ${message}`);
     return [];
+  } finally {
+    try {
+      fs.rmSync(tempPath, { force: true });
+    } catch (rmError) {
+      console.debug('Failed to remove qi temp file', rmError);
+    }
   }
 }
 
@@ -106,4 +122,6 @@ function startRepl() {
   terminal.sendText(qiPath);
 }
 
-export function deactivate() {}
+export function deactivate(): void {
+  console.log('Qi Language Extension deactivated');
+}
