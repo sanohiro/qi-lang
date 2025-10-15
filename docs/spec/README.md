@@ -67,6 +67,9 @@
   - パース、stringify、Result型統合
 - **[13-stdlib-io.md](13-stdlib-io.md)** - ファイルI/O（エンコーディング対応）
   - ファイル読み書き、多言語エンコーディング（Shift_JIS、GBK、Big5等）
+- **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐ NEW
+  - test/run、アサーション（assert-eq、assert、assert-not、assert-throws）
+  - qi testコマンド（自動検出、シンプルな出力）
 
 ---
 
