@@ -59,7 +59,7 @@ pub fn native_join(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("str", native_str),
     ("split", native_split),
     ("join", native_join),

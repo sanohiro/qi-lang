@@ -1628,7 +1628,7 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（feature-gatedでない関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("str/split", native_split),
     ("str/upper", native_upper),
     ("str/lower", native_lower),
@@ -1698,7 +1698,7 @@ pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
 
 /// Feature-gated関数のリスト (string-encoding feature)
 #[cfg(feature = "string-encoding")]
-pub const FUNCTIONS_STRING_ENCODING: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS_STRING_ENCODING: super::NativeFunctions = &[
     ("str/to-base64", native_to_base64),
     ("str/from-base64", native_from_base64),
     ("str/url-encode", native_url_encode),
@@ -1709,5 +1709,5 @@ pub const FUNCTIONS_STRING_ENCODING: &[(&str, fn(&[Value]) -> Result<Value, Stri
 
 /// Feature-gated関数のリスト (string-crypto feature)
 #[cfg(feature = "string-crypto")]
-pub const FUNCTIONS_STRING_CRYPTO: &[(&str, fn(&[Value]) -> Result<Value, String>)] =
+pub const FUNCTIONS_STRING_CRYPTO: super::NativeFunctions =
     &[("str/hash", native_hash), ("str/uuid", native_uuid)];

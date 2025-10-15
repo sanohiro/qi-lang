@@ -1442,7 +1442,7 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("server/serve", native_server_serve),
     ("server/router", native_server_router),
     ("server/ok", native_server_ok),

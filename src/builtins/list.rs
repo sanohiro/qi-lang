@@ -783,7 +783,7 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
 ///
 /// 注意: take-while, drop-while, sort-by, max-by, min-by, sum-by, find, find-index,
 /// every?, some?, partition-by, keepはEvaluatorが必要なため、mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("list/split-at", native_split_at),
     ("list/interleave", native_interleave),
     ("list/frequencies", native_frequencies),

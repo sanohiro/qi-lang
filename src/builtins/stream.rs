@@ -335,7 +335,7 @@ pub fn native_realize(args: &[Value]) -> Result<Value, String> {
 ///
 /// 注意: iterate, stream_map, stream_filterはEvaluatorが必要なため、
 /// mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("stream/stream", native_stream),
     ("stream/range", native_range_stream),
     ("stream/repeat", native_repeat),

@@ -229,7 +229,7 @@ pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("path/join", native_path_join),
     ("path/basename", native_path_basename),
     ("path/dirname", native_path_dirname),

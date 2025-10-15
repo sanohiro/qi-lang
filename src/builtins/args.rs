@@ -131,7 +131,7 @@ pub fn native_args_count(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("args/all", native_args_all),
     ("args/get", native_args_get),
     ("args/parse", native_args_parse),

@@ -411,7 +411,7 @@ mod tests {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("csv/parse", native_csv_parse),
     ("csv/stringify", native_csv_stringify),
     ("csv/read-file", native_csv_read_file),

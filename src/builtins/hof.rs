@@ -564,7 +564,7 @@ pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 /// 注意: map, filter, reduce, pmap, pfilter, preduce, partition, group_by,
 /// map_lines, update, update_in, count_by, tap_directはEvaluatorが必要なため、
 /// mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("fn/complement", native_complement),
     ("fn/juxt", native_juxt),
     ("fn/tap>", native_tap),

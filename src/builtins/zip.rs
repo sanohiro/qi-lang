@@ -444,7 +444,7 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("zip/create", native_zip_create),
     ("zip/extract", native_zip_extract),
     ("zip/list", native_zip_list),

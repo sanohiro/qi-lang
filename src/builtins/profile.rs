@@ -129,7 +129,7 @@ pub fn is_enabled() -> bool {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("profile/start", native_profile_start),
     ("profile/stop", native_profile_stop),
     ("profile/clear", native_profile_clear),

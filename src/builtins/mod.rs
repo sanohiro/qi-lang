@@ -122,8 +122,14 @@ use crate::value::{Env, NativeFunc, Value};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+/// ネイティブ関数のシグネチャ
+pub type NativeFn = fn(&[Value]) -> Result<Value, String>;
+
+/// FUNCTIONS配列の型（各モジュールで使用）
+pub type NativeFunctions = &'static [(&'static str, NativeFn)];
+
 /// FUNCTIONS配列から関数を登録するヘルパー
-fn register_functions(env: &mut Env, functions: &[(&str, fn(&[Value]) -> Result<Value, String>)]) {
+fn register_functions(env: &mut Env, functions: NativeFunctions) {
     for (name, func) in functions {
         env.set(
             name.to_string(),

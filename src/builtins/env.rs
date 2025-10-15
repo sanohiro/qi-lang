@@ -146,7 +146,7 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("env/get", native_env_get),
     ("env/set", native_env_set),
     ("env/all", native_env_all),

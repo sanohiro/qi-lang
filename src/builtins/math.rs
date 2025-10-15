@@ -215,7 +215,7 @@ pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
 /// 登録すべき関数のリスト（feature-gatedでない関数のみ）
 ///
 /// 注意: rand, rand-int, random-range, shuffleは "std-math" featureが必要なため別途登録
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("math/pow", native_pow),
     ("math/sqrt", native_sqrt),
     ("math/round", native_round),
@@ -226,7 +226,7 @@ pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
 
 /// Feature-gated関数のリスト (std-math feature)
 #[cfg(feature = "std-math")]
-pub const FUNCTIONS_STD_MATH: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS_STD_MATH: super::NativeFunctions = &[
     ("math/rand", native_rand),
     ("math/rand-int", native_rand_int),
     ("math/random-range", native_random_range),

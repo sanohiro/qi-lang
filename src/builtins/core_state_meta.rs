@@ -151,7 +151,7 @@ pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 ///
 /// 注意: swap!, evalはEvaluatorが必要なため、mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("atom", native_atom),
     ("deref", native_deref),
     ("reset!", native_reset),

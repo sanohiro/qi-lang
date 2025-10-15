@@ -245,7 +245,7 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     // 型チェック
     ("nil?", native_nil),
     ("list?", native_list_q),

@@ -1273,7 +1273,7 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
 ///
 /// 注意: then, catch, go, pipeline, pipeline-map, pipeline-filter, select!, scope-go, with-scope, parallel-do
 /// はEvaluatorが必要なため、mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("chan", native_chan),
     ("send!", native_send),
     ("recv!", native_recv),

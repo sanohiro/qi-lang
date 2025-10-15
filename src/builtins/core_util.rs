@@ -131,7 +131,7 @@ pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("to-int", native_to_int),
     ("to-float", native_to_float),
     ("to-string", native_to_string),

@@ -315,7 +315,7 @@ pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     // Queue functions
     ("queue/new", native_queue_new),
     ("queue/enqueue", native_queue_enqueue),

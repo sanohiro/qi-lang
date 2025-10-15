@@ -386,7 +386,7 @@ fn parse_integer(value: &Value, context: &str) -> Result<i64, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("time/now-iso", native_now_iso),
     ("time/from-unix", native_from_unix),
     ("time/to-unix", native_to_unix),

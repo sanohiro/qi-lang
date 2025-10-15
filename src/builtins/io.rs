@@ -963,7 +963,7 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/read-file", native_read_file),
     ("io/write-file", native_write_file),
     ("io/append-file", native_append_file),

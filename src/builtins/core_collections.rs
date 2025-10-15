@@ -474,7 +474,7 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     // リスト操作
     ("first", native_first),
     ("rest", native_rest),

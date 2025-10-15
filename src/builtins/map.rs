@@ -230,7 +230,7 @@ pub fn native_update_vals(
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 ///
 /// 注意: update-keys, update-valsはEvaluatorが必要なため、mod.rsで別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("map/select-keys", native_select_keys),
     ("map/assoc-in", native_assoc_in),
     ("map/dissoc-in", native_dissoc_in),

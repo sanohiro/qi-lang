@@ -654,7 +654,7 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("cmd/exec", native_exec),
     ("cmd/sh", native_sh),
     ("cmd/pipe", native_pipe),

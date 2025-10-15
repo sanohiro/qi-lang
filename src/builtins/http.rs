@@ -602,7 +602,7 @@ fn http_stream(
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 ///
 /// 注意: get-async, post-async は Evaluator が必要なため、mod.rs で別途登録されます
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("http/get", native_get),
     ("http/post", native_post),
     ("http/put", native_put),

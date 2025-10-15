@@ -361,7 +361,7 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("log/debug", native_log_debug),
     ("log/info", native_log_info),
     ("log/warn", native_log_warn),

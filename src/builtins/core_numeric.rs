@@ -307,7 +307,7 @@ pub fn native_ge(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("+", native_add),
     ("-", native_sub),
     ("*", native_mul),

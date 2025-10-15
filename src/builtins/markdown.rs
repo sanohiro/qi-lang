@@ -626,7 +626,7 @@ pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("markdown/header", native_markdown_header),
     ("markdown/list", native_markdown_list),
     ("markdown/ordered-list", native_markdown_ordered_list),

@@ -10,7 +10,7 @@ use rustyline::validate::Validator;
 use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
-use std::sync::Once;
+use std::sync::{LazyLock, OnceLock};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -514,24 +514,18 @@ fn is_balanced(input: &str) -> bool {
     depth == 0 && !in_string
 }
 
-/// 標準ライブラリドキュメントの遅延ロード（スレッドセーフ）
-///
-/// std::sync::Onceを使用し、複数スレッドから同時に呼ばれても1回だけ実行されることを保証
-fn lazy_load_std_docs(evaluator: &Evaluator) {
-    static INIT: Once = Once::new();
-
-    INIT.call_once(|| {
-        load_std_docs_internal(evaluator);
-    });
+/// ドキュメントパス情報
+struct DocPaths {
+    base_path: String,
+    files: Vec<String>,
+    lang: String,
 }
 
-/// 標準ライブラリドキュメントのロード処理（内部実装）
-fn load_std_docs_internal(evaluator: &Evaluator) {
+/// ドキュメントパスの探索（LazyLockで自動的に1回だけ実行される）
+static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
     // ドキュメントディレクトリの候補パスを取得
-    // 1. カレントディレクトリ
-    // 2. 実行ファイルのあるディレクトリ
     let mut doc_base_paths = vec!["std/docs".to_string()];
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
@@ -540,8 +534,9 @@ fn load_std_docs_internal(evaluator: &Evaluator) {
     }
 
     // 最初に見つかったディレクトリからドキュメントファイル一覧を取得
-    let mut doc_files = std::collections::HashSet::new();
+    let mut doc_files = HashSet::new();
     let mut found_base = None;
+
     for base_path in &doc_base_paths {
         // 英語版ディレクトリから取得
         let en_path = format!("{}/en", base_path);
@@ -575,28 +570,46 @@ fn load_std_docs_internal(evaluator: &Evaluator) {
         }
     }
 
-    // ドキュメントが見つからなければ終了
-    if found_base.is_none() {
-        return;
-    }
-    let base_path = found_base.unwrap();
+    // ドキュメントが見つかった場合、パス情報を返す
+    found_base.map(|base_path| {
+        let mut files: Vec<_> = doc_files.into_iter().collect();
+        files.sort();
+        DocPaths {
+            base_path,
+            files,
+            lang,
+        }
+    })
+});
 
-    // ファイル名でソート（読み込み順序を安定させる）
-    let mut doc_files: Vec<_> = doc_files.into_iter().collect();
-    doc_files.sort();
+/// 標準ライブラリドキュメントの遅延ロード（スレッドセーフ）
+///
+/// LazyLockとOnceLockを使用し、パス探索とロード処理を分離
+/// 複数スレッドから同時に呼ばれても1回だけ実行されることを保証
+fn lazy_load_std_docs(evaluator: &Evaluator) {
+    static LOADED: OnceLock<()> = OnceLock::new();
 
+    LOADED.get_or_init(|| {
+        if let Some(paths) = &*DOC_PATHS {
+            load_docs_from_paths(evaluator, paths);
+        }
+    });
+}
+
+/// パス情報からドキュメントをロード
+fn load_docs_from_paths(evaluator: &Evaluator, paths: &DocPaths) {
     // 1. 英語版を先に読み込み
-    for file in &doc_files {
-        let en_doc_path = format!("{}/en/{}", base_path, file);
+    for file in &paths.files {
+        let en_doc_path = format!("{}/en/{}", paths.base_path, file);
         if let Ok(content) = std::fs::read_to_string(&en_doc_path) {
             eval_repl_code(evaluator, &content, Some(&en_doc_path));
         }
     }
 
     // 2. 指定言語版を読み込み（enと同じ場合はスキップ）
-    if lang != "en" {
-        for file in &doc_files {
-            let lang_doc_path = format!("{}/{}/{}", base_path, lang, file);
+    if paths.lang != "en" {
+        for file in &paths.files {
+            let lang_doc_path = format!("{}/{}/{}", paths.base_path, paths.lang, file);
             if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
                 eval_repl_code(evaluator, &content, Some(&lang_doc_path));
             }

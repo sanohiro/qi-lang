@@ -287,7 +287,7 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     ("stats/mean", native_mean),
     ("stats/median", native_median),
     ("stats/mode", native_mode),

@@ -1316,7 +1316,7 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
 }
 
 /// データベース関数配列（24個）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+pub const FUNCTIONS: super::NativeFunctions = &[
     // Phase 1: 基本操作、サニタイズ（8個）
     ("db/connect", native_connect),
     ("db/query", native_query),
