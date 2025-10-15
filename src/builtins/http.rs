@@ -318,7 +318,7 @@ fn http_request(
                     // gzip圧縮して送信
                     let compressed = compress_gzip(s.as_bytes())
                         .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
-                    request = request.body(compressed);
+                    request = request.header("Content-Encoding", "gzip").body(compressed);
                 } else {
                     request = request.body(s.clone());
                 }
@@ -335,6 +335,7 @@ fn http_request(
                             })?;
                             request = request
                                 .header("Content-Type", "application/json")
+                                .header("Content-Encoding", "gzip")
                                 .body(compressed);
                         } else {
                             request = request

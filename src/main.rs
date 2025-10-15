@@ -518,7 +518,7 @@ fn is_balanced(input: &str) -> bool {
 /// ドキュメントパス情報
 struct DocPaths {
     base_path: PathBuf,
-    files: Vec<String>,
+    files: Vec<PathBuf>,
     lang: String,
 }
 
@@ -543,9 +543,10 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
         let en_path = base_path.join("en");
         if let Ok(entries) = std::fs::read_dir(&en_path) {
             for entry in entries.flatten() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if filename.ends_with(".qi") {
-                        doc_files.insert(filename.to_string());
+                let filename = entry.file_name();
+                if let Some(ext) = filename.to_str() {
+                    if ext.ends_with(".qi") {
+                        doc_files.insert(filename.into());
                     }
                 }
             }
@@ -557,9 +558,10 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
             let lang_path = base_path.join(&lang);
             if let Ok(entries) = std::fs::read_dir(&lang_path) {
                 for entry in entries.flatten() {
-                    if let Some(filename) = entry.file_name().to_str() {
-                        if filename.ends_with(".qi") {
-                            doc_files.insert(filename.to_string());
+                    let filename = entry.file_name();
+                    if let Some(ext) = filename.to_str() {
+                        if ext.ends_with(".qi") {
+                            doc_files.insert(filename.into());
                         }
                     }
                 }
