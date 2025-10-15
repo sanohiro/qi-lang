@@ -107,6 +107,10 @@ fn main() {
         "-v" | "--version" => {
             println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
         }
+        "test" => {
+            // テスト実行
+            run_tests(&args[2..]);
+        }
         "-e" | "-c" => {
             // ワンライナー実行
             if args.len() < 3 {
@@ -187,6 +191,111 @@ fn run_file(path: &str) {
 
     let mut evaluator = Evaluator::new();
     eval_code(&mut evaluator, &content, false, Some(path));
+}
+
+/// テストを実行
+fn run_tests(args: &[String]) {
+    use std::path::Path;
+    use std::time::Instant;
+
+    let mut test_files = Vec::new();
+
+    // 引数がある場合は指定されたファイルを実行
+    if !args.is_empty() {
+        for arg in args {
+            test_files.push(arg.clone());
+        }
+    } else {
+        // 引数がない場合は tests/ ディレクトリ内の *.qi ファイルを検索
+        let test_dir = Path::new("tests");
+        if test_dir.exists() && test_dir.is_dir() {
+            match std::fs::read_dir(test_dir) {
+                Ok(entries) => {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.extension().and_then(|s| s.to_str()) == Some("qi") {
+                            if let Some(path_str) = path.to_str() {
+                                test_files.push(path_str.to_string());
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error reading tests directory: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        test_files.sort();
+    }
+
+    if test_files.is_empty() {
+        println!("no test files found");
+        return;
+    }
+
+    println!("running {} test files\n", test_files.len());
+
+    let evaluator = Evaluator::new();
+    let start_time = Instant::now();
+
+    // テストファイルを順次実行
+    for test_file in &test_files {
+        let content = match std::fs::read_to_string(test_file) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Error reading {}: {}", test_file, e);
+                continue;
+            }
+        };
+
+        // テストファイルを評価（エラーが出ても続行）
+        match Parser::new(&content) {
+            Ok(mut parser) => match parser.parse_all() {
+                Ok(exprs) => {
+                    for expr in exprs.iter() {
+                        if let Err(e) = evaluator.eval(expr) {
+                            eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorRuntime), e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorParse), e);
+                }
+            },
+            Err(e) => {
+                eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorLexer), e);
+            }
+        }
+    }
+
+    // test/run-all を呼び出して結果を表示
+    match Parser::new("(test/run-all)") {
+        Ok(mut parser) => match parser.parse() {
+            Ok(expr) => {
+                let elapsed = start_time.elapsed();
+                match evaluator.eval(&expr) {
+                    Ok(_) => {
+                        println!("\nfinished in {:.2}s", elapsed.as_secs_f64());
+                        std::process::exit(0);
+                    }
+                    Err(_) => {
+                        println!("\nfinished in {:.2}s", elapsed.as_secs_f64());
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Internal error: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            eprintln!("Internal error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn run_code(code: &str) {
@@ -763,4 +872,3 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
         }
     }
 }
-

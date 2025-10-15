@@ -1,0 +1,24 @@
+;; Core functionality tests
+
+(test/run "addition" (fn []
+  (test/assert-eq 3 (+ 1 2))
+  (test/assert-eq 0 (+ 0 0))
+  (test/assert-eq -1 (+ 1 -2))))
+
+(test/run "subtraction" (fn []
+  (test/assert-eq 1 (- 3 2))
+  (test/assert-eq -5 (- 0 5))))
+
+(test/run "multiplication" (fn []
+  (test/assert-eq 6 (* 2 3))
+  (test/assert-eq 0 (* 5 0))))
+
+(test/run "list operations" (fn []
+  (test/assert-eq 3 (len [1 2 3]))
+  (test/assert-eq 1 (first [1 2 3]))
+  (test/assert-eq 3 (last [1 2 3]))))
+
+(test/run "string operations" (fn []
+  (test/assert-eq "HELLO" (str/upper "hello"))
+  (test/assert-eq "world" (str/lower "WORLD"))
+  (test/assert-eq 5 (len "hello"))))

@@ -1,0 +1,10 @@
+;; Pipeline tests
+
+(test/run "basic pipeline" (fn []
+  (test/assert-eq (list 2 3 4) ([1 2 3] |> (map inc)))))
+
+(test/run "pipeline with multiple steps" (fn []
+  (test/assert-eq 9 ([1 2 3] |> (map inc) |> sum))))
+
+(test/run "filter and map" (fn []
+  (test/assert-eq (list 3 5) ([1 2 3 4 5 6] |> (filter even?) |> (map inc) |> (take 2)))))

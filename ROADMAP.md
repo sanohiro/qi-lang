@@ -32,26 +32,48 @@
 (server/serve ws-handler {:port 3000 :ws true})
 ```
 
-#### 2. テストフレームワーク ⚡
+#### 2. テストフレームワーク ✅ **実装済み**
+
+**基本機能は実装完了。`qi test`コマンドで実行可能。**
 
 ```qi
-;; テスト定義
-(test/deftest test-addition
-  (test/assert-eq (+ 1 2) 3)
-  (test/assert-eq (+ 10 20) 30))
+;; tests/core_test.qi
+(test/run "addition" (fn []
+  (test/assert-eq 3 (+ 1 2))
+  (test/assert-eq 0 (+ 0 0))))
 
-;; 例外テスト
-(test/deftest test-division-by-zero
-  (test/assert-throws (/ 10 0) "Division by zero"))
-
-;; テスト実行
-(test/run-tests)
-;; => All tests passed (2/2)
-
-;; カバレッジ計測
-(test/coverage)
-;; => Coverage: 85% (17/20 functions)
+(test/run "exception test" (fn []
+  (test/assert-throws (fn [] (/ 10 0)))))
 ```
+
+```bash
+$ qi test
+running 2 test files
+
+テスト結果:
+===========
+  ✓ addition
+  ✓ exception test
+
+2 テスト, 2 成功, 0 失敗
+
+finished in 0.05s
+```
+
+**実装済み機能:**
+- ✅ `test/run` - テスト実行
+- ✅ `test/assert-eq` - 等価性アサーション
+- ✅ `test/assert` - 真偽値アサーション
+- ✅ `test/assert-not` - 偽値アサーション
+- ✅ `test/assert-throws` - 例外アサーション
+- ✅ `qi test` コマンド - tests/ディレクトリの自動検出・実行
+- ✅ Rust風のシンプルな出力形式
+
+**今後の拡張予定（優先度低）:**
+- カバレッジ計測 (`test/coverage`)
+- `deftest`マクロ（糖衣構文）
+- タグによるフィルタリング
+- watch モード
 
 #### 3. データベース接続 🎯
 

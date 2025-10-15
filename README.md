@@ -99,6 +99,10 @@ qi -e '(+ 1 2 3)'
 # ファイルをロードしてREPL起動
 qi -l utils.qi
 
+# テスト実行 ⭐ NEW
+qi test              # tests/ディレクトリ内の全テストを実行
+qi test path/to/test.qi  # 特定のテストファイルを実行
+
 # ヘルプ表示
 qi --help
 ```
@@ -263,6 +267,44 @@ Qiは**2層モジュール設計**を採用しています：
 
 (12345 |> format-price)  ;; "¥12,345"
 ```
+
+### テストフレームワーク ⭐ NEW
+
+```lisp
+;; tests/core_test.qi
+(test/run "addition" (fn []
+  (test/assert-eq 3 (+ 1 2))
+  (test/assert-eq 0 (+ 0 0))))
+
+(test/run "list operations" (fn []
+  (test/assert-eq 3 (len [1 2 3]))
+  (test/assert-eq 1 (first [1 2 3]))))
+
+(test/run "pipeline test" (fn []
+  (test/assert-eq 9 ([1 2 3] |> (map inc) |> sum))))
+```
+
+**実行:**
+```bash
+$ qi test
+running 2 test files
+
+テスト結果:
+===========
+  ✓ addition
+  ✓ list operations
+  ✓ pipeline test
+
+3 テスト, 3 成功, 0 失敗
+
+finished in 0.05s
+```
+
+**利用可能なアサーション:**
+- `test/assert-eq expected actual` - 等価性チェック
+- `test/assert value` - 真偽値チェック
+- `test/assert-not value` - 偽値チェック
+- `test/assert-throws (fn [] expr)` - 例外発生チェック
 
 ## 開発状況
 
