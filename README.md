@@ -270,4 +270,9 @@ Qiは**2層モジュール設計**を採用しています：
 
 ## ライセンス
 
-未定
+MIT OR Apache-2.0 のデュアルライセンスです。お好きな方を選択してください。
+
+- [LICENSE-MIT](LICENSE-MIT) - MITライセンス
+- [LICENSE-APACHE](LICENSE-APACHE) - Apache License 2.0
+
+詳細は各ライセンスファイルを参照してください。
