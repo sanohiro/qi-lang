@@ -468,3 +468,37 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 
     Ok(current)
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    // リスト操作
+    ("first", native_first),
+    ("rest", native_rest),
+    ("last", native_last),
+    ("nth", native_nth),
+    ("len", native_len),
+    ("count", native_count),
+    ("cons", native_cons),
+    ("conj", native_conj),
+    ("concat", native_concat),
+    ("flatten", native_flatten),
+    ("range", native_range),
+    ("reverse", native_reverse),
+    ("take", native_take),
+    ("drop", native_drop),
+    ("sort", native_sort),
+    ("distinct", native_distinct),
+    ("zip", native_zip),
+    // マップ操作
+    ("get", native_get),
+    ("keys", native_keys),
+    ("vals", native_vals),
+    ("assoc", native_assoc),
+    ("dissoc", native_dissoc),
+    ("merge", native_merge),
+    ("get-in", native_get_in),
+];

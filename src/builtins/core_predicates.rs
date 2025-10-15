@@ -239,3 +239,37 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["zero?", "numbers"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    // 型チェック
+    ("nil?", native_nil),
+    ("list?", native_list_q),
+    ("vector?", native_vector_q),
+    ("map?", native_map_q),
+    ("string?", native_string_q),
+    ("integer?", native_integer_q),
+    ("float?", native_float_q),
+    ("number?", native_number_q),
+    ("keyword?", native_keyword_q),
+    ("function?", native_function_q),
+    ("atom?", native_atom_q),
+    // コレクション
+    ("coll?", native_coll_q),
+    ("sequential?", native_sequential_q),
+    ("empty?", native_empty),
+    // 状態
+    ("some?", native_some_q),
+    ("true?", native_true_q),
+    ("false?", native_false_q),
+    // 数値
+    ("even?", native_even_q),
+    ("odd?", native_odd_q),
+    ("positive?", native_positive_q),
+    ("negative?", native_negative_q),
+    ("zero?", native_zero_q),
+];

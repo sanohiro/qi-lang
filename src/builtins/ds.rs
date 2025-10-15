@@ -309,3 +309,25 @@ pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Integer(items.len() as i64))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    // Queue functions
+    ("queue/new", native_queue_new),
+    ("queue/enqueue", native_queue_enqueue),
+    ("queue/dequeue", native_queue_dequeue),
+    ("queue/peek", native_queue_peek),
+    ("queue/empty?", native_queue_empty),
+    ("queue/size", native_queue_size),
+    // Stack functions
+    ("stack/new", native_stack_new),
+    ("stack/push", native_stack_push),
+    ("stack/pop", native_stack_pop),
+    ("stack/peek", native_stack_peek),
+    ("stack/empty?", native_stack_empty),
+    ("stack/size", native_stack_size),
+];

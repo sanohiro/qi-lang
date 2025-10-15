@@ -143,3 +143,17 @@ pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String>
 
     Ok(Value::Channel(result_channel))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: goはEvaluatorが必要なため、mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("chan", native_chan),
+    ("send!", native_send),
+    ("recv!", native_recv),
+    ("close!", native_close),
+];

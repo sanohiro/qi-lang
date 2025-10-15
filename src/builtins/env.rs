@@ -140,3 +140,15 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Integer(loaded_count))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("env/get", native_env_get),
+    ("env/set", native_env_set),
+    ("env/all", native_env_all),
+    ("env/load-dotenv", native_env_load_dotenv),
+];

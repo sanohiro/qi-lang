@@ -223,3 +223,20 @@ pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
         )),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("path/join", native_path_join),
+    ("path/basename", native_path_basename),
+    ("path/dirname", native_path_dirname),
+    ("path/extension", native_path_extension),
+    ("path/stem", native_path_stem),
+    ("path/absolute", native_path_absolute),
+    ("path/normalize", native_path_normalize),
+    ("path/is-absolute?", native_path_is_absolute),
+    ("path/is-relative?", native_path_is_relative),
+];

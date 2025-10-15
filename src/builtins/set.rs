@@ -259,3 +259,18 @@ pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::List(result))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("set/union", native_union),
+    ("set/intersect", native_intersect),
+    ("set/difference", native_difference),
+    ("set/subset?", native_subset),
+    ("set/superset?", native_superset),
+    ("set/disjoint?", native_disjoint),
+    ("set/symmetric-difference", native_symmetric_difference),
+];

@@ -125,3 +125,17 @@ pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
     thread::sleep(Duration::from_millis(millis));
     Ok(Value::Nil)
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("to-int", native_to_int),
+    ("to-float", native_to_float),
+    ("to-string", native_to_string),
+    ("now", native_now),
+    ("timestamp", native_timestamp),
+    ("sleep", native_sleep),
+];

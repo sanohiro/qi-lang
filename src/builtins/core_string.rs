@@ -53,3 +53,14 @@ pub fn native_join(args: &[Value]) -> Result<Value, String> {
         _ => Err(msg(MsgKey::JoinStringAndList).to_string()),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("str", native_str),
+    ("split", native_split),
+    ("join", native_join),
+];

@@ -1264,3 +1264,27 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
 
     Ok(Value::Vector(results?))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: then, catch, go, pipeline, pipeline-map, pipeline-filter, select!, scope-go, with-scope, parallel-do
+/// はEvaluatorが必要なため、mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("chan", native_chan),
+    ("send!", native_send),
+    ("recv!", native_recv),
+    ("try-recv!", native_try_recv),
+    ("close!", native_close),
+    ("await", native_await),
+    ("all", native_all),
+    ("race", native_race),
+    ("fan-out", native_fan_out),
+    ("fan-in", native_fan_in),
+    ("make-scope", native_make_scope),
+    ("cancel!", native_cancel),
+    ("cancelled?", native_cancelled_q),
+];

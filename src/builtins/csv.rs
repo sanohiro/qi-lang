@@ -405,3 +405,16 @@ mod tests {
         assert_eq!(reparsed, original_parsed);
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("csv/parse", native_csv_parse),
+    ("csv/stringify", native_csv_stringify),
+    ("csv/read-file", native_csv_read_file),
+    ("csv/write-file", native_csv_write_file),
+    ("csv/read-stream", native_csv_read_stream),
+];

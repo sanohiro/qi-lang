@@ -137,383 +137,73 @@ macro_rules! register_native {
     };
 }
 
+/// FUNCTIONS配列から関数を登録するヘルパー
+fn register_functions(env: &mut Env, functions: &[(&str, fn(&[Value]) -> Result<Value, String>)]) {
+    for (name, func) in functions {
+        env.set(
+            name.to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: name.to_string(),
+                func: *func,
+            }),
+        );
+    }
+}
+
 /// すべての組み込み関数を環境に登録
 pub fn register_all(env: &Arc<RwLock<Env>>) {
-    register_native!(env.write(),
-        // ========================================
-        // Core: 数値・比較演算（17個）
-        // ========================================
-        "+" => core_numeric::native_add,
-        "-" => core_numeric::native_sub,
-        "*" => core_numeric::native_mul,
-        "/" => core_numeric::native_div,
-        "%" => core_numeric::native_mod,
-        "abs" => core_numeric::native_abs,
-        "min" => core_numeric::native_min,
-        "max" => core_numeric::native_max,
-        "inc" => core_numeric::native_inc,
-        "dec" => core_numeric::native_dec,
-        "sum" => core_numeric::native_sum,
-        "=" => core_numeric::native_eq,
-        "!=" => core_numeric::native_ne,
-        "<" => core_numeric::native_lt,
-        ">" => core_numeric::native_gt,
-        "<=" => core_numeric::native_le,
-        ">=" => core_numeric::native_ge,
+    let mut env_write = env.write();
 
-        // ========================================
-        // Core: リスト操作（Evaluator不要な基本関数）
-        // ========================================
-        "first" => core_collections::native_first,
-        "rest" => core_collections::native_rest,
-        "last" => core_collections::native_last,
-        "nth" => core_collections::native_nth,
-        "len" => core_collections::native_len,
-        "count" => core_collections::native_count,
-        "cons" => core_collections::native_cons,
-        "conj" => core_collections::native_conj,
-        "concat" => core_collections::native_concat,
-        "flatten" => core_collections::native_flatten,
-        "range" => core_collections::native_range,
-        "reverse" => core_collections::native_reverse,
-        "take" => core_collections::native_take,
-        "drop" => core_collections::native_drop,
-        "sort" => core_collections::native_sort,
-        "distinct" => core_collections::native_distinct,
-        "zip" => core_collections::native_zip,
+    // ========================================
+    // Coreモジュール関数の登録（FUNCTIONS配列を使用）
+    // ========================================
+    register_functions(&mut env_write, core_numeric::FUNCTIONS);
+    register_functions(&mut env_write, core_collections::FUNCTIONS);
+    register_functions(&mut env_write, core_predicates::FUNCTIONS);
+    register_functions(&mut env_write, core_string::FUNCTIONS);
+    register_functions(&mut env_write, core_util::FUNCTIONS);
+    register_functions(&mut env_write, core_io_logic::FUNCTIONS);
+    register_functions(&mut env_write, core_functions::FUNCTIONS);
+    register_functions(&mut env_write, core_state_meta::FUNCTIONS);
+    register_functions(&mut env_write, core_concurrency::FUNCTIONS);
 
-        // ========================================
-        // Core: マップ操作（Evaluator不要）
-        // ========================================
-        "get" => core_collections::native_get,
-        "keys" => core_collections::native_keys,
-        "vals" => core_collections::native_vals,
-        "assoc" => core_collections::native_assoc,
-        "dissoc" => core_collections::native_dissoc,
-        "merge" => core_collections::native_merge,
-        "get-in" => core_collections::native_get_in,
+    // 専門モジュール（Evaluator不要）
+    register_functions(&mut env_write, math::FUNCTIONS);
+    register_functions(&mut env_write, csv::FUNCTIONS);
+    register_functions(&mut env_write, path::FUNCTIONS);
+    register_functions(&mut env_write, env::FUNCTIONS);
+    register_functions(&mut env_write, log::FUNCTIONS);
+    register_functions(&mut env_write, args::FUNCTIONS);
+    register_functions(&mut env_write, test::FUNCTIONS);
+    register_functions(&mut env_write, profile::FUNCTIONS);
+    register_functions(&mut env_write, ds::FUNCTIONS);
+    register_functions(&mut env_write, io::FUNCTIONS);
+    register_functions(&mut env_write, string::FUNCTIONS);
+    register_functions(&mut env_write, list::FUNCTIONS);
+    register_functions(&mut env_write, map::FUNCTIONS);
+    register_functions(&mut env_write, hof::FUNCTIONS);
+    register_functions(&mut env_write, util::FUNCTIONS);
+    register_functions(&mut env_write, stream::FUNCTIONS);
+    register_functions(&mut env_write, concurrency::FUNCTIONS);
 
-        // ========================================
-        // Core: 述語・型判定（20個）
-        // ========================================
-        "nil?" => core_predicates::native_nil,
-        "list?" => core_predicates::native_list_q,
-        "vector?" => core_predicates::native_vector_q,
-        "map?" => core_predicates::native_map_q,
-        "string?" => core_predicates::native_string_q,
-        "integer?" => core_predicates::native_integer_q,
-        "float?" => core_predicates::native_float_q,
-        "number?" => core_predicates::native_number_q,
-        "keyword?" => core_predicates::native_keyword_q,
-        "function?" => core_predicates::native_function_q,
-        "atom?" => core_predicates::native_atom_q,
-        "coll?" => core_predicates::native_coll_q,
-        "sequential?" => core_predicates::native_sequential_q,
-        "empty?" => core_predicates::native_empty,
-        "some?" => core_predicates::native_some_q,
-        "true?" => core_predicates::native_true_q,
-        "false?" => core_predicates::native_false_q,
-        "even?" => core_predicates::native_even_q,
-        "odd?" => core_predicates::native_odd_q,
-        "positive?" => core_predicates::native_positive_q,
-        "negative?" => core_predicates::native_negative_q,
-        "zero?" => core_predicates::native_zero_q,
+    // Feature-gated専門モジュール（Evaluator不要）
+    #[cfg(feature = "std-math")]
+    register_functions(&mut env_write, math::FUNCTIONS_STD_MATH);
 
-        // ========================================
-        // Core: 文字列（3個）
-        // ========================================
-        "str" => core_string::native_str,
-        "split" => core_string::native_split,
-        "join" => core_string::native_join,
+    #[cfg(feature = "string-encoding")]
+    register_functions(&mut env_write, string::FUNCTIONS_STRING_ENCODING);
 
-        // ========================================
-        // Core: 型変換・日時（6個）
-        // ========================================
-        "to-int" => core_util::native_to_int,
-        "to-float" => core_util::native_to_float,
-        "to-string" => core_util::native_to_string,
-        "now" => core_util::native_now,
-        "timestamp" => core_util::native_timestamp,
-        "sleep" => core_util::native_sleep,
+    #[cfg(feature = "string-crypto")]
+    register_functions(&mut env_write, string::FUNCTIONS_STRING_CRYPTO);
 
-        // ========================================
-        // Core: I/O・論理・エラー（4個）
-        // ========================================
-        "print" => core_io_logic::native_print,
-        "println" => core_io_logic::native_println,
-        "not" => core_io_logic::native_not,
-        "error" => core_io_logic::native_error,
+    #[cfg(feature = "std-set")]
+    register_functions(&mut env_write, set::FUNCTIONS);
 
-        // ========================================
-        // Core: 高階関数（Evaluator不要な関数）
-        // ========================================
-        "identity" => core_functions::native_identity,
-        "constantly" => core_functions::native_constantly,
-        "partial" => core_functions::native_partial,
+    #[cfg(feature = "std-time")]
+    register_functions(&mut env_write, time::FUNCTIONS);
 
-        // ========================================
-        // Core: 状態管理（Evaluator不要）
-        // ========================================
-        "atom" => core_state_meta::native_atom,
-        "deref" => core_state_meta::native_deref,
-        "reset!" => core_state_meta::native_reset,
-
-        // ========================================
-        // Core: メタプログラミング（Evaluator不要）
-        // ========================================
-        "uvar" => core_state_meta::native_uvar,
-        "variable" => core_state_meta::native_variable,
-        "macro?" => core_state_meta::native_macro_q,
-
-        // ========================================
-        // Core: 並行処理（Evaluator不要）
-        // ========================================
-        "chan" => core_concurrency::native_chan,
-        "send!" => core_concurrency::native_send,
-        "recv!" => core_concurrency::native_recv,
-        "close!" => core_concurrency::native_close,
-
-        // ========================================
-        // 専門モジュール: list（18個）
-        // ========================================
-        "list/frequencies" => list::native_frequencies,
-        "list/interleave" => list::native_interleave,
-        "list/take-nth" => list::native_take_nth,
-        "list/dedupe" => list::native_dedupe,
-        "list/split-at" => list::native_split_at,
-        "list/zipmap" => list::native_zipmap,
-        "list/chunk" => list::native_chunk,
-        "list/drop-last" => list::native_drop_last,
-
-        // ========================================
-        // 専門モジュール: map（5個）
-        // ========================================
-        "map/select-keys" => map::native_select_keys,
-        "map/assoc-in" => map::native_assoc_in,
-        "map/dissoc-in" => map::native_dissoc_in,
-
-        // ========================================
-        // 専門モジュール: fn（3個）
-        // ========================================
-        "fn/complement" => hof::native_complement,
-        "fn/juxt" => hof::native_juxt,
-        "fn/tap>" => hof::native_tap,
-
-        // ========================================
-        // 専門モジュール: math（6個 + 4個）
-        // ========================================
-        "math/pow" => math::native_pow,
-        "math/sqrt" => math::native_sqrt,
-        "math/round" => math::native_round,
-        "math/floor" => math::native_floor,
-        "math/ceil" => math::native_ceil,
-        "math/clamp" => math::native_clamp,
-
-        // ========================================
-        // 専門モジュール: csv（5個）
-        // ========================================
-        "csv/parse" => csv::native_csv_parse,
-        "csv/stringify" => csv::native_csv_stringify,
-        "csv/read-file" => csv::native_csv_read_file,
-        "csv/write-file" => csv::native_csv_write_file,
-        "csv/read-stream" => csv::native_csv_read_stream,
-
-        // ========================================
-        // 専門モジュール: io（19個）
-        // ========================================
-        "io/read-file" => io::native_read_file,
-        "io/write-file" => io::native_write_file,
-        "io/append-file" => io::native_append_file,
-        "io/write-stream" => io::native_write_stream,
-        "io/read-lines" => io::native_read_lines,
-        "io/file-exists?" => io::native_file_exists,
-        "io/list-dir" => io::native_list_dir,
-        "io/create-dir" => io::native_create_dir,
-        "io/delete-file" => io::native_delete_file,
-        "io/delete-dir" => io::native_delete_dir,
-        "io/copy-file" => io::native_copy_file,
-        "io/move-file" => io::native_move_file,
-        "io/file-info" => io::native_file_info,
-        "io/is-file?" => io::native_is_file,
-        "io/is-dir?" => io::native_is_dir,
-
-        // ========================================
-        // 専門モジュール: path（9個）
-        // ========================================
-        "path/join" => path::native_path_join,
-        "path/basename" => path::native_path_basename,
-        "path/dirname" => path::native_path_dirname,
-        "path/extension" => path::native_path_extension,
-        "path/stem" => path::native_path_stem,
-        "path/absolute" => path::native_path_absolute,
-        "path/normalize" => path::native_path_normalize,
-        "path/is-absolute?" => path::native_path_is_absolute,
-        "path/is-relative?" => path::native_path_is_relative,
-
-        // ========================================
-        // 専門モジュール: env（4個）
-        // ========================================
-        "env/get" => env::native_env_get,
-        "env/set" => env::native_env_set,
-        "env/all" => env::native_env_all,
-        "env/load-dotenv" => env::native_env_load_dotenv,
-
-        // ========================================
-        // 専門モジュール: log（6個）
-        // ========================================
-        "log/debug" => log::native_log_debug,
-        "log/info" => log::native_log_info,
-        "log/warn" => log::native_log_warn,
-        "log/error" => log::native_log_error,
-        "log/set-level" => log::native_log_set_level,
-        "log/set-format" => log::native_log_set_format,
-
-        // ========================================
-        // 専門モジュール: args（4個）
-        // ========================================
-        "args/all" => args::native_args_all,
-        "args/get" => args::native_args_get,
-        "args/parse" => args::native_args_parse,
-        "args/count" => args::native_args_count,
-
-        // ========================================
-        // 専門モジュール: test（5個）
-        // ========================================
-        "test/assert-eq" => test::native_assert_eq,
-        "test/assert" => test::native_assert,
-        "test/assert-not" => test::native_assert_not,
-        "test/run-all" => test::native_run_all,
-        "test/clear" => test::native_test_clear,
-
-        // ※ test/run と test/assert-throws はEvaluator必要なため、
-        // eval.rsで特別処理され、末尾のラッパー関数として定義されています
-
-        // ========================================
-        // 専門モジュール: profile（4個）
-        // ========================================
-        "profile/start" => profile::native_profile_start,
-        "profile/stop" => profile::native_profile_stop,
-        "profile/clear" => profile::native_profile_clear,
-        "profile/report" => profile::native_profile_report,
-
-        // ========================================
-        // 専門モジュール: queue（6個）
-        // ========================================
-        "queue/new" => ds::native_queue_new,
-        "queue/enqueue" => ds::native_queue_enqueue,
-        "queue/dequeue" => ds::native_queue_dequeue,
-        "queue/peek" => ds::native_queue_peek,
-        "queue/empty?" => ds::native_queue_empty,
-        "queue/size" => ds::native_queue_size,
-
-        // ========================================
-        // 専門モジュール: stack（6個）
-        // ========================================
-        "stack/new" => ds::native_stack_new,
-        "stack/push" => ds::native_stack_push,
-        "stack/pop" => ds::native_stack_pop,
-        "stack/peek" => ds::native_stack_peek,
-        "stack/empty?" => ds::native_stack_empty,
-        "stack/size" => ds::native_stack_size,
-
-        // ========================================
-        // Core: デバッグ（1個）
-        // ========================================
-        "inspect" => util::native_inspect,
-
-        // ========================================
-        // 専門モジュール: stream（11個）
-        // ========================================
-        "stream/stream" => stream::native_stream,
-        "stream/range" => stream::native_range_stream,
-        "stream/repeat" => stream::native_repeat,
-        "stream/cycle" => stream::native_cycle,
-        "stream/take" => stream::native_stream_take,
-        "stream/drop" => stream::native_stream_drop,
-        "stream/realize" => stream::native_realize,
-        "stream/file" => io::native_file_stream,
-
-        // ========================================
-        // 専門モジュール: str（64個）
-        // ========================================
-        "str/upper" => string::native_upper,
-        "str/lower" => string::native_lower,
-        "str/trim" => string::native_trim,
-        "str/contains?" => string::native_contains,
-        "str/starts-with?" => string::native_starts_with,
-        "str/ends-with?" => string::native_ends_with,
-        "str/index-of" => string::native_index_of,
-        "str/last-index-of" => string::native_last_index_of,
-        "str/slice" => string::native_slice,
-        "str/take" => string::native_take_str,
-        "str/drop" => string::native_drop_str,
-        "str/sub-before" => string::native_sub_before,
-        "str/sub-after" => string::native_sub_after,
-        "str/replace" => string::native_replace,
-        "str/replace-first" => string::native_replace_first,
-        "str/lines" => string::native_lines,
-        "str/words" => string::native_words,
-        "str/capitalize" => string::native_capitalize,
-        "str/trim-left" => string::native_trim_left,
-        "str/trim-right" => string::native_trim_right,
-        "str/repeat" => string::native_repeat,
-        "str/chars-count" => string::native_chars_count,
-        "str/bytes-count" => string::native_bytes_count,
-        "str/digit?" => string::native_digit_p,
-        "str/alpha?" => string::native_alpha_p,
-        "str/alnum?" => string::native_alnum_p,
-        "str/space?" => string::native_space_p,
-        "str/lower?" => string::native_lower_p,
-        "str/upper?" => string::native_upper_p,
-        "str/pad-left" => string::native_pad_left,
-        "str/pad-right" => string::native_pad_right,
-        "str/pad" => string::native_pad,
-        "str/squish" => string::native_squish,
-        "str/expand-tabs" => string::native_expand_tabs,
-        "str/title" => string::native_title,
-        "str/reverse" => string::native_reverse,
-        "str/chars" => string::native_chars,
-        "str/snake" => string::native_snake,
-        "str/camel" => string::native_camel,
-        "str/kebab" => string::native_kebab,
-        "str/pascal" => string::native_pascal,
-        "str/split-camel" => string::native_split_camel,
-        "str/truncate" => string::native_truncate,
-        "str/trunc-words" => string::native_trunc_words,
-        "str/splice" => string::native_splice,
-        "str/numeric?" => string::native_numeric_p,
-        "str/integer?" => string::native_integer_p,
-        "str/blank?" => string::native_blank_p,
-        "str/ascii?" => string::native_ascii_p,
-        "str/indent" => string::native_indent,
-        "str/wrap" => string::native_wrap,
-        "str/parse-int" => string::native_parse_int,
-        "str/parse-float" => string::native_parse_float,
-        "str/slugify" => string::native_slugify,
-        "str/word-count" => string::native_word_count,
-        "str/re-find" => string::native_re_find,
-        "str/re-matches" => string::native_re_matches,
-        "str/re-replace" => string::native_re_replace,
-        "str/re-match-groups" => string::native_re_match_groups,
-        "str/re-split" => string::native_re_split,
-        "str/format" => string::native_format,
-        "str/format-decimal" => string::native_format_decimal,
-        "str/format-comma" => string::native_format_comma,
-        "str/format-percent" => string::native_format_percent,
-
-        // ========================================
-        // async/pipeline モジュール（Evaluator不要な関数）
-        // ========================================
-        "async/try-recv!" => concurrency::native_try_recv,
-        "async/make-scope" => concurrency::native_make_scope,
-        "async/cancel!" => concurrency::native_cancel,
-        "async/cancelled?" => concurrency::native_cancelled_q,
-        "async/await" => concurrency::native_await,
-        "async/all" => concurrency::native_all,
-        "async/race" => concurrency::native_race,
-        "pipeline/fan-out" => concurrency::native_fan_out,
-        "pipeline/fan-in" => concurrency::native_fan_in,
-    );
+    // 一時的にロックを解放
+    drop(env_write);
 
     // ========================================
     // Feature-gated modules
@@ -533,15 +223,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "markdown/extract-code-blocks" => markdown::native_markdown_extract_code_blocks,
         "markdown/parse" => markdown::native_markdown_parse,
         "markdown/stringify" => markdown::native_markdown_stringify,
-    );
-
-    // 乱数関数（4個）
-    #[cfg(feature = "std-math")]
-    register_native!(env.write(),
-        "math/rand" => math::native_rand,
-        "math/rand-int" => math::native_rand_int,
-        "math/random-range" => math::native_random_range,
-        "math/shuffle" => math::native_shuffle,
     );
 
     // JSON処理（3個）
@@ -597,18 +278,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "server/static-dir" => server::native_server_static_dir,
     );
 
-    // 集合演算（7個）
-    #[cfg(feature = "std-set")]
-    register_native!(env.write(),
-        "set/union" => set::native_union,
-        "set/intersect" => set::native_intersect,
-        "set/difference" => set::native_difference,
-        "set/subset?" => set::native_subset,
-        "set/superset?" => set::native_superset,
-        "set/disjoint?" => set::native_disjoint,
-        "set/symmetric-difference" => set::native_symmetric_difference,
-    );
-
     // 統計関数（6個）
     #[cfg(feature = "std-stats")]
     register_native!(env.write(),
@@ -618,36 +287,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "stats/variance" => stats::native_variance,
         "stats/stddev" => stats::native_stddev,
         "stats/percentile" => stats::native_percentile,
-    );
-
-    // 日時処理（25個）
-    #[cfg(feature = "std-time")]
-    register_native!(env.write(),
-        "time/now-iso" => time::native_now_iso,
-        "time/today" => time::native_today,
-        "time/from-unix" => time::native_from_unix,
-        "time/to-unix" => time::native_to_unix,
-        "time/format" => time::native_format,
-        "time/parse" => time::native_parse,
-        "time/add-days" => time::native_add_days,
-        "time/add-hours" => time::native_add_hours,
-        "time/add-minutes" => time::native_add_minutes,
-        "time/sub-days" => time::native_sub_days,
-        "time/sub-hours" => time::native_sub_hours,
-        "time/sub-minutes" => time::native_sub_minutes,
-        "time/diff-days" => time::native_diff_days,
-        "time/diff-hours" => time::native_diff_hours,
-        "time/diff-minutes" => time::native_diff_minutes,
-        "time/before?" => time::native_before,
-        "time/after?" => time::native_after,
-        "time/between?" => time::native_between,
-        "time/year" => time::native_year,
-        "time/month" => time::native_month,
-        "time/day" => time::native_day,
-        "time/hour" => time::native_hour,
-        "time/minute" => time::native_minute,
-        "time/second" => time::native_second,
-        "time/weekday" => time::native_weekday,
     );
 
     // ZIP圧縮（6個）
@@ -697,24 +336,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "db/pool-release" => db::native_pool_release,
         "db/pool-close" => db::native_pool_close,
         "db/pool-stats" => db::native_pool_stats,
-    );
-
-    // 文字列エンコーディング（6個）
-    #[cfg(feature = "string-encoding")]
-    register_native!(env.write(),
-        "str/to-base64" => string::native_to_base64,
-        "str/from-base64" => string::native_from_base64,
-        "str/url-encode" => string::native_url_encode,
-        "str/url-decode" => string::native_url_decode,
-        "str/html-encode" => string::native_html_encode,
-        "str/html-decode" => string::native_html_decode,
-    );
-
-    // 文字列暗号化/ユーティリティ（2個）
-    #[cfg(feature = "string-crypto")]
-    register_native!(env.write(),
-        "str/hash" => string::native_hash,
-        "str/uuid" => string::native_uuid,
     );
 
     // コマンド実行（10個）

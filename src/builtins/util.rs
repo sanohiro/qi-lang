@@ -113,3 +113,13 @@ pub fn native_time(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
     println!("Elapsed: {:.3}s", elapsed.as_secs_f64());
     Ok(result)
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: _railway-pipe, timeはEvaluatorが必要なため、mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] =
+    &[("inspect", native_inspect)];

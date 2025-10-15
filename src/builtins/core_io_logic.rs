@@ -85,3 +85,15 @@ pub fn native_error(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["error", "strings"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("print", native_print),
+    ("println", native_println),
+    ("not", native_not),
+    ("error", native_error),
+];

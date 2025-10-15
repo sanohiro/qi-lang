@@ -554,3 +554,18 @@ pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value,
     // 元の値をそのまま返す
     Ok(value.clone())
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: map, filter, reduce, pmap, pfilter, preduce, partition, group_by,
+/// map_lines, update, update_in, count_by, tap_directはEvaluatorが必要なため、
+/// mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("fn/complement", native_complement),
+    ("fn/juxt", native_juxt),
+    ("fn/tap>", native_tap),
+];

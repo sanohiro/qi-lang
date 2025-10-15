@@ -123,3 +123,15 @@ pub fn record_call(name: &str, duration: Duration) {
 pub fn is_enabled() -> bool {
     profiler().lock().enabled
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("profile/start", native_profile_start),
+    ("profile/stop", native_profile_stop),
+    ("profile/clear", native_profile_clear),
+    ("profile/report", native_profile_report),
+];

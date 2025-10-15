@@ -185,3 +185,18 @@ pub fn native_test_clear(_args: &[Value]) -> Result<Value, String> {
     test_registry().lock().clear();
     Ok(Value::Nil)
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: test/run, test/assert-throwsはEvaluatorが必要なため、mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("test/assert-eq", native_assert_eq),
+    ("test/assert", native_assert),
+    ("test/assert-not", native_assert_not),
+    ("test/run-all", native_run_all),
+    ("test/clear", native_test_clear),
+];

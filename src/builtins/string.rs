@@ -1622,3 +1622,92 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
         prec = decimals
     )))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（feature-gatedでない関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("str/split", native_split),
+    ("str/upper", native_upper),
+    ("str/lower", native_lower),
+    ("str/trim", native_trim),
+    ("str/contains?", native_contains),
+    ("str/starts-with?", native_starts_with),
+    ("str/ends-with?", native_ends_with),
+    ("str/index-of", native_index_of),
+    ("str/last-index-of", native_last_index_of),
+    ("str/slice", native_slice),
+    ("str/take-str", native_take_str),
+    ("str/drop-str", native_drop_str),
+    ("str/sub-before", native_sub_before),
+    ("str/sub-after", native_sub_after),
+    ("str/replace", native_replace),
+    ("str/replace-first", native_replace_first),
+    ("str/lines", native_lines),
+    ("str/words", native_words),
+    ("str/capitalize", native_capitalize),
+    ("str/trim-left", native_trim_left),
+    ("str/trim-right", native_trim_right),
+    ("str/repeat", native_repeat),
+    ("str/chars-count", native_chars_count),
+    ("str/bytes-count", native_bytes_count),
+    ("str/digit?", native_digit_p),
+    ("str/alpha?", native_alpha_p),
+    ("str/alnum?", native_alnum_p),
+    ("str/space?", native_space_p),
+    ("str/lower?", native_lower_p),
+    ("str/upper?", native_upper_p),
+    ("str/pad-left", native_pad_left),
+    ("str/pad-right", native_pad_right),
+    ("str/pad", native_pad),
+    ("str/squish", native_squish),
+    ("str/expand-tabs", native_expand_tabs),
+    ("str/title", native_title),
+    ("str/reverse", native_reverse),
+    ("str/chars", native_chars),
+    ("str/snake", native_snake),
+    ("str/camel", native_camel),
+    ("str/kebab", native_kebab),
+    ("str/pascal", native_pascal),
+    ("str/split-camel", native_split_camel),
+    ("str/truncate", native_truncate),
+    ("str/trunc-words", native_trunc_words),
+    ("str/splice", native_splice),
+    ("str/numeric?", native_numeric_p),
+    ("str/integer?", native_integer_p),
+    ("str/blank?", native_blank_p),
+    ("str/ascii?", native_ascii_p),
+    ("str/indent", native_indent),
+    ("str/wrap", native_wrap),
+    ("str/parse-int", native_parse_int),
+    ("str/parse-float", native_parse_float),
+    ("str/slugify", native_slugify),
+    ("str/word-count", native_word_count),
+    ("str/re-find", native_re_find),
+    ("str/re-matches", native_re_matches),
+    ("str/re-replace", native_re_replace),
+    ("str/re-match-groups", native_re_match_groups),
+    ("str/re-split", native_re_split),
+    ("str/format", native_format),
+    ("str/format-decimal", native_format_decimal),
+    ("str/format-comma", native_format_comma),
+    ("str/format-percent", native_format_percent),
+];
+
+/// Feature-gated関数のリスト (string-encoding feature)
+#[cfg(feature = "string-encoding")]
+pub const FUNCTIONS_STRING_ENCODING: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("str/to-base64", native_to_base64),
+    ("str/from-base64", native_from_base64),
+    ("str/url-encode", native_url_encode),
+    ("str/url-decode", native_url_decode),
+    ("str/html-encode", native_html_encode),
+    ("str/html-decode", native_html_decode),
+];
+
+/// Feature-gated関数のリスト (string-crypto feature)
+#[cfg(feature = "string-crypto")]
+pub const FUNCTIONS_STRING_CRYPTO: &[(&str, fn(&[Value]) -> Result<Value, String>)] =
+    &[("str/hash", native_hash), ("str/uuid", native_uuid)];

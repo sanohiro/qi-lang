@@ -326,3 +326,21 @@ pub fn native_realize(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::List(result))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: iterate, stream_map, stream_filterはEvaluatorが必要なため、
+/// mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("stream/stream", native_stream),
+    ("stream/range", native_range_stream),
+    ("stream/repeat", native_repeat),
+    ("stream/cycle", native_cycle),
+    ("stream/take", native_stream_take),
+    ("stream/drop", native_stream_drop),
+    ("stream/realize", native_realize),
+];

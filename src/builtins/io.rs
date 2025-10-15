@@ -957,3 +957,27 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::ArgMustBeType, &["io/is-dir?", "a string"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("io/read-file", native_read_file),
+    ("io/write-file", native_write_file),
+    ("io/append-file", native_append_file),
+    ("io/read-lines", native_read_lines),
+    ("io/file-exists?", native_file_exists),
+    ("io/file-stream", native_file_stream),
+    ("io/write-stream", native_write_stream),
+    ("io/list-dir", native_list_dir),
+    ("io/create-dir", native_create_dir),
+    ("io/delete-file", native_delete_file),
+    ("io/delete-dir", native_delete_dir),
+    ("io/copy-file", native_copy_file),
+    ("io/move-file", native_move_file),
+    ("io/file-info", native_file_info),
+    ("io/is-file?", native_is_file),
+    ("io/is-dir?", native_is_dir),
+];

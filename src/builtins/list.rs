@@ -774,3 +774,22 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
     let result: Vec<Value> = collection.iter().take(take_count).cloned().collect();
     Ok(Value::List(result))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: take-while, drop-while, sort-by, max-by, min-by, sum-by, find, find-index,
+/// every?, some?, partition-by, keepはEvaluatorが必要なため、mod.rsで別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("list/split-at", native_split_at),
+    ("list/interleave", native_interleave),
+    ("list/frequencies", native_frequencies),
+    ("list/chunk", native_chunk),
+    ("list/zipmap", native_zipmap),
+    ("list/take-nth", native_take_nth),
+    ("list/dedupe", native_dedupe),
+    ("list/drop-last", native_drop_last),
+];

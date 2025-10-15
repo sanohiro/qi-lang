@@ -380,3 +380,36 @@ fn parse_integer(value: &Value, context: &str) -> Result<i64, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &[context, "integers"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("time/now-iso", native_now_iso),
+    ("time/from-unix", native_from_unix),
+    ("time/to-unix", native_to_unix),
+    ("time/format", native_format),
+    ("time/today", native_today),
+    ("time/add-days", native_add_days),
+    ("time/add-hours", native_add_hours),
+    ("time/add-minutes", native_add_minutes),
+    ("time/sub-days", native_sub_days),
+    ("time/sub-hours", native_sub_hours),
+    ("time/sub-minutes", native_sub_minutes),
+    ("time/diff-days", native_diff_days),
+    ("time/diff-hours", native_diff_hours),
+    ("time/diff-minutes", native_diff_minutes),
+    ("time/before?", native_before),
+    ("time/after?", native_after),
+    ("time/between?", native_between),
+    ("time/parse", native_parse),
+    ("time/year", native_year),
+    ("time/month", native_month),
+    ("time/day", native_day),
+    ("time/hour", native_hour),
+    ("time/minute", native_minute),
+    ("time/second", native_second),
+    ("time/weekday", native_weekday),
+];

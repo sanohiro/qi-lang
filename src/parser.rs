@@ -1,6 +1,16 @@
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::{Lexer, Token};
 use crate::value::{Expr, MatchArm, Pattern, UseMode};
+use std::collections::HashSet;
+use std::sync::LazyLock;
+
+/// 特殊形式のリスト（LazyLockで初期化）
+static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    HashSet::from([
+        "def", "defn", "defn-", "fn", "let", "if", "do", "match", "try", "defer", "loop", "recur",
+        "mac", "flow", "module", "export", "use",
+    ])
+});
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -180,26 +190,29 @@ impl Parser {
 
         // 特殊形式のチェック
         if let Some(Token::Symbol(name)) = self.current() {
-            let name = name.clone();
-            match name.as_str() {
-                "def" => return self.parse_def(),
-                "defn" => return self.parse_defn(),
-                "defn-" => return self.parse_defn_private(),
-                "fn" => return self.parse_fn(),
-                "let" => return self.parse_let(),
-                "if" => return self.parse_if(),
-                "do" => return self.parse_do(),
-                "match" => return self.parse_match(),
-                "try" => return self.parse_try(),
-                "defer" => return self.parse_defer(),
-                "loop" => return self.parse_loop(),
-                "recur" => return self.parse_recur(),
-                "mac" => return self.parse_mac(),
-                "flow" => return self.parse_flow(),
-                "module" => return self.parse_module(),
-                "export" => return self.parse_export(),
-                "use" => return self.parse_use(),
-                _ => {}
+            // HashSetで特殊形式かチェック（高速）
+            if SPECIAL_FORMS.contains(name.as_str()) {
+                let name = name.clone();
+                return match name.as_str() {
+                    "def" => self.parse_def(),
+                    "defn" => self.parse_defn(),
+                    "defn-" => self.parse_defn_private(),
+                    "fn" => self.parse_fn(),
+                    "let" => self.parse_let(),
+                    "if" => self.parse_if(),
+                    "do" => self.parse_do(),
+                    "match" => self.parse_match(),
+                    "try" => self.parse_try(),
+                    "defer" => self.parse_defer(),
+                    "loop" => self.parse_loop(),
+                    "recur" => self.parse_recur(),
+                    "mac" => self.parse_mac(),
+                    "flow" => self.parse_flow(),
+                    "module" => self.parse_module(),
+                    "export" => self.parse_export(),
+                    "use" => self.parse_use(),
+                    _ => unreachable!("All special forms should be handled"),
+                };
             }
         }
 

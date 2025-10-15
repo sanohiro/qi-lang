@@ -301,3 +301,28 @@ pub fn native_ge(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &[">=", "integers"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("+", native_add),
+    ("-", native_sub),
+    ("*", native_mul),
+    ("/", native_div),
+    ("%", native_mod),
+    ("abs", native_abs),
+    ("min", native_min),
+    ("max", native_max),
+    ("inc", native_inc),
+    ("dec", native_dec),
+    ("sum", native_sum),
+    ("=", native_eq),
+    ("!=", native_ne),
+    ("<", native_lt),
+    (">", native_gt),
+    ("<=", native_le),
+    (">=", native_ge),
+];

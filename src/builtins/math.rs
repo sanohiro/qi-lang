@@ -207,3 +207,28 @@ pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["shuffle", "lists or vectors"])),
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（feature-gatedでない関数のみ）
+///
+/// 注意: rand, rand-int, random-range, shuffleは "std-math" featureが必要なため別途登録
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("math/pow", native_pow),
+    ("math/sqrt", native_sqrt),
+    ("math/round", native_round),
+    ("math/floor", native_floor),
+    ("math/ceil", native_ceil),
+    ("math/clamp", native_clamp),
+];
+
+/// Feature-gated関数のリスト (std-math feature)
+#[cfg(feature = "std-math")]
+pub const FUNCTIONS_STD_MATH: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("math/rand", native_rand),
+    ("math/rand-int", native_rand_int),
+    ("math/random-range", native_random_range),
+    ("math/shuffle", native_shuffle),
+];

@@ -355,3 +355,17 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
     LOG_CONFIG.write().format = format;
     Ok(Value::Nil)
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("log/debug", native_log_debug),
+    ("log/info", native_log_info),
+    ("log/warn", native_log_warn),
+    ("log/error", native_log_error),
+    ("log/set-level", native_log_set_level),
+    ("log/set-format", native_log_set_format),
+];
