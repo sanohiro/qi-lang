@@ -385,6 +385,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "test/run-all" => test::native_run_all,
         "test/clear" => test::native_test_clear,
 
+        // ※ test/run と test/assert-throws はEvaluator必要なため、
+        // eval.rsで特別処理され、末尾のラッパー関数として定義されています
+
         // ========================================
         // 専門モジュール: profile（4個）
         // ========================================
@@ -962,4 +965,93 @@ pub fn test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> 
 /// test/assert-throws - 式が例外を投げることをアサート
 pub fn test_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     test::native_assert_throws(args, evaluator)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Evaluator不要な関数が register_all で登録されているかチェック
+    ///
+    /// 注: map, filter, reduce, pmap, comp, apply, swap!, eval, go, time, tap, _railway-pipe,
+    /// branch, test/run, test/assert-throws などの Evaluator 必要な関数は
+    /// eval.rs:418-475 で特別処理されるため、register_all には登録されません。
+    #[test]
+    fn test_evaluator_independent_functions_registered() {
+        let env = Arc::new(RwLock::new(Env::new()));
+        register_all(&env);
+
+        // Evaluator不要な基本関数が登録されているかチェック
+        let basic_functions = vec![
+            // Core関数
+            "+",
+            "-",
+            "*",
+            "/",
+            "first",
+            "rest",
+            "last",
+            "nth",
+            "str",
+            "split",
+            "join",
+            "print",
+            "println",
+            "atom",
+            "deref",
+            "reset!",
+            // 専門モジュール関数
+            "io/read-file",
+            "io/write-file",
+            "list/frequencies",
+            "test/assert-eq",
+            "test/assert",
+            "inspect",
+        ];
+
+        let env_read = env.read();
+        for func_name in basic_functions {
+            assert!(
+                env_read.get(func_name).is_some(),
+                "Basic function '{}' is not registered in register_all!",
+                func_name
+            );
+        }
+    }
+
+    /// 非同期HTTP関数が登録されているかチェック（feature-gated）
+    #[test]
+    #[cfg(feature = "http-client")]
+    fn test_async_http_registered() {
+        let env = Arc::new(RwLock::new(Env::new()));
+        register_all(&env);
+
+        let http_functions = vec!["http/get", "http/post", "http/put", "http/delete"];
+
+        let env_read = env.read();
+        for func_name in http_functions {
+            assert!(
+                env_read.get(func_name).is_some(),
+                "HTTP function '{}' is not registered in register_all!",
+                func_name
+            );
+        }
+    }
+
+    /// モジュール別の登録数チェック（基準値）
+    #[test]
+    fn test_function_counts() {
+        let env = Arc::new(RwLock::new(Env::new()));
+        register_all(&env);
+
+        let env_read = env.read();
+        let all_bindings: Vec<_> = env_read.bindings().collect();
+
+        // 最低限の関数数をチェック（新規追加で増えるのはOK、減るのはNG）
+        assert!(
+            all_bindings.len() >= 300,
+            "Too few functions registered: {} (expected >= 300)",
+            all_bindings.len()
+        );
+    }
 }

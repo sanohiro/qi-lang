@@ -412,109 +412,120 @@ impl Evaluator {
 
             Expr::Use { module, mode } => self.eval_use(module, mode, env),
 
-            Expr::Call { func, args } => {
-                // 高階関数と論理演算子、quoteの特別処理
-                if let Expr::Symbol(name) = func.as_ref() {
-                    match name.as_str() {
-                        "_railway-pipe" => return self.eval_railway_pipe(args, env),
-                        "and" => return self.eval_and(args, env),
-                        "apply" => return self.eval_apply(args, env),
-                        "async/catch" => return self.eval_catch(args, env),
-                        "async/parallel-do" => return self.eval_parallel_do(args, env),
-                        "async/pfilter" => return self.eval_pfilter(args, env),
-                        "async/preduce" => return self.eval_preduce(args, env),
-                        "async/scope-go" => return self.eval_scope_go(args, env),
-                        "async/select!" => return self.eval_select(args, env),
-                        "async/then" => return self.eval_then(args, env),
-                        "async/with-scope" => return self.eval_with_scope(args, env),
-                        "branch" => return self.eval_branch(args, env),
-                        "comp" => return self.eval_comp(args, env),
-                        "defn" => return self.eval_defn(args, env),
-                        "drop-while" => return self.eval_drop_while(args, env),
-                        "eval" => return self.eval_eval(args, env),
-                        "every?" => return self.eval_every(args, env),
-                        "filter" => return self.eval_filter(args, env),
-                        "find" => return self.eval_find(args, env),
-                        "go" => return self.eval_go(args, env),
-                        "list/chunk" => return self.eval_chunk(args, env),
-                        "list/count-by" => return self.eval_count_by(args, env),
-                        "list/drop-last" => return self.eval_drop_last(args, env),
-                        "list/find-index" => return self.eval_find_index(args, env),
-                        "list/group-by" => return self.eval_group_by(args, env),
-                        "list/keep" => return self.eval_keep(args, env),
-                        "list/max-by" => return self.eval_max_by(args, env),
-                        "list/min-by" => return self.eval_min_by(args, env),
-                        "list/partition-by" => return self.eval_partition_by(args, env),
-                        "list/partition" => return self.eval_partition(args, env),
-                        "list/sort-by" => return self.eval_sort_by(args, env),
-                        "list/split-at" => return self.eval_split_at(args, env),
-                        "list/sum-by" => return self.eval_sum_by(args, env),
-                        "map-lines" => return self.eval_map_lines(args, env),
-                        "map" => return self.eval_map(args, env),
-                        "map/update-keys" => return self.eval_update_keys(args, env),
-                        "map/update-vals" => return self.eval_update_vals(args, env),
-                        "or" => return self.eval_or(args, env),
-                        "pipeline/filter" => return self.eval_pipeline_filter(args, env),
-                        "pipeline/map" => return self.eval_pipeline_map(args, env),
-                        "pipeline/pipeline" => return self.eval_pipeline(args, env),
-                        "pmap" => return self.eval_pmap(args, env),
-                        "quote" => return self.eval_quote(args),
-                        "reduce" => return self.eval_reduce(args, env),
-                        "some?" => return self.eval_some(args, env),
-                        "stream/filter" => return self.eval_stream_filter(args, env),
-                        "stream/iterate" => return self.eval_iterate(args, env),
-                        "stream/map" => return self.eval_stream_map(args, env),
-                        "swap!" => return self.eval_swap(args, env),
-                        "take-while" => return self.eval_take_while(args, env),
-                        "tap" => return self.eval_tap(args, env),
-                        "test/assert-throws" => return self.eval_test_assert_throws(args, env),
-                        "test/run" => return self.eval_test_run(args, env),
-                        "time" => return self.eval_time(args, env),
-                        "update-in" => return self.eval_update_in(args, env),
-                        "update" => return self.eval_update(args, env),
-                        _ => {}
-                    }
+            Expr::Call { func, args } => self.eval_call(func, args, env),
+        }
+    }
+
+    /// 関数呼び出しの評価
+    ///
+    /// 特別な関数（高階関数、論理演算子など）のディスパッチと、
+    /// 通常の関数呼び出し（ネイティブ関数、ユーザー定義関数、マクロ、キーワード関数）を処理
+    fn eval_call(
+        &self,
+        func: &Expr,
+        args: &[Expr],
+        env: Arc<RwLock<Env>>,
+    ) -> Result<Value, String> {
+        // 高階関数と論理演算子、quoteの特別処理
+        if let Expr::Symbol(name) = func {
+            match name.as_str() {
+                "_railway-pipe" => return self.eval_railway_pipe(args, env),
+                "and" => return self.eval_and(args, env),
+                "apply" => return self.eval_apply(args, env),
+                "async/catch" => return self.eval_catch(args, env),
+                "async/parallel-do" => return self.eval_parallel_do(args, env),
+                "async/pfilter" => return self.eval_pfilter(args, env),
+                "async/preduce" => return self.eval_preduce(args, env),
+                "async/scope-go" => return self.eval_scope_go(args, env),
+                "async/select!" => return self.eval_select(args, env),
+                "async/then" => return self.eval_then(args, env),
+                "async/with-scope" => return self.eval_with_scope(args, env),
+                "branch" => return self.eval_branch(args, env),
+                "comp" => return self.eval_comp(args, env),
+                "defn" => return self.eval_defn(args, env),
+                "drop-while" => return self.eval_drop_while(args, env),
+                "eval" => return self.eval_eval(args, env),
+                "every?" => return self.eval_every(args, env),
+                "filter" => return self.eval_filter(args, env),
+                "find" => return self.eval_find(args, env),
+                "go" => return self.eval_go(args, env),
+                "list/chunk" => return self.eval_chunk(args, env),
+                "list/count-by" => return self.eval_count_by(args, env),
+                "list/drop-last" => return self.eval_drop_last(args, env),
+                "list/find-index" => return self.eval_find_index(args, env),
+                "list/group-by" => return self.eval_group_by(args, env),
+                "list/keep" => return self.eval_keep(args, env),
+                "list/max-by" => return self.eval_max_by(args, env),
+                "list/min-by" => return self.eval_min_by(args, env),
+                "list/partition-by" => return self.eval_partition_by(args, env),
+                "list/partition" => return self.eval_partition(args, env),
+                "list/sort-by" => return self.eval_sort_by(args, env),
+                "list/split-at" => return self.eval_split_at(args, env),
+                "list/sum-by" => return self.eval_sum_by(args, env),
+                "map-lines" => return self.eval_map_lines(args, env),
+                "map" => return self.eval_map(args, env),
+                "map/update-keys" => return self.eval_update_keys(args, env),
+                "map/update-vals" => return self.eval_update_vals(args, env),
+                "or" => return self.eval_or(args, env),
+                "pipeline/filter" => return self.eval_pipeline_filter(args, env),
+                "pipeline/map" => return self.eval_pipeline_map(args, env),
+                "pipeline/pipeline" => return self.eval_pipeline(args, env),
+                "pmap" => return self.eval_pmap(args, env),
+                "quote" => return self.eval_quote(args),
+                "reduce" => return self.eval_reduce(args, env),
+                "some?" => return self.eval_some(args, env),
+                "stream/filter" => return self.eval_stream_filter(args, env),
+                "stream/iterate" => return self.eval_iterate(args, env),
+                "stream/map" => return self.eval_stream_map(args, env),
+                "swap!" => return self.eval_swap(args, env),
+                "take-while" => return self.eval_take_while(args, env),
+                "tap" => return self.eval_tap(args, env),
+                "test/assert-throws" => return self.eval_test_assert_throws(args, env),
+                "test/run" => return self.eval_test_run(args, env),
+                "time" => return self.eval_time(args, env),
+                "update-in" => return self.eval_update_in(args, env),
+                "update" => return self.eval_update(args, env),
+                _ => {}
+            }
+        }
+
+        let func_val = self.eval_with_env(func, env.clone())?;
+
+        // マクロの場合は展開してから評価
+        if let Value::Macro(mac) = &func_val {
+            let expanded = self.expand_macro(&mac, args, env.clone())?;
+            return self.eval_with_env(&expanded, env);
+        }
+
+        let arg_vals: Result<Vec<_>, _> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect();
+        let arg_vals = arg_vals?;
+
+        match func_val {
+            Value::NativeFunc(nf) => (nf.func)(&arg_vals),
+            Value::Function(_) => {
+                // apply_funcを使って関数を適用（complementやjuxtの特殊処理を含む）
+                self.apply_func(&func_val, arg_vals)
+            }
+            Value::Keyword(key) => {
+                // キーワードを関数として使う: (:name map) => (get map :name)
+                if arg_vals.len() != 1 {
+                    return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
                 }
-
-                let func_val = self.eval_with_env(func, env.clone())?;
-
-                // マクロの場合は展開してから評価
-                if let Value::Macro(mac) = &func_val {
-                    let expanded = self.expand_macro(&mac, args, env.clone())?;
-                    return self.eval_with_env(&expanded, env);
-                }
-
-                let arg_vals: Result<Vec<_>, _> = args
-                    .iter()
-                    .map(|e| self.eval_with_env(e, env.clone()))
-                    .collect();
-                let arg_vals = arg_vals?;
-
-                match func_val {
-                    Value::NativeFunc(nf) => (nf.func)(&arg_vals),
-                    Value::Function(_) => {
-                        // apply_funcを使って関数を適用（complementやjuxtの特殊処理を含む）
-                        self.apply_func(&func_val, arg_vals)
-                    }
-                    Value::Keyword(key) => {
-                        // キーワードを関数として使う: (:name map) => (get map :name)
-                        if arg_vals.len() != 1 {
-                            return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
-                        }
-                        match &arg_vals[0] {
-                            Value::Map(m) => m
-                                .get(&key)
-                                .cloned()
-                                .ok_or_else(|| fmt_msg(MsgKey::KeyNotFound, &[&key])),
-                            _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
-                        }
-                    }
-                    _ => Err(fmt_msg(
-                        MsgKey::TypeMismatch,
-                        &["function", func_val.type_name(), &format!("{}", func_val)],
-                    )),
+                match &arg_vals[0] {
+                    Value::Map(m) => m
+                        .get(&key)
+                        .cloned()
+                        .ok_or_else(|| fmt_msg(MsgKey::KeyNotFound, &[&key])),
+                    _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
                 }
             }
+            _ => Err(fmt_msg(
+                MsgKey::TypeMismatch,
+                &["function", func_val.type_name(), &format!("{}", func_val)],
+            )),
         }
     }
 

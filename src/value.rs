@@ -242,14 +242,6 @@ impl Module {
         }
     }
 
-    /// exportリストを設定
-    pub fn set_exports(&mut self, exports: Vec<String>) {
-        match &mut self.exports {
-            None => self.exports = Some(exports),
-            Some(existing) => existing.extend(exports),
-        }
-    }
-
     /// シンボルが公開されているかチェック
     pub fn is_exported(&self, name: &str) -> bool {
         match &self.exports {
@@ -267,15 +259,6 @@ impl Module {
                 list.contains(&name.to_string())
             }
         }
-    }
-
-    /// 公開シンボルの一覧を取得
-    pub fn get_exports(&self) -> Vec<(String, Value)> {
-        let env = self.env.read();
-        env.all_bindings()
-            .filter(|(name, _)| self.is_exported(name))
-            .map(|(name, binding)| (name.clone(), binding.value.clone()))
-            .collect()
     }
 }
 
