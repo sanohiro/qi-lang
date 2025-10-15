@@ -145,6 +145,40 @@ fn register_functions(env: &mut Env, functions: NativeFunctions) {
     }
 }
 
+/// Coreモジュール一覧（配列にまとめて保守性向上）
+const CORE_MODULES: &[NativeFunctions] = &[
+    core_numeric::FUNCTIONS,
+    core_collections::FUNCTIONS,
+    core_predicates::FUNCTIONS,
+    core_string::FUNCTIONS,
+    core_util::FUNCTIONS,
+    core_io_logic::FUNCTIONS,
+    core_functions::FUNCTIONS,
+    core_state_meta::FUNCTIONS,
+    core_concurrency::FUNCTIONS,
+];
+
+/// 標準専門モジュール一覧（feature-gatedでないもの）
+const STANDARD_MODULES: &[NativeFunctions] = &[
+    math::FUNCTIONS,
+    csv::FUNCTIONS,
+    path::FUNCTIONS,
+    env::FUNCTIONS,
+    log::FUNCTIONS,
+    args::FUNCTIONS,
+    test::FUNCTIONS,
+    profile::FUNCTIONS,
+    ds::FUNCTIONS,
+    io::FUNCTIONS,
+    string::FUNCTIONS,
+    list::FUNCTIONS,
+    map::FUNCTIONS,
+    hof::FUNCTIONS,
+    util::FUNCTIONS,
+    stream::FUNCTIONS,
+    concurrency::FUNCTIONS,
+];
+
 /// すべての組み込み関数を環境に登録
 pub fn register_all(env: &Arc<RwLock<Env>>) {
     let mut env_write = env.write();
@@ -152,34 +186,16 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     // ========================================
     // Coreモジュール関数の登録（FUNCTIONS配列を使用）
     // ========================================
-    register_functions(&mut env_write, core_numeric::FUNCTIONS);
-    register_functions(&mut env_write, core_collections::FUNCTIONS);
-    register_functions(&mut env_write, core_predicates::FUNCTIONS);
-    register_functions(&mut env_write, core_string::FUNCTIONS);
-    register_functions(&mut env_write, core_util::FUNCTIONS);
-    register_functions(&mut env_write, core_io_logic::FUNCTIONS);
-    register_functions(&mut env_write, core_functions::FUNCTIONS);
-    register_functions(&mut env_write, core_state_meta::FUNCTIONS);
-    register_functions(&mut env_write, core_concurrency::FUNCTIONS);
+    for funcs in CORE_MODULES {
+        register_functions(&mut env_write, *funcs);
+    }
 
-    // 専門モジュール（Evaluator不要）
-    register_functions(&mut env_write, math::FUNCTIONS);
-    register_functions(&mut env_write, csv::FUNCTIONS);
-    register_functions(&mut env_write, path::FUNCTIONS);
-    register_functions(&mut env_write, env::FUNCTIONS);
-    register_functions(&mut env_write, log::FUNCTIONS);
-    register_functions(&mut env_write, args::FUNCTIONS);
-    register_functions(&mut env_write, test::FUNCTIONS);
-    register_functions(&mut env_write, profile::FUNCTIONS);
-    register_functions(&mut env_write, ds::FUNCTIONS);
-    register_functions(&mut env_write, io::FUNCTIONS);
-    register_functions(&mut env_write, string::FUNCTIONS);
-    register_functions(&mut env_write, list::FUNCTIONS);
-    register_functions(&mut env_write, map::FUNCTIONS);
-    register_functions(&mut env_write, hof::FUNCTIONS);
-    register_functions(&mut env_write, util::FUNCTIONS);
-    register_functions(&mut env_write, stream::FUNCTIONS);
-    register_functions(&mut env_write, concurrency::FUNCTIONS);
+    // ========================================
+    // 標準専門モジュール（Evaluator不要）
+    // ========================================
+    for funcs in STANDARD_MODULES {
+        register_functions(&mut env_write, *funcs);
+    }
 
     // Feature-gated専門モジュール（Evaluator不要）
     #[cfg(feature = "std-math")]
@@ -227,9 +243,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "db-sqlite")]
     register_functions(&mut env_write, db::FUNCTIONS);
-
-    // 一時的にロックを解放
-    drop(env_write);
 }
 
 // ========================================

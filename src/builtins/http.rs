@@ -264,13 +264,21 @@ fn http_request(
     headers: Option<&HashMap<String, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
-    let client = Client::builder()
-        .gzip(true) // gzip自動解凍を有効化
-        .deflate(true) // deflate自動解凍を有効化
-        .brotli(true) // brotli自動解凍を有効化
-        .timeout(Duration::from_millis(timeout_ms))
-        .build()
-        .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
+    // デフォルトタイムアウト（30秒）の場合は共有Clientを使用
+    // カスタムタイムアウトの場合のみ新しいClientを作成
+    let custom_client;
+    let client = if timeout_ms == 30000 {
+        &crate::builtins::lazy_init::http_client::CLIENT
+    } else {
+        custom_client = Client::builder()
+            .gzip(true)
+            .deflate(true)
+            .brotli(true)
+            .timeout(Duration::from_millis(timeout_ms))
+            .build()
+            .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
+        &custom_client
+    };
 
     let mut request = match method.to_uppercase().as_str() {
         "GET" => client.get(url),
@@ -486,13 +494,8 @@ fn http_stream(
     body: Option<&Value>,
     is_bytes: bool,
 ) -> Result<Value, String> {
-    let client = Client::builder()
-        .gzip(true) // gzip自動解凍を有効化
-        .deflate(true) // deflate自動解凍を有効化
-        .brotli(true) // brotli自動解凍を有効化
-        .timeout(Duration::from_secs(30))
-        .build()
-        .map_err(|e| fmt_msg(MsgKey::HttpStreamClientError, &[&e.to_string()]))?;
+    // 共有Clientを使用（デフォルトで30秒タイムアウト設定済み）
+    let client = &crate::builtins::lazy_init::http_client::CLIENT;
 
     let mut request = match method {
         "GET" => client.get(url),

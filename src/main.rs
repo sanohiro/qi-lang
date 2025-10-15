@@ -11,7 +11,7 @@ use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
 use std::path::PathBuf;
-use std::sync::{LazyLock, OnceLock};
+use std::sync::LazyLock;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -585,16 +585,12 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
 
 /// 標準ライブラリドキュメントの遅延ロード（スレッドセーフ）
 ///
-/// LazyLockとOnceLockを使用し、パス探索とロード処理を分離
-/// 複数スレッドから同時に呼ばれても1回だけ実行されることを保証
+/// LazyLockでパス探索を1回だけ実行し、評価は各Evaluatorごとに行う
+/// これにより、複数のEvaluatorが生成されてもそれぞれがドキュメントをロード可能
 fn lazy_load_std_docs(evaluator: &Evaluator) {
-    static LOADED: OnceLock<()> = OnceLock::new();
-
-    LOADED.get_or_init(|| {
-        if let Some(paths) = &*DOC_PATHS {
-            load_docs_from_paths(evaluator, paths);
-        }
-    });
+    if let Some(paths) = &*DOC_PATHS {
+        load_docs_from_paths(evaluator, paths);
+    }
 }
 
 /// パス情報からドキュメントをロード
