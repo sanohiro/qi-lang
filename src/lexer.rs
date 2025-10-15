@@ -510,7 +510,7 @@ impl Lexer {
                     self.advance(); // >
                     return Ok(Token::Arrow);
                 }
-                Some('-') if self.peek(1).map_or(false, |c| c.is_numeric()) => {
+                Some('-') if self.peek(1).is_some_and(|c| c.is_numeric()) => {
                     return Ok(self.read_number());
                 }
                 Some('.') if self.peek(1) == Some('.') && self.peek(2) == Some('.') => {

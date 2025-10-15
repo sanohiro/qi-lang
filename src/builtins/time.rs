@@ -2,8 +2,6 @@
 //!
 //! このモジュールは `std-time` feature でコンパイルされます。
 
-#![cfg(feature = "std-time")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc};

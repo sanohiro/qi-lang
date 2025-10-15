@@ -2,8 +2,6 @@
 //!
 //! このモジュールは `io-temp` feature でコンパイルされます。
 
-#![cfg(feature = "io-temp")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::Mutex;

@@ -13,8 +13,8 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
     let len2 = s2.chars().count();
     let mut matrix = vec![vec![0; len2 + 1]; len1 + 1];
 
-    for i in 0..=len1 {
-        matrix[i][0] = i;
+    for (i, row) in matrix.iter_mut().enumerate().take(len1 + 1) {
+        row[0] = i;
     }
     for j in 0..=len2 {
         matrix[0][j] = j;
@@ -493,7 +493,7 @@ impl Evaluator {
 
         // マクロの場合は展開してから評価
         if let Value::Macro(mac) = &func_val {
-            let expanded = self.expand_macro(&mac, args, env.clone())?;
+            let expanded = self.expand_macro(mac, args, env.clone())?;
             return self.eval_with_env(&expanded, env);
         }
 
@@ -635,9 +635,10 @@ impl Evaluator {
         // transform が関数の場合: (transform value)
         // transform がシンボルの場合: (symbol value)
         let transform_val = self.eval_with_env(transform, env.clone())?;
-        self.apply_function(&transform_val, &[value.clone()])
+        self.apply_function(&transform_val, std::slice::from_ref(value))
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn match_pattern(
         &self,
         pattern: &Pattern,
@@ -828,7 +829,7 @@ impl Evaluator {
         // fnの本体を構築（Vec<String>をVec<FnParam>に変換）
         let fn_params: Vec<crate::value::FnParam> = params
             .into_iter()
-            .map(|s| crate::value::FnParam::Simple(s))
+            .map(crate::value::FnParam::Simple)
             .collect();
         let fn_expr = Expr::Fn {
             params: fn_params,
@@ -1018,6 +1019,7 @@ impl Evaluator {
     }
 
     /// FnParamパターンを値にマッチさせて環境にバインド
+    #[allow(clippy::only_used_in_recursion)]
     fn bind_fn_param(
         &self,
         param: &crate::value::FnParam,
@@ -2544,7 +2546,7 @@ impl Evaluator {
             eprintln!(
                 "[DEBUG] Loaded module '{}' from: {}",
                 name,
-                found_path.as_ref().map(|s| s.as_str()).unwrap_or_default()
+                found_path.as_deref().unwrap_or_default()
             );
         }
 
@@ -2879,6 +2881,7 @@ impl Evaluator {
     }
 
     /// FnParamをValueに変換（マクロ展開/quote用）
+    #[allow(clippy::only_used_in_recursion)]
     fn fn_param_to_value(&self, param: &crate::value::FnParam) -> Value {
         use crate::value::FnParam;
         use std::collections::HashMap;
@@ -3067,9 +3070,9 @@ impl Evaluator {
             }
 
             // 固定引数を設定
-            for i in 0..fixed_count {
-                let arg_val = self.expr_to_value(&args[i])?;
-                new_env.set(mac.params[i].clone(), arg_val);
+            for (param, arg) in mac.params.iter().zip(args.iter()).take(fixed_count) {
+                let arg_val = self.expr_to_value(arg)?;
+                new_env.set(param.clone(), arg_val);
             }
 
             // 残りを可変引数として設定

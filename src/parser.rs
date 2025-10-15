@@ -1301,9 +1301,9 @@ impl Parser {
     fn has_placeholder(expr: &Expr) -> bool {
         match expr {
             Expr::Symbol(s) if s == "_" => true,
-            Expr::Call { args, .. } => args.iter().any(|arg| Self::has_placeholder(arg)),
-            Expr::Vector(items) => items.iter().any(|item| Self::has_placeholder(item)),
-            Expr::List(items) => items.iter().any(|item| Self::has_placeholder(item)),
+            Expr::Call { args, .. } => args.iter().any(Self::has_placeholder),
+            Expr::Vector(items) => items.iter().any(Self::has_placeholder),
+            Expr::List(items) => items.iter().any(Self::has_placeholder),
             _ => false,
         }
     }

@@ -22,7 +22,7 @@ pub fn native_railway_pipe(
         Value::Map(m) => {
             // {:ok value}の場合は値を取り出して関数に渡す
             if let Some(ok_val) = m.get("ok") {
-                evaluator.apply_function(func, &[ok_val.clone()])
+                evaluator.apply_function(func, std::slice::from_ref(ok_val))
             }
             // {:error e}の場合はそのまま返す(ショートサーキット)
             else if m.contains_key("error") {

@@ -7,8 +7,6 @@
 //!
 //! このモジュールは `db-sqlite` feature でコンパイルされます。
 
-#![cfg(feature = "db-sqlite")]
-
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -19,6 +17,12 @@ use std::sync::Arc;
 
 /// SQLiteドライバー
 pub struct SqliteDriver;
+
+impl Default for SqliteDriver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SqliteDriver {
     pub fn new() -> Self {

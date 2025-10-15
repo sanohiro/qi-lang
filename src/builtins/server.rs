@@ -9,8 +9,6 @@
 //!
 //! このモジュールは `http-server` feature でコンパイルされます。
 
-#![cfg(feature = "http-server")]
-
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -80,14 +78,14 @@ fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
 
             params
                 .entry(decoded_key.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(decoded_value.to_string());
         } else {
             // 値がない場合（?flag）は空文字列
             let decoded_key = urlencoding::decode(pair).unwrap_or(std::borrow::Cow::Borrowed(pair));
             params
                 .entry(decoded_key.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(String::new());
         }
     }
@@ -180,7 +178,7 @@ async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infal
     let stream = reader_stream.map(|result| match result {
         Ok(bytes) => {
             // Bytes を Frame に変換し、Result でラップ
-            Ok::<_, Infallible>(Frame::data(Bytes::from(bytes)))
+            Ok::<_, Infallible>(Frame::data(bytes))
         }
         Err(e) => {
             eprintln!("Stream read error: {}", e);
@@ -1040,7 +1038,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
     }
 
     // ミドルウェアでない場合、直接ハンドラーを実行
-    eval.apply_function(handler, &[req.clone()])
+    eval.apply_function(handler, std::slice::from_ref(req))
 }
 
 /// パスパターンマッチング - /users/:id のような形式をサポート

@@ -149,7 +149,7 @@ fn log_internal(level: LogLevel, message: &str, context: Option<HashMap<String, 
         LogFormat::Json => {
             // JSON形式
             let mut json_obj = HashMap::new();
-            json_obj.insert("timestamp".to_string(), format!("{}", timestamp));
+            json_obj.insert("timestamp".to_string(), timestamp.to_string());
             json_obj.insert("level".to_string(), level.as_str().to_string());
             json_obj.insert("message".to_string(), message.to_string());
 

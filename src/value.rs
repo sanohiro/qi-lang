@@ -318,6 +318,12 @@ impl PartialEq for Env {
     }
 }
 
+impl Default for Env {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Env {
     pub fn new() -> Self {
         Env {

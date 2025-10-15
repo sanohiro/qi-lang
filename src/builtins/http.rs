@@ -8,8 +8,6 @@
 //!
 //! このモジュールは `http-client` feature でコンパイルされます。
 
-#![cfg(feature = "http-client")]
-
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};

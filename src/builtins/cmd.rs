@@ -5,8 +5,6 @@
 //!
 //! このモジュールは `cmd-exec` feature でコンパイルされます。
 
-#![cfg(feature = "cmd-exec")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use once_cell::sync::Lazy;

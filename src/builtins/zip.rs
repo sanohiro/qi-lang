@@ -2,8 +2,6 @@
 //!
 //! このモジュールは `util-zip` feature でコンパイルされます。
 
-#![cfg(feature = "util-zip")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use flate2::read::GzDecoder;

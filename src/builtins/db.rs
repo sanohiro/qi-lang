@@ -185,14 +185,16 @@ pub enum IsolationLevel {
     Serializable,
 }
 
-impl IsolationLevel {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for IsolationLevel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "read-uncommitted" => Some(Self::ReadUncommitted),
-            "read-committed" => Some(Self::ReadCommitted),
-            "repeatable-read" => Some(Self::RepeatableRead),
-            "serializable" => Some(Self::Serializable),
-            _ => None,
+            "read-uncommitted" => Ok(Self::ReadUncommitted),
+            "read-committed" => Ok(Self::ReadCommitted),
+            "repeatable-read" => Ok(Self::RepeatableRead),
+            "serializable" => Ok(Self::Serializable),
+            _ => Err(format!("Invalid isolation level: {}", s)),
         }
     }
 }
@@ -220,8 +222,7 @@ impl TransactionOptions {
 
         if let Value::Map(map) = opts {
             if let Some(Value::String(iso)) = map.get("isolation") {
-                options.isolation = IsolationLevel::from_str(iso)
-                    .ok_or_else(|| DbError::new(format!("Invalid isolation level: {}", iso)))?;
+                options.isolation = iso.parse().map_err(DbError::new)?;
             }
             if let Some(Value::Integer(ms)) = map.get("timeout") {
                 options.timeout_ms = Some(*ms as u64);
@@ -795,7 +796,7 @@ fn extract_tx_id(value: &Value) -> Result<String, String> {
 
 /// db/begin - トランザクションを開始
 pub fn native_begin(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 1 || args.len() > 2 {
+    if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["db/begin"]));
     }
 
@@ -1333,12 +1334,12 @@ mod tests {
     #[test]
     fn test_isolation_level() {
         assert_eq!(
-            IsolationLevel::from_str("serializable"),
-            Some(IsolationLevel::Serializable)
+            "serializable".parse::<IsolationLevel>(),
+            Ok(IsolationLevel::Serializable)
         );
         assert_eq!(
-            IsolationLevel::from_str("read-committed"),
-            Some(IsolationLevel::ReadCommitted)
+            "read-committed".parse::<IsolationLevel>(),
+            Ok(IsolationLevel::ReadCommitted)
         );
     }
 }
