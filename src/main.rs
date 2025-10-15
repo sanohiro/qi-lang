@@ -10,6 +10,7 @@ use rustyline::validate::Validator;
 use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
+use std::path::PathBuf;
 use std::sync::{LazyLock, OnceLock};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -516,7 +517,7 @@ fn is_balanced(input: &str) -> bool {
 
 /// ドキュメントパス情報
 struct DocPaths {
-    base_path: String,
+    base_path: PathBuf,
     files: Vec<String>,
     lang: String,
 }
@@ -526,10 +527,10 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
     // ドキュメントディレクトリの候補パスを取得
-    let mut doc_base_paths = vec!["std/docs".to_string()];
+    let mut doc_base_paths = vec![PathBuf::from("std/docs")];
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            doc_base_paths.push(exe_dir.join("std/docs").to_string_lossy().to_string());
+            doc_base_paths.push(exe_dir.join("std/docs"));
         }
     }
 
@@ -539,7 +540,7 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
 
     for base_path in &doc_base_paths {
         // 英語版ディレクトリから取得
-        let en_path = format!("{}/en", base_path);
+        let en_path = base_path.join("en");
         if let Ok(entries) = std::fs::read_dir(&en_path) {
             for entry in entries.flatten() {
                 if let Some(filename) = entry.file_name().to_str() {
@@ -553,7 +554,7 @@ static DOC_PATHS: LazyLock<Option<DocPaths>> = LazyLock::new(|| {
 
         // 指定言語版ディレクトリからも取得（enと異なる場合）
         if lang != "en" && found_base.is_some() {
-            let lang_path = format!("{}/{}", base_path, lang);
+            let lang_path = base_path.join(&lang);
             if let Ok(entries) = std::fs::read_dir(&lang_path) {
                 for entry in entries.flatten() {
                     if let Some(filename) = entry.file_name().to_str() {
@@ -600,18 +601,20 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
 fn load_docs_from_paths(evaluator: &Evaluator, paths: &DocPaths) {
     // 1. 英語版を先に読み込み
     for file in &paths.files {
-        let en_doc_path = format!("{}/en/{}", paths.base_path, file);
+        let en_doc_path = paths.base_path.join("en").join(file);
         if let Ok(content) = std::fs::read_to_string(&en_doc_path) {
-            eval_repl_code(evaluator, &content, Some(&en_doc_path));
+            let path_str = en_doc_path.display().to_string();
+            eval_repl_code(evaluator, &content, Some(&path_str));
         }
     }
 
     // 2. 指定言語版を読み込み（enと同じ場合はスキップ）
     if paths.lang != "en" {
         for file in &paths.files {
-            let lang_doc_path = format!("{}/{}/{}", paths.base_path, paths.lang, file);
+            let lang_doc_path = paths.base_path.join(&paths.lang).join(file);
             if let Ok(content) = std::fs::read_to_string(&lang_doc_path) {
-                eval_repl_code(evaluator, &content, Some(&lang_doc_path));
+                let path_str = lang_doc_path.display().to_string();
+                eval_repl_code(evaluator, &content, Some(&path_str));
             }
         }
     }

@@ -61,14 +61,14 @@ impl Evaluator {
         env_rc.write().set(
             "print".to_string(),
             Value::NativeFunc(NativeFunc {
-                name: "print".to_string(),
+                name: "print",
                 func: native_print,
             }),
         );
         env_rc.write().set(
             "list".to_string(),
             Value::NativeFunc(NativeFunc {
-                name: "list".to_string(),
+                name: "list",
                 func: native_list,
             }),
         );
@@ -77,14 +77,14 @@ impl Evaluator {
         env_rc.write().set(
             "number?".to_string(),
             Value::NativeFunc(NativeFunc {
-                name: "number?".to_string(),
+                name: "number?",
                 func: native_is_number,
             }),
         );
         env_rc.write().set(
             "fn?".to_string(),
             Value::NativeFunc(NativeFunc {
-                name: "fn?".to_string(),
+                name: "fn?",
                 func: native_is_fn,
             }),
         );

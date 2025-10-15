@@ -207,7 +207,7 @@ impl PartialEq for Macro {
 /// ネイティブ関数
 #[derive(Clone)]
 pub struct NativeFunc {
-    pub name: String,
+    pub name: &'static str,
     pub func: fn(&[Value]) -> Result<Value, String>,
 }
 

@@ -122,21 +122,25 @@ use crate::value::{Env, NativeFunc, Value};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-/// ネイティブ関数のシグネチャ
+/// ネイティブ関数のシグネチャ（Evaluator不要）
 pub type NativeFn = fn(&[Value]) -> Result<Value, String>;
 
-/// FUNCTIONS配列の型（各モジュールで使用）
+/// Evaluator必要な関数のシグネチャ
+pub type NativeEvalFn = fn(&[Value], &Evaluator) -> Result<Value, String>;
+
+/// FUNCTIONS配列の型（Evaluator不要な関数用）
 pub type NativeFunctions = &'static [(&'static str, NativeFn)];
+
+/// Evaluator必要な関数の配列型（将来の拡張用）
+#[allow(dead_code)]
+pub type NativeEvalFunctions = &'static [(&'static str, NativeEvalFn)];
 
 /// FUNCTIONS配列から関数を登録するヘルパー
 fn register_functions(env: &mut Env, functions: NativeFunctions) {
     for (name, func) in functions {
         env.set(
             name.to_string(),
-            Value::NativeFunc(NativeFunc {
-                name: name.to_string(),
-                func: *func,
-            }),
+            Value::NativeFunc(NativeFunc { name, func: *func }),
         );
     }
 }
@@ -231,6 +235,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 // ========================================
 // Evaluatorが必要な関数（mod.rsでラップ）
 // ========================================
+//
+// 注: これらの関数はeval.rsから直接呼ばれるため、公開ラッパーとして定義されています。
+//     将来的にはNativeEvalFunctions配列にまとめることで、新規追加時の抜け漏れを防ぐことができます。
 
 /// map - リストの各要素に関数を適用
 pub fn map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
@@ -437,16 +444,6 @@ pub fn stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
     stream::native_stream_filter(args, evaluator)
 }
 
-#[cfg(feature = "http-client")]
-pub fn http_get_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    http::native_get_async(args, evaluator)
-}
-
-#[cfg(feature = "http-client")]
-pub fn http_post_async(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    http::native_post_async(args, evaluator)
-}
-
 /// branch - 条件分岐（パイプライン用）
 pub fn branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     flow::native_branch(args, evaluator)
@@ -514,14 +511,21 @@ mod tests {
         }
     }
 
-    /// 非同期HTTP関数が登録されているかチェック（feature-gated）
+    /// HTTP関数が登録されているかチェック（feature-gated）
     #[test]
     #[cfg(feature = "http-client")]
     fn test_async_http_registered() {
         let env = Arc::new(RwLock::new(Env::new()));
         register_all(&env);
 
-        let http_functions = vec!["http/get", "http/post", "http/put", "http/delete"];
+        let http_functions = vec![
+            "http/get",
+            "http/post",
+            "http/put",
+            "http/delete",
+            "http/get-async",
+            "http/post-async",
+        ];
 
         let env_read = env.read();
         for func_name in http_functions {

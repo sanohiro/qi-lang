@@ -8,7 +8,6 @@
 //!
 //! このモジュールは `http-client` feature でコンパイルされます。
 
-use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
@@ -206,7 +205,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
 }
 
 /// HTTP GETリクエスト (非同期)
-pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
+pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/get-async"]));
     }
@@ -231,7 +230,7 @@ pub fn native_get_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value,
 }
 
 /// HTTP POSTリクエスト (非同期)
-pub fn native_post_async(args: &[Value], _evaluator: &Evaluator) -> Result<Value, String> {
+pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["http/post-async"]));
     }
@@ -599,9 +598,7 @@ fn http_stream(
 // 関数登録テーブル
 // ========================================
 
-/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
-///
-/// 注意: get-async, post-async は Evaluator が必要なため、mod.rs で別途登録されます
+/// 登録すべき関数のリスト
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("http/get", native_get),
     ("http/post", native_post),
@@ -611,6 +608,8 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("http/head", native_head),
     ("http/options", native_options),
     ("http/request", native_request),
+    ("http/get-async", native_get_async),
+    ("http/post-async", native_post_async),
     ("http/get-stream", native_get_stream),
     ("http/post-stream", native_post_stream),
     ("http/request-stream", native_request_stream),
