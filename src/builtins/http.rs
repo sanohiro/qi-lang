@@ -221,7 +221,7 @@ pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
         receiver,
     });
 
-    std::thread::spawn(move || {
+    rayon::spawn(move || {
         let result = native_get(&[Value::String(url)]);
         let _ = sender.send(result.unwrap_or_else(Value::String));
     });
@@ -248,7 +248,7 @@ pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
         receiver,
     });
 
-    std::thread::spawn(move || {
+    rayon::spawn(move || {
         let result = native_post(&[Value::String(url), body]);
         let _ = sender.send(result.unwrap_or_else(Value::String));
     });
