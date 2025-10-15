@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Hironobu Sano"]
 license = "MIT OR Apache-2.0"
+description = "A modern Lisp with pipelines, pattern matching, and concurrency"
+repository = "https://github.com/sanohiro/qi-lang"
+keywords = ["lisp", "pipeline", "concurrency", "pattern-matching", "functional"]
+categories = ["development-tools", "parser-implementations"]
+readme = "README.md"
 
 [lib]
 name = "qi_lang"
