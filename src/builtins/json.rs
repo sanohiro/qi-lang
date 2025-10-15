@@ -147,3 +147,14 @@ fn value_to_json(value: &Value) -> serde_json::Value {
         _ => serde_json::Value::Null,
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("json/parse", native_parse),
+    ("json/stringify", native_stringify),
+    ("json/pretty", native_pretty),
+];

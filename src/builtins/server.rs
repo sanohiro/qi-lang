@@ -1436,3 +1436,30 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
 
     Ok(Value::Map(metadata))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("server/serve", native_server_serve),
+    ("server/router", native_server_router),
+    ("server/ok", native_server_ok),
+    ("server/json", native_server_json),
+    ("server/not-found", native_server_not_found),
+    ("server/no-content", native_server_no_content),
+    ("server/with-logging", native_server_with_logging),
+    ("server/with-cors", native_server_with_cors),
+    ("server/with-json-body", native_server_with_json_body),
+    ("server/with-compression", native_server_with_compression),
+    ("server/with-basic-auth", native_server_with_basic_auth),
+    ("server/with-bearer", native_server_with_bearer),
+    ("server/with-no-cache", native_server_with_no_cache),
+    (
+        "server/with-cache-control",
+        native_server_with_cache_control,
+    ),
+    ("server/static-file", native_server_static_file),
+    ("server/static-dir", native_server_static_dir),
+];

@@ -202,114 +202,38 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     #[cfg(feature = "std-time")]
     register_functions(&mut env_write, time::FUNCTIONS);
 
+    // Feature-gated専門モジュール（Evaluator不要、その他）
+    #[cfg(feature = "format-markdown")]
+    register_functions(&mut env_write, markdown::FUNCTIONS);
+
+    #[cfg(feature = "format-json")]
+    register_functions(&mut env_write, json::FUNCTIONS);
+
+    #[cfg(feature = "format-yaml")]
+    register_functions(&mut env_write, yaml::FUNCTIONS);
+
+    #[cfg(feature = "http-client")]
+    register_functions(&mut env_write, http::FUNCTIONS);
+
+    #[cfg(feature = "http-server")]
+    register_functions(&mut env_write, server::FUNCTIONS);
+
+    #[cfg(feature = "std-stats")]
+    register_functions(&mut env_write, stats::FUNCTIONS);
+
+    #[cfg(feature = "util-zip")]
+    register_functions(&mut env_write, zip::FUNCTIONS);
+
+    #[cfg(feature = "io-temp")]
+    register_functions(&mut env_write, temp::FUNCTIONS);
+
+    #[cfg(feature = "cmd-exec")]
+    register_functions(&mut env_write, cmd::FUNCTIONS);
+
     // 一時的にロックを解放
     drop(env_write);
 
-    // ========================================
-    // Feature-gated modules
-    // ========================================
-
-    // Markdown生成・解析（11個）
-    #[cfg(feature = "format-markdown")]
-    register_native!(env.write(),
-        "markdown/header" => markdown::native_markdown_header,
-        "markdown/list" => markdown::native_markdown_list,
-        "markdown/ordered-list" => markdown::native_markdown_ordered_list,
-        "markdown/table" => markdown::native_markdown_table,
-        "markdown/code-block" => markdown::native_markdown_code_block,
-        "markdown/join" => markdown::native_markdown_join,
-        "markdown/link" => markdown::native_markdown_link,
-        "markdown/image" => markdown::native_markdown_image,
-        "markdown/extract-code-blocks" => markdown::native_markdown_extract_code_blocks,
-        "markdown/parse" => markdown::native_markdown_parse,
-        "markdown/stringify" => markdown::native_markdown_stringify,
-    );
-
-    // JSON処理（3個）
-    #[cfg(feature = "format-json")]
-    register_native!(env.write(),
-        "json/parse" => json::native_parse,
-        "json/stringify" => json::native_stringify,
-        "json/pretty" => json::native_pretty,
-    );
-
-    // YAML処理（3個）
-    #[cfg(feature = "format-yaml")]
-    register_native!(env.write(),
-        "yaml/parse" => yaml::native_parse,
-        "yaml/stringify" => yaml::native_stringify,
-        "yaml/pretty" => yaml::native_pretty,
-    );
-
-    // HTTPクライアント（11個）
-    #[cfg(feature = "http-client")]
-    register_native!(env.write(),
-        "http/get" => http::native_get,
-        "http/post" => http::native_post,
-        "http/put" => http::native_put,
-        "http/delete" => http::native_delete,
-        "http/patch" => http::native_patch,
-        "http/head" => http::native_head,
-        "http/options" => http::native_options,
-        "http/request" => http::native_request,
-        "http/get-stream" => http::native_get_stream,
-        "http/post-stream" => http::native_post_stream,
-        "http/request-stream" => http::native_request_stream,
-    );
-
-    // HTTPサーバー（16個）
-    #[cfg(feature = "http-server")]
-    register_native!(env.write(),
-        "server/serve" => server::native_server_serve,
-        "server/router" => server::native_server_router,
-        "server/ok" => server::native_server_ok,
-        "server/json" => server::native_server_json,
-        "server/not-found" => server::native_server_not_found,
-        "server/no-content" => server::native_server_no_content,
-        "server/with-logging" => server::native_server_with_logging,
-        "server/with-cors" => server::native_server_with_cors,
-        "server/with-json-body" => server::native_server_with_json_body,
-        "server/with-compression" => server::native_server_with_compression,
-        "server/with-basic-auth" => server::native_server_with_basic_auth,
-        "server/with-bearer" => server::native_server_with_bearer,
-        "server/with-no-cache" => server::native_server_with_no_cache,
-        "server/with-cache-control" => server::native_server_with_cache_control,
-        "server/static-file" => server::native_server_static_file,
-        "server/static-dir" => server::native_server_static_dir,
-    );
-
-    // 統計関数（6個）
-    #[cfg(feature = "std-stats")]
-    register_native!(env.write(),
-        "stats/mean" => stats::native_mean,
-        "stats/median" => stats::native_median,
-        "stats/mode" => stats::native_mode,
-        "stats/variance" => stats::native_variance,
-        "stats/stddev" => stats::native_stddev,
-        "stats/percentile" => stats::native_percentile,
-    );
-
-    // ZIP圧縮（6個）
-    #[cfg(feature = "util-zip")]
-    register_native!(env.write(),
-        "zip/create" => zip::native_zip_create,
-        "zip/extract" => zip::native_zip_extract,
-        "zip/list" => zip::native_zip_list,
-        "zip/add" => zip::native_zip_add,
-        "zip/gzip" => zip::native_gzip,
-        "zip/gunzip" => zip::native_gunzip,
-    );
-
-    // 一時ファイル（4個）
-    #[cfg(feature = "io-temp")]
-    register_native!(env.write(),
-        "io/temp-file" => temp::native_temp_file,
-        "io/temp-file-keep" => temp::native_temp_file_keep,
-        "io/temp-dir" => temp::native_temp_dir,
-        "io/temp-dir-keep" => temp::native_temp_dir_keep,
-    );
-
-    // データベース（22個）
+    // データベース（22個）- 後でFUNCTIONS配列化予定
     #[cfg(feature = "db-sqlite")]
     register_native!(env.write(),
         "db/connect" => db::native_connect,
@@ -336,21 +260,6 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
         "db/pool-release" => db::native_pool_release,
         "db/pool-close" => db::native_pool_close,
         "db/pool-stats" => db::native_pool_stats,
-    );
-
-    // コマンド実行（10個）
-    #[cfg(feature = "cmd-exec")]
-    register_native!(env.write(),
-        "cmd/exec" => cmd::native_exec,
-        "cmd/sh" => cmd::native_sh,
-        "cmd/pipe" => cmd::native_pipe,
-        "cmd/lines" => cmd::native_lines,
-        "cmd/stream-lines" => cmd::native_stream_lines,
-        "cmd/stream-bytes" => cmd::native_stream_bytes,
-        "cmd/interactive" => cmd::native_interactive,
-        "cmd/write" => cmd::native_proc_write,
-        "cmd/read-line" => cmd::native_proc_read_line,
-        "cmd/wait" => cmd::native_proc_wait,
     );
 }
 

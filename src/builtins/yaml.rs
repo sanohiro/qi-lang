@@ -145,3 +145,14 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         _ => serde_yaml::Value::Null,
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("yaml/parse", native_parse),
+    ("yaml/stringify", native_stringify),
+    ("yaml/pretty", native_pretty),
+];

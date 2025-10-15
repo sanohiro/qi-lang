@@ -620,3 +620,25 @@ pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::String(result.join("\n\n")))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("markdown/header", native_markdown_header),
+    ("markdown/list", native_markdown_list),
+    ("markdown/ordered-list", native_markdown_ordered_list),
+    ("markdown/table", native_markdown_table),
+    ("markdown/code-block", native_markdown_code_block),
+    ("markdown/join", native_markdown_join),
+    ("markdown/link", native_markdown_link),
+    ("markdown/image", native_markdown_image),
+    (
+        "markdown/extract-code-blocks",
+        native_markdown_extract_code_blocks,
+    ),
+    ("markdown/parse", native_markdown_parse),
+    ("markdown/stringify", native_markdown_stringify),
+];

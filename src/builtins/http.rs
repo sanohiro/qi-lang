@@ -594,3 +594,24 @@ fn http_stream(
         Ok(Value::Stream(Arc::new(RwLock::new(stream))))
     }
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+///
+/// 注意: get-async, post-async は Evaluator が必要なため、mod.rs で別途登録されます
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("http/get", native_get),
+    ("http/post", native_post),
+    ("http/put", native_put),
+    ("http/delete", native_delete),
+    ("http/patch", native_patch),
+    ("http/head", native_head),
+    ("http/options", native_options),
+    ("http/request", native_request),
+    ("http/get-stream", native_get_stream),
+    ("http/post-stream", native_post_stream),
+    ("http/request-stream", native_request_stream),
+];

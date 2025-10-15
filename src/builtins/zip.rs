@@ -438,3 +438,17 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::String(output_path))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("zip/create", native_zip_create),
+    ("zip/extract", native_zip_extract),
+    ("zip/list", native_zip_list),
+    ("zip/add", native_zip_add),
+    ("zip/gzip", native_gzip),
+    ("zip/gunzip", native_gunzip),
+];

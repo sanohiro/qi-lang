@@ -218,12 +218,13 @@ impl Evaluator {
             }))),
 
             Expr::Let { bindings, body } => {
-                let mut new_env = Env::with_parent(env.clone());
+                // let環境を一度だけArc<RwLock<Env>>として作成（cloneとヒープ確保を削減）
+                let new_env = Arc::new(RwLock::new(Env::with_parent(env.clone())));
                 for (pattern, expr) in bindings {
-                    let value = self.eval_with_env(expr, Arc::new(RwLock::new(new_env.clone())))?;
-                    self.bind_fn_param(pattern, &value, &mut new_env)?;
+                    let value = self.eval_with_env(expr, new_env.clone())?;
+                    self.bind_fn_param(pattern, &value, &mut new_env.write())?;
                 }
-                self.eval_with_env(body, Arc::new(RwLock::new(new_env)))
+                self.eval_with_env(body, new_env)
             }
 
             Expr::If {

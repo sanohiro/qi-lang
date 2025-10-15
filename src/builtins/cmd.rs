@@ -648,3 +648,21 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Map(result))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("cmd/exec", native_exec),
+    ("cmd/sh", native_sh),
+    ("cmd/pipe", native_pipe),
+    ("cmd/lines", native_lines),
+    ("cmd/stream-lines", native_stream_lines),
+    ("cmd/stream-bytes", native_stream_bytes),
+    ("cmd/interactive", native_interactive),
+    ("cmd/write", native_proc_write),
+    ("cmd/read-line", native_proc_read_line),
+    ("cmd/wait", native_proc_wait),
+];

@@ -116,3 +116,15 @@ pub fn native_temp_dir_keep(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::String(path_str))
 }
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    ("io/temp-file", native_temp_file),
+    ("io/temp-file-keep", native_temp_file_keep),
+    ("io/temp-dir", native_temp_dir),
+    ("io/temp-dir-keep", native_temp_dir_keep),
+];
