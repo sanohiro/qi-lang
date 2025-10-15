@@ -1315,6 +1315,37 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Map(map))
 }
 
+/// データベース関数配列（24個）
+pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
+    // Phase 1: 基本操作、サニタイズ（8個）
+    ("db/connect", native_connect),
+    ("db/query", native_query),
+    ("db/query-one", native_query_one),
+    ("db/exec", native_exec),
+    ("db/close", native_close),
+    ("db/sanitize", native_sanitize),
+    ("db/sanitize-identifier", native_sanitize_identifier),
+    ("db/escape-like", native_escape_like),
+    // Phase 2: トランザクション、メタデータAPI（11個）
+    ("db/begin", native_begin),
+    ("db/commit", native_commit),
+    ("db/rollback", native_rollback),
+    ("db/tables", native_tables),
+    ("db/columns", native_columns),
+    ("db/indexes", native_indexes),
+    ("db/foreign-keys", native_foreign_keys),
+    ("db/call", native_call),
+    ("db/supports?", native_supports),
+    ("db/driver-info", native_driver_info),
+    ("db/query-info", native_query_info),
+    // Phase 3: コネクションプーリング（5個）
+    ("db/create-pool", native_create_pool),
+    ("db/pool-acquire", native_pool_acquire),
+    ("db/pool-release", native_pool_release),
+    ("db/pool-close", native_pool_close),
+    ("db/pool-stats", native_pool_stats),
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;

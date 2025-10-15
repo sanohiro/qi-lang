@@ -122,21 +122,6 @@ use crate::value::{Env, NativeFunc, Value};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-/// 組み込み関数を登録するマクロ
-macro_rules! register_native {
-    ($env:expr, $($name:expr => $func:expr),* $(,)?) => {
-        $(
-            $env.set(
-                $name.to_string(),
-                Value::NativeFunc(NativeFunc {
-                    name: $name.to_string(),
-                    func: $func,
-                }),
-            );
-        )*
-    };
-}
-
 /// FUNCTIONS配列から関数を登録するヘルパー
 fn register_functions(env: &mut Env, functions: &[(&str, fn(&[Value]) -> Result<Value, String>)]) {
     for (name, func) in functions {
@@ -230,37 +215,11 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     #[cfg(feature = "cmd-exec")]
     register_functions(&mut env_write, cmd::FUNCTIONS);
 
+    #[cfg(feature = "db-sqlite")]
+    register_functions(&mut env_write, db::FUNCTIONS);
+
     // 一時的にロックを解放
     drop(env_write);
-
-    // データベース（22個）- 後でFUNCTIONS配列化予定
-    #[cfg(feature = "db-sqlite")]
-    register_native!(env.write(),
-        "db/connect" => db::native_connect,
-        "db/query" => db::native_query,
-        "db/query-one" => db::native_query_one,
-        "db/exec" => db::native_exec,
-        "db/close" => db::native_close,
-        "db/sanitize" => db::native_sanitize,
-        "db/sanitize-identifier" => db::native_sanitize_identifier,
-        "db/escape-like" => db::native_escape_like,
-        "db/begin" => db::native_begin,
-        "db/commit" => db::native_commit,
-        "db/rollback" => db::native_rollback,
-        "db/tables" => db::native_tables,
-        "db/columns" => db::native_columns,
-        "db/indexes" => db::native_indexes,
-        "db/foreign-keys" => db::native_foreign_keys,
-        "db/call" => db::native_call,
-        "db/supports?" => db::native_supports,
-        "db/driver-info" => db::native_driver_info,
-        "db/query-info" => db::native_query_info,
-        "db/create-pool" => db::native_create_pool,
-        "db/pool-acquire" => db::native_pool_acquire,
-        "db/pool-release" => db::native_pool_release,
-        "db/pool-close" => db::native_pool_close,
-        "db/pool-stats" => db::native_pool_stats,
-    );
 }
 
 // ========================================

@@ -10,7 +10,7 @@ use rustyline::validate::Validator;
 use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Once;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -514,15 +514,19 @@ fn is_balanced(input: &str) -> bool {
     depth == 0 && !in_string
 }
 
-/// 標準ライブラリドキュメントの遅延ロード
+/// 標準ライブラリドキュメントの遅延ロード（スレッドセーフ）
+///
+/// std::sync::Onceを使用し、複数スレッドから同時に呼ばれても1回だけ実行されることを保証
 fn lazy_load_std_docs(evaluator: &Evaluator) {
-    static DOCS_LOADED: AtomicBool = AtomicBool::new(false);
+    static INIT: Once = Once::new();
 
-    // 既にロード済みならスキップ
-    if DOCS_LOADED.load(Ordering::Relaxed) {
-        return;
-    }
+    INIT.call_once(|| {
+        load_std_docs_internal(evaluator);
+    });
+}
 
+/// 標準ライブラリドキュメントのロード処理（内部実装）
+fn load_std_docs_internal(evaluator: &Evaluator) {
     let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
 
     // ドキュメントディレクトリの候補パスを取得
@@ -573,7 +577,6 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
 
     // ドキュメントが見つからなければ終了
     if found_base.is_none() {
-        DOCS_LOADED.store(true, Ordering::Relaxed);
         return;
     }
     let base_path = found_base.unwrap();
@@ -599,9 +602,6 @@ fn lazy_load_std_docs(evaluator: &Evaluator) {
             }
         }
     }
-
-    // ロード完了フラグを立てる
-    DOCS_LOADED.store(true, Ordering::Relaxed);
 }
 
 /// REPLコマンドの処理
