@@ -345,7 +345,7 @@ impl Lexer {
         Err(msg(MsgKey::FStringUnclosed).to_string())
     }
 
-    fn read_number(&mut self) -> Token {
+    fn read_number(&mut self) -> Result<Token, String> {
         let mut num_str = String::new();
         let mut is_float = false;
 
@@ -369,13 +369,19 @@ impl Lexer {
         }
 
         if is_float {
-            Token::Float(num_str.parse().unwrap())
+            num_str
+                .parse()
+                .map(Token::Float)
+                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))
         } else {
-            Token::Integer(num_str.parse().unwrap())
+            num_str
+                .parse()
+                .map(Token::Integer)
+                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))
         }
     }
 
-    fn read_symbol_or_keyword(&mut self) -> Token {
+    fn read_symbol_or_keyword(&mut self) -> Result<Token, String> {
         let mut result = String::new();
         let is_keyword = self.current() == Some(':');
 
@@ -393,16 +399,21 @@ impl Lexer {
         }
 
         if is_keyword {
-            return Token::Keyword(result);
+            // 空のキーワードをチェック
+            if result.is_empty() {
+                return Err(msg(MsgKey::EmptyKeyword).to_string());
+            }
+            return Ok(Token::Keyword(result));
         }
 
         // 特殊なシンボルのチェック
-        match result.as_str() {
+        let token = match result.as_str() {
             "nil" => Token::Nil,
             "true" => Token::True,
             "false" => Token::False,
             _ => Token::Symbol(result),
-        }
+        };
+        Ok(token)
     }
 
     pub fn next_token(&mut self) -> Result<Token, String> {
@@ -493,7 +504,7 @@ impl Lexer {
                     return Ok(Token::Bar);
                 }
                 Some(ch) if ch.is_numeric() => {
-                    return Ok(self.read_number());
+                    return self.read_number();
                 }
                 Some('=') if self.peek(1) == Some('>') => {
                     self.advance(); // =
@@ -511,7 +522,7 @@ impl Lexer {
                     return Ok(Token::Arrow);
                 }
                 Some('-') if self.peek(1).is_some_and(|c| c.is_numeric()) => {
-                    return Ok(self.read_number());
+                    return self.read_number();
                 }
                 Some('.') if self.peek(1) == Some('.') && self.peek(2) == Some('.') => {
                     self.advance(); // .
@@ -533,10 +544,10 @@ impl Lexer {
                     return Ok(Token::FString(parts));
                 }
                 Some(':') => {
-                    return Ok(self.read_symbol_or_keyword());
+                    return self.read_symbol_or_keyword();
                 }
                 Some(ch) if ch.is_alphabetic() || "+-*/%<>=!?_-&".contains(ch) => {
-                    return Ok(self.read_symbol_or_keyword());
+                    return self.read_symbol_or_keyword();
                 }
                 Some(ch) => {
                     return Err(fmt_msg(MsgKey::UnexpectedChar, &[&ch.to_string()]));

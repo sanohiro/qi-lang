@@ -57,6 +57,8 @@ pub enum MsgKey {
     // レキサーエラー
     UnexpectedChar,
     UnclosedString,
+    NumberLiteralInvalid, // invalid number literal: {0}
+    EmptyKeyword,         // empty keyword (: must be followed by identifier)
 
     // 評価器エラー
     UndefinedVar,
@@ -476,6 +478,14 @@ impl Messages {
             "unexpected character: {0}",
         );
         messages.insert((Lang::En, MsgKey::UnclosedString), "unclosed string");
+        messages.insert(
+            (Lang::En, MsgKey::NumberLiteralInvalid),
+            "invalid number literal: {0}",
+        );
+        messages.insert(
+            (Lang::En, MsgKey::EmptyKeyword),
+            "empty keyword: ':' must be followed by an identifier",
+        );
 
         // 英語メッセージ - 評価器
         messages.insert((Lang::En, MsgKey::UndefinedVar), "undefined variable: {0}");
@@ -1350,6 +1360,14 @@ impl Messages {
         messages.insert(
             (Lang::Ja, MsgKey::UnclosedString),
             "文字列が閉じられていません",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::NumberLiteralInvalid),
+            "不正な数値リテラル: {0}",
+        );
+        messages.insert(
+            (Lang::Ja, MsgKey::EmptyKeyword),
+            "空のキーワード: ':' の後には識別子が必要です",
         );
 
         // 日本語メッセージ - 評価器
