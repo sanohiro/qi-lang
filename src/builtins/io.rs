@@ -474,23 +474,6 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// println - 改行付きで出力
-pub fn native_println(args: &[Value]) -> Result<Value, String> {
-    let output = if args.is_empty() {
-        String::new()
-    } else {
-        args.iter()
-            .map(|v| match v {
-                Value::String(s) => s.clone(),
-                _ => format!("{:?}", v),
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
-    };
-    println!("{}", output);
-    Ok(Value::Nil)
-}
-
 /// read-lines - ファイルを行ごとに読み込み
 pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
