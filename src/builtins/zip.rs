@@ -274,7 +274,8 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
         .map_err(|e| format!("zip/add: failed to read zip file '{}': {}", zip_path, e))?;
 
     // 一時ファイルに書き込み
-    let temp_path = format!("{}.tmp", zip_path);
+    let mut temp_path = PathBuf::from(zip_path);
+    temp_path.as_mut_os_string().push(".tmp");
     let temp_file = File::create(&temp_path)
         .map_err(|e| format!("zip/add: failed to create temporary file: {}", e))?;
     let mut zip = ZipWriter::new(temp_file);
@@ -346,11 +347,13 @@ pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
 
     let output_path = if args.len() == 2 {
         match &args[1] {
-            Value::String(s) => s.clone(),
+            Value::String(s) => PathBuf::from(s),
             _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["zip/gzip", "a string"])),
         }
     } else {
-        format!("{}.gz", input_path)
+        let mut path = PathBuf::from(input_path);
+        path.as_mut_os_string().push(".gz");
+        path
     };
 
     // 入力ファイルを読み込み
@@ -365,7 +368,8 @@ pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
     let output = File::create(&output_path).map_err(|e| {
         format!(
             "zip/gzip: failed to create output file '{}': {}",
-            output_path, e
+            output_path.display(),
+            e
         )
     })?;
 
@@ -378,7 +382,7 @@ pub fn native_gzip(args: &[Value]) -> Result<Value, String> {
         .finish()
         .map_err(|e| format!("zip/gzip: failed to finish compression: {}", e))?;
 
-    Ok(Value::String(output_path))
+    Ok(Value::String(output_path.to_string_lossy().to_string()))
 }
 
 /// gunzip - gzipファイルを解凍
@@ -397,7 +401,7 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
 
     let output_path = if args.len() == 2 {
         match &args[1] {
-            Value::String(s) => s.clone(),
+            Value::String(s) => PathBuf::from(s),
             _ => {
                 return Err(fmt_msg(
                     MsgKey::SecondArgMustBe,
@@ -407,10 +411,13 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
         }
     } else {
         // .gz拡張子を除去
+        let path = PathBuf::from(input_path);
         if input_path.ends_with(".gz") {
-            input_path[..input_path.len() - 3].to_string()
+            path.with_extension("")
         } else {
-            format!("{}.decompressed", input_path)
+            let mut p = path;
+            p.as_mut_os_string().push(".decompressed");
+            p
         }
     };
 
@@ -429,14 +436,15 @@ pub fn native_gunzip(args: &[Value]) -> Result<Value, String> {
     let mut output = File::create(&output_path).map_err(|e| {
         format!(
             "zip/gunzip: failed to create output file '{}': {}",
-            output_path, e
+            output_path.display(),
+            e
         )
     })?;
 
     std::io::copy(&mut decoder, &mut output)
         .map_err(|e| format!("zip/gunzip: failed to decompress file: {}", e))?;
 
-    Ok(Value::String(output_path))
+    Ok(Value::String(output_path.to_string_lossy().to_string()))
 }
 
 // ========================================
