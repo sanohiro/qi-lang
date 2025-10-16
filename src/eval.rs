@@ -146,23 +146,23 @@ impl Evaluator {
             }
 
             Expr::List(items) => {
-                let values: Result<Vec<_>, _> = items
-                    .iter()
-                    .map(|e| self.eval_with_env(e, env.clone()))
-                    .collect();
-                Ok(Value::List(values?.into()))
+                let mut values = Vec::with_capacity(items.len());
+                for item in items {
+                    values.push(self.eval_with_env(item, env.clone())?);
+                }
+                Ok(Value::List(values.into()))
             }
 
             Expr::Vector(items) => {
-                let values: Result<Vec<_>, _> = items
-                    .iter()
-                    .map(|e| self.eval_with_env(e, env.clone()))
-                    .collect();
-                Ok(Value::Vector(values?.into()))
+                let mut values = Vec::with_capacity(items.len());
+                for item in items {
+                    values.push(self.eval_with_env(item, env.clone())?);
+                }
+                Ok(Value::Vector(values.into()))
             }
 
             Expr::Map(pairs) => {
-                let mut map = HashMap::new();
+                let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
                     let key = match self.eval_with_env(k, env.clone())? {
                         Value::Keyword(k) => k,
@@ -1096,7 +1096,7 @@ impl Evaluator {
 
                 // juxt特殊処理 - 実行前にチェック
                 if let Some(Value::List(juxt_funcs)) = f.env.get("__juxt_funcs__") {
-                    let mut results = Vec::new();
+                    let mut results = Vec::with_capacity(juxt_funcs.len());
                     for jfunc in &juxt_funcs {
                         let result = self.apply_func(jfunc, args.clone())?;
                         results.push(result);
@@ -2727,7 +2727,7 @@ impl Evaluator {
                 self.eval_quasiquote(e, env, depth + 1)
             }
             Expr::List(items) => {
-                let mut result = Vec::new();
+                let mut result = Vec::with_capacity(items.len());
                 for item in items {
                     if let Expr::UnquoteSplice(e) = item {
                         if depth == 0 {
@@ -2755,7 +2755,7 @@ impl Evaluator {
                 Ok(Value::List(result.into()))
             }
             Expr::Vector(items) => {
-                let mut result = Vec::new();
+                let mut result = Vec::with_capacity(items.len());
                 for item in items {
                     let val = self.eval_quasiquote(item, env.clone(), depth)?;
                     result.push(val);
@@ -2878,15 +2878,21 @@ impl Evaluator {
             Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
             Expr::List(items) => {
-                let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
-                Ok(Value::List(vals?.into()))
+                let mut vals = Vec::with_capacity(items.len());
+                for item in items {
+                    vals.push(self.expr_to_value(item)?);
+                }
+                Ok(Value::List(vals.into()))
             }
             Expr::Vector(items) => {
-                let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
-                Ok(Value::Vector(vals?.into()))
+                let mut vals = Vec::with_capacity(items.len());
+                for item in items {
+                    vals.push(self.expr_to_value(item)?);
+                }
+                Ok(Value::Vector(vals.into()))
             }
             Expr::Map(pairs) => {
-                let mut map = HashMap::new();
+                let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
                     let key = match self.expr_to_value(k)? {
                         Value::Keyword(k) => k,
