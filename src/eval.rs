@@ -36,10 +36,10 @@ fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize
 #[derive(Clone)]
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
-    defer_stack: Arc<RwLock<Vec<Vec<Expr>>>>, // スコープごとのdeferスタック（LIFO）
+    defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
     modules: Arc<RwLock<HashMap<String, Arc<Module>>>>, // ロード済みモジュール
-    current_module: Arc<RwLock<Option<String>>>, // 現在評価中のモジュール名
-    loading_modules: Arc<RwLock<Vec<String>>>, // 循環参照検出用
+    current_module: Arc<RwLock<Option<String>>>,        // 現在評価中のモジュール名
+    loading_modules: Arc<RwLock<Vec<String>>>,          // 循環参照検出用
     #[allow(dead_code)]
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
 }
@@ -92,7 +92,7 @@ impl Evaluator {
 
         let evaluator = Evaluator {
             global_env: env_rc.clone(),
-            defer_stack: Arc::new(RwLock::new(Vec::new())),
+            defer_stack: Arc::new(RwLock::new(SmallVec::new())),
             modules: Arc::new(RwLock::new(HashMap::new())),
             current_module: Arc::new(RwLock::new(None)),
             loading_modules: Arc::new(RwLock::new(Vec::new())),
@@ -770,7 +770,7 @@ impl Evaluator {
         // パラメータリストからパラメータ名を抽出
         let params = match &args[params_idx] {
             Expr::Vector(params_exprs) => {
-                let mut param_names = Vec::new();
+                let mut param_names = Vec::with_capacity(params_exprs.len());
                 for param_expr in params_exprs {
                     match param_expr {
                         Expr::Symbol(s) => param_names.push(s.clone()),
@@ -2645,7 +2645,7 @@ impl Evaluator {
         let mut loop_env = Env::with_parent(env.clone());
 
         // 初期値で環境を設定
-        let mut current_values = Vec::new();
+        let mut current_values = Vec::with_capacity(bindings.len());
         for (_name, expr) in bindings {
             let value = self.eval_with_env(expr, env.clone())?;
             current_values.push(value);
