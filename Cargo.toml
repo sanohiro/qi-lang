@@ -169,11 +169,16 @@ name = "parser_lexer"
 harness = false
 
 # プロファイリング用にrelease buildでもデバッグシンボルを有効化
+# コンパイラ最適化（Phase 18）
 [profile.release]
 debug = true
+lto = true           # リンク時最適化（クレート間の最適化）
+codegen-units = 1    # 最大限の最適化（コンパイル時間は増加）
 
 [profile.bench]
 debug = true
+lto = true
+codegen-units = 1
 
 [[bench]]
 name = "large_dataset"
