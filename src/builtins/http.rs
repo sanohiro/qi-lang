@@ -487,7 +487,7 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
     http_stream(method, &url, body, is_bytes)
 }
 
-/// HTTPストリーミングの共通実装
+/// HTTPストリーミングの共通実装（真のストリーミング - メモリに全体を読み込まない）
 fn http_stream(
     method: &str,
     url: &str,
@@ -539,57 +539,45 @@ fn http_stream(
     }
 
     if is_bytes {
-        // バイナリモード：バイト列として取得
-        let bytes = response
-            .bytes()
-            .map_err(|e| fmt_msg(MsgKey::HttpStreamReadBytesFailed, &[&e.to_string()]))?;
+        // バイナリモード：チャンクごとに遅延読み込み
+        use std::io::Read;
 
-        // 4KBチャンクに分割
         const CHUNK_SIZE: usize = 4096;
-        let chunks: Vec<Vec<u8>> = bytes
-            .chunks(CHUNK_SIZE)
-            .map(|chunk| chunk.to_vec())
-            .collect();
-
-        let index = Arc::new(RwLock::new(0));
+        let response = Arc::new(parking_lot::Mutex::new(response));
 
         let stream = Stream {
             next_fn: Box::new(move || {
-                let mut idx = index.write();
-                if *idx < chunks.len() {
-                    let chunk = &chunks[*idx];
-                    *idx += 1;
-                    // バイト配列をIntegerのVectorに変換
-                    let bytes: im::Vector<Value> =
-                        chunk.iter().map(|&b| Value::Integer(b as i64)).collect();
-                    Some(Value::Vector(bytes))
-                } else {
-                    None
+                let mut resp = response.lock();
+                let mut buffer = vec![0u8; CHUNK_SIZE];
+
+                match resp.read(&mut buffer) {
+                    Ok(0) => None, // EOF
+                    Ok(n) => {
+                        buffer.truncate(n);
+                        // バイト配列をIntegerのVectorに変換
+                        let bytes: im::Vector<Value> =
+                            buffer.iter().map(|&b| Value::Integer(b as i64)).collect();
+                        Some(Value::Vector(bytes))
+                    }
+                    Err(_) => None, // エラー時はストリーム終了
                 }
             }),
         };
 
         Ok(Value::Stream(Arc::new(RwLock::new(stream))))
     } else {
-        // テキストモード：行ごと
-        let body = response
-            .text()
-            .map_err(|e| fmt_msg(MsgKey::HttpStreamReadBodyFailed, &[&e.to_string()]))?;
+        // テキストモード：行ごとに遅延読み込み
+        use std::io::BufRead;
 
-        // 行ごとに分割してストリームに変換
-        let lines: Vec<String> = body.lines().map(|s| s.to_string()).collect();
-        let index = Arc::new(RwLock::new(0));
+        let reader = std::io::BufReader::new(response);
+        let lines = Arc::new(parking_lot::Mutex::new(reader.lines()));
 
         let stream = Stream {
             next_fn: Box::new(move || {
-                let mut idx = index.write();
-                if *idx < lines.len() {
-                    let line = lines[*idx].clone();
-                    *idx += 1;
-                    Some(Value::String(line))
-                } else {
-                    None
-                }
+                let mut lines_iter = lines.lock();
+                lines_iter
+                    .next()
+                    .and_then(|result| result.ok().map(Value::String))
             }),
         };
 

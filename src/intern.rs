@@ -136,7 +136,11 @@ static KEYWORD_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
 /// 既に同じ文字列がインターンテーブルにあれば、それを返す。
 /// なければ新規にインターンして返す。
 pub fn intern_symbol(s: &str) -> Arc<str> {
-    // entry APIで1回のアクセスに最適化（get→insert の2段階→1回）
+    // 高速パス: 既存エントリをチェック（String 確保なし）
+    if let Some(entry) = SYMBOL_INTERN.get(s) {
+        return entry.value().clone();
+    }
+    // スローパス: なければ insert（このときのみ String 確保）
     SYMBOL_INTERN
         .entry(s.to_string())
         .or_insert_with(|| Arc::from(s))
@@ -148,7 +152,11 @@ pub fn intern_symbol(s: &str) -> Arc<str> {
 /// 既に同じ文字列がインターンテーブルにあれば、それを返す。
 /// なければ新規にインターンして返す。
 pub fn intern_keyword(s: &str) -> Arc<str> {
-    // entry APIで1回のアクセスに最適化（get→insert の2段階→1回）
+    // 高速パス: 既存エントリをチェック（String 確保なし）
+    if let Some(entry) = KEYWORD_INTERN.get(s) {
+        return entry.value().clone();
+    }
+    // スローパス: なければ insert（このときのみ String 確保）
     KEYWORD_INTERN
         .entry(s.to_string())
         .or_insert_with(|| Arc::from(s))
