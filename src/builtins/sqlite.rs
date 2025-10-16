@@ -127,7 +127,7 @@ impl DbConnection for SqliteConnection {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let conn = self.conn.lock();
         let mut stmt = conn
-            .prepare(sql)
+            .prepare_cached(sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
@@ -154,7 +154,7 @@ impl DbConnection for SqliteConnection {
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let conn = self.conn.lock();
         let mut stmt = conn
-            .prepare(sql)
+            .prepare_cached(sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
@@ -459,7 +459,7 @@ impl DbTransaction for SqliteTransaction {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let conn = self.conn.lock();
         let mut stmt = conn
-            .prepare(sql)
+            .prepare_cached(sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
@@ -489,7 +489,7 @@ impl DbTransaction for SqliteTransaction {
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let conn = self.conn.lock();
         let mut stmt = conn
-            .prepare(sql)
+            .prepare_cached(sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
 
         // パラメータをrusqliteの形式に変換
