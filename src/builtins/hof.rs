@@ -15,12 +15,13 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut results = im::Vector::new();
+            // Vec一時利用でwith_capacity最適化→im::Vectorへ変換
+            let mut results = Vec::with_capacity(items.len());
             for item in items {
                 let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
-                results.push_back(result);
+                results.push(result);
             }
-            Ok(Value::List(results))
+            Ok(Value::List(results.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
@@ -111,7 +112,10 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     match collection {
         Value::List(items) | Value::Vector(items) => {
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
-            let items_vec: Vec<Value> = items.iter().cloned().collect();
+            let mut items_vec = Vec::with_capacity(items.len());
+            for item in items.iter() {
+                items_vec.push(item.clone());
+            }
 
             // すべての関数を並列処理（Evaluatorが&selfなので複数スレッドで共有可能）
             let results: Result<Vec<_>, _> = items_vec
@@ -148,7 +152,10 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
     match collection {
         Value::List(items) | Value::Vector(items) => {
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
-            let items_vec: Vec<Value> = items.iter().cloned().collect();
+            let mut items_vec = Vec::with_capacity(items.len());
+            for item in items.iter() {
+                items_vec.push(item.clone());
+            }
 
             // 並列でフィルタリング
             let results: Result<Vec<_>, _> = items_vec
@@ -197,7 +204,10 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
             }
 
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
-            let items_vec: Vec<Value> = items.iter().cloned().collect();
+            let mut items_vec = Vec::with_capacity(items.len());
+            for item in items.iter() {
+                items_vec.push(item.clone());
+            }
 
             // 並列reduce
             items_vec
@@ -229,18 +239,20 @@ pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut truthy = im::Vector::new();
-            let mut falsy = im::Vector::new();
+            // Vec一時利用（容量推定: 50:50分布と仮定）→im::Vectorへ変換
+            let half = items.len() / 2;
+            let mut truthy = Vec::with_capacity(half);
+            let mut falsy = Vec::with_capacity(half);
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 if result.is_truthy() {
-                    truthy.push_back(item.clone());
+                    truthy.push(item.clone());
                 } else {
-                    falsy.push_back(item.clone());
+                    falsy.push(item.clone());
                 }
             }
             Ok(Value::Vector(
-                vec![Value::List(truthy), Value::List(falsy)].into(),
+                vec![Value::List(truthy.into()), Value::List(falsy.into())].into(),
             ))
         }
         _ => Err(fmt_msg(
@@ -261,8 +273,10 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // グループ数の推定: items.len() / 4（4個に1個が新しいグループと仮定）
+            let estimated_groups = (items.len() / 4).max(4);
             let mut groups: std::collections::HashMap<String, im::Vector<Value>> =
-                std::collections::HashMap::new();
+                std::collections::HashMap::with_capacity(estimated_groups);
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
                 let key_str = format!("{:?}", key);
@@ -297,7 +311,7 @@ pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
     match text {
         Value::String(s) => {
             let lines: Vec<&str> = s.lines().collect();
-            let mut results = Vec::new();
+            let mut results = Vec::with_capacity(lines.len());
             for line in lines {
                 let result = evaluator.apply_function(func, &[Value::String(line.to_string())])?;
                 if let Value::String(transformed) = result {
@@ -434,8 +448,9 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // true/falseの2値なので容量2で十分
             let mut counts: std::collections::HashMap<String, i64> =
-                std::collections::HashMap::new();
+                std::collections::HashMap::with_capacity(2);
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 let key = if result.is_truthy() { "true" } else { "false" };
