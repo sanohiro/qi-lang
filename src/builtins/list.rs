@@ -582,11 +582,12 @@ pub fn native_partition_by(
     match collection {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Ok(Value::List(Vec::new().into()));
+                return Ok(Value::List(im::Vector::new()));
             }
 
-            let mut result: Vec<Value> = Vec::new();
-            let mut current_group: Vec<Value> = Vec::new();
+            // im::Vector直接構築（中間Vec排除）
+            let mut result = im::Vector::new();
+            let mut current_group = im::Vector::new();
             let mut last_pred_result: Option<Value> = None;
 
             for item in items {
@@ -595,21 +596,21 @@ pub fn native_partition_by(
                 if let Some(ref last) = last_pred_result {
                     // 述語の結果が変わったら新しいグループを開始
                     if !values_equal(last, &pred_result) && !current_group.is_empty() {
-                        result.push(Value::List(current_group.clone().into()));
-                        current_group.clear();
+                        result.push_back(Value::List(current_group.clone()));
+                        current_group = im::Vector::new();
                     }
                 }
 
-                current_group.push(item.clone());
+                current_group.push_back(item.clone());
                 last_pred_result = Some(pred_result);
             }
 
             // 最後のグループを追加
             if !current_group.is_empty() {
-                result.push(Value::List(current_group.into()));
+                result.push_back(Value::List(current_group));
             }
 
-            Ok(Value::List(result.into()))
+            Ok(Value::List(result))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -664,14 +665,15 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let result: Vec<Value> = collection
+    // im::Vector直接構築（中間Vec排除）
+    let result: im::Vector<Value> = collection
         .iter()
         .enumerate()
         .filter(|(i, _)| i % n == 0)
         .map(|(_, v)| v.clone())
         .collect();
 
-    Ok(Value::List(result.into()))
+    Ok(Value::List(result))
 }
 
 /// keep - nilを除外してmap
@@ -694,15 +696,16 @@ pub fn native_keep(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
         }
     };
 
-    let mut result: Vec<Value> = Vec::new();
+    // im::Vector直接構築（中間Vec排除）
+    let mut result = im::Vector::new();
     for item in collection {
         let val = evaluator.apply_function(func, std::slice::from_ref(item))?;
         if !matches!(val, Value::Nil) {
-            result.push(val);
+            result.push_back(val);
         }
     }
 
-    Ok(Value::List(result.into()))
+    Ok(Value::List(result))
 }
 
 /// dedupe - 連続する重複を除去
@@ -717,24 +720,25 @@ pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
     };
 
     if collection.is_empty() {
-        return Ok(Value::List(Vec::new().into()));
+        return Ok(Value::List(im::Vector::new()));
     }
 
-    let mut result: Vec<Value> = Vec::new();
+    // im::Vector直接構築（中間Vec排除）
+    let mut result = im::Vector::new();
     let mut last: Option<&Value> = None;
 
     for item in collection {
         if let Some(prev) = last {
             if !values_equal(prev, item) {
-                result.push(item.clone());
+                result.push_back(item.clone());
             }
         } else {
-            result.push(item.clone());
+            result.push_back(item.clone());
         }
         last = Some(item);
     }
 
-    Ok(Value::List(result.into()))
+    Ok(Value::List(result))
 }
 
 /// drop-last - 最後のn要素を削除
@@ -777,8 +781,9 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
         0
     };
 
-    let result: Vec<Value> = collection.iter().take(take_count).cloned().collect();
-    Ok(Value::List(result.into()))
+    // im::Vector直接構築（中間Vec排除）
+    let result: im::Vector<Value> = collection.iter().take(take_count).cloned().collect();
+    Ok(Value::List(result))
 }
 
 // ========================================
