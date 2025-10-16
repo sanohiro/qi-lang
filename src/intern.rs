@@ -14,8 +14,66 @@ static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
     let map = DashMap::new();
     // 頻出シンボルを事前インターン（評価器で頻繁に使われるもの）
     for s in [
-        "print", "list", "number?", "fn?", "map", "filter", "reduce", "get", "assoc", "+", "-",
-        "*", "/", "=", "<", ">",
+        // 基本演算子
+        "print",
+        "println",
+        "list",
+        "vector",
+        "map",
+        "filter",
+        "reduce",
+        "get",
+        "assoc",
+        "+",
+        "-",
+        "*",
+        "/",
+        "=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "not=",
+        // 型判定
+        "number?",
+        "fn?",
+        "string?",
+        "list?",
+        "vector?",
+        "map?",
+        "nil?",
+        "empty?",
+        // リスト操作
+        "first",
+        "rest",
+        "cons",
+        "concat",
+        "take",
+        "drop",
+        "count",
+        "nth",
+        // 高階関数
+        "apply",
+        "partial",
+        "comp",
+        "complement",
+        "juxt",
+        // 制御構造
+        "if",
+        "do",
+        "let",
+        "fn",
+        "def",
+        "defn",
+        "loop",
+        "recur",
+        // 並行処理
+        "go",
+        "chan",
+        "<!",
+        ">!",
+        "close!",
+        "thread",
     ] {
         map.insert(s.to_string(), Arc::from(s));
     }
@@ -27,7 +85,46 @@ static KEYWORD_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
     let map = DashMap::new();
     // 頻出キーワードを事前インターン（Tryやレスポンスでよく使われるもの）
     for k in [
-        "ok", "error", "status", "body", "headers", "name", "value", "id", "type", "message",
+        // エラー・結果
+        "ok",
+        "error",
+        "status",
+        "message",
+        // HTTP/API
+        "body",
+        "headers",
+        "method",
+        "path",
+        "query",
+        "params",
+        "data",
+        "response",
+        "request",
+        // データ構造の共通フィールド
+        "name",
+        "value",
+        "id",
+        "type",
+        "title",
+        "description",
+        // 日時・状態
+        "created",
+        "updated",
+        "timestamp",
+        "date",
+        "time",
+        // データベース
+        "table",
+        "column",
+        "row",
+        "where",
+        "limit",
+        "offset",
+        // ユーザー・認証
+        "user",
+        "email",
+        "password",
+        "token",
     ] {
         map.insert(k.to_string(), Arc::from(k));
     }
