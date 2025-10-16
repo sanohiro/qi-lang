@@ -134,7 +134,9 @@ impl Lexer {
 
     fn read_string(&mut self) -> Result<String, String> {
         self.advance(); // 先頭の "
-        let mut result = String::new();
+                        // 32: 一般的な文字列リテラル（変数名、短いメッセージ等）の平均長
+                        // 例: "hello", "error message", "path/to/file" など
+        let mut result = String::with_capacity(32);
 
         while let Some(ch) = self.current() {
             if ch == '"' {
@@ -168,7 +170,9 @@ impl Lexer {
         self.advance(); // "
         self.advance(); // "
 
-        let mut result = String::new();
+        // 128: 複数行文字列は通常ドキュメントやテンプレートなので長め
+        // 例: docstring, SQLクエリ, HTMLテンプレート等
+        let mut result = String::with_capacity(128);
 
         while let Some(ch) = self.current() {
             // """ で終了チェック
@@ -202,8 +206,11 @@ impl Lexer {
     fn read_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
         self.advance(); // f
         self.advance(); // "
-        let mut parts = Vec::new();
-        let mut current_text = String::new();
+                        // 4: f-stringは通常 [Text, Code, Text, ...] のパターンで2-4個
+                        // 例: f"Hello {name}, you are {age} years old" → [Text, Code, Text, Code, Text]
+        let mut parts = Vec::with_capacity(4);
+        // 32: f-string内のテキスト部分は短いことが多い
+        let mut current_text = String::with_capacity(32);
 
         while let Some(ch) = self.current() {
             if ch == '"' {
@@ -221,7 +228,9 @@ impl Lexer {
                 }
                 // {}内のコードを読み取る
                 self.advance(); // {
-                let mut code = String::new();
+                                // 16: f-string内の式は通常短い（変数名や簡単な演算）
+                                // 例: {name}, {age + 1}, {user.name} など
+                let mut code = String::with_capacity(16);
                 let mut depth = 1;
                 while let Some(ch) = self.current() {
                     if ch == '{' {
@@ -275,8 +284,10 @@ impl Lexer {
         self.advance(); // "
         self.advance(); // "
 
-        let mut parts = Vec::new();
-        let mut current_text = String::new();
+        // 4: f-stringは通常 [Text, Code, Text, ...] のパターンで2-4個
+        let mut parts = Vec::with_capacity(4);
+        // 128: 複数行f-stringなので長め（テンプレート等）
+        let mut current_text = String::with_capacity(128);
 
         while let Some(ch) = self.current() {
             // """ で終了チェック
@@ -297,7 +308,9 @@ impl Lexer {
                 }
                 // {}内のコードを読み取る
                 self.advance(); // {
-                let mut code = String::new();
+                                // 16: f-string内の式は通常短い（変数名や簡単な演算）
+                                // 例: {name}, {age + 1}, {user.name} など
+                let mut code = String::with_capacity(16);
                 let mut depth = 1;
                 while let Some(ch) = self.current() {
                     if ch == '{' {
@@ -346,7 +359,9 @@ impl Lexer {
     }
 
     fn read_number(&mut self) -> Result<Token, String> {
-        let mut num_str = String::new();
+        // 16: 64bit整数の最大桁数は約20桁、浮動小数点数も同程度
+        // 例: 123, -456, 3.14159265358979, 9223372036854775807 (i64::MAX)
+        let mut num_str = String::with_capacity(16);
         let mut is_float = false;
 
         // 負号の処理
@@ -382,7 +397,9 @@ impl Lexer {
     }
 
     fn read_symbol_or_keyword(&mut self) -> Result<Token, String> {
-        let mut result = String::new();
+        // 16: 関数名・変数名は通常10-15文字程度
+        // 例: map, filter, reduce, define-function, http-get など
+        let mut result = String::with_capacity(16);
         let is_keyword = self.current() == Some(':');
 
         if is_keyword {
@@ -557,7 +574,11 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, String> {
-        let mut tokens = Vec::new();
+        // トークン数推定: 平均的なLispコードでは5文字に1トークン程度
+        // 例: "(defn add [a b] (+ a b))" → 20文字、7トークン（約1/3）
+        // 空白・改行を含めると約1/5になる。最小16を保証。
+        let estimated_tokens = (self.input.len() / 5).max(16);
+        let mut tokens = Vec::with_capacity(estimated_tokens);
         loop {
             let token = self.next_token()?;
             if token == Token::Eof {
