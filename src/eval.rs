@@ -971,7 +971,11 @@ impl Evaluator {
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
     pub fn apply_function(&self, func: &Value, args: &[Value]) -> Result<Value, String> {
-        // SmallVec を使用して少数引数の場合にヒープ確保を回避
+        // NativeFuncの場合は直接呼び出し（SmallVec変換をスキップして高速化）
+        if let Value::NativeFunc(nf) = func {
+            return (nf.func)(args);
+        }
+        // ユーザー定義関数の場合のみSmallVec変換
         self.apply_func(func, args.iter().cloned().collect())
     }
 
