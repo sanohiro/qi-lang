@@ -58,7 +58,10 @@ impl Parser {
     }
 
     pub fn parse_all(&mut self) -> Result<Vec<Expr>, String> {
-        let mut exprs = Vec::new();
+        // トークン数 / 8: トークン5個で1式（関数呼び出しの平均）、
+        // さらにネストを考慮すると約1/8が妥当
+        let estimated_exprs = (self.tokens.len() / 8).max(4);
+        let mut exprs = Vec::with_capacity(estimated_exprs);
         while self.current().is_some() {
             exprs.push(self.parse_expr()?);
         }
@@ -316,7 +319,8 @@ impl Parser {
 
         // 通常の関数呼び出し
         let func = Box::new(first_expr);
-        let mut args = Vec::new();
+        // 4: 関数引数は通常2-4個（例: (f x y), (map fn coll)）
+        let mut args = Vec::with_capacity(4);
 
         while self.current() != Some(&Token::RParen) {
             args.push(self.parse_expr()?);
@@ -364,7 +368,8 @@ impl Parser {
 
         // パラメータリストのパース
         self.expect(Token::LBracket)?;
-        let mut params = Vec::new();
+        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
         let mut is_variadic = false;
 
         while self.current() != Some(&Token::RBracket) {
@@ -441,7 +446,8 @@ impl Parser {
 
         // パラメータリストのパース
         self.expect(Token::LBracket)?;
-        let mut params = Vec::new();
+        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
         let mut is_variadic = false;
 
         while self.current() != Some(&Token::RBracket) {
@@ -501,7 +507,8 @@ impl Parser {
 
         // パラメータリストのパース
         self.expect(Token::LBracket)?;
-        let mut params = Vec::new();
+        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
         let mut is_variadic = false;
 
         while self.current() != Some(&Token::RBracket) {
@@ -548,7 +555,8 @@ impl Parser {
     fn parse_fn_param_vector(&mut self) -> Result<crate::value::FnParam, String> {
         self.expect(Token::LBracket)?;
 
-        let mut params = Vec::new();
+        // 4: ベクタ分解パターンは通常2-4個の要素（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
         let mut rest = None;
 
         while self.current() != Some(&Token::RBracket) {
@@ -585,7 +593,8 @@ impl Parser {
     fn parse_fn_param_map(&mut self) -> Result<crate::value::FnParam, String> {
         self.expect(Token::LBrace)?;
 
-        let mut pairs = Vec::new();
+        // 4: マップ分解パターンは通常2-4個のキー（例: {:x a :y b}）
+        let mut pairs = Vec::with_capacity(4);
         let mut as_var = None;
 
         while self.current() != Some(&Token::RBrace) {
@@ -639,7 +648,8 @@ impl Parser {
 
         // 束縛のパース
         self.expect(Token::LBracket)?;
-        let mut bindings = Vec::new();
+        // 4: let束縛は通常2-4個のペア（例: [x 1 y 2]）
+        let mut bindings = Vec::with_capacity(4);
 
         while self.current() != Some(&Token::RBracket) {
             // パターンをパース（シンボル、ベクタ分解、またはマップ分解）
@@ -692,7 +702,8 @@ impl Parser {
     fn parse_do(&mut self) -> Result<Expr, String> {
         self.advance(); // 'do'をスキップ
 
-        let mut exprs = Vec::new();
+        // 16: do式は副作用処理で長くなりがち（I/O、デバッグ等）
+        let mut exprs = Vec::with_capacity(16);
         while self.current() != Some(&Token::RParen) {
             exprs.push(self.parse_expr()?);
         }
@@ -705,7 +716,8 @@ impl Parser {
     fn parse_vector(&mut self) -> Result<Expr, String> {
         self.expect(Token::LBracket)?;
 
-        let mut items = Vec::new();
+        // 8: ベクタリテラルは通常4-8個の要素（例: [1 2 3 4 5]）
+        let mut items = Vec::with_capacity(8);
         while self.current() != Some(&Token::RBracket) {
             items.push(self.parse_expr()?);
         }
@@ -718,7 +730,8 @@ impl Parser {
     fn parse_map(&mut self) -> Result<Expr, String> {
         self.expect(Token::LBrace)?;
 
-        let mut pairs = Vec::new();
+        // 8: マップリテラルは通常2-8ペア（例: {:x 1 :y 2 :z 3}）
+        let mut pairs = Vec::with_capacity(8);
         while self.current() != Some(&Token::RBrace) {
             let key = self.parse_expr()?;
             let value = self.parse_expr()?;
@@ -746,7 +759,8 @@ impl Parser {
         let expr = Box::new(self.parse_expr()?);
 
         // アームのパース
-        let mut arms = Vec::new();
+        // 4: matchアームは通常2-5個（例: 値マッチ、デフォルト等）
+        let mut arms = Vec::with_capacity(4);
         while self.current() != Some(&Token::RParen) {
             let pattern = self.parse_pattern()?;
 
@@ -803,7 +817,8 @@ impl Parser {
 
         // 束縛のパース [var1 val1 var2 val2 ...]
         self.expect(Token::LBracket)?;
-        let mut bindings = Vec::new();
+        // 4: loop束縛は通常2-4個のペア（例: [i 0 acc []]）
+        let mut bindings = Vec::with_capacity(4);
 
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
@@ -828,7 +843,8 @@ impl Parser {
     fn parse_recur(&mut self) -> Result<Expr, String> {
         self.advance(); // 'recur'をスキップ
 
-        let mut args = Vec::new();
+        // 4: recur引数はloop束縛と同数（通常2-4個）
+        let mut args = Vec::with_capacity(4);
         while self.current() != Some(&Token::RParen) {
             args.push(self.parse_expr()?);
         }
@@ -851,7 +867,8 @@ impl Parser {
 
         // パラメータリスト
         self.expect(Token::LBracket)?;
-        let mut params = Vec::new();
+        // 4: マクロパラメータは通常2-4個（例: [name body]）
+        let mut params = Vec::with_capacity(4);
         let mut is_variadic = false;
 
         while self.current() != Some(&Token::RBracket) {
@@ -1126,7 +1143,8 @@ impl Parser {
     fn parse_vector_pattern(&mut self) -> Result<Pattern, String> {
         self.expect(Token::LBracket)?;
 
-        let mut patterns = Vec::new();
+        // 4: ベクタパターンは通常2-4個の要素（例: [x y], [a b c]）
+        let mut patterns = Vec::with_capacity(4);
         let mut rest = None;
 
         while self.current() != Some(&Token::RBracket) {
@@ -1161,7 +1179,8 @@ impl Parser {
     fn parse_map_pattern(&mut self) -> Result<Pattern, String> {
         self.expect(Token::LBrace)?;
 
-        let mut pairs = Vec::new();
+        // 4: マップパターンは通常2-4個のキー（例: {:x a :y b}）
+        let mut pairs = Vec::with_capacity(4);
         let mut as_var = None;
 
         while self.current() != Some(&Token::RBrace) {
@@ -1240,7 +1259,8 @@ impl Parser {
     fn parse_export(&mut self) -> Result<Expr, String> {
         self.advance(); // 'export'をスキップ
 
-        let mut symbols = Vec::new();
+        // 8: エクスポートシンボルは通常2-8個（モジュールの公開関数）
+        let mut symbols = Vec::with_capacity(8);
         while self.current() != Some(&Token::RParen) {
             match self.current() {
                 Some(Token::Symbol(s)) => {
@@ -1274,7 +1294,8 @@ impl Parser {
                 self.advance();
                 // [sym1 sym2 ...]
                 self.expect(Token::LBracket)?;
-                let mut symbols = Vec::new();
+                // 8: :onlyで指定するシンボルは通常2-8個
+                let mut symbols = Vec::with_capacity(8);
                 while self.current() != Some(&Token::RBracket) {
                     match self.current() {
                         Some(Token::Symbol(s)) => {
