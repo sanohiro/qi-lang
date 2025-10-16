@@ -10,27 +10,25 @@ use std::sync::Arc;
 
 /// 環境から変数名の候補を取得
 fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize) -> Vec<String> {
-    let mut candidates: Vec<(String, usize)> = env
-        .bindings()
-        .filter_map(|(name, _)| {
-            let distance = strsim::levenshtein(target, name);
-            if distance <= max_distance {
-                Some((name.clone(), distance))
-            } else {
-                None
-            }
-        })
-        .collect();
+    // limit.max(8): 通常limit=3だが、フィルタ前の候補は8個程度と推定
+    let mut candidates = Vec::with_capacity(limit.max(8));
+    for (name, _) in env.bindings() {
+        let distance = strsim::levenshtein(target, name);
+        if distance <= max_distance {
+            candidates.push((name.clone(), distance));
+        }
+    }
 
     // 距離でソート
     candidates.sort_by_key(|(_, dist)| *dist);
 
     // 上位のみ取得
-    candidates
-        .into_iter()
-        .take(limit)
-        .map(|(name, _)| name)
-        .collect()
+    // limit: 通常3個まで取得
+    let mut results = Vec::with_capacity(limit);
+    for (name, _) in candidates.into_iter().take(limit) {
+        results.push(name);
+    }
+    results
 }
 
 #[derive(Clone)]
@@ -275,13 +273,15 @@ impl Evaluator {
                 let result = match self.eval_with_env(expr, env.clone()) {
                     Ok(value) => {
                         // {:ok value}
-                        let mut map = HashMap::new();
+                        // 1: okキーのみ（容量1で十分）
+                        let mut map = HashMap::with_capacity(1);
                         map.insert("ok".to_string(), value);
                         Ok(Value::Map(map.into()))
                     }
                     Err(e) => {
                         // {:error e}
-                        let mut map = HashMap::new();
+                        // 1: errorキーのみ（容量1で十分）
+                        let mut map = HashMap::with_capacity(1);
                         map.insert("error".to_string(), Value::String(e));
                         Ok(Value::Map(map.into()))
                     }
@@ -1209,10 +1209,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["sort-by"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::sort_by(&vals, self)
     }
 
@@ -1221,10 +1222,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["chunk"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::list::native_chunk(&vals)
     }
 
@@ -1233,10 +1235,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["count-by"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::count_by(&vals, self)
     }
 
@@ -1245,10 +1248,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["max-by"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::max_by(&vals, self)
     }
 
@@ -1257,10 +1261,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["min-by"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::min_by(&vals, self)
     }
 
@@ -1269,10 +1274,11 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["sum-by"]));
         }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
+        // 2: 引数の数が固定なのでwith_capacityで事前確保
+        let mut vals = Vec::with_capacity(args.len());
+        for arg in args {
+            vals.push(self.eval_with_env(arg, env.clone())?);
+        }
         builtins::sum_by(&vals, self)
     }
 

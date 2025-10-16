@@ -9,24 +9,41 @@
 use dashmap::DashMap;
 use std::sync::{Arc, LazyLock};
 
-/// グローバルなシンボルインターンテーブル
-static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(DashMap::new);
+/// グローバルなシンボルインターンテーブル（頻出シンボルを事前登録）
+static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
+    let map = DashMap::new();
+    // 頻出シンボルを事前インターン（評価器で頻繁に使われるもの）
+    for s in [
+        "print", "list", "number?", "fn?", "map", "filter", "reduce", "get", "assoc", "+", "-",
+        "*", "/", "=", "<", ">",
+    ] {
+        map.insert(s.to_string(), Arc::from(s));
+    }
+    map
+});
 
-/// グローバルなキーワードインターンテーブル
-static KEYWORD_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(DashMap::new);
+/// グローバルなキーワードインターンテーブル（頻出キーワードを事前登録）
+static KEYWORD_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
+    let map = DashMap::new();
+    // 頻出キーワードを事前インターン（Tryやレスポンスでよく使われるもの）
+    for k in [
+        "ok", "error", "status", "body", "headers", "name", "value", "id", "type", "message",
+    ] {
+        map.insert(k.to_string(), Arc::from(k));
+    }
+    map
+});
 
 /// シンボル文字列をインターンする
 ///
 /// 既に同じ文字列がインターンテーブルにあれば、それを返す。
 /// なければ新規にインターンして返す。
 pub fn intern_symbol(s: &str) -> Arc<str> {
-    if let Some(interned) = SYMBOL_INTERN.get(s) {
-        Arc::clone(interned.value())
-    } else {
-        let arc_str: Arc<str> = Arc::from(s);
-        SYMBOL_INTERN.insert(s.to_string(), Arc::clone(&arc_str));
-        arc_str
-    }
+    // entry APIで1回のアクセスに最適化（get→insert の2段階→1回）
+    SYMBOL_INTERN
+        .entry(s.to_string())
+        .or_insert_with(|| Arc::from(s))
+        .clone()
 }
 
 /// キーワード文字列をインターンする
@@ -34,13 +51,11 @@ pub fn intern_symbol(s: &str) -> Arc<str> {
 /// 既に同じ文字列がインターンテーブルにあれば、それを返す。
 /// なければ新規にインターンして返す。
 pub fn intern_keyword(s: &str) -> Arc<str> {
-    if let Some(interned) = KEYWORD_INTERN.get(s) {
-        Arc::clone(interned.value())
-    } else {
-        let arc_str: Arc<str> = Arc::from(s);
-        KEYWORD_INTERN.insert(s.to_string(), Arc::clone(&arc_str));
-        arc_str
-    }
+    // entry APIで1回のアクセスに最適化（get→insert の2段階→1回）
+    KEYWORD_INTERN
+        .entry(s.to_string())
+        .or_insert_with(|| Arc::from(s))
+        .clone()
 }
 
 /// インターンテーブルの統計情報を取得（デバッグ用）
