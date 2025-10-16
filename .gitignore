@@ -18,6 +18,9 @@ Thumbs.db
 # Test files
 test_repl.txt
 
+# Benchmark results
+benchmark_results.txt
+
 # ai doc
 chat
 reports
