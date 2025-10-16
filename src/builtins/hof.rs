@@ -280,10 +280,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
                 let key_str = format!("{:?}", key);
-                groups
-                    .entry(key_str)
-                    .or_insert_with(im::Vector::new)
-                    .push_back(item.clone());
+                groups.entry(key_str).or_default().push_back(item.clone());
             }
 
             let mut result = im::HashMap::new();

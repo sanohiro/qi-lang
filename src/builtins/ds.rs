@@ -45,8 +45,8 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
     new_items.push_back(args[1].clone());
 
     let mut new_map = queue.clone();
-    new_map.insert("items".to_string(), Value::List(new_items.into()));
-    Ok(Value::Map(new_map.into()))
+    new_map.insert("items".to_string(), Value::List(new_items));
+    Ok(Value::Map(new_map))
 }
 
 /// queue/dequeue - キューから要素を取り出し（先頭）
@@ -82,7 +82,7 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
     // {:value item, :queue new-queue} を返す
     let mut result = HashMap::new();
     result.insert("value".to_string(), item);
-    result.insert("queue".to_string(), Value::Map(new_map.into()));
+    result.insert("queue".to_string(), Value::Map(new_map));
     Ok(Value::Map(result.into()))
 }
 
@@ -199,8 +199,8 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
     new_items.append(items);
 
     let mut new_map = stack.clone();
-    new_map.insert("items".to_string(), Value::List(new_items.into()));
-    Ok(Value::Map(new_map.into()))
+    new_map.insert("items".to_string(), Value::List(new_items));
+    Ok(Value::Map(new_map))
 }
 
 /// stack/pop - スタックから要素を取り出し
@@ -235,7 +235,7 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
 
     let mut result = HashMap::new();
     result.insert("value".to_string(), item);
-    result.insert("stack".to_string(), Value::Map(new_map.into()));
+    result.insert("stack".to_string(), Value::Map(new_map));
     Ok(Value::Map(result.into()))
 }
 

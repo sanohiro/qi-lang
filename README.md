@@ -142,12 +142,13 @@ Qiは**2層モジュール設計**を採用しています：
 - **stream**: ストリーム処理 - `stream/map`, `stream/filter`
 - **async**: 並行処理（高度）- `async/await`, `async/all`
 
-詳細は [SPEC.md](SPEC.md) を参照してください。
+詳細な実装については [IMPLEMENTATION.md](IMPLEMENTATION.md) を参照してください。
 
 ## ドキュメント
 
-- [完全な言語仕様](SPEC.md) - 詳細な文法、組み込み関数、モジュールシステム
-- [実装チュートリアル](TUTORIAL.md) - Rust、言語実装、Qi言語を同時に学ぶ
+- [実装詳細](IMPLEMENTATION.md) - 言語実装の詳細、アーキテクチャ、設計思想
+- [パフォーマンスガイド](PERFORMANCE.md) - 最適化の実績、ベストプラクティス、アンチパターン
+- [ロードマップ](ROADMAP.md) - 今後の開発計画と機能追加の予定
 - [実用例](examples/web-api/) - Web API、JSON処理、Railway Pipelineの実例 ⭐ NEW
 
 ## 実装例
@@ -308,7 +309,9 @@ finished in 0.05s
 
 ## 開発状況
 
-現在、言語仕様を策定中です。実装は未着手です。
+コア機能とパイプライン演算子、並行処理、テストフレームワークが実装済みです。Phase 1-21の最適化により40-50%のパフォーマンス改善を達成しました。
+
+詳細は [PERFORMANCE.md](PERFORMANCE.md) を参照してください。
 
 ## ライセンス
 

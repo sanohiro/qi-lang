@@ -1410,7 +1410,7 @@ mod tests {
             Expr::Def(name, value, is_private) => {
                 assert_eq!(name, "x");
                 assert_eq!(*value, Expr::Integer(42));
-                assert_eq!(is_private, false);
+                assert!(!is_private);
             }
             _ => panic!("Expected Def"),
         }
@@ -1422,7 +1422,7 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Def(name, value, is_private) => {
                 assert_eq!(name, "helper");
-                assert_eq!(is_private, true);
+                assert!(is_private);
                 match *value {
                     Expr::Fn { .. } => {}
                     _ => panic!("Expected Fn inside Def"),
@@ -1442,7 +1442,7 @@ mod tests {
                 match &exprs[0] {
                     Expr::Def(name, _, is_private) => {
                         assert!(name.starts_with("__doc__"));
-                        assert_eq!(*is_private, true);
+                        assert!(*is_private);
                     }
                     _ => panic!("Expected doc Def"),
                 }
@@ -1450,7 +1450,7 @@ mod tests {
                 match &exprs[1] {
                     Expr::Def(name, _, is_private) => {
                         assert_eq!(name, "helper");
-                        assert_eq!(*is_private, true);
+                        assert!(*is_private);
                     }
                     _ => panic!("Expected fn Def"),
                 }

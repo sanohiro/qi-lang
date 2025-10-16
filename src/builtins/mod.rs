@@ -187,14 +187,14 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     // Coreモジュール関数の登録（FUNCTIONS配列を使用）
     // ========================================
     for funcs in CORE_MODULES {
-        register_functions(&mut env_write, *funcs);
+        register_functions(&mut env_write, funcs);
     }
 
     // ========================================
     // 標準専門モジュール（Evaluator不要）
     // ========================================
     for funcs in STANDARD_MODULES {
-        register_functions(&mut env_write, *funcs);
+        register_functions(&mut env_write, funcs);
     }
 
     // Feature-gated専門モジュール（Evaluator不要）

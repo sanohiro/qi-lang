@@ -180,10 +180,7 @@ impl Evaluator {
                     if let Some(existing) = env.read().get(name) {
                         match existing {
                             Value::NativeFunc(nf) => {
-                                eprintln!(
-                                    "{}",
-                                    fmt_msg(MsgKey::RedefineBuiltin, &[name, &nf.name])
-                                );
+                                eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, nf.name]));
                             }
                             Value::Function(_) | Value::Macro(_) => {
                                 eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
@@ -1632,701 +1629,6 @@ fn native_is_fn(args: &[Value]) -> Result<Value, String> {
     )))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::Parser;
-
-    fn eval_str(s: &str) -> Result<Value, String> {
-        crate::i18n::init(); // i18nシステムを初期化
-        let evaluator = Evaluator::new();
-        let mut parser = Parser::new(s)?;
-        let exprs = parser.parse_all()?;
-        let mut result = Value::Nil;
-        for expr in exprs {
-            result = evaluator.eval(&expr)?;
-        }
-        Ok(result)
-    }
-
-    #[test]
-    fn test_integers() {
-        assert_eq!(eval_str("42").unwrap(), Value::Integer(42));
-    }
-
-    #[test]
-    fn test_add() {
-        assert_eq!(eval_str("(+ 1 2 3)").unwrap(), Value::Integer(6));
-    }
-
-    #[test]
-    fn test_sub() {
-        assert_eq!(eval_str("(- 10 3)").unwrap(), Value::Integer(7));
-    }
-
-    #[test]
-    fn test_mul() {
-        assert_eq!(eval_str("(* 2 3 4)").unwrap(), Value::Integer(24));
-    }
-
-    #[test]
-    fn test_nested() {
-        assert_eq!(
-            eval_str("(+ (* 2 3) (- 10 5))").unwrap(),
-            Value::Integer(11)
-        );
-    }
-
-    #[test]
-    fn test_if() {
-        assert_eq!(eval_str("(if true 1 2)").unwrap(), Value::Integer(1));
-        assert_eq!(eval_str("(if false 1 2)").unwrap(), Value::Integer(2));
-    }
-
-    #[test]
-    fn test_fn() {
-        assert_eq!(eval_str("((fn [x] (+ x 1)) 5)").unwrap(), Value::Integer(6));
-    }
-
-    #[test]
-    fn test_let() {
-        assert_eq!(
-            eval_str("(let [x 10 y 20] (+ x y))").unwrap(),
-            Value::Integer(30)
-        );
-    }
-
-    #[test]
-    fn test_match_literal() {
-        // 値のマッチ
-        assert_eq!(
-            eval_str("(match 0 0 -> 42 1 -> 99)").unwrap(),
-            Value::Integer(42)
-        );
-        assert_eq!(
-            eval_str("(match 1 0 -> 42 1 -> 99)").unwrap(),
-            Value::Integer(99)
-        );
-    }
-
-    #[test]
-    fn test_match_var() {
-        // 変数のバインディング
-        assert_eq!(
-            eval_str("(match 10 n -> (+ n 5))").unwrap(),
-            Value::Integer(15)
-        );
-    }
-
-    #[test]
-    fn test_match_wildcard() {
-        // ワイルドカード
-        assert_eq!(
-            eval_str("(match 42 0 -> 1 1 -> 2 _ -> 99)").unwrap(),
-            Value::Integer(99)
-        );
-    }
-
-    #[test]
-    fn test_match_nil_bool() {
-        // nil/boolの区別
-        assert_eq!(
-            eval_str("(match nil nil -> 1 false -> 2 _ -> 3)").unwrap(),
-            Value::Integer(1)
-        );
-        assert_eq!(
-            eval_str("(match false nil -> 1 false -> 2 _ -> 3)").unwrap(),
-            Value::Integer(2)
-        );
-        assert_eq!(
-            eval_str("(match true nil -> 1 false -> 2 _ -> 3)").unwrap(),
-            Value::Integer(3)
-        );
-    }
-
-    #[test]
-    fn test_match_vector() {
-        // ベクタのマッチ
-        assert_eq!(
-            eval_str("(match [1 2] [x y] -> (+ x y))").unwrap(),
-            Value::Integer(3)
-        );
-    }
-
-    #[test]
-    fn test_match_rest() {
-        // ...restパターンのテスト
-        assert_eq!(
-            eval_str("(match [1 2 3 4 5] [x ...rest] -> rest)").unwrap(),
-            Value::List(
-                vec![
-                    Value::Integer(2),
-                    Value::Integer(3),
-                    Value::Integer(4),
-                    Value::Integer(5)
-                ]
-                .into()
-            )
-        );
-        // 1要素の場合
-        assert_eq!(
-            eval_str("(match [1] [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![].into())
-        );
-        // 空リストの場合
-        assert_eq!(
-            eval_str("(match [] [...rest] -> rest)").unwrap(),
-            Value::List(vec![].into())
-        );
-        // 複数要素を取得してからrest
-        assert_eq!(
-            eval_str("(match [10 20 30] [a b ...rest] -> rest)").unwrap(),
-            Value::List(vec![Value::Integer(30)].into())
-        );
-        // リストでも動作
-        assert_eq!(
-            eval_str("(match (list 1 2 3) [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![Value::Integer(2), Value::Integer(3)].into())
-        );
-    }
-
-    #[test]
-    fn test_match_guard() {
-        // ガード条件
-        assert_eq!(
-            eval_str("(match 5 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
-            Value::Integer(1)
-        );
-        assert_eq!(
-            eval_str("(match -5 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
-            Value::Integer(-1)
-        );
-        assert_eq!(
-            eval_str("(match 0 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
-            Value::Integer(0)
-        );
-    }
-
-    #[test]
-    fn test_pipe_simple() {
-        // 単純なパイプライン: (10 |> inc) は (inc 10) と同じ
-        assert_eq!(
-            eval_str("(def inc (fn [x] (+ x 1))) (10 |> inc)").unwrap(),
-            Value::Integer(11)
-        );
-    }
-
-    #[test]
-    fn test_pipe_chain() {
-        // パイプラインのチェーン: (1 |> inc |> inc) は 3
-        assert_eq!(
-            eval_str("(def inc (fn [x] (+ x 1))) (1 |> inc |> inc)").unwrap(),
-            Value::Integer(3)
-        );
-    }
-
-    #[test]
-    fn test_pipe_with_args() {
-        // 引数ありの関数: (10 |> (+ 5)) は (+ 5 10) = 15
-        assert_eq!(eval_str("(10 |> (+ 5))").unwrap(), Value::Integer(15));
-    }
-
-    #[test]
-    fn test_pipe_complex() {
-        // 複雑なパイプライン: (1 |> (+ 2) |> (* 3)) は ((* 3 (+ 2 1))) = 9
-        assert_eq!(
-            eval_str("(1 |> (+ 2) |> (* 3))").unwrap(),
-            Value::Integer(9)
-        );
-    }
-
-    #[test]
-    fn test_map() {
-        // mapのテスト
-        assert_eq!(
-            eval_str("(map (fn [x] (* x 2)) [1 2 3])").unwrap(),
-            Value::List(vec![Value::Integer(2), Value::Integer(4), Value::Integer(6)].into())
-        );
-    }
-
-    #[test]
-    fn test_filter() {
-        // filterのテスト
-        assert_eq!(
-            eval_str("(filter (fn [x] (> x 2)) [1 2 3 4 5])").unwrap(),
-            Value::List(vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)].into())
-        );
-    }
-
-    #[test]
-    fn test_reduce() {
-        // reduceのテスト（初期値あり）
-        assert_eq!(
-            eval_str("(reduce + 0 [1 2 3 4])").unwrap(),
-            Value::Integer(10)
-        );
-        // reduceのテスト（初期値なし）
-        assert_eq!(
-            eval_str("(reduce + [1 2 3 4])").unwrap(),
-            Value::Integer(10)
-        );
-    }
-
-    #[test]
-    fn test_cons() {
-        // consのテスト
-        assert_eq!(
-            eval_str("(cons 1 (list 2 3))").unwrap(),
-            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
-        );
-        assert_eq!(
-            eval_str("(cons 1 nil)").unwrap(),
-            Value::List(vec![Value::Integer(1)].into())
-        );
-    }
-
-    #[test]
-    fn test_conj() {
-        // conjのテスト
-        assert_eq!(
-            eval_str("(conj [1 2] 3 4)").unwrap(),
-            Value::Vector(
-                vec![
-                    Value::Integer(1),
-                    Value::Integer(2),
-                    Value::Integer(3),
-                    Value::Integer(4)
-                ]
-                .into()
-            )
-        );
-        assert_eq!(
-            eval_str("(conj (list 1 2) 3)").unwrap(),
-            Value::List(vec![Value::Integer(3), Value::Integer(1), Value::Integer(2)].into())
-        );
-    }
-
-    #[test]
-    fn test_empty() {
-        // empty?のテスト
-        assert_eq!(eval_str("(empty? [])").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(empty? [1])").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(empty? nil)").unwrap(), Value::Bool(true));
-    }
-
-    #[test]
-    fn test_nil_q() {
-        // nil?のテスト
-        assert_eq!(eval_str("(nil? nil)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(nil? false)").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(nil? 0)").unwrap(), Value::Bool(false));
-    }
-
-    #[test]
-    fn test_str() {
-        // strのテスト
-        assert_eq!(
-            eval_str("(str \"hello\" \" \" \"world\")").unwrap(),
-            Value::String("hello world".to_string())
-        );
-        assert_eq!(
-            eval_str("(str \"count: \" 42)").unwrap(),
-            Value::String("count: 42".to_string())
-        );
-    }
-
-    #[test]
-    fn test_and() {
-        // andのテスト（短絡評価）
-        assert_eq!(eval_str("(and true true)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(and true false)").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(and false true)").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(and 1 2 3)").unwrap(), Value::Integer(3));
-        assert_eq!(eval_str("(and 1 nil 3)").unwrap(), Value::Nil);
-    }
-
-    #[test]
-    fn test_or() {
-        // orのテスト（短絡評価）
-        assert_eq!(eval_str("(or false false)").unwrap(), Value::Nil);
-        assert_eq!(eval_str("(or false true)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(or true false)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(or nil 2 3)").unwrap(), Value::Integer(2));
-    }
-
-    #[test]
-    fn test_not() {
-        // notのテスト
-        assert_eq!(eval_str("(not true)").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(not false)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(not nil)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(not 42)").unwrap(), Value::Bool(false));
-    }
-
-    #[test]
-    fn test_pipeline_with_builtins() {
-        // パイプラインと新しい組み込み関数の組み合わせ
-        assert_eq!(
-            eval_str("[1 2 3 4 5] |> (filter (fn [x] (> x 2))) |> (map (fn [x] (* x 2)))").unwrap(),
-            Value::List(vec![Value::Integer(6), Value::Integer(8), Value::Integer(10)].into())
-        );
-    }
-
-    #[test]
-    fn test_mod() {
-        // %（剰余）のテスト
-        assert_eq!(eval_str("(% 10 3)").unwrap(), Value::Integer(1));
-        assert_eq!(eval_str("(% 15 4)").unwrap(), Value::Integer(3));
-        assert_eq!(eval_str("(% 8 2)").unwrap(), Value::Integer(0));
-    }
-
-    #[test]
-    fn test_le() {
-        // <=のテスト
-        assert_eq!(eval_str("(<= 5 10)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(<= 10 10)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(<= 15 10)").unwrap(), Value::Bool(false));
-    }
-
-    #[test]
-    fn test_ge() {
-        // >=のテスト
-        assert_eq!(eval_str("(>= 10 5)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(>= 10 10)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(>= 5 10)").unwrap(), Value::Bool(false));
-    }
-
-    #[test]
-    fn test_ne() {
-        // !=のテスト
-        assert_eq!(eval_str("(!= 1 2)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(!= 1 1)").unwrap(), Value::Bool(false));
-        assert_eq!(eval_str("(!= nil false)").unwrap(), Value::Bool(true));
-    }
-
-    #[test]
-    fn test_quote() {
-        // quoteのテスト
-        assert_eq!(
-            eval_str("(quote x)").unwrap(),
-            Value::Symbol("x".to_string())
-        );
-        assert_eq!(eval_str("'x").unwrap(), Value::Symbol("x".to_string()));
-        assert_eq!(
-            eval_str("'(1 2 3)").unwrap(),
-            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
-        );
-        assert_eq!(
-            eval_str("'(+ 1 2)").unwrap(),
-            Value::List(
-                vec![
-                    Value::Symbol("+".to_string()),
-                    Value::Integer(1),
-                    Value::Integer(2)
-                ]
-                .into()
-            )
-        );
-    }
-
-    #[test]
-    fn test_even_with_mod() {
-        // %を使った偶数判定
-        assert_eq!(
-            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 4)").unwrap(),
-            Value::Bool(true)
-        );
-        assert_eq!(
-            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 5)").unwrap(),
-            Value::Bool(false)
-        );
-    }
-
-    #[test]
-    fn test_try_success() {
-        // 成功時は {:ok value}
-        let result = eval_str("(try (+ 1 2))").unwrap();
-        match result {
-            Value::Map(m) => {
-                assert_eq!(m.get("ok"), Some(&Value::Integer(3)));
-                assert_eq!(m.get("error"), None);
-            }
-            _ => panic!("Expected map"),
-        }
-    }
-
-    #[test]
-    fn test_try_error() {
-        // エラー時は {:error msg}
-        let result = eval_str("(try (/ 1 0))").unwrap();
-        match result {
-            Value::Map(m) => {
-                assert_eq!(m.get("ok"), None);
-                assert!(m.get("error").is_some());
-            }
-            _ => panic!("Expected map"),
-        }
-    }
-
-    #[test]
-    fn test_try_with_match() {
-        // tryとmatchの組み合わせ
-        let result = eval_str(
-            r#"
-            (match (try (+ 1 2))
-              {:ok result} -> result
-              {:error e} -> 0)
-            "#,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Integer(3));
-
-        let result = eval_str(
-            r#"
-            (match (try (/ 1 0))
-              {:ok result} -> result
-              {:error e} -> -1)
-            "#,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Integer(-1));
-    }
-
-    #[test]
-    fn test_defer_basic() {
-        // deferはスコープ終了時に実行される
-        // deferがnilを返すことを確認
-        let result = eval_str(
-            r#"
-            (do
-              (defer (+ 1 2))
-              42)
-            "#,
-        )
-        .unwrap();
-        // doの結果は42（deferの結果ではない）
-        assert_eq!(result, Value::Integer(42));
-    }
-
-    // リスト操作関数のテスト
-
-    #[test]
-    fn test_nth() {
-        assert_eq!(eval_str("(nth [10 20 30] 0)").unwrap(), Value::Integer(10));
-        assert_eq!(eval_str("(nth [10 20 30] 1)").unwrap(), Value::Integer(20));
-        assert_eq!(eval_str("(nth [10 20 30] 2)").unwrap(), Value::Integer(30));
-        assert_eq!(eval_str("(nth [10 20 30] 5)").unwrap(), Value::Nil);
-    }
-
-    #[test]
-    fn test_count() {
-        assert_eq!(eval_str("(count [1 2 3])").unwrap(), Value::Integer(3));
-        assert_eq!(eval_str("(count [])").unwrap(), Value::Integer(0));
-        assert_eq!(eval_str("(count '(1 2 3 4))").unwrap(), Value::Integer(4));
-        assert_eq!(eval_str("(count {:a 1 :b 2})").unwrap(), Value::Integer(2));
-        assert_eq!(eval_str("(count \"hello\")").unwrap(), Value::Integer(5));
-    }
-
-    #[test]
-    fn test_reverse() {
-        assert_eq!(
-            eval_str("(reverse [1 2 3])").unwrap(),
-            Value::Vector(vec![Value::Integer(3), Value::Integer(2), Value::Integer(1)].into())
-        );
-        assert_eq!(
-            eval_str("(reverse '(a b c))").unwrap(),
-            Value::List(
-                vec![
-                    Value::Symbol("c".to_string()),
-                    Value::Symbol("b".to_string()),
-                    Value::Symbol("a".to_string())
-                ]
-                .into()
-            )
-        );
-    }
-
-    // 型チェック関数のテスト
-
-    #[test]
-    fn test_type_predicates() {
-        assert_eq!(eval_str("(list? '(1 2 3))").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(list? [1 2 3])").unwrap(), Value::Bool(false));
-
-        assert_eq!(eval_str("(vector? [1 2 3])").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(vector? '(1 2 3))").unwrap(), Value::Bool(false));
-
-        assert_eq!(eval_str("(map? {:a 1})").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(map? [1 2])").unwrap(), Value::Bool(false));
-
-        assert_eq!(eval_str("(string? \"hello\")").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(string? 123)").unwrap(), Value::Bool(false));
-
-        assert_eq!(eval_str("(number? 42)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(number? \"42\")").unwrap(), Value::Bool(false));
-
-        assert_eq!(eval_str("(fn? (fn [] 1))").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(fn? +)").unwrap(), Value::Bool(true));
-        assert_eq!(eval_str("(fn? 42)").unwrap(), Value::Bool(false));
-    }
-
-    // 数学関数のテスト
-
-    #[test]
-    fn test_abs() {
-        assert_eq!(eval_str("(abs 5)").unwrap(), Value::Integer(5));
-        assert_eq!(eval_str("(abs -5)").unwrap(), Value::Integer(5));
-        assert_eq!(eval_str("(abs 0)").unwrap(), Value::Integer(0));
-    }
-
-    #[test]
-    fn test_min_max() {
-        assert_eq!(eval_str("(min 3 1 4 1 5)").unwrap(), Value::Integer(1));
-        assert_eq!(eval_str("(max 3 1 4 1 5)").unwrap(), Value::Integer(5));
-        assert_eq!(eval_str("(min 10)").unwrap(), Value::Integer(10));
-        assert_eq!(eval_str("(max 10)").unwrap(), Value::Integer(10));
-    }
-
-    #[test]
-    fn test_tap() {
-        // tap関数が値を返しつつ副作用を実行することを確認
-        // （副作用のテストは難しいので、値が正しく返されることのみ確認）
-        assert_eq!(
-            eval_str("([1 2 3] |> (map inc) |> (tap (fn [x] x)) |> sum)").unwrap(),
-            Value::Integer(9)
-        );
-
-        // tapが元の値をそのまま返すことを確認
-        assert_eq!(
-            eval_str("(def x 42) (x |> (tap (fn [y] (+ y 1))))").unwrap(),
-            Value::Integer(42) // 副作用の結果ではなく元の値
-        );
-
-        // fn/tap>（高階関数版）のテスト
-        assert_eq!(
-            eval_str("([1 2 3] |> (map inc) |> ((fn/tap> (fn [x] x))) |> sum)").unwrap(),
-            Value::Integer(9)
-        );
-    }
-
-    #[test]
-    fn test_match_or_pattern() {
-        // orパターンのテスト - 数値
-        assert_eq!(
-            eval_str("(match 1 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
-            Value::String("small".to_string())
-        );
-        assert_eq!(
-            eval_str("(match 2 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
-            Value::String("small".to_string())
-        );
-        assert_eq!(
-            eval_str("(match 3 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
-            Value::String("small".to_string())
-        );
-        assert_eq!(
-            eval_str("(match 5 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
-            Value::String("large".to_string())
-        );
-
-        // orパターンのテスト - 文字列
-        assert_eq!(
-            eval_str("(match \"red\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
-            Value::String("primary".to_string())
-        );
-        assert_eq!(
-            eval_str("(match \"blue\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
-            Value::String("primary".to_string())
-        );
-        assert_eq!(
-            eval_str("(match \"green\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
-            Value::String("other".to_string())
-        );
-
-        // orパターンのテスト - 変数バインディング付き
-        assert_eq!(
-            eval_str("(match 2 1 | 2 | 3 -> (+ 10 2) _ -> 0)").unwrap(),
-            Value::Integer(12)
-        );
-    }
-
-    #[test]
-    fn test_match_or_pattern_with_wildcards() {
-        // orパターン + ワイルドカード
-        assert_eq!(
-            eval_str("(match nil nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
-            Value::String("falsy".to_string())
-        );
-        assert_eq!(
-            eval_str("(match false nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
-            Value::String("falsy".to_string())
-        );
-        assert_eq!(
-            eval_str("(match true nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
-            Value::String("truthy".to_string())
-        );
-    }
-
-    #[test]
-    fn test_use_as_alias() {
-        // 一時的なモジュールファイルを作成
-        use std::fs;
-
-        let module_path = "/tmp/test_alias_module.qi";
-        let test_path = "/tmp/test_alias.qi";
-
-        // モジュールファイルを作成
-        fs::write(
-            module_path,
-            r#"
-(module test_alias_module)
-(def double (fn [x] (* x 2)))
-(def triple (fn [x] (* x 3)))
-(export double triple)
-"#,
-        )
-        .unwrap();
-
-        // テストファイルを作成
-        fs::write(
-            test_path,
-            r#"
-(use test_alias_module :as tm)
-(+ (tm/double 5) (tm/triple 3))
-"#,
-        )
-        .unwrap();
-
-        // 評価
-        let content = fs::read_to_string(test_path).unwrap();
-        let result = std::panic::catch_unwind(|| {
-            let evaluator = Evaluator::new();
-            let mut parser = crate::parser::Parser::new(&content).unwrap();
-            let exprs = parser.parse_all().unwrap();
-            let mut last = Value::Nil;
-
-            // /tmp ディレクトリに移動（モジュールロードのため）
-            let original_dir = std::env::current_dir().unwrap();
-            std::env::set_current_dir("/tmp").unwrap();
-
-            for expr in exprs {
-                last = evaluator.eval(&expr).unwrap();
-            }
-
-            // 元のディレクトリに戻る
-            std::env::set_current_dir(original_dir).unwrap();
-            last
-        });
-
-        // クリーンアップ
-        let _ = fs::remove_file(module_path);
-        let _ = fs::remove_file(test_path);
-
-        // 結果確認: (tm/double 5) = 10, (tm/triple 3) = 9, 10 + 9 = 19
-        assert_eq!(result.unwrap(), Value::Integer(19));
-    }
-}
-
 // モジュールシステムのヘルパー関数
 impl Evaluator {
     /// useモジュールの評価
@@ -3254,4 +2556,699 @@ impl Evaluator {
     }
 
     // ========================================
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::Parser;
+
+    fn eval_str(s: &str) -> Result<Value, String> {
+        crate::i18n::init(); // i18nシステムを初期化
+        let evaluator = Evaluator::new();
+        let mut parser = Parser::new(s)?;
+        let exprs = parser.parse_all()?;
+        let mut result = Value::Nil;
+        for expr in exprs {
+            result = evaluator.eval(&expr)?;
+        }
+        Ok(result)
+    }
+
+    #[test]
+    fn test_integers() {
+        assert_eq!(eval_str("42").unwrap(), Value::Integer(42));
+    }
+
+    #[test]
+    fn test_add() {
+        assert_eq!(eval_str("(+ 1 2 3)").unwrap(), Value::Integer(6));
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(eval_str("(- 10 3)").unwrap(), Value::Integer(7));
+    }
+
+    #[test]
+    fn test_mul() {
+        assert_eq!(eval_str("(* 2 3 4)").unwrap(), Value::Integer(24));
+    }
+
+    #[test]
+    fn test_nested() {
+        assert_eq!(
+            eval_str("(+ (* 2 3) (- 10 5))").unwrap(),
+            Value::Integer(11)
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(eval_str("(if true 1 2)").unwrap(), Value::Integer(1));
+        assert_eq!(eval_str("(if false 1 2)").unwrap(), Value::Integer(2));
+    }
+
+    #[test]
+    fn test_fn() {
+        assert_eq!(eval_str("((fn [x] (+ x 1)) 5)").unwrap(), Value::Integer(6));
+    }
+
+    #[test]
+    fn test_let() {
+        assert_eq!(
+            eval_str("(let [x 10 y 20] (+ x y))").unwrap(),
+            Value::Integer(30)
+        );
+    }
+
+    #[test]
+    fn test_match_literal() {
+        // 値のマッチ
+        assert_eq!(
+            eval_str("(match 0 0 -> 42 1 -> 99)").unwrap(),
+            Value::Integer(42)
+        );
+        assert_eq!(
+            eval_str("(match 1 0 -> 42 1 -> 99)").unwrap(),
+            Value::Integer(99)
+        );
+    }
+
+    #[test]
+    fn test_match_var() {
+        // 変数のバインディング
+        assert_eq!(
+            eval_str("(match 10 n -> (+ n 5))").unwrap(),
+            Value::Integer(15)
+        );
+    }
+
+    #[test]
+    fn test_match_wildcard() {
+        // ワイルドカード
+        assert_eq!(
+            eval_str("(match 42 0 -> 1 1 -> 2 _ -> 99)").unwrap(),
+            Value::Integer(99)
+        );
+    }
+
+    #[test]
+    fn test_match_nil_bool() {
+        // nil/boolの区別
+        assert_eq!(
+            eval_str("(match nil nil -> 1 false -> 2 _ -> 3)").unwrap(),
+            Value::Integer(1)
+        );
+        assert_eq!(
+            eval_str("(match false nil -> 1 false -> 2 _ -> 3)").unwrap(),
+            Value::Integer(2)
+        );
+        assert_eq!(
+            eval_str("(match true nil -> 1 false -> 2 _ -> 3)").unwrap(),
+            Value::Integer(3)
+        );
+    }
+
+    #[test]
+    fn test_match_vector() {
+        // ベクタのマッチ
+        assert_eq!(
+            eval_str("(match [1 2] [x y] -> (+ x y))").unwrap(),
+            Value::Integer(3)
+        );
+    }
+
+    #[test]
+    fn test_match_rest() {
+        // ...restパターンのテスト
+        assert_eq!(
+            eval_str("(match [1 2 3 4 5] [x ...rest] -> rest)").unwrap(),
+            Value::List(
+                vec![
+                    Value::Integer(2),
+                    Value::Integer(3),
+                    Value::Integer(4),
+                    Value::Integer(5)
+                ]
+                .into()
+            )
+        );
+        // 1要素の場合
+        assert_eq!(
+            eval_str("(match [1] [x ...rest] -> rest)").unwrap(),
+            Value::List(vec![].into())
+        );
+        // 空リストの場合
+        assert_eq!(
+            eval_str("(match [] [...rest] -> rest)").unwrap(),
+            Value::List(vec![].into())
+        );
+        // 複数要素を取得してからrest
+        assert_eq!(
+            eval_str("(match [10 20 30] [a b ...rest] -> rest)").unwrap(),
+            Value::List(vec![Value::Integer(30)].into())
+        );
+        // リストでも動作
+        assert_eq!(
+            eval_str("(match (list 1 2 3) [x ...rest] -> rest)").unwrap(),
+            Value::List(vec![Value::Integer(2), Value::Integer(3)].into())
+        );
+    }
+
+    #[test]
+    fn test_match_guard() {
+        // ガード条件
+        assert_eq!(
+            eval_str("(match 5 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
+            Value::Integer(1)
+        );
+        assert_eq!(
+            eval_str("(match -5 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
+            Value::Integer(-1)
+        );
+        assert_eq!(
+            eval_str("(match 0 n when (> n 0) -> 1 n when (< n 0) -> -1 _ -> 0)").unwrap(),
+            Value::Integer(0)
+        );
+    }
+
+    #[test]
+    fn test_pipe_simple() {
+        // 単純なパイプライン: (10 |> inc) は (inc 10) と同じ
+        assert_eq!(
+            eval_str("(def inc (fn [x] (+ x 1))) (10 |> inc)").unwrap(),
+            Value::Integer(11)
+        );
+    }
+
+    #[test]
+    fn test_pipe_chain() {
+        // パイプラインのチェーン: (1 |> inc |> inc) は 3
+        assert_eq!(
+            eval_str("(def inc (fn [x] (+ x 1))) (1 |> inc |> inc)").unwrap(),
+            Value::Integer(3)
+        );
+    }
+
+    #[test]
+    fn test_pipe_with_args() {
+        // 引数ありの関数: (10 |> (+ 5)) は (+ 5 10) = 15
+        assert_eq!(eval_str("(10 |> (+ 5))").unwrap(), Value::Integer(15));
+    }
+
+    #[test]
+    fn test_pipe_complex() {
+        // 複雑なパイプライン: (1 |> (+ 2) |> (* 3)) は ((* 3 (+ 2 1))) = 9
+        assert_eq!(
+            eval_str("(1 |> (+ 2) |> (* 3))").unwrap(),
+            Value::Integer(9)
+        );
+    }
+
+    #[test]
+    fn test_map() {
+        // mapのテスト
+        assert_eq!(
+            eval_str("(map (fn [x] (* x 2)) [1 2 3])").unwrap(),
+            Value::List(vec![Value::Integer(2), Value::Integer(4), Value::Integer(6)].into())
+        );
+    }
+
+    #[test]
+    fn test_filter() {
+        // filterのテスト
+        assert_eq!(
+            eval_str("(filter (fn [x] (> x 2)) [1 2 3 4 5])").unwrap(),
+            Value::List(vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)].into())
+        );
+    }
+
+    #[test]
+    fn test_reduce() {
+        // reduceのテスト（初期値あり）
+        assert_eq!(
+            eval_str("(reduce + 0 [1 2 3 4])").unwrap(),
+            Value::Integer(10)
+        );
+        // reduceのテスト（初期値なし）
+        assert_eq!(
+            eval_str("(reduce + [1 2 3 4])").unwrap(),
+            Value::Integer(10)
+        );
+    }
+
+    #[test]
+    fn test_cons() {
+        // consのテスト
+        assert_eq!(
+            eval_str("(cons 1 (list 2 3))").unwrap(),
+            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
+        );
+        assert_eq!(
+            eval_str("(cons 1 nil)").unwrap(),
+            Value::List(vec![Value::Integer(1)].into())
+        );
+    }
+
+    #[test]
+    fn test_conj() {
+        // conjのテスト
+        assert_eq!(
+            eval_str("(conj [1 2] 3 4)").unwrap(),
+            Value::Vector(
+                vec![
+                    Value::Integer(1),
+                    Value::Integer(2),
+                    Value::Integer(3),
+                    Value::Integer(4)
+                ]
+                .into()
+            )
+        );
+        assert_eq!(
+            eval_str("(conj (list 1 2) 3)").unwrap(),
+            Value::List(vec![Value::Integer(3), Value::Integer(1), Value::Integer(2)].into())
+        );
+    }
+
+    #[test]
+    fn test_empty() {
+        // empty?のテスト
+        assert_eq!(eval_str("(empty? [])").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(empty? [1])").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(empty? nil)").unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_nil_q() {
+        // nil?のテスト
+        assert_eq!(eval_str("(nil? nil)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(nil? false)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(nil? 0)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_str() {
+        // strのテスト
+        assert_eq!(
+            eval_str("(str \"hello\" \" \" \"world\")").unwrap(),
+            Value::String("hello world".to_string())
+        );
+        assert_eq!(
+            eval_str("(str \"count: \" 42)").unwrap(),
+            Value::String("count: 42".to_string())
+        );
+    }
+
+    #[test]
+    fn test_and() {
+        // andのテスト（短絡評価）
+        assert_eq!(eval_str("(and true true)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(and true false)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(and false true)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(and 1 2 3)").unwrap(), Value::Integer(3));
+        assert_eq!(eval_str("(and 1 nil 3)").unwrap(), Value::Nil);
+    }
+
+    #[test]
+    fn test_or() {
+        // orのテスト（短絡評価）
+        assert_eq!(eval_str("(or false false)").unwrap(), Value::Nil);
+        assert_eq!(eval_str("(or false true)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(or true false)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(or nil 2 3)").unwrap(), Value::Integer(2));
+    }
+
+    #[test]
+    fn test_not() {
+        // notのテスト
+        assert_eq!(eval_str("(not true)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(not false)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(not nil)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(not 42)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_pipeline_with_builtins() {
+        // パイプラインと新しい組み込み関数の組み合わせ
+        assert_eq!(
+            eval_str("[1 2 3 4 5] |> (filter (fn [x] (> x 2))) |> (map (fn [x] (* x 2)))").unwrap(),
+            Value::List(vec![Value::Integer(6), Value::Integer(8), Value::Integer(10)].into())
+        );
+    }
+
+    #[test]
+    fn test_mod() {
+        // %（剰余）のテスト
+        assert_eq!(eval_str("(% 10 3)").unwrap(), Value::Integer(1));
+        assert_eq!(eval_str("(% 15 4)").unwrap(), Value::Integer(3));
+        assert_eq!(eval_str("(% 8 2)").unwrap(), Value::Integer(0));
+    }
+
+    #[test]
+    fn test_le() {
+        // <=のテスト
+        assert_eq!(eval_str("(<= 5 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(<= 10 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(<= 15 10)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_ge() {
+        // >=のテスト
+        assert_eq!(eval_str("(>= 10 5)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(>= 10 10)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(>= 5 10)").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_ne() {
+        // !=のテスト
+        assert_eq!(eval_str("(!= 1 2)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(!= 1 1)").unwrap(), Value::Bool(false));
+        assert_eq!(eval_str("(!= nil false)").unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_quote() {
+        // quoteのテスト
+        assert_eq!(
+            eval_str("(quote x)").unwrap(),
+            Value::Symbol("x".to_string())
+        );
+        assert_eq!(eval_str("'x").unwrap(), Value::Symbol("x".to_string()));
+        assert_eq!(
+            eval_str("'(1 2 3)").unwrap(),
+            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
+        );
+        assert_eq!(
+            eval_str("'(+ 1 2)").unwrap(),
+            Value::List(
+                vec![
+                    Value::Symbol("+".to_string()),
+                    Value::Integer(1),
+                    Value::Integer(2)
+                ]
+                .into()
+            )
+        );
+    }
+
+    #[test]
+    fn test_even_with_mod() {
+        // %を使った偶数判定
+        assert_eq!(
+            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 4)").unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            eval_str("(def even? (fn [x] (= (% x 2) 0))) (even? 5)").unwrap(),
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_try_success() {
+        // 成功時は {:ok value}
+        let result = eval_str("(try (+ 1 2))").unwrap();
+        match result {
+            Value::Map(m) => {
+                assert_eq!(m.get("ok"), Some(&Value::Integer(3)));
+                assert_eq!(m.get("error"), None);
+            }
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_try_error() {
+        // エラー時は {:error msg}
+        let result = eval_str("(try (/ 1 0))").unwrap();
+        match result {
+            Value::Map(m) => {
+                assert_eq!(m.get("ok"), None);
+                assert!(m.get("error").is_some());
+            }
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_try_with_match() {
+        // tryとmatchの組み合わせ
+        let result = eval_str(
+            r#"
+            (match (try (+ 1 2))
+              {:ok result} -> result
+              {:error e} -> 0)
+            "#,
+        )
+        .unwrap();
+        assert_eq!(result, Value::Integer(3));
+
+        let result = eval_str(
+            r#"
+            (match (try (/ 1 0))
+              {:ok result} -> result
+              {:error e} -> -1)
+            "#,
+        )
+        .unwrap();
+        assert_eq!(result, Value::Integer(-1));
+    }
+
+    #[test]
+    fn test_defer_basic() {
+        // deferはスコープ終了時に実行される
+        // deferがnilを返すことを確認
+        let result = eval_str(
+            r#"
+            (do
+              (defer (+ 1 2))
+              42)
+            "#,
+        )
+        .unwrap();
+        // doの結果は42（deferの結果ではない）
+        assert_eq!(result, Value::Integer(42));
+    }
+
+    // リスト操作関数のテスト
+
+    #[test]
+    fn test_nth() {
+        assert_eq!(eval_str("(nth [10 20 30] 0)").unwrap(), Value::Integer(10));
+        assert_eq!(eval_str("(nth [10 20 30] 1)").unwrap(), Value::Integer(20));
+        assert_eq!(eval_str("(nth [10 20 30] 2)").unwrap(), Value::Integer(30));
+        assert_eq!(eval_str("(nth [10 20 30] 5)").unwrap(), Value::Nil);
+    }
+
+    #[test]
+    fn test_count() {
+        assert_eq!(eval_str("(count [1 2 3])").unwrap(), Value::Integer(3));
+        assert_eq!(eval_str("(count [])").unwrap(), Value::Integer(0));
+        assert_eq!(eval_str("(count '(1 2 3 4))").unwrap(), Value::Integer(4));
+        assert_eq!(eval_str("(count {:a 1 :b 2})").unwrap(), Value::Integer(2));
+        assert_eq!(eval_str("(count \"hello\")").unwrap(), Value::Integer(5));
+    }
+
+    #[test]
+    fn test_reverse() {
+        assert_eq!(
+            eval_str("(reverse [1 2 3])").unwrap(),
+            Value::Vector(vec![Value::Integer(3), Value::Integer(2), Value::Integer(1)].into())
+        );
+        assert_eq!(
+            eval_str("(reverse '(a b c))").unwrap(),
+            Value::List(
+                vec![
+                    Value::Symbol("c".to_string()),
+                    Value::Symbol("b".to_string()),
+                    Value::Symbol("a".to_string())
+                ]
+                .into()
+            )
+        );
+    }
+
+    // 型チェック関数のテスト
+
+    #[test]
+    fn test_type_predicates() {
+        assert_eq!(eval_str("(list? '(1 2 3))").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(list? [1 2 3])").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(vector? [1 2 3])").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(vector? '(1 2 3))").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(map? {:a 1})").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(map? [1 2])").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(string? \"hello\")").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(string? 123)").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(number? 42)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(number? \"42\")").unwrap(), Value::Bool(false));
+
+        assert_eq!(eval_str("(fn? (fn [] 1))").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(fn? +)").unwrap(), Value::Bool(true));
+        assert_eq!(eval_str("(fn? 42)").unwrap(), Value::Bool(false));
+    }
+
+    // 数学関数のテスト
+
+    #[test]
+    fn test_abs() {
+        assert_eq!(eval_str("(abs 5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(abs -5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(abs 0)").unwrap(), Value::Integer(0));
+    }
+
+    #[test]
+    fn test_min_max() {
+        assert_eq!(eval_str("(min 3 1 4 1 5)").unwrap(), Value::Integer(1));
+        assert_eq!(eval_str("(max 3 1 4 1 5)").unwrap(), Value::Integer(5));
+        assert_eq!(eval_str("(min 10)").unwrap(), Value::Integer(10));
+        assert_eq!(eval_str("(max 10)").unwrap(), Value::Integer(10));
+    }
+
+    #[test]
+    fn test_tap() {
+        // tap関数が値を返しつつ副作用を実行することを確認
+        // （副作用のテストは難しいので、値が正しく返されることのみ確認）
+        assert_eq!(
+            eval_str("([1 2 3] |> (map inc) |> (tap (fn [x] x)) |> sum)").unwrap(),
+            Value::Integer(9)
+        );
+
+        // tapが元の値をそのまま返すことを確認
+        assert_eq!(
+            eval_str("(def x 42) (x |> (tap (fn [y] (+ y 1))))").unwrap(),
+            Value::Integer(42) // 副作用の結果ではなく元の値
+        );
+
+        // fn/tap>（高階関数版）のテスト
+        assert_eq!(
+            eval_str("([1 2 3] |> (map inc) |> ((fn/tap> (fn [x] x))) |> sum)").unwrap(),
+            Value::Integer(9)
+        );
+    }
+
+    #[test]
+    fn test_match_or_pattern() {
+        // orパターンのテスト - 数値
+        assert_eq!(
+            eval_str("(match 1 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 2 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 3 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("small".to_string())
+        );
+        assert_eq!(
+            eval_str("(match 5 1 | 2 | 3 -> \"small\" _ -> \"large\")").unwrap(),
+            Value::String("large".to_string())
+        );
+
+        // orパターンのテスト - 文字列
+        assert_eq!(
+            eval_str("(match \"red\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("primary".to_string())
+        );
+        assert_eq!(
+            eval_str("(match \"blue\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("primary".to_string())
+        );
+        assert_eq!(
+            eval_str("(match \"green\" \"red\" | \"blue\" -> \"primary\" _ -> \"other\")").unwrap(),
+            Value::String("other".to_string())
+        );
+
+        // orパターンのテスト - 変数バインディング付き
+        assert_eq!(
+            eval_str("(match 2 1 | 2 | 3 -> (+ 10 2) _ -> 0)").unwrap(),
+            Value::Integer(12)
+        );
+    }
+
+    #[test]
+    fn test_match_or_pattern_with_wildcards() {
+        // orパターン + ワイルドカード
+        assert_eq!(
+            eval_str("(match nil nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("falsy".to_string())
+        );
+        assert_eq!(
+            eval_str("(match false nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("falsy".to_string())
+        );
+        assert_eq!(
+            eval_str("(match true nil | false -> \"falsy\" _ -> \"truthy\")").unwrap(),
+            Value::String("truthy".to_string())
+        );
+    }
+
+    #[test]
+    fn test_use_as_alias() {
+        // 一時的なモジュールファイルを作成
+        use std::fs;
+
+        let module_path = "/tmp/test_alias_module.qi";
+        let test_path = "/tmp/test_alias.qi";
+
+        // モジュールファイルを作成
+        fs::write(
+            module_path,
+            r#"
+(module test_alias_module)
+(def double (fn [x] (* x 2)))
+(def triple (fn [x] (* x 3)))
+(export double triple)
+"#,
+        )
+        .unwrap();
+
+        // テストファイルを作成
+        fs::write(
+            test_path,
+            r#"
+(use test_alias_module :as tm)
+(+ (tm/double 5) (tm/triple 3))
+"#,
+        )
+        .unwrap();
+
+        // 評価
+        let content = fs::read_to_string(test_path).unwrap();
+        let result = std::panic::catch_unwind(|| {
+            let evaluator = Evaluator::new();
+            let mut parser = crate::parser::Parser::new(&content).unwrap();
+            let exprs = parser.parse_all().unwrap();
+            let mut last = Value::Nil;
+
+            // /tmp ディレクトリに移動（モジュールロードのため）
+            let original_dir = std::env::current_dir().unwrap();
+            std::env::set_current_dir("/tmp").unwrap();
+
+            for expr in exprs {
+                last = evaluator.eval(&expr).unwrap();
+            }
+
+            // 元のディレクトリに戻る
+            std::env::set_current_dir(original_dir).unwrap();
+            last
+        });
+
+        // クリーンアップ
+        let _ = fs::remove_file(module_path);
+        let _ = fs::remove_file(test_path);
+
+        // 結果確認: (tm/double 5) = 10, (tm/triple 3) = 9, 10 + 9 = 19
+        assert_eq!(result.unwrap(), Value::Integer(19));
+    }
 }
