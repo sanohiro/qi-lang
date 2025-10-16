@@ -1655,26 +1655,100 @@ impl Messages {
     }
 
     /// メッセージをフォーマット（プレースホルダー {0}, {1}, ... を置換）
+    /// 一度の走査でO(n)で処理
     pub fn fmt(&self, key: MsgKey, args: &[&str]) -> String {
         let template = self.get(key);
-        let mut result = template.to_string();
 
-        for (i, arg) in args.iter().enumerate() {
-            let placeholder = format!("{{{}}}", i);
-            result = result.replace(&placeholder, arg);
+        // 予想サイズを確保（テンプレート + 引数の合計長）
+        let estimated_size = template.len() + args.iter().map(|s| s.len()).sum::<usize>();
+        let mut result = String::with_capacity(estimated_size);
+
+        let mut chars = template.chars();
+        while let Some(ch) = chars.next() {
+            if ch == '{' {
+                // プレースホルダーの可能性
+                let mut digits = String::new();
+                let mut temp_chars = chars.clone();
+
+                // 数字を収集
+                while let Some(d) = temp_chars.next() {
+                    if d.is_ascii_digit() {
+                        digits.push(d);
+                    } else if d == '}' && !digits.is_empty() {
+                        // 正常なプレースホルダー
+                        if let Ok(index) = digits.parse::<usize>() {
+                            if let Some(arg) = args.get(index) {
+                                result.push_str(arg);
+                                chars = temp_chars;
+                                break;
+                            }
+                        }
+                        // パース失敗時はそのまま出力
+                        result.push(ch);
+                        break;
+                    } else {
+                        // プレースホルダーではない
+                        result.push(ch);
+                        break;
+                    }
+                }
+
+                if digits.is_empty() {
+                    result.push(ch);
+                }
+            } else {
+                result.push(ch);
+            }
         }
 
         result
     }
 
     /// UIメッセージをフォーマット
+    /// 一度の走査でO(n)で処理
     pub fn fmt_ui(&self, key: UiMsg, args: &[&str]) -> String {
         let template = self.ui(key);
-        let mut result = template.to_string();
 
-        for (i, arg) in args.iter().enumerate() {
-            let placeholder = format!("{{{}}}", i);
-            result = result.replace(&placeholder, arg);
+        // 予想サイズを確保（テンプレート + 引数の合計長）
+        let estimated_size = template.len() + args.iter().map(|s| s.len()).sum::<usize>();
+        let mut result = String::with_capacity(estimated_size);
+
+        let mut chars = template.chars();
+        while let Some(ch) = chars.next() {
+            if ch == '{' {
+                // プレースホルダーの可能性
+                let mut digits = String::new();
+                let mut temp_chars = chars.clone();
+
+                // 数字を収集
+                while let Some(d) = temp_chars.next() {
+                    if d.is_ascii_digit() {
+                        digits.push(d);
+                    } else if d == '}' && !digits.is_empty() {
+                        // 正常なプレースホルダー
+                        if let Ok(index) = digits.parse::<usize>() {
+                            if let Some(arg) = args.get(index) {
+                                result.push_str(arg);
+                                chars = temp_chars;
+                                break;
+                            }
+                        }
+                        // パース失敗時はそのまま出力
+                        result.push(ch);
+                        break;
+                    } else {
+                        // プレースホルダーではない
+                        result.push(ch);
+                        break;
+                    }
+                }
+
+                if digits.is_empty() {
+                    result.push(ch);
+                }
+            } else {
+                result.push(ch);
+            }
         }
 
         result

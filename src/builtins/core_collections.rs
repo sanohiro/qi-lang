@@ -98,6 +98,7 @@ pub fn native_count(args: &[Value]) -> Result<Value, String> {
 }
 
 /// cons - リストの先頭に要素を追加
+/// im::Vectorの構造共有を活かしてO(1)で実行
 pub fn native_cons(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["cons"]));
@@ -105,19 +106,13 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
     match &args[1] {
         Value::Nil => Ok(Value::List(vec![args[0].clone()].into())),
         Value::List(v) => {
-            let mut new_list = im::Vector::new();
-            new_list.push_back(args[0].clone());
-            for item in v.iter() {
-                new_list.push_back(item.clone());
-            }
+            let mut new_list = v.clone();
+            new_list.push_front(args[0].clone());
             Ok(Value::List(new_list))
         }
         Value::Vector(v) => {
-            let mut new_vec = im::Vector::new();
-            new_vec.push_back(args[0].clone());
-            for item in v.iter() {
-                new_vec.push_back(item.clone());
-            }
+            let mut new_vec = v.clone();
+            new_vec.push_front(args[0].clone());
             Ok(Value::List(new_vec))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["cons", "lists or vectors"])),

@@ -39,22 +39,21 @@ fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
 }
 
 /// gzip圧縮ヘルパー関数（レスポンス用）
-/// latin1形式のString（各char 0-255がu8にマッピング）を圧縮し、
-/// 圧縮されたバイナリデータをlatin1形式のStringとして返す
+/// UTF-8文字列を圧縮し、圧縮されたバイナリデータをバイト列として表現したStringとして返す
 fn compress_gzip_response(body: &str) -> Result<String, std::io::Error> {
     use flate2::write::GzEncoder;
     use flate2::Compression;
     use std::io::Write;
 
-    // latin1形式のStringをバイト列に変換
-    let bytes: Vec<u8> = body.chars().map(|c| c as u8).collect();
+    // UTF-8文字列をバイト列に変換
+    let bytes = body.as_bytes();
 
     // gzip圧縮
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(&bytes)?;
+    encoder.write_all(bytes)?;
     let compressed = encoder.finish()?;
 
-    // 圧縮されたバイト列をlatin1形式のStringに変換
+    // 圧縮されたバイト列をバイト列表現のStringに変換
     Ok(compressed.iter().map(|&b| b as char).collect())
 }
 
@@ -228,9 +227,15 @@ async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infal
                         None => String::new(),
                     };
 
-                    // バイナリデータはlatin1としてStringに格納されているので、バイトに戻す
-                    // latin1: 各char (0-255) を u8 にマッピング
-                    let body_bytes: Vec<u8> = body_str.chars().map(|c| c as u8).collect();
+                    // UTF-8文字列をバイト列に変換
+                    // バイナリデータの場合は、バイト列表現のString（各char = byte）からバイトに戻す
+                    let body_bytes: Vec<u8> = if body_str.chars().all(|c| c as u32 <= 255) {
+                        // バイナリデータ表現の場合
+                        body_str.chars().map(|c| c as u8).collect()
+                    } else {
+                        // 通常のUTF-8文字列の場合
+                        body_str.as_bytes().to_vec()
+                    };
 
                     Full::new(Bytes::from(body_bytes)).boxed()
                 };
