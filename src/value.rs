@@ -166,7 +166,7 @@ impl PartialEq for Value {
 pub struct Function {
     pub params: Vec<FnParam>,
     pub body: Expr,
-    pub env: Env,
+    pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool, // &argsに対応
 }
 
@@ -188,7 +188,7 @@ pub struct Macro {
     pub name: String,
     pub params: Vec<String>,
     pub body: Expr,
-    pub env: Env,
+    pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool,
 }
 

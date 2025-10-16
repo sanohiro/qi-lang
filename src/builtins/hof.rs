@@ -491,7 +491,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
         env: {
             let mut env = crate::value::Env::new();
             env.set("__complement_func__".to_string(), func);
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
     })))
@@ -514,7 +514,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
         env: {
             let mut env = crate::value::Env::new();
             env.set("__juxt_funcs__".to_string(), Value::List(funcs.into()));
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
     })))
@@ -549,7 +549,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
         env: {
             let mut env = crate::value::Env::new();
             env.set("__tap_func__".to_string(), func);
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
     })))

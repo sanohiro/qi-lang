@@ -28,7 +28,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
         env: {
             let mut env = crate::value::Env::new();
             env.set("__constantly_value__".to_string(), value);
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
     })))
@@ -53,7 +53,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
             let mut env = crate::value::Env::new();
             env.set("__partial_func__".to_string(), func);
             env.set("__partial_args__".to_string(), Value::List(partial_args));
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: true,
     })))
@@ -80,7 +80,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
         env: {
             let mut env = crate::value::Env::new();
             env.set("__comp_funcs__".to_string(), Value::List(funcs));
-            env
+            Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
     })))

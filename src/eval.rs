@@ -212,7 +212,7 @@ impl Evaluator {
             } => Ok(Value::Function(Arc::new(Function {
                 params: params.clone(),
                 body: (**body).clone(),
-                env: env.read().clone(),
+                env: Arc::clone(&env),
                 is_variadic: *is_variadic,
             }))),
 
@@ -334,7 +334,7 @@ impl Evaluator {
                     name: name.clone(),
                     params: params.clone(),
                     body: (**body).clone(),
-                    env: env.read().clone(),
+                    env: Arc::clone(&env),
                     is_variadic: *is_variadic,
                 };
                 env.write().set(name.clone(), Value::Macro(Arc::new(mac)));
@@ -1089,13 +1089,13 @@ impl Evaluator {
             Value::NativeFunc(nf) => (nf.func)(&args),
             Value::Function(f) => {
                 // complement特殊処理 - 実行前にチェック
-                if let Some(complement_func) = f.env.get("__complement_func__") {
+                if let Some(complement_func) = f.env.read().get("__complement_func__") {
                     let result = self.apply_func(&complement_func, args)?;
                     return Ok(Value::Bool(!result.is_truthy()));
                 }
 
                 // juxt特殊処理 - 実行前にチェック
-                if let Some(Value::List(juxt_funcs)) = f.env.get("__juxt_funcs__") {
+                if let Some(Value::List(juxt_funcs)) = f.env.read().get("__juxt_funcs__") {
                     let mut results = Vec::with_capacity(juxt_funcs.len());
                     for jfunc in &juxt_funcs {
                         let result = self.apply_func(jfunc, args.clone())?;
@@ -1105,7 +1105,7 @@ impl Evaluator {
                 }
 
                 // tap>特殊処理 - 副作用を実行してから値を返す
-                if let Some(tap_func) = f.env.get("__tap_func__") {
+                if let Some(tap_func) = f.env.read().get("__tap_func__") {
                     if args.len() == 1 {
                         let value = args[0].clone();
                         // 副作用関数を実行（結果は無視）
@@ -1116,7 +1116,7 @@ impl Evaluator {
                 }
 
                 // 通常の関数処理
-                let parent_env = Arc::new(RwLock::new(f.env.clone()));
+                let parent_env = Arc::clone(&f.env);
                 let mut new_env = Env::with_parent(parent_env);
 
                 if f.is_variadic {
@@ -1426,7 +1426,7 @@ impl Evaluator {
                 Value::Function(Arc::new(crate::value::Function {
                     params: vec![],
                     body: expr.clone(),
-                    env: (*env.read()).clone(),
+                    env: Arc::clone(&env),
                     is_variadic: false,
                 }))
             })
@@ -3026,7 +3026,7 @@ impl Evaluator {
         _env: Arc<RwLock<Env>>,
     ) -> Result<Expr, String> {
         // マクロ用の環境を作成
-        let parent_env = Arc::new(RwLock::new(mac.env.clone()));
+        let parent_env = Arc::clone(&mac.env);
         let mut new_env = Env::with_parent(parent_env);
 
         if mac.is_variadic {
