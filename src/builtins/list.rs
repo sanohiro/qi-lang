@@ -23,15 +23,16 @@ pub fn native_take_while(
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut result = Vec::new();
+            // im::Vectorを直接使用（中間Vec排除）
+            let mut result = im::Vector::new();
             for item in items {
                 let test = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 if !test.is_truthy() {
                     break;
                 }
-                result.push(item.clone());
+                result.push_back(item.clone());
             }
-            Ok(Value::List(result.into()))
+            Ok(Value::List(result))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -57,8 +58,9 @@ pub fn native_drop_while(
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // im::Vectorを直接使用（中間Vec排除）
             let mut dropping = true;
-            let mut result = Vec::new();
+            let mut result = im::Vector::new();
             for item in items {
                 if dropping {
                     let test = evaluator.apply_function(pred, std::slice::from_ref(item))?;
@@ -67,9 +69,9 @@ pub fn native_drop_while(
                     }
                     dropping = false;
                 }
-                result.push(item.clone());
+                result.push_back(item.clone());
             }
-            Ok(Value::List(result.into()))
+            Ok(Value::List(result))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -134,14 +136,15 @@ pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let mut result = Vec::new();
+    // im::Vectorを直接使用（中間Vec排除）
+    let mut result = im::Vector::new();
     let min_len = list1.len().min(list2.len());
     for i in 0..min_len {
-        result.push(list1[i].clone());
-        result.push(list2[i].clone());
+        result.push_back(list1[i].clone());
+        result.push_back(list2[i].clone());
     }
 
-    Ok(Value::List(result.into()))
+    Ok(Value::List(result))
 }
 
 /// frequencies - 要素の出現回数をカウント

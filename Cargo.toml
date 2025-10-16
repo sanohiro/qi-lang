@@ -115,6 +115,7 @@ crossbeam-channel = "0.5"
 rayon = "1.10"
 regex = "1.11"
 once_cell = "1.19"
+dashmap = "6.1"  # スレッドセーフなHashMap（Regexキャッシュ等で使用）
 lazy_static = "1.5"  # 既存コード互換性のため残す（徐々にonce_cellへ移行予定）
 strsim = "0.11"  # 編集距離計算（エラーメッセージ生成用）
 im = "15.1"  # Persistent data structures（構造共有でclone()を高速化）
