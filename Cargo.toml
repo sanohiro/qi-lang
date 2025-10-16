@@ -163,3 +163,18 @@ criterion = { version = "0.5", features = ["html_reports"] }
 [[bench]]
 name = "optimizations"
 harness = false
+
+[[bench]]
+name = "parser_lexer"
+harness = false
+
+# プロファイリング用にrelease buildでもデバッグシンボルを有効化
+[profile.release]
+debug = true
+
+[profile.bench]
+debug = true
+
+[[bench]]
+name = "large_dataset"
+harness = false
