@@ -137,13 +137,30 @@ fn value_to_json(value: &Value) -> serde_json::Value {
             .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s.clone()),
         Value::Keyword(s) => serde_json::Value::String(s.clone()),
-        Value::Vector(v) => serde_json::Value::Array(v.iter().map(value_to_json).collect()),
-        Value::List(l) => serde_json::Value::Array(l.iter().map(value_to_json).collect()),
-        Value::Map(m) => serde_json::Value::Object(
-            m.iter()
-                .map(|(k, v)| (k.clone(), value_to_json(v)))
-                .collect(),
-        ),
+        Value::Vector(v) => {
+            // サイズが分かっているので事前確保
+            let mut arr = Vec::with_capacity(v.len());
+            for item in v {
+                arr.push(value_to_json(item));
+            }
+            serde_json::Value::Array(arr)
+        }
+        Value::List(l) => {
+            // サイズが分かっているので事前確保
+            let mut arr = Vec::with_capacity(l.len());
+            for item in l {
+                arr.push(value_to_json(item));
+            }
+            serde_json::Value::Array(arr)
+        }
+        Value::Map(m) => {
+            // サイズが分かっているので事前確保
+            let mut obj = serde_json::Map::with_capacity(m.len());
+            for (k, v) in m {
+                obj.insert(k.clone(), value_to_json(v));
+            }
+            serde_json::Value::Object(obj)
+        }
         _ => serde_json::Value::Null,
     }
 }

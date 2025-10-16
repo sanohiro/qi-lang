@@ -63,11 +63,11 @@ pub fn native_csv_stringify(args: &[Value]) -> Result<Value, String> {
     };
 
     // Value::List を Vec<Vec<String>> に変換
-    let mut string_records = Vec::new();
+    let mut string_records = Vec::with_capacity(records.len());
     for record in records {
         match record {
             Value::List(fields) | Value::Vector(fields) => {
-                let mut string_fields = Vec::new();
+                let mut string_fields = Vec::with_capacity(fields.len());
                 for field in fields {
                     let s = match field {
                         Value::String(s) => s.clone(),

@@ -107,7 +107,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
             Value::Vector(arr.into_iter().map(yaml_to_value).collect())
         }
         serde_yaml::Value::Mapping(obj) => {
-            let mut map = std::collections::HashMap::new();
+            let mut map = im::HashMap::new();
             for (k, v) in obj {
                 // YAMLのキーは文字列に変換
                 let key = match k {
@@ -118,7 +118,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
                 };
                 map.insert(key, yaml_to_value(v));
             }
-            Value::Map(map.into())
+            Value::Map(map)
         }
         serde_yaml::Value::Tagged(_) => Value::Nil, // Taggedはサポート外
     }
@@ -133,8 +133,22 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Float(f) => serde_yaml::Value::Number(serde_yaml::Number::from(*f)),
         Value::String(s) => serde_yaml::Value::String(s.clone()),
         Value::Keyword(s) => serde_yaml::Value::String(s.clone()),
-        Value::Vector(v) => serde_yaml::Value::Sequence(v.iter().map(value_to_yaml).collect()),
-        Value::List(l) => serde_yaml::Value::Sequence(l.iter().map(value_to_yaml).collect()),
+        Value::Vector(v) => {
+            // サイズが分かっているので事前確保
+            let mut seq = Vec::with_capacity(v.len());
+            for item in v {
+                seq.push(value_to_yaml(item));
+            }
+            serde_yaml::Value::Sequence(seq)
+        }
+        Value::List(l) => {
+            // サイズが分かっているので事前確保
+            let mut seq = Vec::with_capacity(l.len());
+            for item in l {
+                seq.push(value_to_yaml(item));
+            }
+            serde_yaml::Value::Sequence(seq)
+        }
         Value::Map(m) => {
             let mut mapping = serde_yaml::Mapping::new();
             for (k, v) in m.iter() {
