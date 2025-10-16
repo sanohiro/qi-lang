@@ -459,17 +459,17 @@ impl Evaluator {
             }
         }
 
-        let func_val = self.eval_with_env(func, env.clone())?;
+        let func_val = self.eval_with_env(func, Arc::clone(&env))?;
 
         // マクロの場合は展開してから評価
         if let Value::Macro(mac) = &func_val {
-            let expanded = self.expand_macro(mac, args, env.clone())?;
+            let expanded = self.expand_macro(mac, args, Arc::clone(&env))?;
             return self.eval_with_env(&expanded, env);
         }
 
         let arg_vals: Result<SmallVec<[Value; 4]>, _> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect();
         let arg_vals = arg_vals?;
 
