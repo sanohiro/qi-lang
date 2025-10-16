@@ -168,6 +168,9 @@ pub struct Function {
     pub body: Expr,
     pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool, // &argsに対応
+    /// 特殊処理が必要な関数フラグ（complement, juxt, tap>）
+    /// 通常関数ではfalse、環境ルックアップをスキップして高速化
+    pub has_special_processing: bool,
 }
 
 // NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
@@ -179,6 +182,7 @@ impl PartialEq for Function {
         self.params == other.params
             && self.body == other.body
             && self.is_variadic == other.is_variadic
+            && self.has_special_processing == other.has_special_processing
     }
 }
 

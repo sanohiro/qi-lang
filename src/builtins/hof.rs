@@ -494,6 +494,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
+        has_special_processing: true,
     })))
 }
 
@@ -517,6 +518,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
+        has_special_processing: true,
     })))
 }
 
@@ -552,6 +554,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
+        has_special_processing: true,
     })))
 }
 

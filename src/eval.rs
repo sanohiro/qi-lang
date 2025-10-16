@@ -214,6 +214,7 @@ impl Evaluator {
                 body: (**body).clone(),
                 env: Arc::clone(&env),
                 is_variadic: *is_variadic,
+                has_special_processing: false,
             }))),
 
             Expr::Let { bindings, body } => {
@@ -1088,30 +1089,33 @@ impl Evaluator {
         match func {
             Value::NativeFunc(nf) => (nf.func)(&args),
             Value::Function(f) => {
-                // complement特殊処理 - 実行前にチェック
-                if let Some(complement_func) = f.env.read().get("__complement_func__") {
-                    let result = self.apply_func(&complement_func, args)?;
-                    return Ok(Value::Bool(!result.is_truthy()));
-                }
-
-                // juxt特殊処理 - 実行前にチェック
-                if let Some(Value::List(juxt_funcs)) = f.env.read().get("__juxt_funcs__") {
-                    let mut results = Vec::with_capacity(juxt_funcs.len());
-                    for jfunc in &juxt_funcs {
-                        let result = self.apply_func(jfunc, args.clone())?;
-                        results.push(result);
+                // 特殊処理フラグがtrueの場合のみ環境ルックアップ（99.9%の通常関数で高速化）
+                if f.has_special_processing {
+                    // complement特殊処理 - 実行前にチェック
+                    if let Some(complement_func) = f.env.read().get("__complement_func__") {
+                        let result = self.apply_func(&complement_func, args)?;
+                        return Ok(Value::Bool(!result.is_truthy()));
                     }
-                    return Ok(Value::Vector(results.into()));
-                }
 
-                // tap>特殊処理 - 副作用を実行してから値を返す
-                if let Some(tap_func) = f.env.read().get("__tap_func__") {
-                    if args.len() == 1 {
-                        let value = args[0].clone();
-                        // 副作用関数を実行（結果は無視）
-                        let _ = self.apply_func(&tap_func, smallvec![value.clone()]);
-                        // 元の値をそのまま返す
-                        return Ok(value);
+                    // juxt特殊処理 - 実行前にチェック
+                    if let Some(Value::List(juxt_funcs)) = f.env.read().get("__juxt_funcs__") {
+                        let mut results = Vec::with_capacity(juxt_funcs.len());
+                        for jfunc in &juxt_funcs {
+                            let result = self.apply_func(jfunc, args.clone())?;
+                            results.push(result);
+                        }
+                        return Ok(Value::Vector(results.into()));
+                    }
+
+                    // tap>特殊処理 - 副作用を実行してから値を返す
+                    if let Some(tap_func) = f.env.read().get("__tap_func__") {
+                        if args.len() == 1 {
+                            let value = args[0].clone();
+                            // 副作用関数を実行（結果は無視）
+                            let _ = self.apply_func(&tap_func, smallvec![value.clone()]);
+                            // 元の値をそのまま返す
+                            return Ok(value);
+                        }
                     }
                 }
 
@@ -1428,6 +1432,7 @@ impl Evaluator {
                     body: expr.clone(),
                     env: Arc::clone(&env),
                     is_variadic: false,
+                    has_special_processing: false,
                 }))
             })
             .collect();
