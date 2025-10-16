@@ -97,8 +97,10 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
             let split_point = index.min(items.len());
-            let left: im::Vector<Value> = items.iter().take(split_point).cloned().collect();
-            let right: im::Vector<Value> = items.iter().skip(split_point).cloned().collect();
+
+            // im::Vector::split_atを使用（効率的な分割）
+            let (left, right) = items.clone().split_at(split_point);
+
             Ok(Value::Vector(
                 vec![Value::List(left), Value::List(right)].into(),
             ))
@@ -190,8 +192,8 @@ pub fn native_sort_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Res
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            // 各要素のキーを計算
-            let mut keyed: Vec<(Value, Value)> = Vec::new();
+            // 各要素のキーを計算（容量事前確保）
+            let mut keyed: Vec<(Value, Value)> = Vec::with_capacity(items.len());
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
                 keyed.push((key, item.clone()));
@@ -240,12 +242,24 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
 
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
-            let items_vec: Vec<Value> = items.iter().cloned().collect();
-            let mut result = Vec::new();
-            for chunk in items_vec.chunks(size) {
-                result.push(Value::List(chunk.to_vec().into()));
+            // im::Vector直接使用（中間Vec排除）
+            let mut result = im::Vector::new();
+            let mut current_chunk = im::Vector::new();
+
+            for item in items {
+                current_chunk.push_back(item.clone());
+                if current_chunk.len() == size {
+                    result.push_back(Value::List(current_chunk));
+                    current_chunk = im::Vector::new();
+                }
             }
-            Ok(Value::List(result.into()))
+
+            // 残りの要素を追加
+            if !current_chunk.is_empty() {
+                result.push_back(Value::List(current_chunk));
+            }
+
+            Ok(Value::List(result))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
