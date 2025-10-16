@@ -4,6 +4,7 @@ use crate::value::{
     Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value,
 };
 use parking_lot::RwLock;
+use smallvec::{smallvec, SmallVec};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -466,7 +467,7 @@ impl Evaluator {
             return self.eval_with_env(&expanded, env);
         }
 
-        let arg_vals: Result<Vec<_>, _> = args
+        let arg_vals: Result<SmallVec<[Value; 4]>, _> = args
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
             .collect();
@@ -969,7 +970,8 @@ impl Evaluator {
 
     /// 関数を適用するヘルパー（builtinsモジュールから使用）
     pub fn apply_function(&self, func: &Value, args: &[Value]) -> Result<Value, String> {
-        self.apply_func(func, args.to_vec())
+        // SmallVec を使用して少数引数の場合にヒープ確保を回避
+        self.apply_func(func, args.iter().cloned().collect())
     }
 
     /// 関数名を取得（プロファイリング用）
@@ -1082,7 +1084,7 @@ impl Evaluator {
     }
 
     /// 関数を適用するヘルパー（内部用）
-    fn apply_func(&self, func: &Value, args: Vec<Value>) -> Result<Value, String> {
+    fn apply_func(&self, func: &Value, args: SmallVec<[Value; 4]>) -> Result<Value, String> {
         match func {
             Value::NativeFunc(nf) => (nf.func)(&args),
             Value::Function(f) => {
@@ -1107,7 +1109,7 @@ impl Evaluator {
                     if args.len() == 1 {
                         let value = args[0].clone();
                         // 副作用関数を実行（結果は無視）
-                        let _ = self.apply_func(&tap_func, vec![value.clone()]);
+                        let _ = self.apply_func(&tap_func, smallvec![value.clone()]);
                         // 元の値をそのまま返す
                         return Ok(value);
                     }
@@ -1123,7 +1125,7 @@ impl Evaluator {
                     }
                     // variadic引数は常にSimpleパターンのはず
                     if let crate::value::FnParam::Simple(name) = &f.params[0] {
-                        new_env.set(name.clone(), Value::List(args.into()));
+                        new_env.set(name.clone(), Value::List(args.into_iter().collect()));
                     } else {
                         return Err(
                             "内部エラー: variadic引数がSimpleパターンではありません".to_string()
