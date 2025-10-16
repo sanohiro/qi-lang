@@ -19,7 +19,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
-use std::collections::HashMap;
+use im::HashMap;
 use std::convert::Infallible;
 use std::io::Read;
 use std::net::SocketAddr;
@@ -526,7 +526,7 @@ async fn handle_request(
 }
 
 /// ルーティング処理
-fn route_request(req: &Value, routes: &[Value]) -> Result<Value, String> {
+fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, String> {
     let method = match req {
         Value::Map(m) => match m.get("method") {
             Some(Value::Keyword(k)) => k.clone(),
@@ -854,12 +854,12 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                                     Value::Vector(v) => Some(v.clone()),
                                     _ => None,
                                 })
-                                .unwrap_or_else(|| vec![Value::String("*".to_string())]);
+                                .unwrap_or_else(|| vec![Value::String("*".to_string())].into());
 
                             let origin = origins
-                                .first()
+                                .get(0)
                                 .and_then(|v| match v {
-                                    Value::String(s) => Some(s.clone()),
+                                    Value::String(s) => Some(s.to_string()),
                                     _ => None,
                                 })
                                 .unwrap_or_else(|| "*".to_string());

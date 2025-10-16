@@ -118,7 +118,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
                 };
                 map.insert(key, yaml_to_value(v));
             }
-            Value::Map(map)
+            Value::Map(map.into())
         }
         serde_yaml::Value::Tagged(_) => Value::Nil, // Taggedはサポート外
     }

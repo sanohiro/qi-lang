@@ -8,8 +8,8 @@ use std::collections::HashMap;
 pub fn native_queue_new(_args: &[Value]) -> Result<Value, String> {
     let mut map = HashMap::new();
     map.insert("type".to_string(), Value::Keyword("queue".to_string()));
-    map.insert("items".to_string(), Value::List(Vec::new()));
-    Ok(Value::Map(map))
+    map.insert("items".to_string(), Value::List(Vec::new().into()));
+    Ok(Value::Map(map.into()))
 }
 
 /// queue/enqueue - 要素をキューに追加（末尾）
@@ -38,15 +38,15 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
 
     let items = match queue.get("items") {
         Some(Value::List(lst)) => lst.clone(),
-        _ => Vec::new(),
+        _ => Vec::new().into(),
     };
 
     let mut new_items = items;
-    new_items.push(args[1].clone());
+    new_items.push_back(args[1].clone());
 
     let mut new_map = queue.clone();
-    new_map.insert("items".to_string(), Value::List(new_items));
-    Ok(Value::Map(new_map))
+    new_map.insert("items".to_string(), Value::List(new_items.into()));
+    Ok(Value::Map(new_map.into()))
 }
 
 /// queue/dequeue - キューから要素を取り出し（先頭）
@@ -77,13 +77,13 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
     let new_items: Vec<Value> = items.into_iter().skip(1).collect();
 
     let mut new_map = queue.clone();
-    new_map.insert("items".to_string(), Value::List(new_items));
+    new_map.insert("items".to_string(), Value::List(new_items.into()));
 
     // {:value item, :queue new-queue} を返す
     let mut result = HashMap::new();
     result.insert("value".to_string(), item);
-    result.insert("queue".to_string(), Value::Map(new_map));
-    Ok(Value::Map(result))
+    result.insert("queue".to_string(), Value::Map(new_map.into()));
+    Ok(Value::Map(result.into()))
 }
 
 /// queue/peek - キューの先頭要素を見る（取り出さない）
@@ -107,7 +107,8 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
     };
 
     items
-        .first()
+        .iter()
+        .next()
         .cloned()
         .ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["queue/peek", "queue"]))
 }
@@ -162,8 +163,8 @@ pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
 pub fn native_stack_new(_args: &[Value]) -> Result<Value, String> {
     let mut map = HashMap::new();
     map.insert("type".to_string(), Value::Keyword("stack".to_string()));
-    map.insert("items".to_string(), Value::List(Vec::new()));
-    Ok(Value::Map(map))
+    map.insert("items".to_string(), Value::List(Vec::new().into()));
+    Ok(Value::Map(map.into()))
 }
 
 /// stack/push - スタックに要素を追加
@@ -191,15 +192,15 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
 
     let items = match stack.get("items") {
         Some(Value::List(lst)) => lst.clone(),
-        _ => Vec::new(),
+        _ => Vec::new().into(),
     };
 
-    let mut new_items = vec![args[1].clone()];
-    new_items.extend(items);
+    let mut new_items: im::Vector<Value> = vec![args[1].clone()].into();
+    new_items.append(items);
 
     let mut new_map = stack.clone();
-    new_map.insert("items".to_string(), Value::List(new_items));
-    Ok(Value::Map(new_map))
+    new_map.insert("items".to_string(), Value::List(new_items.into()));
+    Ok(Value::Map(new_map.into()))
 }
 
 /// stack/pop - スタックから要素を取り出し
@@ -230,12 +231,12 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
     let new_items: Vec<Value> = items.into_iter().skip(1).collect();
 
     let mut new_map = stack.clone();
-    new_map.insert("items".to_string(), Value::List(new_items));
+    new_map.insert("items".to_string(), Value::List(new_items.into()));
 
     let mut result = HashMap::new();
     result.insert("value".to_string(), item);
-    result.insert("stack".to_string(), Value::Map(new_map));
-    Ok(Value::Map(result))
+    result.insert("stack".to_string(), Value::Map(new_map.into()));
+    Ok(Value::Map(result.into()))
 }
 
 /// stack/peek - スタックの先頭要素を見る
@@ -259,7 +260,8 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
     };
 
     items
-        .first()
+        .iter()
+        .next()
         .cloned()
         .ok_or_else(|| fmt_msg(MsgKey::IsEmpty, &["stack/peek", "stack"]))
 }

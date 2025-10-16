@@ -1,0 +1,129 @@
+; test_control_flow_and_functions.qi
+; このファイルはQi言語の制御フローと関数のテストです。
+; 意図: if, match, loop/recur, fn, defnなどが仕様通りに動作することを確認します。
+
+(use test :only [run assert-eq assert])
+
+(run "if Statement Test" (fn []
+  ; 意図: if文がtruthy/falsyな値を正しく判定し、分岐するか。
+  (assert-eq "positive" (if (> 10 0) "positive" "negative"))
+  (assert-eq "negative" (if (< -10 0) "positive" "negative"))
+  (assert-eq "truthy" (if 1 "truthy" "falsy"))
+  (assert-eq "truthy" (if "" "truthy" "falsy"))
+  (assert-eq "falsy" (if nil "truthy" "falsy"))
+  (assert-eq "falsy" (if false "truthy" "falsy"))
+  (assert-eq nil (if false "truthy")) ; else節がない場合はnilを返す
+))
+
+(run "match Statement - Basic Values" (fn []
+  ; 意図: matchが数値、文字列、nil, boolなどの基本的な値で正しく分岐するか。
+  (assert-eq "zero" (match 0 -> "zero" 1 -> "one" _ -> "other"))
+  (assert-eq "one" (match 1 -> "zero" 1 -> "one" _ -> "other"))
+  (assert-eq "other" (match 2 -> "zero" 1 -> "one" n -> f"other: {n}"))
+  (assert-eq "not found" (match nil nil -> "not found" false -> "false" _ -> "other"))
+  (assert-eq "false" (match false nil -> "not found" false -> "false" _ -> "other"))
+))
+
+(run "match Statement - or-patterns and guards" (fn []
+  ; 意図: or-pattern (|) とガード条件 (when) が機能するか。
+  (assert-eq "weekday" (match "月" "月"|"火"|"水"|"木"|"金" -> "weekday" _ -> "weekend"))
+  (assert-eq "weekend" (match "土" "月"|"火"|"水"|"木"|"金" -> "weekday" _ -> "weekend"))
+  (assert-eq "positive" (match 10 n when (> n 0) -> "positive" n when (< n 0) -> "negative" _ -> "zero"))
+  (assert-eq "negative" (match -10 n when (> n 0) -> "positive" n when (< n 0) -> "negative" _ -> "zero"))
+  (assert-eq "zero" (match 0 n when (> n 0) -> "positive" n when (< n 0) -> "negative" _ -> "zero"))
+))
+
+(run "match Statement - Data Structures" (fn []
+  ; 意図: リストとマップの分解束縛、ワイルドカード、:as束縛が機能するか。
+  ; リスト
+  (assert-eq "empty" (match [] [] -> "empty" _ -> "other"))
+  (assert-eq "one" (match [1] [x] -> "one" _ -> "other"))
+  (assert-eq "first: 1, rest: [2, 3]" (match [1 2 3] [x ...rest] -> f"first: {x}, rest: {rest}"))
+  ; マップ
+  (assert-eq "user Alice" (match {:type "user" :name "Alice"} {:type "user" :name n} -> f"user {n}" _ -> "other"))
+  (assert-eq "item" (match {:type "item" :id 123} {:type "item"} -> "item" _ -> "other")) ; 部分一致
+  (assert-eq "logged: {:a 1}" (match {:a 1} {:a val :as all} -> f"logged: {all}"))
+))
+
+(run "loop/recur Test" (fn []
+  ; 意図: loop/recurによる末尾再帰がスタックを消費せず、正しく計算できるか。
+  (defn factorial [n]
+    (loop [i n acc 1]
+      (if (<= i 1)
+        acc
+        (recur (dec i) (* acc i)))))
+  (assert-eq 120 (factorial 5))
+  (assert-eq 1 (factorial 1))
+  (assert-eq 1 (factorial 0))
+
+  (defn sum-list [lst]
+    (loop [items lst total 0]
+      (if (empty? items)
+        total
+        (recur (rest items) (+ total (first items))))))
+  (assert-eq 15 (sum-list [1 2 3 4 5]))
+  (assert-eq 0 (sum-list []))
+))
+
+(run "Function Definition (fn, defn)" (fn []
+  ; 意図: fnによる無名関数とdefnによる名前付き関数が定義でき、呼び出せるか。
+  (def add (fn [x y] (+ x y)))
+  (assert-eq 5 (add 2 3))
+
+  (defn multiply [x y] (* x y))
+  (assert-eq 6 (multiply 2 3))
+
+  ; 可変長引数
+  (defn sum [& nums] (reduce + 0 nums))
+  (assert-eq 10 (sum 1 2 3 4))
+  (assert-eq 0 (sum))
+))
+
+(run "Function Destructuring" (fn []
+  ; 意図: 関数の引数でリストとマップの分解束縛が機能するか。
+  (defn add-pair [[x y]] (+ x y))
+  (assert-eq 5 (add-pair [2 3]))
+
+  (defn greet [{:name n :age a}] f"{n} is {a}")
+  (assert-eq "Alice is 30" (greet {:name "Alice" :age 30}))
+
+  (defn get-first [[x ...rest]] x)
+  (assert-eq 1 (get-first [1 2 3]))
+))
+
+(run "Closure Test" (fn []
+  ; 意図: クロージャが定義時のスコープの変数を正しくキャプチャするか。
+  (defn make-adder [n]
+    (fn [x] (+ x n)))
+  (def add5 (make-adder 5))
+  (def add10 (make-adder 10))
+  (assert-eq 8 (add5 3))
+  (assert-eq 13 (add10 3))
+
+  (defn make-counter []
+    (let [count (atom 0)]
+      (fn [] (swap! count inc))))
+  (def c1 (make-counter))
+  (c1)
+  (c1)
+  (assert-eq 3 (c1))
+))
+
+(run "Higher-Order Functions Test" (fn []
+  ; 意図: comp, partial, applyなどの高階関数が正しく動作するか。
+  ; comp: 右から左へ関数を合成
+  (def process (comp inc (* 2))) ; x -> (* 2) -> inc
+  (assert-eq 11 (process 5))
+
+  ; partial: 部分適用
+  (def add5 (partial + 5))
+  (assert-eq 15 (add5 10))
+
+  ; apply: リストを引数として適用
+  (assert-eq 15 (apply + [1 2 3 4 5]))
+  (assert-eq 15 (apply + 1 2 [3 4 5])) ; 最後の引数がリスト
+
+  ; identity: 引数をそのまま返す
+  (assert-eq 42 (identity 42))
+  (assert-eq [1 2] (filter identity [1 nil 2 false])) ; nilとfalseを除去
+))

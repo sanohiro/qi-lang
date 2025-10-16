@@ -28,7 +28,7 @@ static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 
 /// コマンド実行結果をMapに変換
 fn result_to_map(stdout: Vec<u8>, stderr: Vec<u8>, exit_code: i32) -> Value {
-    let mut map = HashMap::new();
+    let mut map = std::collections::HashMap::new();
     map.insert(
         "stdout".to_string(),
         Value::String(String::from_utf8_lossy(&stdout).to_string()),
@@ -38,7 +38,7 @@ fn result_to_map(stdout: Vec<u8>, stderr: Vec<u8>, exit_code: i32) -> Value {
         Value::String(String::from_utf8_lossy(&stderr).to_string()),
     );
     map.insert("exit".to_string(), Value::Integer(exit_code as i64));
-    Value::Map(map)
+    Value::Map(map.into())
 }
 
 /// コマンド引数を解析（文字列 or ベクタ）
@@ -48,15 +48,16 @@ fn parse_command_args(val: &Value) -> Result<(String, Vec<String>), String> {
             // シェル経由で実行
             Ok((cmd.clone(), vec![]))
         }
-        Value::List(args) => {
-            if args.is_empty() {
+        Value::List(args_vec) => {
+            if args_vec.is_empty() {
                 return Err(fmt_msg(MsgKey::CmdEmptyCommand, &[]));
             }
-            let cmd = match &args[0] {
+            let args_slice: Vec<Value> = args_vec.iter().cloned().collect();
+            let cmd = match &args_slice[0] {
                 Value::String(s) => s.clone(),
                 _ => return Err(fmt_msg(MsgKey::CmdFirstArgMustBeString, &[])),
             };
-            let args: Result<Vec<String>, String> = args[1..]
+            let args: Result<Vec<String>, String> = args_slice[1..]
                 .iter()
                 .map(|v| match v {
                     Value::String(s) => Ok(s.clone()),
@@ -240,7 +241,7 @@ pub fn native_lines(args: &[Value]) -> Result<Value, String> {
         .map(|line| Value::String(line.to_string()))
         .collect();
 
-    Ok(Value::List(lines))
+    Ok(Value::List(lines.into()))
 }
 
 /// stream-lines - コマンドのstdoutを行単位でストリームとして返す
@@ -495,7 +496,7 @@ pub fn native_interactive(args: &[Value]) -> Result<Value, String> {
         .lock()
         .insert(pid, (stdin, stdout, stderr, child));
 
-    Ok(Value::Map(handle))
+    Ok(Value::Map(handle.into()))
 }
 
 /// write - プロセスのstdinに書き込む
@@ -646,7 +647,7 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
     result.insert("exit".to_string(), Value::Integer(exit_code as i64));
     result.insert("stderr".to_string(), Value::String(stderr_content));
 
-    Ok(Value::Map(result))
+    Ok(Value::Map(result.into()))
 }
 
 // ========================================

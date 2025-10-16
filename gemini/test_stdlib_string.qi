@@ -1,0 +1,101 @@
+; test_stdlib_string.qi
+; このファイルはQi言語の文字列標準ライブラリ (str/) のテストです。
+; 意図: 豊富な文字列操作関数が仕様通りに動作することを確認します。
+
+(use test :only [run assert-eq assert])
+(use str)
+
+(run "String Search Functions" (fn []
+  (assert (contains? "hello world" "world"))
+  (assert (starts-with? "hello" "he"))
+  (assert (ends-with? "hello" "lo"))
+  (assert-eq 6 (index-of "hello world" "world"))
+  (assert-eq 6 (last-index-of "hello hello" "hello"))
+))
+
+(run "String Case and Trim Functions" (fn []
+  (assert-eq "HELLO" (upper "hello"))
+  (assert-eq "hello" (lower "HELLO"))
+  (assert-eq "Hello" (capitalize "hello"))
+  (assert-eq "Hello World" (title "hello world"))
+  (assert-eq "hello" (trim "  hello  "))
+  (assert-eq "hello  " (trim-left "  hello  "))
+  (assert-eq "  hello" (trim-right "  hello  "))
+  (assert-eq "---" (repeat "-" 3))
+))
+
+(run "String Case Conversion" (fn []
+  (assert-eq "user_name" (snake "userName"))
+  (assert-eq "userName" (camel "user_name"))
+  (assert-eq "user-name" (kebab "userName"))
+  (assert-eq "UserName" (pascal "user_name"))
+))
+
+(run "String Split and Join" (fn []
+  (assert-eq ["a" "b" "c"] (split "a,b,c" ","))
+  (assert-eq ["hello" "world"] (lines "hello\nworld"))
+  (assert-eq ["hello" "world"] (words "hello world"))
+  (assert-eq ["h" "e" "l" "l" "o"] (chars "hello"))
+  (assert-eq "a,b,c" (join "," ["a" "b" "c"]))
+))
+
+(run "String Replace and Splice" (fn []
+  (assert-eq "hello qi" (replace "hello world" "world" "qi"))
+  (assert-eq "cc bb aa" (replace-first "aa bb aa" "aa" "cc"))
+  (assert-eq "hello universe" (splice "hello world" 6 11 "universe"))
+))
+
+(run "String Substring Functions" (fn []
+  (assert-eq "hello" (slice "hello world" 0 5))
+  (assert-eq "hel" (take "hello" 3))
+  (assert-eq "llo" (drop "hello" 2))
+  (assert-eq "user" (sub-before "user@example.com" "@"))
+  (assert-eq "example.com" (sub-after "user@example.com" "@"))
+))
+
+(run "String Padding and Truncation" (fn []
+  (assert-eq "  hi" (pad-left "hi" 4))
+  (assert-eq "hi  " (pad-right "hi" 4))
+  (assert-eq " hi " (pad "hi" 4))
+  (assert-eq "he..." (truncate "hello world" 5))
+))
+
+(run "String Validation Functions" (fn []
+  (assert (digit? "123"))
+  (assert (not (digit? "123a")))
+  (assert (alpha? "abc"))
+  (assert (not (alpha? "abc1")))
+  (assert (alnum? "abc1"))
+  (assert (not (alnum? "abc1!")))
+  (assert (lower? "abc"))
+  (assert (upper? "ABC"))
+  (assert (space? " \t\n"))
+  (assert (blank? "  "))
+  (assert (not (blank? " a ")))
+))
+
+(run "String URL/Web Functions" (fn []
+  (assert-eq "hello-world" (slugify "Hello World"))
+  (assert-eq "hello%20world" (url-encode "hello world"))
+  (assert-eq "hello world" (url-decode "hello%20world"))
+  (assert-eq "&lt;div&gt;" (html-encode "<div>"))
+  (assert-eq "<div>" (html-decode "&lt;div&gt;"))
+))
+
+(run "String Encoding Functions" (fn []
+  (assert-eq "aGVsbG8=" (to-base64 "hello"))
+  (assert-eq "hello" (from-base64 "aGVsbG8="))
+))
+
+(run "String Parsing Functions" (fn []
+  (assert-eq 123 (parse-int "123"))
+  (assert-eq 3.14 (parse-float "3.14"))
+))
+
+(run "String Formatting Functions" (fn []
+  (assert-eq "Hello, World!" (format "Hello, {}!" "World"))
+  (assert-eq "1 + 2 = 3" (format "{} + {} = {}" 1 2 3))
+  (assert-eq "3.14" (format-decimal 2 3.14159))
+  (assert-eq "1,234,567" (format-comma 1234567))
+  (assert-eq "12.3%" (format-percent 1 0.123))
+))

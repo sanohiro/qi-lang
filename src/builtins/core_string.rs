@@ -24,7 +24,7 @@ pub fn native_split(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sep)) => {
-            let parts: Vec<Value> = s
+            let parts: im::Vector<Value> = s
                 .split(sep.as_str())
                 .map(|p| Value::String(p.to_string()))
                 .collect();

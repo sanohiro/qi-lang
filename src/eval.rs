@@ -149,7 +149,7 @@ impl Evaluator {
                     .iter()
                     .map(|e| self.eval_with_env(e, env.clone()))
                     .collect();
-                Ok(Value::List(values?))
+                Ok(Value::List(values?.into()))
             }
 
             Expr::Vector(items) => {
@@ -157,7 +157,7 @@ impl Evaluator {
                     .iter()
                     .map(|e| self.eval_with_env(e, env.clone()))
                     .collect();
-                Ok(Value::Vector(values?))
+                Ok(Value::Vector(values?.into()))
             }
 
             Expr::Map(pairs) => {
@@ -172,7 +172,7 @@ impl Evaluator {
                     let value = self.eval_with_env(v, env.clone())?;
                     map.insert(key, value);
                 }
-                Ok(Value::Map(map))
+                Ok(Value::Map(map.into()))
             }
 
             Expr::Def(name, value, is_private) => {
@@ -276,13 +276,13 @@ impl Evaluator {
                         // {:ok value}
                         let mut map = HashMap::new();
                         map.insert("ok".to_string(), value);
-                        Ok(Value::Map(map))
+                        Ok(Value::Map(map.into()))
                     }
                     Err(e) => {
                         // {:error e}
                         let mut map = HashMap::new();
                         map.insert("error".to_string(), Value::String(e));
-                        Ok(Value::Map(map))
+                        Ok(Value::Map(map.into()))
                     }
                 };
 
@@ -664,7 +664,7 @@ impl Evaluator {
                 if let Some(rest_pattern) = rest {
                     let rest_values: Vec<Value> =
                         values.iter().skip(patterns.len()).cloned().collect();
-                    self.match_pattern(rest_pattern, &Value::List(rest_values), bindings)?;
+                    self.match_pattern(rest_pattern, &Value::List(rest_values.into()), bindings)?;
                 } else if patterns.len() != values.len() {
                     // restパターンがない場合は要素数が一致しなければマッチ失敗
                     return Ok(false);
@@ -1031,7 +1031,8 @@ impl Evaluator {
                     }
 
                     // rest部分をバインド（残りの要素をリストとして）
-                    let rest_values = values[params.len()..].to_vec();
+                    let rest_values: im::Vector<Value> =
+                        values.iter().skip(params.len()).cloned().collect();
                     self.bind_fn_param(rest, &Value::List(rest_values), env)?;
                 } else {
                     // [x y] 形式（固定長）
@@ -1098,7 +1099,7 @@ impl Evaluator {
                         let result = self.apply_func(jfunc, args.clone())?;
                         results.push(result);
                     }
-                    return Ok(Value::Vector(results));
+                    return Ok(Value::Vector(results.into()));
                 }
 
                 // tap>特殊処理 - 副作用を実行してから値を返す
@@ -1122,7 +1123,7 @@ impl Evaluator {
                     }
                     // variadic引数は常にSimpleパターンのはず
                     if let crate::value::FnParam::Simple(name) = &f.params[0] {
-                        new_env.set(name.clone(), Value::List(args));
+                        new_env.set(name.clone(), Value::List(args.into()));
                     } else {
                         return Err(
                             "内部エラー: variadic引数がSimpleパターンではありません".to_string()
@@ -1406,7 +1407,7 @@ impl Evaluator {
 
     fn eval_parallel_do(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {
-            return Ok(Value::Vector(vec![]));
+            return Ok(Value::Vector(vec![].into()));
         }
 
         // 各式を遅延評価のために関数でラップ
@@ -1581,7 +1582,7 @@ macro_rules! check_args {
 
 /// list - リストを作成
 fn native_list(args: &[Value]) -> Result<Value, String> {
-    Ok(Value::List(args.to_vec()))
+    Ok(Value::List(args.iter().cloned().collect()))
 }
 
 /// print - 値を出力
@@ -1740,32 +1741,35 @@ mod tests {
         // ...restパターンのテスト
         assert_eq!(
             eval_str("(match [1 2 3 4 5] [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![
-                Value::Integer(2),
-                Value::Integer(3),
-                Value::Integer(4),
-                Value::Integer(5)
-            ])
+            Value::List(
+                vec![
+                    Value::Integer(2),
+                    Value::Integer(3),
+                    Value::Integer(4),
+                    Value::Integer(5)
+                ]
+                .into()
+            )
         );
         // 1要素の場合
         assert_eq!(
             eval_str("(match [1] [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![])
+            Value::List(vec![].into())
         );
         // 空リストの場合
         assert_eq!(
             eval_str("(match [] [...rest] -> rest)").unwrap(),
-            Value::List(vec![])
+            Value::List(vec![].into())
         );
         // 複数要素を取得してからrest
         assert_eq!(
             eval_str("(match [10 20 30] [a b ...rest] -> rest)").unwrap(),
-            Value::List(vec![Value::Integer(30)])
+            Value::List(vec![Value::Integer(30)].into())
         );
         // リストでも動作
         assert_eq!(
             eval_str("(match (list 1 2 3) [x ...rest] -> rest)").unwrap(),
-            Value::List(vec![Value::Integer(2), Value::Integer(3)])
+            Value::List(vec![Value::Integer(2), Value::Integer(3)].into())
         );
     }
 
@@ -1824,11 +1828,7 @@ mod tests {
         // mapのテスト
         assert_eq!(
             eval_str("(map (fn [x] (* x 2)) [1 2 3])").unwrap(),
-            Value::List(vec![
-                Value::Integer(2),
-                Value::Integer(4),
-                Value::Integer(6)
-            ])
+            Value::List(vec![Value::Integer(2), Value::Integer(4), Value::Integer(6)].into())
         );
     }
 
@@ -1837,11 +1837,7 @@ mod tests {
         // filterのテスト
         assert_eq!(
             eval_str("(filter (fn [x] (> x 2)) [1 2 3 4 5])").unwrap(),
-            Value::List(vec![
-                Value::Integer(3),
-                Value::Integer(4),
-                Value::Integer(5)
-            ])
+            Value::List(vec![Value::Integer(3), Value::Integer(4), Value::Integer(5)].into())
         );
     }
 
@@ -1864,15 +1860,11 @@ mod tests {
         // consのテスト
         assert_eq!(
             eval_str("(cons 1 (list 2 3))").unwrap(),
-            Value::List(vec![
-                Value::Integer(1),
-                Value::Integer(2),
-                Value::Integer(3)
-            ])
+            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
         );
         assert_eq!(
             eval_str("(cons 1 nil)").unwrap(),
-            Value::List(vec![Value::Integer(1)])
+            Value::List(vec![Value::Integer(1)].into())
         );
     }
 
@@ -1881,20 +1873,19 @@ mod tests {
         // conjのテスト
         assert_eq!(
             eval_str("(conj [1 2] 3 4)").unwrap(),
-            Value::Vector(vec![
-                Value::Integer(1),
-                Value::Integer(2),
-                Value::Integer(3),
-                Value::Integer(4)
-            ])
+            Value::Vector(
+                vec![
+                    Value::Integer(1),
+                    Value::Integer(2),
+                    Value::Integer(3),
+                    Value::Integer(4)
+                ]
+                .into()
+            )
         );
         assert_eq!(
             eval_str("(conj (list 1 2) 3)").unwrap(),
-            Value::List(vec![
-                Value::Integer(3),
-                Value::Integer(1),
-                Value::Integer(2)
-            ])
+            Value::List(vec![Value::Integer(3), Value::Integer(1), Value::Integer(2)].into())
         );
     }
 
@@ -1960,11 +1951,7 @@ mod tests {
         // パイプラインと新しい組み込み関数の組み合わせ
         assert_eq!(
             eval_str("[1 2 3 4 5] |> (filter (fn [x] (> x 2))) |> (map (fn [x] (* x 2)))").unwrap(),
-            Value::List(vec![
-                Value::Integer(6),
-                Value::Integer(8),
-                Value::Integer(10)
-            ])
+            Value::List(vec![Value::Integer(6), Value::Integer(8), Value::Integer(10)].into())
         );
     }
 
@@ -2010,19 +1997,18 @@ mod tests {
         assert_eq!(eval_str("'x").unwrap(), Value::Symbol("x".to_string()));
         assert_eq!(
             eval_str("'(1 2 3)").unwrap(),
-            Value::List(vec![
-                Value::Integer(1),
-                Value::Integer(2),
-                Value::Integer(3)
-            ])
+            Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
         );
         assert_eq!(
             eval_str("'(+ 1 2)").unwrap(),
-            Value::List(vec![
-                Value::Symbol("+".to_string()),
-                Value::Integer(1),
-                Value::Integer(2)
-            ])
+            Value::List(
+                vec![
+                    Value::Symbol("+".to_string()),
+                    Value::Integer(1),
+                    Value::Integer(2)
+                ]
+                .into()
+            )
         );
     }
 
@@ -2128,19 +2114,18 @@ mod tests {
     fn test_reverse() {
         assert_eq!(
             eval_str("(reverse [1 2 3])").unwrap(),
-            Value::Vector(vec![
-                Value::Integer(3),
-                Value::Integer(2),
-                Value::Integer(1)
-            ])
+            Value::Vector(vec![Value::Integer(3), Value::Integer(2), Value::Integer(1)].into())
         );
         assert_eq!(
             eval_str("(reverse '(a b c))").unwrap(),
-            Value::List(vec![
-                Value::Symbol("c".to_string()),
-                Value::Symbol("b".to_string()),
-                Value::Symbol("a".to_string())
-            ])
+            Value::List(
+                vec![
+                    Value::Symbol("c".to_string()),
+                    Value::Symbol("b".to_string()),
+                    Value::Symbol("a".to_string())
+                ]
+                .into()
+            )
         );
     }
 
@@ -2765,7 +2750,7 @@ impl Evaluator {
                         result.push(val);
                     }
                 }
-                Ok(Value::List(result))
+                Ok(Value::List(result.into()))
             }
             Expr::Vector(items) => {
                 let mut result = Vec::new();
@@ -2773,7 +2758,7 @@ impl Evaluator {
                     let val = self.eval_quasiquote(item, env.clone(), depth)?;
                     result.push(val);
                 }
-                Ok(Value::Vector(result))
+                Ok(Value::Vector(result.into()))
             }
             Expr::Call { func, args } => {
                 // Callもリストとして扱う
@@ -2802,7 +2787,7 @@ impl Evaluator {
                         result.push(val);
                     }
                 }
-                Ok(Value::List(result))
+                Ok(Value::List(result.into()))
             }
             // 特殊形式もリスト形式に変換
             Expr::If {
@@ -2816,7 +2801,7 @@ impl Evaluator {
                 if let Some(o) = otherwise {
                     result.push(self.eval_quasiquote(o, env.clone(), depth)?);
                 }
-                Ok(Value::List(result))
+                Ok(Value::List(result.into()))
             }
             Expr::Do(exprs) => {
                 let mut result = vec![Value::Symbol("do".to_string())];
@@ -2842,7 +2827,7 @@ impl Evaluator {
                         result.push(self.eval_quasiquote(e, env.clone(), depth)?);
                     }
                 }
-                Ok(Value::List(result))
+                Ok(Value::List(result.into()))
             }
             // その他は変換してValueに
             _ => self.expr_to_value(expr),
@@ -2864,7 +2849,7 @@ impl Evaluator {
                     items.push(Value::Symbol("...".to_string()));
                     items.push(self.fn_param_to_value(rest_param));
                 }
-                Value::Vector(items)
+                Value::Vector(items.into())
             }
             FnParam::Map(pairs, as_var) => {
                 let mut map = HashMap::new();
@@ -2875,7 +2860,7 @@ impl Evaluator {
                 if let Some(var) = as_var {
                     map.insert("as".to_string(), Value::Symbol(var.clone()));
                 }
-                Value::Map(map)
+                Value::Map(map.into())
             }
         }
     }
@@ -2892,11 +2877,11 @@ impl Evaluator {
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
             Expr::List(items) => {
                 let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
-                Ok(Value::List(vals?))
+                Ok(Value::List(vals?.into()))
             }
             Expr::Vector(items) => {
                 let vals: Result<Vec<_>, _> = items.iter().map(|e| self.expr_to_value(e)).collect();
-                Ok(Value::Vector(vals?))
+                Ok(Value::Vector(vals?.into()))
             }
             Expr::Map(pairs) => {
                 let mut map = HashMap::new();
@@ -2910,7 +2895,7 @@ impl Evaluator {
                     let value = self.expr_to_value(v)?;
                     map.insert(key, value);
                 }
-                Ok(Value::Map(map))
+                Ok(Value::Map(map.into()))
             }
             // 特殊形式やCallは評価せずにリストとして返す
             Expr::Call { func, args } => {
@@ -2918,7 +2903,7 @@ impl Evaluator {
                 for arg in args {
                     items.push(self.expr_to_value(arg)?);
                 }
-                Ok(Value::List(items))
+                Ok(Value::List(items.into()))
             }
             Expr::If {
                 test,
@@ -2931,20 +2916,23 @@ impl Evaluator {
                 if let Some(o) = otherwise {
                     items.push(self.expr_to_value(o)?);
                 }
-                Ok(Value::List(items))
+                Ok(Value::List(items.into()))
             }
             Expr::Do(exprs) => {
                 let mut items = vec![Value::Symbol("do".to_string())];
                 for e in exprs {
                     items.push(self.expr_to_value(e)?);
                 }
-                Ok(Value::List(items))
+                Ok(Value::List(items.into()))
             }
-            Expr::Def(name, value, _is_private) => Ok(Value::List(vec![
-                Value::Symbol("def".to_string()),
-                Value::Symbol(name.clone()),
-                self.expr_to_value(value)?,
-            ])),
+            Expr::Def(name, value, _is_private) => Ok(Value::List(
+                vec![
+                    Value::Symbol("def".to_string()),
+                    Value::Symbol(name.clone()),
+                    self.expr_to_value(value)?,
+                ]
+                .into(),
+            )),
             Expr::Let { bindings, body } => {
                 let mut items = vec![Value::Symbol("let".to_string())];
                 let mut binding_vec = Vec::new();
@@ -2952,9 +2940,9 @@ impl Evaluator {
                     binding_vec.push(self.fn_param_to_value(pattern));
                     binding_vec.push(self.expr_to_value(expr)?);
                 }
-                items.push(Value::Vector(binding_vec));
+                items.push(Value::Vector(binding_vec.into()));
                 items.push(self.expr_to_value(body)?);
-                Ok(Value::List(items))
+                Ok(Value::List(items.into()))
             }
             Expr::Fn {
                 params,
@@ -2978,22 +2966,27 @@ impl Evaluator {
                 } else {
                     params.iter().map(|p| self.fn_param_to_value(p)).collect()
                 };
-                items.push(Value::Vector(param_vals));
+                items.push(Value::Vector(param_vals.into()));
                 items.push(self.expr_to_value(body)?);
-                Ok(Value::List(items))
+                Ok(Value::List(items.into()))
             }
-            Expr::Quasiquote(e) => Ok(Value::List(vec![
-                Value::Symbol("quasiquote".to_string()),
-                self.expr_to_value(e)?,
-            ])),
-            Expr::Unquote(e) => Ok(Value::List(vec![
-                Value::Symbol("unquote".to_string()),
-                self.expr_to_value(e)?,
-            ])),
-            Expr::UnquoteSplice(e) => Ok(Value::List(vec![
-                Value::Symbol("unquote-splice".to_string()),
-                self.expr_to_value(e)?,
-            ])),
+            Expr::Quasiquote(e) => Ok(Value::List(
+                vec![
+                    Value::Symbol("quasiquote".to_string()),
+                    self.expr_to_value(e)?,
+                ]
+                .into(),
+            )),
+            Expr::Unquote(e) => Ok(Value::List(
+                vec![Value::Symbol("unquote".to_string()), self.expr_to_value(e)?].into(),
+            )),
+            Expr::UnquoteSplice(e) => Ok(Value::List(
+                vec![
+                    Value::Symbol("unquote-splice".to_string()),
+                    self.expr_to_value(e)?,
+                ]
+                .into(),
+            )),
             // モジュール関連とtry、deferはquoteできない
             Expr::Module(_)
             | Expr::Export(_)
@@ -3049,7 +3042,7 @@ impl Evaluator {
                 .iter()
                 .map(|e| self.expr_to_value(e))
                 .collect::<Result<Vec<_>, _>>()?;
-            new_env.set(mac.params[fixed_count].clone(), Value::List(rest));
+            new_env.set(mac.params[fixed_count].clone(), Value::List(rest.into()));
         } else {
             // 通常の引数
             if mac.params.len() != args.len() {
@@ -3090,7 +3083,7 @@ impl Evaluator {
             Value::List(items) if items.is_empty() => Ok(Expr::List(vec![])),
             Value::List(items) => {
                 // 先頭がシンボルの場合、特殊形式かチェック
-                if let Some(Value::Symbol(s)) = items.first() {
+                if let Some(Value::Symbol(s)) = items.head() {
                     match s.as_str() {
                         "if" if items.len() >= 3 && items.len() <= 4 => {
                             return Ok(Expr::If {
@@ -3104,8 +3097,11 @@ impl Evaluator {
                             });
                         }
                         "do" => {
-                            let exprs: Result<Vec<_>, _> =
-                                items[1..].iter().map(|v| self.value_to_expr(v)).collect();
+                            let exprs: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(1)
+                                .map(|v| self.value_to_expr(v))
+                                .collect();
                             return Ok(Expr::Do(exprs?));
                         }
                         "def" if items.len() == 3 || items.len() == 4 => {
@@ -3178,13 +3174,14 @@ impl Evaluator {
                                     }
 
                                     let params = items[params_idx].clone();
-                                    let body: Vec<Value> = items[params_idx + 1..].to_vec();
+                                    let body: Vec<Value> =
+                                        items.iter().skip(params_idx + 1).cloned().collect();
 
                                     // (fn [params] body...) を構築
                                     let mut fn_items =
                                         vec![Value::Symbol("fn".to_string()), params];
                                     fn_items.extend(body);
-                                    let fn_value = Value::List(fn_items);
+                                    let fn_value = Value::List(fn_items.into());
 
                                     // (def name (fn ...)) を構築
                                     let def_items = vec![
@@ -3194,7 +3191,7 @@ impl Evaluator {
                                     ];
 
                                     // 展開したdefを再度処理
-                                    return self.value_to_expr(&Value::List(def_items));
+                                    return self.value_to_expr(&Value::List(def_items.into()));
                                 }
                             }
                         }

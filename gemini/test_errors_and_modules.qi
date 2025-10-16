@@ -1,0 +1,101 @@
+; test_errors_and_modules.qi
+; このファイルはQi言語のエラー処理とモジュールシステムのテストです。
+; 意図: try/catch, defer, error および use, load, export などが仕様通りに動作することを確認します。
+
+(use test :only [run assert-eq assert assert-throws])
+(use io)
+(use path)
+
+(run "Error Handling - try/error" (fn []
+  ; 意図: errorで投げられた例外をtryが {:error ...} としてキャッチできるか。
+  (defn risky-op [should-fail]
+    (if should-fail
+      (error "it failed")
+      "success"))
+
+  (def result-ok (try (risky-op false)))
+  (assert-eq {:ok "success"} result-ok)
+
+  (def result-err (try (risky-op true)))
+  (assert (map? result-err))
+  (assert (str/contains? (get result-err :error) "it failed"))
+
+  ; assert-throwsはtryとerrorの組み合わせをテストするのに便利
+  (assert-throws (fn [] (error "this should be caught")))
+))
+
+(run "Error Handling - defer" (fn []
+  ; 意図: deferが関数の成功・失敗に関わらず、LIFO順で実行されるか。
+  (def execution-order (atom []))
+
+  (defn defer-test [should-fail]
+    (do
+      (defer (swap! execution-order conj "first")) ; 最後に実行される
+      (defer (swap! execution-order conj "second")) ; 最初に実行される
+      (if should-fail
+        (error "failing as requested"))))
+
+  ; 成功時のテスト
+  (reset! execution-order [])
+  (defer-test false)
+  (assert-eq ["second" "first"] (deref execution-order))
+
+  ; 失敗時のテスト
+  (reset! execution-order [])
+  (try (defer-test true))
+  (assert-eq ["second" "first"] (deref execution-order))
+))
+
+
+(run "Module System" (fn []
+  ; 意図: モジュールの定義、エクスポート、インポートが正しく機能するか。
+  ; 一時的なモジュールファイルを作成してテストします。
+  (def temp-dir (path/join (temp-dir) "qi_test_modules"))
+  (create-dir temp-dir)
+  (defer (delete-dir temp-dir :recursive true))
+
+  ; --- モジュール1: 選択的エクスポート --- 
+  (def math-module-path (path/join temp-dir "math.qi"))
+  (write-file math-module-path
+    """(defn add [x y] (+ x y))
+       (defn- internal-sub [x y] (- x y)) ; defn- は常にプライベート
+       (defn mul [x y] (* x y))
+       (export add)""")
+
+  ; --- モジュール2: module宣言によるエイリアス --- 
+  (def str-module-path (path/join temp-dir "string_utils.qi"))
+  (write-file str-module-path
+    """(module str-helpers)
+       (defn upper [s] (str/upper s))""")
+
+  ; --- モジュール3: 副作用のみのload用 --- 
+  (def config-module-path (path/join temp-dir "config.qi"))
+  (write-file config-module-path
+    """(def-global test-config-loaded true)""")
+
+  ; --- テスト実行 --- 
+  (let [old-path (env/get "QI_PATH")]
+    (defer (env/set "QI_PATH" old-path))
+    (env/set "QI_PATH" (str temp-dir ":" old-path))
+
+    ; 1. 選択的インポート (:only)
+    (use math :only [add])
+    (assert-eq 5 (add 2 3))
+    ; (mul 2 3) ; これは `use` されていないのでエラーになるはず (テスト不可)
+
+    ; 2. エイリアス付きインポート (:as)
+    (use math :as m)
+    (assert-eq 5 (m/add 2 3))
+    ; (m/mul 2 3) ; exportされていないのでエラーになるはず (テスト不可)
+    ; (m/internal-sub 3 2) ; defn- なのでエラーになるはず (テスト不可)
+
+    ; 3. module宣言によるエイリアス
+    (use string_utils)
+    (assert-eq "HELLO" (str-helpers/upper "hello"))
+
+    ; 4. loadによる副作用
+    (assert-eq nil (try (deref test-config-loaded))) ; まだロードされていない
+    (load "config")
+    (assert-eq true test-config-loaded)
+  )
+))

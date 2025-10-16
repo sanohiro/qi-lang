@@ -10,7 +10,6 @@
 
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
-use std::collections::HashMap;
 
 // ========================================
 // リスト操作（Evaluator不要）
@@ -22,7 +21,7 @@ pub fn native_first(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["first"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => Ok(v.first().cloned().unwrap_or(Value::Nil)),
+        Value::List(v) | Value::Vector(v) => Ok(v.head().cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["first", "lists or vectors"])),
     }
 }
@@ -35,16 +34,16 @@ pub fn native_rest(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(v) => {
             if v.is_empty() {
-                Ok(Value::List(Vec::new()))
+                Ok(Value::List(im::Vector::new()))
             } else {
-                Ok(Value::List(v[1..].to_vec()))
+                Ok(Value::List(v.iter().skip(1).cloned().collect()))
             }
         }
         Value::Vector(v) => {
             if v.is_empty() {
-                Ok(Value::Vector(Vec::new()))
+                Ok(Value::Vector(im::Vector::new()))
             } else {
-                Ok(Value::Vector(v[1..].to_vec()))
+                Ok(Value::Vector(v.iter().skip(1).cloned().collect()))
             }
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["rest", "lists or vectors"])),
@@ -104,15 +103,21 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["cons"]));
     }
     match &args[1] {
-        Value::Nil => Ok(Value::List(vec![args[0].clone()])),
+        Value::Nil => Ok(Value::List(vec![args[0].clone()].into())),
         Value::List(v) => {
-            let mut new_list = vec![args[0].clone()];
-            new_list.extend(v.clone());
+            let mut new_list = im::Vector::new();
+            new_list.push_back(args[0].clone());
+            for item in v.iter() {
+                new_list.push_back(item.clone());
+            }
             Ok(Value::List(new_list))
         }
         Value::Vector(v) => {
-            let mut new_vec = vec![args[0].clone()];
-            new_vec.extend(v.clone());
+            let mut new_vec = im::Vector::new();
+            new_vec.push_back(args[0].clone());
+            for item in v.iter() {
+                new_vec.push_back(item.clone());
+            }
             Ok(Value::List(new_vec))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["cons", "lists or vectors"])),
@@ -127,14 +132,16 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::List(v) => {
             let mut new_list = v.clone();
-            for item in &args[1..] {
-                new_list.insert(0, item.clone());
+            for item in args[1..].iter().rev() {
+                new_list.push_front(item.clone());
             }
             Ok(Value::List(new_list))
         }
         Value::Vector(v) => {
             let mut new_vec = v.clone();
-            new_vec.extend_from_slice(&args[1..]);
+            for item in &args[1..] {
+                new_vec.push_back(item.clone());
+            }
             Ok(Value::Vector(new_vec))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["conj", "lists or vectors"])),
@@ -143,10 +150,14 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
 
 /// concat - 複数のリストを連結
 pub fn native_concat(args: &[Value]) -> Result<Value, String> {
-    let mut result = Vec::new();
+    let mut result = im::Vector::new();
     for arg in args {
         match arg {
-            Value::List(v) | Value::Vector(v) => result.extend(v.clone()),
+            Value::List(v) | Value::Vector(v) => {
+                for item in v.iter() {
+                    result.push_back(item.clone());
+                }
+            }
             _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
         }
     }
@@ -158,17 +169,17 @@ pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["flatten"]));
     }
-    fn flatten_value(v: &Value, result: &mut Vec<Value>) {
+    fn flatten_value(v: &Value, result: &mut im::Vector<Value>) {
         match v {
             Value::List(items) | Value::Vector(items) => {
                 for item in items {
                     flatten_value(item, result);
                 }
             }
-            _ => result.push(v.clone()),
+            _ => result.push_back(v.clone()),
         }
     }
-    let mut result = Vec::new();
+    let mut result = im::Vector::new();
     flatten_value(&args[0], &mut result);
     Ok(Value::List(result))
 }
@@ -180,7 +191,7 @@ pub fn native_range(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => {
-            let items: Vec<Value> = (0..*n).map(Value::Integer).collect();
+            let items: im::Vector<Value> = (0..*n).map(Value::Integer).collect();
             Ok(Value::List(items))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
@@ -194,13 +205,11 @@ pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::List(v) => {
-            let mut reversed = v.clone();
-            reversed.reverse();
+            let reversed: im::Vector<Value> = v.iter().rev().cloned().collect();
             Ok(Value::List(reversed))
         }
         Value::Vector(v) => {
-            let mut reversed = v.clone();
-            reversed.reverse();
+            let reversed: im::Vector<Value> = v.iter().rev().cloned().collect();
             Ok(Value::Vector(reversed))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["reverse", "lists or vectors"])),
@@ -246,7 +255,7 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
-            let mut sorted = v.clone();
+            let mut sorted: Vec<Value> = v.iter().cloned().collect();
             sorted.sort_by(|a, b| match (a, b) {
                 (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
                 (Value::Float(x), Value::Float(y)) => {
@@ -255,7 +264,7 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
                 (Value::String(x), Value::String(y)) => x.cmp(y),
                 _ => std::cmp::Ordering::Equal,
             });
-            Ok(Value::List(sorted))
+            Ok(Value::List(sorted.into()))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["sort", "lists or vectors"])),
     }
@@ -268,12 +277,12 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::List(v) | Value::Vector(v) => {
-            let mut result = Vec::new();
+            let mut result = im::Vector::new();
             let mut seen = std::collections::HashSet::new();
             for item in v {
                 let key = format!("{:?}", item);
                 if seen.insert(key) {
-                    result.push(item.clone());
+                    result.push_back(item.clone());
                 }
             }
             Ok(Value::List(result))
@@ -289,10 +298,10 @@ pub fn native_zip(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::List(a), Value::List(b)) | (Value::Vector(a), Value::Vector(b)) => {
-            let result: Vec<Value> = a
+            let result: im::Vector<Value> = a
                 .iter()
                 .zip(b.iter())
-                .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()]))
+                .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()].into()))
                 .collect();
             Ok(Value::List(result))
         }
@@ -329,7 +338,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Map(m) => {
-            let keys: Vec<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
+            let keys: im::Vector<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
             Ok(Value::List(keys))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["keys", "maps"])),
@@ -343,7 +352,7 @@ pub fn native_vals(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Map(m) => {
-            let vals: Vec<Value> = m.values().cloned().collect();
+            let vals: im::Vector<Value> = m.values().cloned().collect();
             Ok(Value::List(vals))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["vals", "maps"])),
@@ -379,28 +388,17 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Map(m) => {
-            // 削除するキーの数を計算して capacity を確保
-            let num_remove_keys = args.len() - 1;
-            let new_capacity = m.len().saturating_sub(num_remove_keys);
-            let mut new_map = HashMap::with_capacity(new_capacity.max(m.len() / 2));
+            let mut new_map = m.clone();
 
-            // キーのセットを作成
-            let mut keys_to_remove = std::collections::HashSet::with_capacity(num_remove_keys);
+            // 削除するキーのリストを作成
             for arg in &args[1..] {
                 let key = match arg {
                     Value::String(s) => s.clone(),
                     Value::Keyword(k) => k.clone(),
                     _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
                 };
-                keys_to_remove.insert(key);
+                new_map = new_map.without(&key);
             }
-
-            // 削除するキー以外をコピー
-            new_map.extend(
-                m.iter()
-                    .filter(|(k, _)| !keys_to_remove.contains(*k))
-                    .map(|(k, v)| (k.clone(), v.clone())),
-            );
 
             Ok(Value::Map(new_map))
         }
@@ -413,7 +411,7 @@ pub fn native_merge(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["merge", "1"]));
     }
-    let mut result = HashMap::new();
+    let mut result = im::HashMap::new();
     for arg in args {
         match arg {
             Value::Map(m) => {

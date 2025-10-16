@@ -487,7 +487,7 @@ pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
                     .lines()
                     .map(|line| Value::String(line.to_string()))
                     .collect();
-                Ok(Value::List(lines))
+                Ok(Value::List(lines.into()))
             }
             Err(e) => Err(fmt_msg(
                 MsgKey::IoReadLinesFailedToRead,
@@ -585,7 +585,7 @@ fn create_file_byte_stream(path: &str) -> Result<Value, String> {
                     // バイト配列をIntegerのVectorに変換
                     let bytes: Vec<Value> =
                         buffer.iter().map(|&b| Value::Integer(b as i64)).collect();
-                    Some(Value::Vector(bytes))
+                    Some(Value::Vector(bytes.into()))
                 }
                 Err(_) => None,
             }
@@ -733,7 +733,7 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
         })
         .collect();
 
-    Ok(Value::List(entries?))
+    Ok(Value::List(entries?.into()))
 }
 
 /// create-dir - ディレクトリを作成
@@ -917,7 +917,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            Ok(Value::Map(info))
+            Ok(Value::Map(info.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::ArgMustBeType,

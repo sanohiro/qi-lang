@@ -25,7 +25,7 @@ pub fn native_split(args: &[Value]) -> Result<Value, String> {
                 .split(sep.as_str())
                 .map(|p| Value::String(p.to_string()))
                 .collect();
-            Ok(Value::Vector(parts))
+            Ok(Value::Vector(parts.into()))
         }
         _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
     }
@@ -261,7 +261,7 @@ pub fn native_lines(args: &[Value]) -> Result<Value, String> {
                 .lines()
                 .map(|line| Value::String(line.to_string()))
                 .collect();
-            Ok(Value::Vector(lines))
+            Ok(Value::Vector(lines.into()))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["lines", "strings"])),
     }
@@ -278,7 +278,7 @@ pub fn native_words(args: &[Value]) -> Result<Value, String> {
                 .split_whitespace()
                 .map(|word| Value::String(word.to_string()))
                 .collect();
-            Ok(Value::Vector(words))
+            Ok(Value::Vector(words.into()))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["words", "strings"])),
     }
@@ -651,7 +651,7 @@ pub fn native_chars(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let chars: Vec<Value> = s.chars().map(|c| Value::String(c.to_string())).collect();
-            Ok(Value::Vector(chars))
+            Ok(Value::Vector(chars.into()))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["chars", "strings"])),
     }
@@ -785,7 +785,7 @@ pub fn native_split_camel(args: &[Value]) -> Result<Value, String> {
         Value::String(s) => {
             let words = split_words(s);
             let result: Vec<Value> = words.iter().map(|w| Value::String(w.clone())).collect();
-            Ok(Value::Vector(result))
+            Ok(Value::Vector(result.into()))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["split-camel", "strings"])),
     }
@@ -1302,7 +1302,7 @@ pub fn native_re_matches(args: &[Value]) -> Result<Value, String> {
         .map(|m| Value::String(m.as_str().to_string()))
         .collect();
 
-    Ok(Value::List(matches))
+    Ok(Value::List(matches.into()))
 }
 
 /// re-replace - 正規表現で置換
@@ -1383,9 +1383,9 @@ pub fn native_re_match_groups(args: &[Value]) -> Result<Value, String> {
 
             let mut result = std::collections::HashMap::new();
             result.insert("match".to_string(), Value::String(full_match.to_string()));
-            result.insert("groups".to_string(), Value::Vector(groups));
+            result.insert("groups".to_string(), Value::Vector(groups.into()));
 
-            Ok(Value::Map(result))
+            Ok(Value::Map(result.into()))
         }
         None => Ok(Value::Nil),
     }
@@ -1437,7 +1437,7 @@ pub fn native_re_split(args: &[Value]) -> Result<Value, String> {
             .collect()
     };
 
-    Ok(Value::Vector(parts))
+    Ok(Value::Vector(parts.into()))
 }
 
 /// format - 文字列フォーマット（簡易実装）

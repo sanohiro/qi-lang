@@ -1,0 +1,125 @@
+
+; parser_stress_test.qi
+; このファイルは、パーサーと特殊構文の限界を試すためのテストスクリプトです。
+; 構文的に正しいが、解釈が複雑なケースを意図的に含んでいます。
+
+(println "--- Parser Stress Test Start ---")
+
+; --- Section 1: 深くネストしたletでの分解束縛 ---
+(println "\n--- Section 1: Deeply Nested 'let' Destructuring ---")
+(let [
+  ; 非常に複雑なデータ構造
+  data {:user {:id 123 :roles ["admin" "editor"] :prefs {:theme "dark" :lang "ja"}}
+        :posts [[{:id 1 :title "First"} {:id 2 :title "Second"}]]}
+
+  ; letで一度に分解する
+  {:user {:id user-id, :roles [role1], :prefs prefs :as user-profile}
+   :posts [[{_ _} {:id post2-id, :title post2-title}]]} data
+]
+  (if (and
+        (= user-id 123)
+        (= role1 "admin")
+        (= {:theme "dark" :lang "ja"} prefs)
+        (= {:id 123 :roles ["admin" "editor"] :prefs {:theme "dark" :lang "ja"}} user-profile)
+        (= post2-id 2)
+        (= post2-title "Second"))
+    (println "正解: 深くネストしたletでの分解束縛は正しく動作しました。")
+    (println "不正解: 深くネストしたletでの分解束縛に失敗しました。")))
+
+
+; --- Section 2: 複雑なmatch文 ---
+(println "\n--- Section 2: Complex 'match' Statement ---")
+(defn test-complex-match [input]
+  (match input
+    ; ガードとorパターンと:as束縛の組み合わせ
+    {:status code, :body b} when (or (= code 200) (= code 201)) :as success ->
+      f"Success with code {code}, body length: {(len b)}, all: {(:status success)}"
+
+    ; ネストしたリストの分解
+    {:status 404, :errors [first-err ...rest]} ->
+      f"Not Found with first error: {first-err} and {(len rest)} more errors"
+
+    ; nil, false, true の明示的なマッチ
+    nil -> "Input was nil"
+    false -> "Input was false"
+    true -> "Input was true"
+
+    ; デフォルト
+    _ -> "Unknown pattern"))
+
+(def match-result-1 (test-complex-match {:status 200 :body "content"}))
+(def match-result-2 (test-complex-match {:status 404 :errors ["not found" "invalid id"]}))
+(def match-result-3 (test-complex-match nil))
+
+(if (and
+      (str/starts-with? match-result-1 "Success with code 200")
+      (str/starts-with? match-result-2 "Not Found with first error: not found")
+      (= match-result-3 "Input was nil"))
+  (println "正解: 複雑なmatch文は正しく動作しました。")
+  (println "不正解: 複雑なmatch文に失敗しました。"))
+
+
+; --- Section 3: 不規則な空白と改行 ---
+(println "\n--- Section 3: Irregular Whitespace and Newlines ---")
+(def irregular-vector
+  [ ; コメント
+    1, ; カンマとコメント
+    
+    2
+    , ; カンマのみの行
+    3
+    ; 4はスキップ
+    ,5])
+
+(def irregular-map {
+  :a 1, :b 2, ; カンマ
+  :c 3
+  :d 4,})
+
+(if (and
+      (= [1 2 3 5] irregular-vector)
+      (= {:a 1 :b 2 :c 3 :d 4} irregular-map))
+  (println "正解: 不規則な空白や改行は正しく解釈されました。")
+  (println "不正解: 不規則な空白や改行の解釈に失敗しました。"))
+
+
+; --- Section 4: f-string内の複雑な式 ---
+(println "\n--- Section 4: Complex Expressions in f-strings ---")
+(let [user {:name "Alice" :age 30}]
+  (def f-string-result f"User is {(str/upper (:name user))}, next year she will be {(inc (:age user))}. Escaped: {{user}}")
+  (if (= f-string-result "User is ALICE, next year she will be 31. Escaped: {user}")
+    (println "正解: f-string内の複雑な式は正しく評価されました。")
+    (println "不正解: f-string内の複雑な式の評価に失敗しました。")))
+
+
+; --- Section 5: loop/recur での複雑な状態遷移 ---
+(println "\n--- Section 5: Complex State in loop/recur ---")
+(defn process-events [events]
+  (loop [remaining events
+         processed []
+         state {:count 0 :errors 0}]
+    (if (empty? remaining)
+      [processed state]
+      (let [event (first remaining)]
+        (match event
+          {:type "add" :value v} ->
+            (recur (rest remaining)
+                   (conj processed v)
+                   (update state :count inc))
+          {:type "error"} ->
+            (recur (rest remaining)
+                   processed
+                   (update state :errors inc))
+          _ -> (recur (rest remaining) processed state))))))
+
+(def events [{:type "add" :value 10} {:type "other"} {:type "add" :value 20} {:type "error"}])
+(def [final-processed final-state] (process-events events))
+
+(if (and
+      (= [10 20] final-processed)
+      (= {:count 2 :errors 1} final-state))
+  (println "正解: loop/recurでの複雑な状態遷移は正しく動作しました。")
+  (println "不正解: loop/recurでの複雑な状態遷移に失敗しました。"))
+
+
+(println "\n--- Parser Stress Test End ---")

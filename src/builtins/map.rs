@@ -14,7 +14,7 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Map(m), Value::List(keys) | Value::Vector(keys)) => {
-            let mut result = std::collections::HashMap::new();
+            let mut result = im::HashMap::new();
             for key_val in keys {
                 let key = match key_val {
                     Value::String(s) => s.clone(),
@@ -65,8 +65,8 @@ pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
 }
 
 fn assoc_in_helper(
-    map: &mut std::collections::HashMap<String, Value>,
-    path: &[Value],
+    map: &mut im::HashMap<String, Value>,
+    path: &im::Vector<Value>,
     index: usize,
     value: &Value,
 ) -> Result<(), String> {
@@ -84,7 +84,7 @@ fn assoc_in_helper(
         let next_val = map
             .get(&key)
             .cloned()
-            .unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+            .unwrap_or_else(|| Value::Map(im::HashMap::new()));
         match next_val {
             Value::Map(mut inner_map) => {
                 assoc_in_helper(&mut inner_map, path, index + 1, value)?;
@@ -92,7 +92,7 @@ fn assoc_in_helper(
             }
             _ => {
                 // 既存の値がマップでない場合は上書き
-                let mut new_map = std::collections::HashMap::new();
+                let mut new_map = im::HashMap::new();
                 assoc_in_helper(&mut new_map, path, index + 1, value)?;
                 map.insert(key, Value::Map(new_map));
             }
@@ -131,8 +131,8 @@ pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
 }
 
 fn dissoc_in_helper(
-    map: &mut std::collections::HashMap<String, Value>,
-    path: &[Value],
+    map: &mut im::HashMap<String, Value>,
+    path: &im::Vector<Value>,
     index: usize,
 ) -> Result<(), String> {
     let key = match &path[index] {
@@ -172,7 +172,7 @@ pub fn native_update_keys(
 
     match map_val {
         Value::Map(m) => {
-            let mut result = std::collections::HashMap::new();
+            let mut result = im::HashMap::new();
             for (k, v) in m {
                 let key_val = Value::String(k.clone());
                 let new_key_val = evaluator.apply_function(key_fn, &[key_val])?;
@@ -209,7 +209,7 @@ pub fn native_update_vals(
 
     match map_val {
         Value::Map(m) => {
-            let mut result = std::collections::HashMap::new();
+            let mut result = im::HashMap::new();
             for (k, v) in m {
                 let new_val = evaluator.apply_function(val_fn, std::slice::from_ref(v))?;
                 result.insert(k.clone(), new_val);

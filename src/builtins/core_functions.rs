@@ -44,7 +44,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
     }
 
     let func = args[0].clone();
-    let partial_args: Vec<Value> = args[1..].to_vec();
+    let partial_args: im::Vector<Value> = args[1..].iter().cloned().collect();
 
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::FnParam::Simple("&rest".to_string())],
@@ -73,7 +73,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
     }
 
     // 複数の関数の場合は合成された関数を返す
-    let funcs = args.to_vec();
+    let funcs: im::Vector<Value> = args.iter().cloned().collect();
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::FnParam::Simple("x".to_string())],
         body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
@@ -99,7 +99,11 @@ pub fn native_apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
 
     let func = &args[0];
     match &args[1] {
-        Value::List(items) | Value::Vector(items) => evaluator.apply_function(func, items),
+        Value::List(items) | Value::Vector(items) => {
+            // im::Vector を &[Value] に変換
+            let items_vec: Vec<Value> = items.iter().cloned().collect();
+            evaluator.apply_function(func, &items_vec)
+        }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
             &["apply (2nd arg)", "second argument"],

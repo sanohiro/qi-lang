@@ -194,13 +194,13 @@ pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
-            let mut shuffled = items.clone();
+            let mut shuffled: Vec<_> = items.iter().cloned().collect();
             let mut rng = rand::rng();
             shuffled.shuffle(&mut rng);
 
             match &args[0] {
-                Value::List(_) => Ok(Value::List(shuffled)),
-                Value::Vector(_) => Ok(Value::Vector(shuffled)),
+                Value::List(_) => Ok(Value::List(shuffled.into())),
+                Value::Vector(_) => Ok(Value::Vector(shuffled.into())),
                 _ => unreachable!(),
             }
         }

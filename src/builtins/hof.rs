@@ -15,10 +15,10 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut results = Vec::new();
+            let mut results = im::Vector::new();
             for item in items {
                 let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
-                results.push(result);
+                results.push_back(result);
             }
             Ok(Value::List(results))
         }
@@ -40,11 +40,11 @@ pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut results = Vec::new();
+            let mut results = im::Vector::new();
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 if result.is_truthy() {
-                    results.push(item.clone());
+                    results.push_back(item.clone());
                 }
             }
             Ok(Value::List(results))
@@ -82,7 +82,7 @@ pub fn native_reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                 (1, items[0].clone())
             };
 
-            for item in &items[start_idx..] {
+            for item in items.iter().skip(start_idx) {
                 acc = evaluator.apply_function(func, &[acc, item.clone()])?;
             }
             Ok(acc)
@@ -110,15 +110,18 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
+            let items_vec: Vec<Value> = items.iter().cloned().collect();
+
             // すべての関数を並列処理（Evaluatorが&selfなので複数スレッドで共有可能）
-            let results: Result<Vec<_>, _> = items
+            let results: Result<Vec<_>, _> = items_vec
                 .par_iter()
                 .map(|item| evaluator.apply_function(func, std::slice::from_ref(item)))
                 .collect();
 
             match collection {
-                Value::List(_) => Ok(Value::List(results?)),
-                Value::Vector(_) => Ok(Value::Vector(results?)),
+                Value::List(_) => Ok(Value::List(results?.into())),
+                Value::Vector(_) => Ok(Value::Vector(results?.into())),
                 _ => unreachable!(),
             }
         }
@@ -144,8 +147,11 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
+            let items_vec: Vec<Value> = items.iter().cloned().collect();
+
             // 並列でフィルタリング
-            let results: Result<Vec<_>, _> = items
+            let results: Result<Vec<_>, _> = items_vec
                 .par_iter()
                 .filter_map(|item| {
                     match evaluator.apply_function(pred, std::slice::from_ref(item)) {
@@ -157,8 +163,8 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
                 .collect();
 
             match collection {
-                Value::List(_) => Ok(Value::List(results?)),
-                Value::Vector(_) => Ok(Value::Vector(results?)),
+                Value::List(_) => Ok(Value::List(results?.into())),
+                Value::Vector(_) => Ok(Value::Vector(results?.into())),
                 _ => unreachable!(),
             }
         }
@@ -190,8 +196,11 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
                 return Ok(init);
             }
 
+            // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
+            let items_vec: Vec<Value> = items.iter().cloned().collect();
+
             // 並列reduce
-            items
+            items_vec
                 .par_iter()
                 .try_fold(
                     || init.clone(),
@@ -220,17 +229,19 @@ pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut truthy = Vec::new();
-            let mut falsy = Vec::new();
+            let mut truthy = im::Vector::new();
+            let mut falsy = im::Vector::new();
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 if result.is_truthy() {
-                    truthy.push(item.clone());
+                    truthy.push_back(item.clone());
                 } else {
-                    falsy.push(item.clone());
+                    falsy.push_back(item.clone());
                 }
             }
-            Ok(Value::Vector(vec![Value::List(truthy), Value::List(falsy)]))
+            Ok(Value::Vector(
+                vec![Value::List(truthy), Value::List(falsy)].into(),
+            ))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
@@ -241,8 +252,6 @@ pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 
 /// group-by - キー関数でリストをグループ化
 pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    use std::collections::HashMap;
-
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["group-by"]));
     }
@@ -252,14 +261,18 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut groups: HashMap<String, Vec<Value>> = HashMap::new();
+            let mut groups: std::collections::HashMap<String, im::Vector<Value>> =
+                std::collections::HashMap::new();
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
                 let key_str = format!("{:?}", key);
-                groups.entry(key_str).or_default().push(item.clone());
+                groups
+                    .entry(key_str)
+                    .or_insert_with(im::Vector::new)
+                    .push_back(item.clone());
             }
 
-            let mut result = HashMap::new();
+            let mut result = im::HashMap::new();
             for (key_str, values) in groups {
                 result.insert(key_str, Value::List(values));
             }
@@ -368,8 +381,8 @@ pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 }
 
 fn update_in_helper(
-    map: &mut std::collections::HashMap<String, Value>,
-    path: &[Value],
+    map: &mut im::HashMap<String, Value>,
+    path: &im::Vector<Value>,
     index: usize,
     func: &Value,
     evaluator: &Evaluator,
@@ -390,7 +403,7 @@ fn update_in_helper(
         let next_val = map
             .get(&key)
             .cloned()
-            .unwrap_or_else(|| Value::Map(std::collections::HashMap::new()));
+            .unwrap_or_else(|| Value::Map(im::HashMap::new()));
         match next_val {
             Value::Map(mut inner_map) => {
                 update_in_helper(&mut inner_map, path, index + 1, func, evaluator)?;
@@ -398,7 +411,7 @@ fn update_in_helper(
             }
             _ => {
                 // 既存の値がマップでない場合は上書き
-                let mut new_map = std::collections::HashMap::new();
+                let mut new_map = im::HashMap::new();
                 update_in_helper(&mut new_map, path, index + 1, func, evaluator)?;
                 map.insert(key, Value::Map(new_map));
             }
@@ -409,8 +422,6 @@ fn update_in_helper(
 
 /// count-by - 述語でカウント
 pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    use std::collections::HashMap;
-
     if args.len() != 2 {
         return Err(fmt_msg(
             MsgKey::NeedNArgsDesc,
@@ -423,14 +434,15 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            let mut counts: HashMap<String, i64> = HashMap::new();
+            let mut counts: std::collections::HashMap<String, i64> =
+                std::collections::HashMap::new();
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
                 let key = if result.is_truthy() { "true" } else { "false" };
                 *counts.entry(key.to_string()).or_insert(0) += 1;
             }
 
-            let mut result = HashMap::new();
+            let mut result = im::HashMap::new();
             for (key, count) in counts {
                 result.insert(key, Value::Integer(count));
             }
@@ -486,7 +498,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__juxt_funcs__".to_string(), Value::List(funcs));
+            env.set("__juxt_funcs__".to_string(), Value::List(funcs.into()));
             env
         },
         is_variadic: false,

@@ -360,18 +360,20 @@ mod tests {
 
     #[test]
     fn test_csv_stringify_simple() {
-        let data = Value::List(vec![
-            Value::List(vec![
-                Value::String("a".to_string()),
-                Value::String("b".to_string()),
-                Value::String("c".to_string()),
-            ]),
-            Value::List(vec![
-                Value::Integer(1),
-                Value::Integer(2),
-                Value::Integer(3),
-            ]),
-        ]);
+        let data = Value::List(
+            vec![
+                Value::List(
+                    vec![
+                        Value::String("a".to_string()),
+                        Value::String("b".to_string()),
+                        Value::String("c".to_string()),
+                    ]
+                    .into(),
+                ),
+                Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into()),
+            ]
+            .into(),
+        );
 
         let result = native_csv_stringify(&[data]).unwrap();
         assert_eq!(result, Value::String("a,b,c\n1,2,3".to_string()));
@@ -379,11 +381,17 @@ mod tests {
 
     #[test]
     fn test_csv_stringify_quoted_fields() {
-        let data = Value::List(vec![Value::List(vec![
-            Value::String("a,b".to_string()),
-            Value::String("c\"d".to_string()),
-            Value::String("e\nf".to_string()),
-        ])]);
+        let data = Value::List(
+            vec![Value::List(
+                vec![
+                    Value::String("a,b".to_string()),
+                    Value::String("c\"d".to_string()),
+                    Value::String("e\nf".to_string()),
+                ]
+                .into(),
+            )]
+            .into(),
+        );
 
         let result = native_csv_stringify(&[data]).unwrap();
         assert_eq!(

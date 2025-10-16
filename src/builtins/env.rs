@@ -2,7 +2,6 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use std::collections::HashMap;
 use std::env;
 use std::fs;
 
@@ -71,7 +70,7 @@ pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need0Args, &["env/all"]));
     }
 
-    let mut map = HashMap::new();
+    let mut map = im::HashMap::new();
     for (key, value) in env::vars() {
         map.insert(key, Value::String(value));
     }

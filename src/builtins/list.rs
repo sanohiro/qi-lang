@@ -31,7 +31,7 @@ pub fn native_take_while(
                 }
                 result.push(item.clone());
             }
-            Ok(Value::List(result))
+            Ok(Value::List(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -69,7 +69,7 @@ pub fn native_drop_while(
                 }
                 result.push(item.clone());
             }
-            Ok(Value::List(result))
+            Ok(Value::List(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -95,9 +95,11 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
             let split_point = index.min(items.len());
-            let left = items[..split_point].to_vec();
-            let right = items[split_point..].to_vec();
-            Ok(Value::Vector(vec![Value::List(left), Value::List(right)]))
+            let left: im::Vector<Value> = items.iter().take(split_point).cloned().collect();
+            let right: im::Vector<Value> = items.iter().skip(split_point).cloned().collect();
+            Ok(Value::Vector(
+                vec![Value::List(left), Value::List(right)].into(),
+            ))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -139,7 +141,7 @@ pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
         result.push(list2[i].clone());
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 /// frequencies - 要素の出現回数をカウント
@@ -162,7 +164,7 @@ pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
             for (key, count) in counts {
                 result.insert(key, Value::Integer(count));
             }
-            Ok(Value::Map(result))
+            Ok(Value::Map(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -209,7 +211,7 @@ pub fn native_sort_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Res
             });
 
             let result: Vec<Value> = keyed.into_iter().map(|(_, v)| v).collect();
-            Ok(Value::List(result))
+            Ok(Value::List(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -235,11 +237,12 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
 
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
+            let items_vec: Vec<Value> = items.iter().cloned().collect();
             let mut result = Vec::new();
-            for chunk in items.chunks(size) {
-                result.push(Value::List(chunk.to_vec()));
+            for chunk in items_vec.chunks(size) {
+                result.push(Value::List(chunk.to_vec().into()));
             }
-            Ok(Value::List(result))
+            Ok(Value::List(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -269,7 +272,7 @@ pub fn native_max_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
             let mut max_item = &items[0];
             let mut max_key = evaluator.apply_function(key_fn, std::slice::from_ref(max_item))?;
 
-            for item in &items[1..] {
+            for item in items.iter().skip(1) {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
 
                 let is_greater = match (&key, &max_key) {
@@ -317,7 +320,7 @@ pub fn native_min_by(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resu
             let mut min_item = &items[0];
             let mut min_key = evaluator.apply_function(key_fn, std::slice::from_ref(min_item))?;
 
-            for item in &items[1..] {
+            for item in items.iter().skip(1) {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
 
                 let is_less = match (&key, &min_key) {
@@ -555,7 +558,7 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
         result.insert(key_str, val.clone());
     }
 
-    Ok(Value::Map(result))
+    Ok(Value::Map(result.into()))
 }
 
 /// partition-by - 連続する値を述語関数でグループ化
@@ -576,7 +579,7 @@ pub fn native_partition_by(
     match collection {
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
-                return Ok(Value::List(Vec::new()));
+                return Ok(Value::List(Vec::new().into()));
             }
 
             let mut result: Vec<Value> = Vec::new();
@@ -589,7 +592,7 @@ pub fn native_partition_by(
                 if let Some(ref last) = last_pred_result {
                     // 述語の結果が変わったら新しいグループを開始
                     if !values_equal(last, &pred_result) && !current_group.is_empty() {
-                        result.push(Value::List(current_group.clone()));
+                        result.push(Value::List(current_group.clone().into()));
                         current_group.clear();
                     }
                 }
@@ -600,10 +603,10 @@ pub fn native_partition_by(
 
             // 最後のグループを追加
             if !current_group.is_empty() {
-                result.push(Value::List(current_group));
+                result.push(Value::List(current_group.into()));
             }
 
-            Ok(Value::List(result))
+            Ok(Value::List(result.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -665,7 +668,7 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
         .map(|(_, v)| v.clone())
         .collect();
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 /// keep - nilを除外してmap
@@ -696,7 +699,7 @@ pub fn native_keep(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
         }
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 /// dedupe - 連続する重複を除去
@@ -711,7 +714,7 @@ pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
     };
 
     if collection.is_empty() {
-        return Ok(Value::List(Vec::new()));
+        return Ok(Value::List(Vec::new().into()));
     }
 
     let mut result: Vec<Value> = Vec::new();
@@ -728,7 +731,7 @@ pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
         last = Some(item);
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 /// drop-last - 最後のn要素を削除
@@ -772,7 +775,7 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
     };
 
     let result: Vec<Value> = collection.iter().take(take_count).cloned().collect();
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 // ========================================

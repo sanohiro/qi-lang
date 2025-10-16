@@ -15,7 +15,6 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use parking_lot::RwLock;
 use reqwest::blocking::Client;
-use std::collections::HashMap;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
@@ -261,7 +260,7 @@ fn http_request(
     method: &str,
     url: &str,
     body: Option<&Value>,
-    headers: Option<&HashMap<String, Value>>,
+    headers: Option<&im::HashMap<String, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
     // デフォルトタイムアウト（30秒）の場合は共有Clientを使用
@@ -354,7 +353,7 @@ fn http_request(
             let status = response.status().as_u16() as i64;
 
             // ヘッダーを取得
-            let headers: HashMap<String, Value> = response
+            let headers: im::HashMap<String, Value> = response
                 .headers()
                 .iter()
                 .map(|(k, v)| {
@@ -561,7 +560,7 @@ fn http_stream(
                     let chunk = &chunks[*idx];
                     *idx += 1;
                     // バイト配列をIntegerのVectorに変換
-                    let bytes: Vec<Value> =
+                    let bytes: im::Vector<Value> =
                         chunk.iter().map(|&b| Value::Integer(b as i64)).collect();
                     Some(Value::Vector(bytes))
                 } else {

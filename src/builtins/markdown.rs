@@ -4,7 +4,6 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::collections::HashMap;
 
 /// header - Markdownヘッダーを生成
 /// 引数: (level text) - レベル (1-6)、テキスト
@@ -361,7 +360,7 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
         let lang = cap.get(1).map(|m| m.as_str().trim()).unwrap_or("");
         let code = cap.get(2).map(|m| m.as_str().trim_end()).unwrap_or("");
 
-        let mut block = HashMap::new();
+        let mut block = im::HashMap::new();
         block.insert(
             "lang".to_string(),
             if lang.is_empty() {
@@ -375,7 +374,7 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
         blocks.push(Value::Map(block));
     }
 
-    Ok(Value::List(blocks))
+    Ok(Value::List(blocks.into()))
 }
 
 /// parse - Markdown文字列をASTに変換
@@ -421,7 +420,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 i += 1;
             }
 
-            let mut block = HashMap::new();
+            let mut block = im::HashMap::new();
             block.insert("type".to_string(), Value::String("code-block".to_string()));
             block.insert(
                 "lang".to_string(),
@@ -442,7 +441,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             let level = cap.get(1).map(|m| m.as_str().len()).unwrap_or(1);
             let text = cap.get(2).map(|m| m.as_str()).unwrap_or("");
 
-            let mut block = HashMap::new();
+            let mut block = im::HashMap::new();
             block.insert("type".to_string(), Value::String("header".to_string()));
             block.insert("level".to_string(), Value::Integer(level as i64));
             block.insert("text".to_string(), Value::String(text.to_string()));
@@ -465,10 +464,10 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            let mut block = HashMap::new();
+            let mut block = im::HashMap::new();
             block.insert("type".to_string(), Value::String("list".to_string()));
             block.insert("ordered".to_string(), Value::Bool(false));
-            block.insert("items".to_string(), Value::List(items));
+            block.insert("items".to_string(), Value::List(items.into()));
             blocks.push(Value::Map(block));
             continue;
         }
@@ -487,10 +486,10 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            let mut block = HashMap::new();
+            let mut block = im::HashMap::new();
             block.insert("type".to_string(), Value::String("list".to_string()));
             block.insert("ordered".to_string(), Value::Bool(true));
-            block.insert("items".to_string(), Value::List(items));
+            block.insert("items".to_string(), Value::List(items.into()));
             blocks.push(Value::Map(block));
             continue;
         }
@@ -512,14 +511,14 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
         }
 
         if !para_lines.is_empty() {
-            let mut block = HashMap::new();
+            let mut block = im::HashMap::new();
             block.insert("type".to_string(), Value::String("paragraph".to_string()));
             block.insert("text".to_string(), Value::String(para_lines.join(" ")));
             blocks.push(Value::Map(block));
         }
     }
 
-    Ok(Value::List(blocks))
+    Ok(Value::List(blocks.into()))
 }
 
 /// stringify - ASTをMarkdown文字列に変換

@@ -330,7 +330,7 @@ impl From<DbError> for Value {
 
 /// 行をQi ValueのMapに変換
 pub fn row_to_value(row: Row) -> Value {
-    Value::Map(row)
+    Value::Map(row.into())
 }
 
 /// 複数行をQi ValueのVectorに変換
@@ -341,7 +341,7 @@ pub fn rows_to_value(rows: Rows) -> Value {
 /// Qi Valueからパラメータを抽出
 pub fn params_from_value(params: &Value) -> DbResult<Vec<Value>> {
     match params {
-        Value::Vector(vec) => Ok(vec.clone()),
+        Value::Vector(vec) => Ok(vec.iter().cloned().collect()),
         Value::Nil => Ok(vec![]),
         _ => Err(DbError::new("Parameters must be a vector")),
     }
@@ -910,7 +910,7 @@ pub fn native_columns(args: &[Value]) -> Result<Value, String> {
                 col.default_value.map(Value::String).unwrap_or(Value::Nil),
             );
             map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
-            Value::Map(map)
+            Value::Map(map.into())
         })
         .collect();
 
@@ -948,7 +948,7 @@ pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
                 Value::Vector(idx.columns.into_iter().map(Value::String).collect()),
             );
             map.insert("unique".to_string(), Value::Bool(idx.unique));
-            Value::Map(map)
+            Value::Map(map.into())
         })
         .collect();
 
@@ -1003,7 +1003,7 @@ pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
                         .collect(),
                 ),
             );
-            Value::Map(map)
+            Value::Map(map.into())
         })
         .collect();
 
@@ -1098,7 +1098,7 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
         Value::String(info.database_version),
     );
 
-    Ok(Value::Map(map))
+    Ok(Value::Map(map.into()))
 }
 
 /// db/query-info - クエリのメタデータを取得
@@ -1139,7 +1139,7 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
                 col.default_value.map(Value::String).unwrap_or(Value::Nil),
             );
             map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
-            Value::Map(map)
+            Value::Map(map.into())
         })
         .collect();
 
@@ -1150,7 +1150,7 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
         Value::Integer(info.parameter_count as i64),
     );
 
-    Ok(Value::Map(result))
+    Ok(Value::Map(result.into()))
 }
 
 // ========================================
@@ -1312,7 +1312,7 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
     map.insert("in_use".to_string(), Value::Integer(in_use as i64));
     map.insert("max".to_string(), Value::Integer(max as i64));
 
-    Ok(Value::Map(map))
+    Ok(Value::Map(map.into()))
 }
 
 /// データベース関数配列（24個）
@@ -1352,10 +1352,13 @@ mod tests {
 
     #[test]
     fn test_connection_options() {
-        let opts = Value::Map(HashMap::from([
-            ("timeout".to_string(), Value::Integer(5000)),
-            ("read-only".to_string(), Value::Bool(true)),
-        ]));
+        let opts = Value::Map(
+            HashMap::from([
+                ("timeout".to_string(), Value::Integer(5000)),
+                ("read-only".to_string(), Value::Bool(true)),
+            ])
+            .into(),
+        );
 
         let conn_opts = ConnectionOptions::from_value(&opts).unwrap();
         assert_eq!(conn_opts.timeout_ms, Some(5000));

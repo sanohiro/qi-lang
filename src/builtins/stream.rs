@@ -324,7 +324,7 @@ pub fn native_realize(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 // ========================================

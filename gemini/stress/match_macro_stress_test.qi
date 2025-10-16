@@ -1,0 +1,120 @@
+; match_macro_stress_test.qi
+; このファイルは、特にmatchとマクロの限界を試すためのテストスクリプトです。
+
+(println "--- Match & Macro Stress Test Start ---")
+
+; --- Section 1: ネストしたmatch文 ---
+(println "\n--- Section 1: Nested 'match' Statement ---")
+(defn test-nested-match [input]
+  (match input
+    {:type "A" :data d} ->
+      (match d
+        {:value v} when (> v 10) -> "High value A"
+        {:value v} -> "Low value A"
+        _ -> "Unknown data for A")
+    {:type "B" :data d} ->
+      (match d
+        [x y] -> f"Pair B: {x}, {y}"
+        _ -> "List for B was not a pair")
+    _ -> "Not type A or B"))
+
+(def nested-match-result-1 (test-nested-match {:type "A" :data {:value 20}}))
+(def nested-match-result-2 (test-nested-match {:type "B" :data [100 200]}))
+
+(if (and
+      (= nested-match-result-1 "High value A")
+      (= nested-match-result-2 "Pair B: 100, 200"))
+  (println "正解: ネストしたmatch文は正しく動作しました。")
+  (println "不正解: ネストしたmatch文に失敗しました。"))
+
+
+; --- Section 2: orパターンとガード(when)の複雑な組み合わせ ---
+(println "\n--- Section 2: Complex 'or' and 'when' in 'match' ---")
+(defn test-or-when-combo [input]
+  (match input
+    ; or で複数タイプをチェックし、whenで共通のプロパティを検証
+    {:type "cat" :age a} | {:type "dog" :age a} when (> a 10) -> "Old pet"
+    {:type "cat" :age a} | {:type "dog" :age a} -> "Young pet"
+
+    ; or と when のないパターンが混在
+    {:type "fish"} -> "Fish"
+
+    _ -> "Not a pet we know"))
+
+(def or-when-result-1 (test-or-when-combo {:type "cat" :age 12}))
+(def or-when-result-2 (test-or-when-combo {:type "dog" :age 5}))
+(def or-when-result-3 (test-or-when-combo {:type "fish"}))
+
+(if (and
+      (= or-when-result-1 "Old pet")
+      (= or-when-result-2 "Young pet")
+      (= or-when-result-3 "Fish"))
+  (println "正解: orパターンとwhenガードの組み合わせは正しく動作しました。")
+  (println "不正解: orパターンとwhenガードの組み合わせに失敗しました。"))
+
+
+; --- Section 3: マクロの基本と衛生性のテスト ---
+(println "\n--- Section 3: Basic Macro and Hygiene Test ---")
+
+; unlessマクロ: ifの逆。testがfalseのときにbodyを実行する
+(mac unless [test & body]
+  `(if (not ,test)
+     (do ,@body)))
+
+; マクロの衛生性をテストするためのマクロ
+; このマクロは内部で `x` という変数を定義するが、それが外部に漏れないことを期待する
+(mac hygienic-macro [body]
+  `(let [x "internal-x"]
+     ,body))
+
+(let [result1 (unless false "correct")]
+  (let [x "external-x"]
+    (let [result2 (hygienic-macro x)] ; マクロに外部のxを渡す
+      (if (and
+            (= result1 "correct")
+            (= result2 "external-x")) ; マクロ内部のxに汚染されていないことを確認
+        (println "正解: マクロの基本と衛生性は正しく動作しました。")
+        (println "不正解: マクロの基本または衛生性に失敗しました。")))))
+
+
+; --- Section 4: マクロによる構文生成 (match) ---
+(println "\n--- Section 4: Macro Generating Syntax ('match') ---")
+
+; 特定のキーを持つマップをマッチさせるマクロ
+(mac match-key [key-val target-expr & body]
+  `(match ,target-expr
+     {,key-val v} -> (do ,@body)
+     _ -> "key not found or value mismatch"))
+
+(def macro-gen-match-result
+  (let [data {:status "ok" :value 100}]
+    (match-key :status "ok" data
+      (println "Status was ok.")
+      "success")))
+
+(if (= macro-gen-match-result "success")
+  (println "正解: マクロによるmatch文の生成は正しく動作しました。")
+  (println "不正解: マクロによるmatch文の生成に失敗しました。"))
+
+
+; --- Section 5: マクロによる構文生成 (loop/recur) ---
+(println "\n--- Section 5: Macro Generating Syntax ('loop/recur') ---")
+
+; 0からn-1までループするマクロ
+(mac times [n-var limit-expr & body]
+  `(loop [,n-var 0]
+     (if (< ,n-var ,limit-expr)
+       (do
+         ,@body
+         (recur (inc ,n-var))))))
+
+(let [counter (atom 0)]
+  (times i 5 ; 0, 1, 2, 3, 4 とループする
+    (swap! counter + i))
+  
+  (if (= @counter 10) ; 0+1+2+3+4 = 10
+    (println "正解: マクロによるloop/recurの生成は正しく動作しました。")
+    (println "不正解: マクロによるloop/recurの生成に失敗しました。")))
+
+
+(println "\n--- Match & Macro Stress Test End ---")

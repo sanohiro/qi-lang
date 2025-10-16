@@ -14,7 +14,7 @@ pub fn native_args_all(args: &[Value]) -> Result<Value, String> {
     }
 
     let cmd_args: Vec<Value> = env::args().map(Value::String).collect();
-    Ok(Value::List(cmd_args))
+    Ok(Value::List(cmd_args.into()))
 }
 
 /// get - 指定位置の引数を取得
@@ -107,11 +107,11 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
     }
 
     let mut result = HashMap::new();
-    result.insert("flags".to_string(), Value::List(flags));
-    result.insert("options".to_string(), Value::Map(options));
-    result.insert("args".to_string(), Value::List(positional));
+    result.insert("flags".to_string(), Value::List(flags.into()));
+    result.insert("options".to_string(), Value::Map(options.into()));
+    result.insert("args".to_string(), Value::List(positional.into()));
 
-    Ok(Value::Map(result))
+    Ok(Value::Map(result.into()))
 }
 
 /// count - コマンドライン引数の数を取得

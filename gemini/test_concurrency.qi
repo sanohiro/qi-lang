@@ -1,0 +1,105 @@
+
+; test_concurrency.qi
+; このファイルはQi言語の並行・並列処理機能のテストです。
+; 意図: go, chan, atom, pmap などが仕様通りに動作することを確認します。
+
+(use test :only [run assert-eq assert])
+
+(run "go and chan basic" (fn []
+  ; 意図: goroutineを起動し、チャネル経由で基本的な値の送受信ができるか。
+  (def ch (chan))
+  (go (send! ch 42))
+  (def result (recv! ch))
+  (assert-eq 42 result)
+
+  (def ch-buf (chan 1))
+  (send! ch-buf "buffered")
+  (assert-eq "buffered" (recv! ch-buf))
+))
+
+(run "channel close" (fn []
+  ; 意図: チャネルをクローズした後の受信がnilになるか。
+  (def ch (chan 2))
+  (send! ch 1)
+  (send! ch 2)
+  (close! ch)
+  (assert-eq 1 (recv! ch))
+  (assert-eq 2 (recv! ch))
+  (assert-eq nil (recv! ch)) ; クローズ後はnil
+  (assert-eq nil (recv! ch)) ; 何度受信してもnil
+))
+
+(run "atom state management" (fn []
+  ; 意図: atom, deref(@), reset!, swap! が正しく状態を管理できるか。
+  (def my-atom (atom 0))
+  (assert-eq 0 (deref my-atom))
+  (assert-eq 0 @my-atom) ; @によるderef
+
+  (reset! my-atom 10)
+  (assert-eq 10 @my-atom)
+
+  (swap! my-atom inc) ; 10 -> 11
+  (assert-eq 11 @my-atom)
+
+  (swap! my-atom + 9) ; 11 -> 20
+  (assert-eq 20 @my-atom)
+))
+
+(run "atom concurrency safety" (fn []
+  ; 意図: 複数のgoroutineから同時にswap!を呼んでも、アトミックに処理されるか。
+  (def counter (atom 0))
+  (def num-goroutines 100)
+  (def ch (chan num-goroutines))
+
+  ; 100個のgoroutineを起動して、それぞれがカウンターを1回インクリメントする
+  (dotimes [i num-goroutines]
+    (go (do
+          (sleep (rand-int 1 5)) ; 実行順序をランダムにする
+          (swap! counter inc)
+          (send! ch true))))
+
+  ; すべてのgoroutineの完了を待つ
+  (dotimes [i num-goroutines]
+    (recv! ch))
+
+  (assert-eq num-goroutines @counter)
+))
+
+(run "pmap for parallel collection processing" (fn []
+  ; 意図: pmapがコレクションの各要素を並列に処理し、正しい結果を返すか。
+  (def result ([1 2 3 4 5] |> (pmap (fn [x] (* x x))) |> sort))
+  (assert-eq '(1 4 9 16 25) result)
+
+  (def result2 (["a" "b" "c"] |> (pmap str/upper) |> sort))
+  (assert-eq '("A" "B" "C") result2)
+))
+
+(run "select! for multiple channels" (fn []
+  ; 意図: select!が複数のチャネルを待ち受け、最初に応答があったチャネルから受信できるか。
+  (def ch1 (chan))
+  (def ch2 (chan))
+  (def result (atom nil))
+
+  (go (do (sleep 20) (send! ch1 "from 1")))
+  (go (do (sleep 10) (send! ch2 "from 2")))
+
+  (select!
+    ch1 (fn [val] (reset! result val))
+    ch2 (fn [val] (reset! result val)))
+
+  ; ch2 の方が速いので、ch2から受信するはず
+  (assert-eq "from 2" @result)
+
+  ; 2回目のselect!でch1から受信する
+  (select!
+    ch1 (fn [val] (reset! result val))
+    ch2 (fn [val] (reset! result val)))
+  (assert-eq "from 1" @result)
+))
+
+(run "async/await basic" (fn []
+  ; 意図: async/awaitパターンが機能するか。
+  (def p (go (fn [] (+ 10 20))))
+  (def result (async/await p))
+  (assert-eq 30 result)
+))

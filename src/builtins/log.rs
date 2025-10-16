@@ -3,7 +3,6 @@
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -112,7 +111,7 @@ fn is_leap_year(year: u64) -> bool {
 }
 
 /// ログ出力の内部実装
-fn log_internal(level: LogLevel, message: &str, context: Option<HashMap<String, Value>>) {
+fn log_internal(level: LogLevel, message: &str, context: Option<im::HashMap<String, Value>>) {
     let config = LOG_CONFIG.read();
 
     // レベルフィルタ
@@ -148,7 +147,7 @@ fn log_internal(level: LogLevel, message: &str, context: Option<HashMap<String, 
         }
         LogFormat::Json => {
             // JSON形式
-            let mut json_obj = HashMap::new();
+            let mut json_obj = std::collections::HashMap::new();
             json_obj.insert("timestamp".to_string(), timestamp.to_string());
             json_obj.insert("level".to_string(), level.as_str().to_string());
             json_obj.insert("message".to_string(), message.to_string());

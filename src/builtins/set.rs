@@ -9,7 +9,7 @@ use std::collections::HashSet;
 /// union - 和集合
 pub fn native_union(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
-        return Ok(Value::List(vec![]));
+        return Ok(Value::List(vec![].into()));
     }
 
     let mut seen = HashSet::new();
@@ -34,7 +34,7 @@ pub fn native_union(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 /// intersect - 積集合
@@ -79,7 +79,7 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
         .cloned()
         .collect();
 
-    Ok(Value::List(values))
+    Ok(Value::List(values.into()))
 }
 
 /// difference - 差集合（第1引数から第2引数以降を除く）
@@ -121,7 +121,7 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
         .cloned()
         .collect();
 
-    Ok(Value::List(values))
+    Ok(Value::List(values.into()))
 }
 
 /// subset? - 部分集合判定
@@ -257,7 +257,7 @@ pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    Ok(Value::List(result))
+    Ok(Value::List(result.into()))
 }
 
 // ========================================

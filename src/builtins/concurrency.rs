@@ -379,7 +379,7 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
                 return;
             }
         }
-        let _ = sender.send(Value::List(results));
+        let _ = sender.send(Value::List(results.into()));
     });
 
     Ok(Value::Channel(result_channel))
@@ -553,7 +553,7 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
         }
     });
 
-    Ok(Value::List(out_channels))
+    Ok(Value::List(out_channels.into()))
 }
 
 /// fan-in - 複数チャネルを1つに集約
@@ -739,7 +739,9 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
                             match eval.apply_function(&f, &[vec[1].clone()]) {
                                 Ok(result) => {
                                     if out_sender
-                                        .send(Value::Vector(vec![Value::Integer(idx), result]))
+                                        .send(Value::Vector(
+                                            vec![Value::Integer(idx), result].into(),
+                                        ))
                                         .is_err()
                                     {
                                         break;
@@ -756,7 +758,9 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 
     // 入力を送信
     for (i, item) in items.iter().enumerate() {
-        let _ = in_sender.send(Value::Vector(vec![Value::Integer(i as i64), item.clone()]));
+        let _ = in_sender.send(Value::Vector(
+            vec![Value::Integer(i as i64), item.clone()].into(),
+        ));
     }
     drop(in_sender);
 
@@ -772,7 +776,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         }
     }
 
-    Ok(Value::List(results))
+    Ok(Value::List(results.into()))
 }
 
 /// pipeline-filter - コレクションにパイプライン処理でfilterを適用
@@ -843,10 +847,9 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
                                 Ok(result) if result.is_truthy() => {
                                     // マッチした場合は送信
                                     if out_sender
-                                        .send(Value::Vector(vec![
-                                            Value::Integer(idx),
-                                            vec[1].clone(),
-                                        ]))
+                                        .send(Value::Vector(
+                                            vec![Value::Integer(idx), vec[1].clone()].into(),
+                                        ))
                                         .is_err()
                                     {
                                         break;
@@ -855,7 +858,9 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
                                 Ok(_) => {
                                     // マッチしなかった場合はnilを送信
                                     if out_sender
-                                        .send(Value::Vector(vec![Value::Integer(idx), Value::Nil]))
+                                        .send(Value::Vector(
+                                            vec![Value::Integer(idx), Value::Nil].into(),
+                                        ))
                                         .is_err()
                                     {
                                         break;
@@ -872,7 +877,9 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 
     // 入力を送信
     for (i, item) in items.iter().enumerate() {
-        let _ = in_sender.send(Value::Vector(vec![Value::Integer(i as i64), item.clone()]));
+        let _ = in_sender.send(Value::Vector(
+            vec![Value::Integer(i as i64), item.clone()].into(),
+        ));
     }
     drop(in_sender);
 
@@ -894,7 +901,7 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
     indexed_results.sort_by_key(|(idx, _)| *idx);
     let results: Vec<Value> = indexed_results.into_iter().map(|(_, v)| v).collect();
 
-    Ok(Value::List(results))
+    Ok(Value::List(results.into()))
 }
 
 /// select! - 複数チャネル待ち合わせ
@@ -1221,7 +1228,7 @@ pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 /// ```
 pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.is_empty() {
-        return Ok(Value::Vector(vec![]));
+        return Ok(Value::Vector(vec![].into()));
     }
 
     // 各式を関数としてラップされていることを期待
@@ -1262,7 +1269,7 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
         })
         .collect();
 
-    Ok(Value::Vector(results?))
+    Ok(Value::Vector(results?.into()))
 }
 
 // ========================================

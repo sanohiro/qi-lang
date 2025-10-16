@@ -1,6 +1,6 @@
 use crossbeam_channel::{Receiver, Sender};
+use im::{HashMap, Vector};
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
@@ -29,9 +29,9 @@ pub enum Value {
     /// キーワード（:keyのような形式）
     Keyword(String),
     /// リスト（cons cell）
-    List(Vec<Value>),
+    List(Vector<Value>),
     /// ベクタ
-    Vector(Vec<Value>),
+    Vector(Vector<Value>),
     /// マップ
     Map(HashMap<String, Value>),
     /// 関数（クロージャ）
