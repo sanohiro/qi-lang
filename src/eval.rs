@@ -162,12 +162,8 @@ impl Evaluator {
             Expr::Map(pairs) => {
                 let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
-                    let key = match self.eval_with_env(k, env.clone())? {
-                        Value::Keyword(k) => k,
-                        Value::String(s) => s,
-                        Value::Symbol(s) => s,
-                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
-                    };
+                    let key_value = self.eval_with_env(k, env.clone())?;
+                    let key = key_value.to_map_key()?;
                     let value = self.eval_with_env(v, env.clone())?;
                     map.insert(key, value);
                 }
@@ -563,7 +559,9 @@ impl Evaluator {
             Pattern::Map(pattern_pairs) => {
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
-                        if let Some(val) = map.get(key) {
+                        // キーワードをマップキー形式に変換
+                        let map_key = format!(":{}", key);
+                        if let Some(val) = map.get(&map_key) {
                             if !self
                                 .match_pattern_with_transforms(pat, val, bindings, transforms)?
                             {
@@ -674,7 +672,9 @@ impl Evaluator {
             Pattern::Map(pattern_pairs) => {
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
-                        if let Some(val) = map.get(key) {
+                        // キーワードをマップキー形式に変換
+                        let map_key = format!(":{}", key);
+                        if let Some(val) = map.get(&map_key) {
                             if !self.match_pattern(pat, val, bindings)? {
                                 return Ok(false);
                             }
@@ -1068,7 +1068,9 @@ impl Evaluator {
 
                 // 各キーに対応する値をバインド
                 for (key, pattern) in pairs {
-                    if let Some(val) = map.get(key) {
+                    // キーワードをマップキー形式に変換
+                    let map_key = format!(":{}", key);
+                    if let Some(val) = map.get(&map_key) {
                         self.bind_fn_param(pattern, val, env)?;
                     } else {
                         return Err(format!("キーエラー: マップにキー :{}が存在しません", key));
@@ -2148,6 +2150,51 @@ impl Evaluator {
                 }
                 Ok(Value::List(result.into()))
             }
+            Expr::Fn {
+                params,
+                body,
+                is_variadic,
+            } => {
+                let mut items = vec![Value::Symbol("fn".to_string())];
+                let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
+                    vec![
+                        Value::Symbol("&".to_string()),
+                        self.fn_param_to_value(&params[0]),
+                    ]
+                } else if *is_variadic {
+                    let mut v: Vec<Value> = params[..params.len() - 1]
+                        .iter()
+                        .map(|p| self.fn_param_to_value(p))
+                        .collect();
+                    v.push(Value::Symbol("&".to_string()));
+                    v.push(self.fn_param_to_value(&params[params.len() - 1]));
+                    v
+                } else {
+                    params.iter().map(|p| self.fn_param_to_value(p)).collect()
+                };
+                items.push(Value::Vector(param_vals.into()));
+                items.push(self.eval_quasiquote(body, env, depth)?);
+                Ok(Value::List(items.into()))
+            }
+            Expr::Let { bindings, body } => {
+                let mut items = vec![Value::Symbol("let".to_string())];
+                let mut binding_vec = Vec::new();
+                for (pattern, expr) in bindings {
+                    binding_vec.push(self.fn_param_to_value(pattern));
+                    binding_vec.push(self.eval_quasiquote(expr, env.clone(), depth)?);
+                }
+                items.push(Value::Vector(binding_vec.into()));
+                items.push(self.eval_quasiquote(body, env, depth)?);
+                Ok(Value::List(items.into()))
+            }
+            Expr::Def(name, value, _is_private) => {
+                let mut items = vec![
+                    Value::Symbol("def".to_string()),
+                    Value::Symbol(name.clone()),
+                ];
+                items.push(self.eval_quasiquote(value, env, depth)?);
+                Ok(Value::List(items.into()))
+            }
             // その他は変換してValueに
             _ => self.expr_to_value(expr),
         }
@@ -2211,12 +2258,8 @@ impl Evaluator {
             Expr::Map(pairs) => {
                 let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
-                    let key = match self.expr_to_value(k)? {
-                        Value::Keyword(k) => k,
-                        Value::String(s) => s,
-                        Value::Symbol(s) => s,
-                        _ => return Err(msg(MsgKey::KeyMustBeKeyword).to_string()),
-                    };
+                    let key_value = self.expr_to_value(k)?;
+                    let key = key_value.to_map_key()?;
                     let value = self.expr_to_value(v)?;
                     map.insert(key, value);
                 }

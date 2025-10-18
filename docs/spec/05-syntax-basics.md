@@ -328,17 +328,76 @@ nil
 
 ### `mac` - マクロ定義
 
+マクロはコード生成を行う特殊な関数です。quasiquote (`` ` ``)、unquote (`,`)、unquote-splice (`,@`) を使ってコードテンプレートを作成します。
+
+#### Quasiquote / Unquote の基本
+
 ```qi
-;; マクロの基本
+;; quasiquote (`) - テンプレート作成
+`(+ 1 2)         ;; => (+ 1 2) リストとして返す
+
+;; unquote (,) - テンプレート内で式を評価
+(def x 10)
+`(+ 1 ,x)        ;; => (+ 1 10) xが評価される
+
+;; unquote-splice (,@) - リストを展開
+(def items [1 2 3])
+`(list ,@items)  ;; => (list 1 2 3) itemsが展開される
+```
+
+#### 特殊形式内でのunquote
+
+fn、let、defなどの特殊形式内でもunquoteは正しく動作します：
+
+```qi
+(def value 42)
+
+;; fn内でのunquote
+`(fn [x] ,value)          ;; => (fn [x] 42)
+`(fn [y] (+ y ,value))    ;; => (fn [y] (+ y 42))
+
+;; let内でのunquote
+`(let [x ,value] x)       ;; => (let [x 42] x)
+`(let [a ,value b 10] (+ a b))  ;; => (let [a 42 b 10] (+ a b))
+
+;; def内でのunquote
+`(def myvar ,value)       ;; => (def myvar 42)
+```
+
+#### マクロの実装例
+
+```qi
+;; whenマクロ - if + doの簡潔版
 (mac when [test & body]
   `(if ,test
      (do ,@body)
      nil))
 
-;; 使用例
 (when (> x 0)
   (println "positive")
   (process x))
+;; 展開結果: (if (> x 0) (do (println "positive") (process x)) nil)
+
+;; unlessマクロ - 条件が偽のときに実行
+(mac unless [test & body]
+  `(if ,test
+     nil
+     (do ,@body)))
+
+(unless (empty? data)
+  (println "has data")
+  (process data))
+
+;; debugマクロ - 式と結果を表示
+(mac debug [expr]
+  `(let [result ,expr]
+     (do
+       (println f"Debug: {',expr} = {result}")
+       result)))
+
+(debug (+ 1 2))
+;; 出力: Debug: (+ 1 2) = 3
+;; 返り値: 3
 ```
 
 ### `loop` / `recur` - ループ

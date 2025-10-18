@@ -63,7 +63,7 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 パターンマッチした全体を変数に束縛できます。
 
 ```qi
-;; パターンマッチした全体を変数に束縛
+;; 基本的な:as使用
 (match data
   {:user {:name n :age a} :as u} -> (do
     (log u)           ;; 全体をログ
@@ -73,6 +73,33 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 (match response
   {:body {:user u :posts ps} :as body} -> (cache body)
   {:error e :as err} -> (log err))
+
+;; 深くネストされた:as
+(match {:type "person" :data {:name "Alice" :age 30}}
+  {:type t :data {:name n :age a :as user-data} :as record} ->
+    (do
+      (println f"Type: {t}")           ;; "Type: person"
+      (println f"Name: {n}, Age: {a}") ;; "Name: Alice, Age: 30"
+      (println f"User data: {user-data}") ;; {:name "Alice", :age 30}
+      (println f"Full record: {record}"))) ;; 全体のマップ
+
+;; ベクターとマップの組み合わせ
+(match [1 {:x 10 :y 20}]
+  [a {:x b :as inner}] -> [a b inner])
+;; => [1 10 {:x 10 :y 20}]
+
+;; 関数パラメータでも使える
+(defn process [{:name n :age a :as user}]
+  (do
+    (println f"Processing: {n}")
+    user))  ;; 全体を返す
+
+;; 複雑なネスト例
+(defn handle-request [{:headers h :body {:user u :data d :as body} :as req}]
+  (do
+    (log req)      ;; リクエスト全体
+    (cache body)   ;; bodyだけキャッシュ
+    (process-user u d)))
 ```
 
 ### 2. `or` パターン - 複数パターンで同じ処理
