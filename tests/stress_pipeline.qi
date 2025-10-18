@@ -1,0 +1,80 @@
+;; パイプラインのストレステスト
+
+(println "=== パイプラインのストレステスト ===\n")
+
+;; Test 1: 長いパイプラインチェーン（10段）
+(println "Test 1: 長いパイプラインチェーン（10段）")
+(def result1 (1 |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc))
+(println (if (= result1 11) "✓ PASS" "✗ FAIL"))
+
+;; Test 2: 複雑なパイプライン（リスト処理）
+(println "\nTest 2: 複雑なパイプライン（リスト処理）")
+(def result2 ([1 2 3 4 5]
+  |> (map inc)
+  |> (filter (fn [x] (> x 3)))
+  |> (map (fn [x] (* x 2)))
+  |> (reduce + 0)))
+(println (if (= result2 30) "✓ PASS" "✗ FAIL"))
+
+;; Test 3: パイプラインとプレースホルダー
+(println "\nTest 3: パイプラインとプレースホルダー")
+(def result3 (5 |> (- 10 _) |> (* 2 _)))
+(println (if (= result3 10) "✓ PASS" "✗ FAIL"))
+
+;; Test 4: ネストされたパイプライン
+(println "\nTest 4: ネストされたパイプライン")
+(def result4 (let [x (1 |> inc |> inc)]
+  (let [y (x |> (* 2 _) |> (+ 3 _))]
+    (y |> inc))))
+(println (if (= result4 10) "✓ PASS" "✗ FAIL"))
+
+;; Test 5: パイプラインと関数合成
+(println "\nTest 5: パイプラインと関数合成")
+(defn double [x] (* x 2))
+(defn add-one [x] (+ x 1))
+(def result5 (10 |> double |> add-one |> double))
+(println (if (= result5 42) "✓ PASS" "✗ FAIL"))
+
+;; Test 6: 超長いパイプライン（50段）
+(println "\nTest 6: 超長いパイプライン（50段）")
+(def result6 (0
+  |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc |> inc))
+(println (if (= result6 50) "✓ PASS" "✗ FAIL"))
+
+;; Test 7: パイプラインとmatch
+(println "\nTest 7: パイプラインとmatch")
+(def result7 (5 |> (match _
+  x when (> x 3) -> (* x 2)
+  _ -> 0)))
+(println (if (= result7 10) "✓ PASS" "✗ FAIL"))
+
+;; Test 8: パイプラインと関数定義
+(println "\nTest 8: パイプラインと関数定義")
+(defn process [x]
+  (x |> inc |> (* 2 _) |> (+ 1 _)))
+(def result8 (5 |> process |> inc))
+(println (if (= result8 14) "✓ PASS" "✗ FAIL"))
+
+;; Test 9: 複数のコレクション変換パイプライン
+(println "\nTest 9: 複数のコレクション変換パイプライン")
+(def result9 ([1 2 3]
+  |> (map (fn [x] (* x 2)))
+  |> (map (fn [x] (+ x 1)))
+  |> (filter (fn [x] (> x 3)))
+  |> (map (fn [x] (* x x)))
+  |> first))
+(println (if (= result9 25) "✓ PASS" "✗ FAIL"))
+
+;; Test 10: パイプラインと文字列操作
+(println "\nTest 10: パイプラインと文字列操作")
+(def result10 ("hello"
+  |> str/upper
+  |> (str _ " WORLD")
+  |> str/lower))
+(println (if (= result10 "hello world") "✓ PASS" "✗ FAIL"))
+
+(println "\n=== 全てのストレステスト完了 ===")

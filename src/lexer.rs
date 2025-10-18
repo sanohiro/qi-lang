@@ -19,6 +19,19 @@ impl Span {
     }
 }
 
+/// 位置情報付きトークン
+#[derive(Debug, Clone, PartialEq)]
+pub struct LocatedToken {
+    pub token: Token,
+    pub span: Span,
+}
+
+impl LocatedToken {
+    pub fn new(token: Token, span: Span) -> Self {
+        LocatedToken { token, span }
+    }
+}
+
 /// トークンの種類
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -58,6 +71,43 @@ pub enum Token {
 
     // ファイル終端
     Eof,
+}
+
+impl Token {
+    /// トークンをユーザーフレンドリーな文字列で表示
+    pub fn display_name(&self) -> String {
+        match self {
+            Token::Integer(n) => n.to_string(),
+            Token::Float(f) => f.to_string(),
+            Token::String(s) => format!("\"{}\"", s),
+            Token::FString(_) => "f-string".to_string(),
+            Token::Symbol(s) => s.clone(),
+            Token::Keyword(k) => format!(":{}", k),
+            Token::True => "true".to_string(),
+            Token::False => "false".to_string(),
+            Token::Nil => "nil".to_string(),
+            Token::LParen => "(".to_string(),
+            Token::RParen => ")".to_string(),
+            Token::LBracket => "[".to_string(),
+            Token::RBracket => "]".to_string(),
+            Token::LBrace => "{".to_string(),
+            Token::RBrace => "}".to_string(),
+            Token::Quote => "'".to_string(),
+            Token::Backquote => "`".to_string(),
+            Token::Unquote => ",".to_string(),
+            Token::UnquoteSplice => ",@".to_string(),
+            Token::At => "@".to_string(),
+            Token::Arrow => "->".to_string(),
+            Token::FatArrow => "=>".to_string(),
+            Token::Bar => "|".to_string(),
+            Token::Pipe => "|>".to_string(),
+            Token::PipeRailway => "|>?".to_string(),
+            Token::ParallelPipe => "||>".to_string(),
+            Token::AsyncPipe => "~>".to_string(),
+            Token::Ellipsis => "...".to_string(),
+            Token::Eof => "EOF".to_string(),
+        }
+    }
 }
 
 pub struct Lexer {
@@ -232,22 +282,62 @@ impl Lexer {
                                 // 例: {name}, {age + 1}, {user.name} など
                 let mut code = String::with_capacity(16);
                 let mut depth = 1;
+                let mut in_string = false;
                 while let Some(ch) = self.current() {
-                    if ch == '{' {
-                        depth += 1;
-                        code.push(ch);
-                        self.advance();
-                    } else if ch == '}' {
-                        depth -= 1;
-                        if depth == 0 {
-                            self.advance(); // }
-                            break;
+                    if in_string {
+                        // 文字列リテラル内
+                        if ch == '\\' && self.peek(1) == Some('"') {
+                            // \" は f-string のエスケープシーケンス（文字列リテラルの終了）
+                            in_string = false;
+                            self.advance(); // \ をスキップ
+                            code.push('"'); // " を追加
+                            self.advance();
+                        } else if ch == '\\' {
+                            // その他のエスケープシーケンス処理
+                            code.push(ch);
+                            self.advance();
+                            if let Some(next_ch) = self.current() {
+                                code.push(next_ch);
+                                self.advance();
+                            }
+                        } else if ch == '"' {
+                            // 文字列リテラルの終了（エスケープされていない "）
+                            in_string = false;
+                            code.push(ch);
+                            self.advance();
+                        } else {
+                            code.push(ch);
+                            self.advance();
                         }
-                        code.push(ch);
-                        self.advance();
                     } else {
-                        code.push(ch);
-                        self.advance();
+                        // 文字列リテラル外
+                        if ch == '\\' && self.peek(1) == Some('"') {
+                            // \" は Qi ソースコードとしての " （文字列リテラルの開始）
+                            in_string = true;
+                            self.advance(); // \ をスキップ
+                            code.push('"'); // " を追加
+                            self.advance();
+                        } else if ch == '"' {
+                            // 文字列リテラルの開始
+                            in_string = true;
+                            code.push(ch);
+                            self.advance();
+                        } else if ch == '{' {
+                            depth += 1;
+                            code.push(ch);
+                            self.advance();
+                        } else if ch == '}' {
+                            depth -= 1;
+                            if depth == 0 {
+                                self.advance(); // }
+                                break;
+                            }
+                            code.push(ch);
+                            self.advance();
+                        } else {
+                            code.push(ch);
+                            self.advance();
+                        }
                     }
                 }
                 if depth != 0 {
@@ -312,22 +402,62 @@ impl Lexer {
                                 // 例: {name}, {age + 1}, {user.name} など
                 let mut code = String::with_capacity(16);
                 let mut depth = 1;
+                let mut in_string = false;
                 while let Some(ch) = self.current() {
-                    if ch == '{' {
-                        depth += 1;
-                        code.push(ch);
-                        self.advance();
-                    } else if ch == '}' {
-                        depth -= 1;
-                        if depth == 0 {
-                            self.advance(); // }
-                            break;
+                    if in_string {
+                        // 文字列リテラル内
+                        if ch == '\\' && self.peek(1) == Some('"') {
+                            // \" は f-string のエスケープシーケンス（文字列リテラルの終了）
+                            in_string = false;
+                            self.advance(); // \ をスキップ
+                            code.push('"'); // " を追加
+                            self.advance();
+                        } else if ch == '\\' {
+                            // その他のエスケープシーケンス処理
+                            code.push(ch);
+                            self.advance();
+                            if let Some(next_ch) = self.current() {
+                                code.push(next_ch);
+                                self.advance();
+                            }
+                        } else if ch == '"' {
+                            // 文字列リテラルの終了（エスケープされていない "）
+                            in_string = false;
+                            code.push(ch);
+                            self.advance();
+                        } else {
+                            code.push(ch);
+                            self.advance();
                         }
-                        code.push(ch);
-                        self.advance();
                     } else {
-                        code.push(ch);
-                        self.advance();
+                        // 文字列リテラル外
+                        if ch == '\\' && self.peek(1) == Some('"') {
+                            // \" は Qi ソースコードとしての " （文字列リテラルの開始）
+                            in_string = true;
+                            self.advance(); // \ をスキップ
+                            code.push('"'); // " を追加
+                            self.advance();
+                        } else if ch == '"' {
+                            // 文字列リテラルの開始
+                            in_string = true;
+                            code.push(ch);
+                            self.advance();
+                        } else if ch == '{' {
+                            depth += 1;
+                            code.push(ch);
+                            self.advance();
+                        } else if ch == '}' {
+                            depth -= 1;
+                            if depth == 0 {
+                                self.advance(); // }
+                                break;
+                            }
+                            code.push(ch);
+                            self.advance();
+                        } else {
+                            code.push(ch);
+                            self.advance();
+                        }
                     }
                 }
                 if depth != 0 {
@@ -358,7 +488,7 @@ impl Lexer {
         Err(msg(MsgKey::FStringUnclosed).to_string())
     }
 
-    fn read_number(&mut self) -> Result<Token, String> {
+    fn read_number(&mut self, start_span: Span) -> Result<LocatedToken, String> {
         // 16: 64bit整数の最大桁数は約20桁、浮動小数点数も同程度
         // 例: 123, -456, 3.14159265358979, 9223372036854775807 (i64::MAX)
         let mut num_str = String::with_capacity(16);
@@ -383,20 +513,21 @@ impl Lexer {
             }
         }
 
-        if is_float {
+        let token = if is_float {
             num_str
                 .parse()
                 .map(Token::Float)
-                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))
+                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))?
         } else {
             num_str
                 .parse()
                 .map(Token::Integer)
-                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))
-        }
+                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))?
+        };
+        Ok(LocatedToken::new(token, start_span))
     }
 
-    fn read_symbol_or_keyword(&mut self) -> Result<Token, String> {
+    fn read_symbol_or_keyword(&mut self, start_span: Span) -> Result<LocatedToken, String> {
         // 16: 関数名・変数名は通常10-15文字程度
         // 例: map, filter, reduce, define-function, http-get など
         let mut result = String::with_capacity(16);
@@ -420,7 +551,7 @@ impl Lexer {
             if result.is_empty() {
                 return Err(msg(MsgKey::EmptyKeyword).to_string());
             }
-            return Ok(Token::Keyword(result));
+            return Ok(LocatedToken::new(Token::Keyword(result), start_span));
         }
 
         // 特殊なシンボルのチェック
@@ -430,10 +561,10 @@ impl Lexer {
             "false" => Token::False,
             _ => Token::Symbol(result),
         };
-        Ok(token)
+        Ok(LocatedToken::new(token, start_span))
     }
 
-    pub fn next_token(&mut self) -> Result<Token, String> {
+    pub fn next_token(&mut self) -> Result<LocatedToken, String> {
         loop {
             self.skip_whitespace();
 
@@ -443,109 +574,111 @@ impl Lexer {
                 continue;
             }
 
+            let start_span = self.current_span();
+
             match self.current() {
-                None => return Ok(Token::Eof),
+                None => return Ok(LocatedToken::new(Token::Eof, start_span)),
                 Some('(') => {
                     self.advance();
-                    return Ok(Token::LParen);
+                    return Ok(LocatedToken::new(Token::LParen, start_span));
                 }
                 Some(')') => {
                     self.advance();
-                    return Ok(Token::RParen);
+                    return Ok(LocatedToken::new(Token::RParen, start_span));
                 }
                 Some('[') => {
                     self.advance();
-                    return Ok(Token::LBracket);
+                    return Ok(LocatedToken::new(Token::LBracket, start_span));
                 }
                 Some(']') => {
                     self.advance();
-                    return Ok(Token::RBracket);
+                    return Ok(LocatedToken::new(Token::RBracket, start_span));
                 }
                 Some('{') => {
                     self.advance();
-                    return Ok(Token::LBrace);
+                    return Ok(LocatedToken::new(Token::LBrace, start_span));
                 }
                 Some('}') => {
                     self.advance();
-                    return Ok(Token::RBrace);
+                    return Ok(LocatedToken::new(Token::RBrace, start_span));
                 }
                 Some('\'') => {
                     self.advance();
-                    return Ok(Token::Quote);
+                    return Ok(LocatedToken::new(Token::Quote, start_span));
                 }
                 Some('`') => {
                     self.advance();
-                    return Ok(Token::Backquote);
+                    return Ok(LocatedToken::new(Token::Backquote, start_span));
                 }
                 Some(',') if self.peek(1) == Some('@') => {
                     self.advance(); // ,
                     self.advance(); // @
-                    return Ok(Token::UnquoteSplice);
+                    return Ok(LocatedToken::new(Token::UnquoteSplice, start_span));
                 }
                 Some(',') => {
                     self.advance();
-                    return Ok(Token::Unquote);
+                    return Ok(LocatedToken::new(Token::Unquote, start_span));
                 }
                 Some('@') => {
                     self.advance();
-                    return Ok(Token::At);
+                    return Ok(LocatedToken::new(Token::At, start_span));
                 }
                 // 複数行文字列: """..."""
                 Some('"') if self.peek(1) == Some('"') && self.peek(2) == Some('"') => {
                     let s = self.read_multiline_string()?;
-                    return Ok(Token::String(s));
+                    return Ok(LocatedToken::new(Token::String(s), start_span));
                 }
                 Some('"') => {
                     let s = self.read_string()?;
-                    return Ok(Token::String(s));
+                    return Ok(LocatedToken::new(Token::String(s), start_span));
                 }
                 Some('|') if self.peek(1) == Some('|') && self.peek(2) == Some('>') => {
                     self.advance(); // |
                     self.advance(); // |
                     self.advance(); // >
-                    return Ok(Token::ParallelPipe);
+                    return Ok(LocatedToken::new(Token::ParallelPipe, start_span));
                 }
                 Some('|') if self.peek(1) == Some('>') && self.peek(2) == Some('?') => {
                     self.advance(); // |
                     self.advance(); // >
                     self.advance(); // ?
-                    return Ok(Token::PipeRailway);
+                    return Ok(LocatedToken::new(Token::PipeRailway, start_span));
                 }
                 Some('|') if self.peek(1) == Some('>') => {
                     self.advance(); // |
                     self.advance(); // >
-                    return Ok(Token::Pipe);
+                    return Ok(LocatedToken::new(Token::Pipe, start_span));
                 }
                 Some('|') => {
                     self.advance(); // |
-                    return Ok(Token::Bar);
+                    return Ok(LocatedToken::new(Token::Bar, start_span));
                 }
                 Some(ch) if ch.is_numeric() => {
-                    return self.read_number();
+                    return self.read_number(start_span);
                 }
                 Some('=') if self.peek(1) == Some('>') => {
                     self.advance(); // =
                     self.advance(); // >
-                    return Ok(Token::FatArrow);
+                    return Ok(LocatedToken::new(Token::FatArrow, start_span));
                 }
                 Some('~') if self.peek(1) == Some('>') => {
                     self.advance(); // ~
                     self.advance(); // >
-                    return Ok(Token::AsyncPipe);
+                    return Ok(LocatedToken::new(Token::AsyncPipe, start_span));
                 }
                 Some('-') if self.peek(1) == Some('>') => {
                     self.advance(); // -
                     self.advance(); // >
-                    return Ok(Token::Arrow);
+                    return Ok(LocatedToken::new(Token::Arrow, start_span));
                 }
                 Some('-') if self.peek(1).is_some_and(|c| c.is_numeric()) => {
-                    return self.read_number();
+                    return self.read_number(start_span);
                 }
                 Some('.') if self.peek(1) == Some('.') && self.peek(2) == Some('.') => {
                     self.advance(); // .
                     self.advance(); // .
                     self.advance(); // .
-                    return Ok(Token::Ellipsis);
+                    return Ok(LocatedToken::new(Token::Ellipsis, start_span));
                 }
                 // 複数行f-string: f"""..."""
                 Some('f')
@@ -554,17 +687,17 @@ impl Lexer {
                         && self.peek(3) == Some('"') =>
                 {
                     let parts = self.read_multiline_fstring()?;
-                    return Ok(Token::FString(parts));
+                    return Ok(LocatedToken::new(Token::FString(parts), start_span));
                 }
                 Some('f') if self.peek(1) == Some('"') => {
                     let parts = self.read_fstring()?;
-                    return Ok(Token::FString(parts));
+                    return Ok(LocatedToken::new(Token::FString(parts), start_span));
                 }
                 Some(':') => {
-                    return self.read_symbol_or_keyword();
+                    return self.read_symbol_or_keyword(start_span);
                 }
                 Some(ch) if ch.is_alphabetic() || "+-*/%<>=!?_-&".contains(ch) => {
-                    return self.read_symbol_or_keyword();
+                    return self.read_symbol_or_keyword(start_span);
                 }
                 Some(ch) => {
                     return Err(fmt_msg(MsgKey::UnexpectedChar, &[&ch.to_string()]));
@@ -573,18 +706,18 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, String> {
+    pub fn tokenize(&mut self) -> Result<Vec<LocatedToken>, String> {
         // トークン数推定: 平均的なLispコードでは5文字に1トークン程度
         // 例: "(defn add [a b] (+ a b))" → 20文字、7トークン（約1/3）
         // 空白・改行を含めると約1/5になる。最小16を保証。
         let estimated_tokens = (self.input.len() / 5).max(16);
         let mut tokens = Vec::with_capacity(estimated_tokens);
         loop {
-            let token = self.next_token()?;
-            if token == Token::Eof {
+            let loc_token = self.next_token()?;
+            if loc_token.token == Token::Eof {
                 break;
             }
-            tokens.push(token);
+            tokens.push(loc_token);
         }
         Ok(tokens)
     }

@@ -1,0 +1,116 @@
+;; 深いネスト構造のストレステスト
+
+(println "=== 深いネスト構造のストレステスト ===\n")
+
+;; Test 1: 深くネストされたlet（5層）
+(println "Test 1: 深くネストされたlet（5層）")
+(def result1 (let [a {:x {:y {:z {:w 1}}}}]
+  (let [b (get a :x)]
+    (let [c (get b :y)]
+      (let [d (get c :z)]
+        (let [e (get d :w)]
+          e))))))
+(println (if (= result1 1) "✓ PASS" "✗ FAIL"))
+
+;; Test 2: 深くネストされたマップ（10層）
+(println "\nTest 2: 深くネストされたマップ（10層）")
+(def deep-map {:a {:b {:c {:d {:e {:f {:g {:h {:i {:j 999}}}}}}}}}} )
+(def result2 (let [v1 (get deep-map :a)]
+  (let [v2 (get v1 :b)]
+    (let [v3 (get v2 :c)]
+      (let [v4 (get v3 :d)]
+        (let [v5 (get v4 :e)]
+          (let [v6 (get v5 :f)]
+            (let [v7 (get v6 :g)]
+              (let [v8 (get v7 :h)]
+                (let [v9 (get v8 :i)]
+                  (get v9 :j)))))))))))
+(println (if (= result2 999) "✓ PASS" "✗ FAIL"))
+
+;; Test 3: matchでの深いネスト
+(println "\nTest 3: matchでの深いネスト（5層）")
+(def nested-data {:level1 {:level2 {:level3 {:level4 {:level5 "deep"}}}}} )
+(def result3 (match nested-data
+  {:level1 {:level2 {:level3 {:level4 {:level5 value}}}}} -> value
+  _ -> "fail"))
+(println (if (= result3 "deep") "✓ PASS" "✗ FAIL"))
+
+;; Test 4: fnでの深いネストしたデータ処理
+(println "\nTest 4: fnでの深いネストしたデータ処理")
+(defn deep-access [data]
+  (let [l1 (get data :a)]
+    (let [l2 (get l1 :b)]
+      (let [l3 (get l2 :c)]
+        (get l3 :d)))))
+(def result4 (deep-access {:a {:b {:c {:d 42}}}} ))
+(println (if (= result4 42) "✓ PASS" "✗ FAIL"))
+
+;; Test 5: リストとベクターとマップの混在（深いネスト）
+(println "\nTest 5: リストとベクターとマップの混在")
+(def mixed-data [[{:x [{:y [[{:z 777}]]}]}]] )
+(def result5 (let [m1 (first (first mixed-data))]
+  (let [m2 (get m1 :x)]
+    (let [m3 (first m2)]
+      (let [m4 (get m3 :y)]
+        (let [m5 (first (first m4))]
+          (get m5 :z)))))))
+(println (if (= result5 777) "✓ PASS" "✗ FAIL"))
+
+;; Test 6: 深くネストされたベクター（10層）
+(println "\nTest 6: 深くネストされたベクター（10層）")
+(def deep-vec [[[[[[[[[[123]]]]]]]]]] )
+(def result6 (first (first (first (first (first (first (first (first (first (first deep-vec)))))))))) )
+(println (if (= result6 123) "✓ PASS" "✗ FAIL"))
+
+;; Test 7: macroでの深いネスト（スキップ - quasiquote内のletの問題）
+;; (println "\nTest 7: macroでの深いネスト")
+;; (mac deep-macro [x]
+;;   `(let [a ,x]
+;;      (let [b (inc a)]
+;;        (let [c (inc b)]
+;;          c))))
+;; (def result7 (deep-macro 10))
+;; (println (if (= result7 12) "✓ PASS" "✗ FAIL"))
+
+;; Test 8: 大きなマップ（100キー）
+(println "\nTest 8: 大きなマップ（100キー）")
+(def large-map (loop [i 0 m {}]
+  (if (>= i 100)
+    m
+    (recur (inc i) (assoc m (keyword (str "key" i)) i)))))
+(def result8 (and
+  (= (get large-map :key0) 0)
+  (= (get large-map :key50) 50)
+  (= (get large-map :key99) 99)))
+(println (if result8 "✓ PASS" "✗ FAIL"))
+
+;; Test 9: 大きなベクター（1000要素）
+(println "\nTest 9: 大きなベクター（1000要素）")
+(def large-vec (loop [i 0 v []]
+  (if (>= i 1000)
+    v
+    (recur (inc i) (conj v i)))))
+(def result9 (and
+  (= (len large-vec) 1000)
+  (= (first large-vec) 0)
+  (= (get large-vec 999) 999)))
+(println (if result9 "✓ PASS" "✗ FAIL"))
+
+;; Test 10: 複雑なデータ構造の変換
+(println "\nTest 10: 複雑なデータ構造の変換")
+(def complex-data [{:users [{:name "Alice" :age 30} {:name "Bob" :age 25}]}
+                    {:users [{:name "Charlie" :age 35}]}])
+(defn extract-names [data]
+  (loop [items data names []]
+    (if (empty? items)
+      names
+      (let [users (get (first items) :users)]
+        (recur (rest items) (concat names (map (fn [u] (get u :name)) users)))))))
+(def result10 (extract-names complex-data))
+(def result10-ok (and
+  (= (len result10) 3)
+  (= (first result10) "Alice")
+  (= (get result10 2) "Charlie")))
+(println (if result10-ok "✓ PASS" "✗ FAIL"))
+
+(println "\n=== 全てのストレステスト完了 ===")

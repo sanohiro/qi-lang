@@ -1,0 +1,265 @@
+;; Torture Test: Special Forms (全17種類)
+;; def, defn, defn-, fn, let, if, do, match, try, defer, loop, recur, mac, flow, module, export, use
+
+(println "=== Torture Test: Special Forms ===\n")
+
+;; ========== def ==========
+(println "=== def ===")
+
+;; Test 1: 100個のdef
+(println "Test 1: 100個のdef")
+(def v1 1) (def v2 2) (def v3 3) (def v4 4) (def v5 5)
+(def v6 6) (def v7 7) (def v8 8) (def v9 9) (def v10 10)
+(def v11 11) (def v12 12) (def v13 13) (def v14 14) (def v15 15)
+(def v16 16) (def v17 17) (def v18 18) (def v19 19) (def v20 20)
+(def v21 21) (def v22 22) (def v23 23) (def v24 24) (def v25 25)
+(def v26 26) (def v27 27) (def v28 28) (def v29 29) (def v30 30)
+(def v31 31) (def v32 32) (def v33 33) (def v34 34) (def v35 35)
+(def v36 36) (def v37 37) (def v38 38) (def v39 39) (def v40 40)
+(def v41 41) (def v42 42) (def v43 43) (def v44 44) (def v45 45)
+(def v46 46) (def v47 47) (def v48 48) (def v49 49) (def v50 50)
+(def v51 51) (def v52 52) (def v53 53) (def v54 54) (def v55 55)
+(def v56 56) (def v57 57) (def v58 58) (def v59 59) (def v60 60)
+(def v61 61) (def v62 62) (def v63 63) (def v64 64) (def v65 65)
+(def v66 66) (def v67 67) (def v68 68) (def v69 69) (def v70 70)
+(def v71 71) (def v72 72) (def v73 73) (def v74 74) (def v75 75)
+(def v76 76) (def v77 77) (def v78 78) (def v79 79) (def v80 80)
+(def v81 81) (def v82 82) (def v83 83) (def v84 84) (def v85 85)
+(def v86 86) (def v87 87) (def v88 88) (def v89 89) (def v90 90)
+(def v91 91) (def v92 92) (def v93 93) (def v94 94) (def v95 95)
+(def v96 96) (def v97 97) (def v98 98) (def v99 99) (def v100 100)
+(println (if (= v100 100) "✓ PASS" "✗ FAIL"))
+
+;; Test 2: defで複雑なデータ構造
+(println "\nTest 2: defで深くネストされたデータ構造")
+(def deep-data {:a {:b {:c {:d {:e {:f {:g {:h {:i {:j 999}}}}}}}}}} )
+(def test2-val (get (get (get (get deep-data :a) :b) :c) :d))
+(println (if (match test2-val {:e _} -> true _ -> false) "✓ PASS" "✗ FAIL"))
+
+;; ========== defn ==========
+(println "\n=== defn ===")
+
+;; Test 3: 深い再帰関数
+(println "Test 3: defnで深い再帰（階乗）")
+(defn fact [n] (if (<= n 1) 1 (* n (fact (- n 1)))))
+(println (if (= (fact 20) 2432902008176640000) "✓ PASS" "✗ FAIL"))
+
+;; Test 4: 複数の引数（10個）
+(println "\nTest 4: defnで10個の引数")
+(defn sum-10 [a b c d e f g h i j] (+ a b c d e f g h i j))
+(println (if (= (sum-10 1 2 3 4 5 6 7 8 9 10) 55) "✓ PASS" "✗ FAIL"))
+
+;; Test 5: 可変長引数
+(println "\nTest 5: defnで可変長引数（100個）")
+(defn sum-all [& nums] (reduce + 0 nums))
+(def result5 (sum-all 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+                       21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40
+                       41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60
+                       61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80
+                       81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100))
+(println (if (= result5 5050) "✓ PASS" "✗ FAIL"))
+
+;; ========== defn- ==========
+(println "\n=== defn- ===")
+
+;; Test 6: プライベート関数
+(println "Test 6: defn-でプライベート関数")
+(defn- private-helper [x] (* x 2))
+(defn public-func [x] (private-helper (+ x 1)))
+(println (if (= (public-func 5) 12) "✓ PASS" "✗ FAIL"))
+
+;; ========== fn ==========
+(println "\n=== fn ===")
+
+;; Test 7: ネストされたfn（5層）
+(println "Test 7: ネストされたfn（5層）")
+(def result7 ((fn [a] ((fn [b] ((fn [c] ((fn [d] ((fn [e] (+ a b c d e)) 5)) 4)) 3)) 2)) 1))
+(println (if (= result7 15) "✓ PASS" "✗ FAIL"))
+
+;; Test 8: fnでクロージャ（カウンター）
+(println "\nTest 8: fnでクロージャ")
+(def make-counter (fn []
+  (let [count (atom 0)]
+    (fn [] (do (swap! count inc) @count)))))
+(def counter (make-counter))
+(counter)
+(counter)
+(println (if (= (counter) 3) "✓ PASS" "✗ FAIL"))
+
+;; Test 9: fnで分解パターン（マップ）
+(println "\nTest 9: fnで分解パターン（深いマップ）")
+(def result9 ((fn [{:x {:y {:z val}}}] val) {:x {:y {:z 42}}}))
+(println (if (= result9 42) "✓ PASS" "✗ FAIL"))
+
+;; ========== let ==========
+(println "\n=== let ===")
+
+;; Test 10: 深くネストされたlet（10層）
+(println "Test 10: 深くネストされたlet（10層）")
+(def result10 (let [a 1]
+  (let [b (+ a 1)]
+    (let [c (+ b 1)]
+      (let [d (+ c 1)]
+        (let [e (+ d 1)]
+          (let [f (+ e 1)]
+            (let [g (+ f 1)]
+              (let [h (+ g 1)]
+                (let [i (+ h 1)]
+                  (let [j (+ i 1)]
+                    j)))))))))))
+(println (if (= result10 10) "✓ PASS" "✗ FAIL"))
+
+;; Test 11: letで100個の束縛
+(println "\nTest 11: letで大量の束縛（50個）")
+(def result11 (let [a1 1 a2 2 a3 3 a4 4 a5 5 a6 6 a7 7 a8 8 a9 9 a10 10
+                     a11 11 a12 12 a13 13 a14 14 a15 15 a16 16 a17 17 a18 18 a19 19 a20 20
+                     a21 21 a22 22 a23 23 a24 24 a25 25 a26 26 a27 27 a28 28 a29 29 a30 30
+                     a31 31 a32 32 a33 33 a34 34 a35 35 a36 36 a37 37 a38 38 a39 39 a40 40
+                     a41 41 a42 42 a43 43 a44 44 a45 45 a46 46 a47 47 a48 48 a49 49 a50 50]
+                (+ a1 a50)))
+(println (if (= result11 51) "✓ PASS" "✗ FAIL"))
+
+;; Test 12: letで分解パターン（複雑）
+(println "\nTest 12: letで分解パターン（複雑）")
+(def result12 (let [[a [b [c [d e]]]] [1 [2 [3 [4 5]]]]]
+  (+ a b c d e)))
+(println (if (= result12 15) "✓ PASS" "✗ FAIL"))
+
+;; ========== if ==========
+(println "\n=== if ===")
+
+;; Test 13: 深くネストされたif（10層）
+(println "Test 13: 深くネストされたif（10層）")
+(def result13 (if true
+  (if true
+    (if true
+      (if true
+        (if true
+          (if true
+            (if true
+              (if true
+                (if true
+                  (if true 10 9)
+                  8)
+                7)
+              6)
+            5)
+          4)
+        3)
+      2)
+    1)
+  0))
+(println (if (= result13 10) "✓ PASS" "✗ FAIL"))
+
+;; Test 14: ifでの複雑な条件式
+(println "\nTest 14: ifでの複雑な条件式")
+(def result14 (if (and (> 10 5) (< 3 7) (= 4 4) (not false)) "yes" "no"))
+(println (if (= result14 "yes") "✓ PASS" "✗ FAIL"))
+
+;; ========== do ==========
+(println "\n=== do ===")
+
+;; Test 15: doで200個の式
+(println "Test 15: doで200個の式")
+(def result15 (do
+  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+  21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40
+  41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60
+  61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80
+  81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100
+  101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120
+  121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140
+  141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160
+  161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180
+  181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200))
+(println (if (= result15 200) "✓ PASS" "✗ FAIL"))
+
+;; ========== match ==========
+(println "\n=== match ===")
+
+;; Test 16: matchで100個のパターン
+(println "Test 16: matchで大量のパターン（50個）")
+(def result16 (match 25
+  1 -> "one" 2 -> "two" 3 -> "three" 4 -> "four" 5 -> "five"
+  6 -> "six" 7 -> "seven" 8 -> "eight" 9 -> "nine" 10 -> "ten"
+  11 -> "eleven" 12 -> "twelve" 13 -> "thirteen" 14 -> "fourteen" 15 -> "fifteen"
+  16 -> "sixteen" 17 -> "seventeen" 18 -> "eighteen" 19 -> "nineteen" 20 -> "twenty"
+  21 -> "21" 22 -> "22" 23 -> "23" 24 -> "24" 25 -> "25"
+  26 -> "26" 27 -> "27" 28 -> "28" 29 -> "29" 30 -> "30"
+  _ -> "other"))
+(println (if (= result16 "25") "✓ PASS" "✗ FAIL"))
+
+;; Test 17: matchで深くネストされたパターン
+(println "\nTest 17: matchで深くネストされたパターン")
+(def result17 (match {:a {:b {:c {:d {:e 42}}}}}
+  {:a {:b {:c {:d {:e val}}}}} -> val
+  _ -> 0))
+(println (if (= result17 42) "✓ PASS" "✗ FAIL"))
+
+;; Test 18: matchでorパターン（10個）
+(println "\nTest 18: matchでorパターン（10個）")
+(def result18 (match 5
+  1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 -> "in-range"
+  _ -> "out-of-range"))
+(println (if (= result18 "in-range") "✓ PASS" "✗ FAIL"))
+
+;; ========== try ==========
+(println "\n=== try ===")
+
+;; Test 19: 深くネストされたtry（10層）
+(println "Test 19: 深くネストされたtry（10層）")
+(def result19 (try (try (try (try (try (try (try (try (try (try 42)))))))))))
+(println (if (match result19 {:ok _} -> true _ -> false) "✓ PASS" "✗ FAIL"))
+
+;; ========== loop/recur ==========
+(println "\n=== loop/recur ===")
+
+;; Test 20: loop-recurで100000回
+(println "Test 20: loop-recurで100000回")
+(def result20 (loop [i 0] (if (>= i 100000) i (recur (inc i)))))
+(println (if (= result20 100000) "✓ PASS" "✗ FAIL"))
+
+;; Test 21: loopで10個の変数
+(println "\nTest 21: loopで10個の変数")
+(def result21 (loop [a 1 b 2 c 3 d 4 e 5 f 6 g 7 h 8 i 9 j 10]
+  (if (>= a 5)
+    (+ a b c d e f g h i j)
+    (recur (inc a) (inc b) (inc c) (inc d) (inc e) (inc f) (inc g) (inc h) (inc i) (inc j)))))
+(println (if (= result21 95) "✓ PASS" "✗ FAIL"))
+
+;; ========== mac ==========
+(println "\n=== mac ===")
+
+;; Test 22: マクロで深い展開
+(println "Test 22: マクロで深い展開")
+(mac when [test & body]
+  `(if ,test (do ,@body) nil))
+(def result22 (when true (+ 1 2) (* 3 4) (- 10 5)))
+(println (if (= result22 5) "✓ PASS" "✗ FAIL"))
+
+;; Test 23: マクロで可変長引数
+(println "\nTest 23: マクロで可変長引数")
+(mac add-all [& nums]
+  `(+ ,@nums))
+(def result23 (add-all 1 2 3 4 5 6 7 8 9 10))
+(println (if (= result23 55) "✓ PASS" "✗ FAIL"))
+
+;; ========== flow ==========
+(println "\n=== flow ===")
+
+;; Test 24: flowで超長パイプライン（20段）
+(println "Test 24: flowで超長パイプライン（20段）")
+(def result24 (flow 0
+  |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc
+  |> inc |> inc |> inc |> inc |> inc))
+(println (if (= result24 20) "✓ PASS" "✗ FAIL"))
+
+;; Test 25: flowでポイントフリースタイル
+(println "\nTest 25: flowでポイントフリースタイル")
+(def double (flow |> (* 2 _)))
+(def result25 (double 21))
+(println (if (= result25 42) "✓ PASS" "✗ FAIL"))
+
+(println "\n=== Torture Test 完了 ===")

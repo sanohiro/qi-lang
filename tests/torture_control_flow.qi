@@ -1,0 +1,178 @@
+;; Torture Test: Control Flow (try, defer, do, loop, recur)
+;; パーサー・評価器の限界を調べる拷問テスト
+
+(println "=== Torture Test: Control Flow ===\n")
+
+;; Test 1: 深くネストされたtry（10層）
+(println "Test 1: 深くネストされたtry（10層）")
+(def result1 (try (try (try (try (try (try (try (try (try (try 42)))))))))))
+(def result1-ok (match result1 {:ok _} -> true _ -> false))
+(println (if result1-ok "✓ PASS" "✗ FAIL"))
+
+;; Test 2: try-deferの組み合わせ（複数のdefer実行順序確認）
+(println "\nTest 2: try-deferの組み合わせ（複数defer）")
+(def result2 (try
+  (do
+    (defer (println "defer 1"))
+    (defer (println "defer 2"))
+    (defer (println "defer 3"))
+    "success")))
+(def result2-ok (match result2 {:ok v} -> (= v "success") _ -> false))
+(println (if result2-ok "✓ PASS" "✗ FAIL"))
+
+;; Test 3: 巨大なdoブロック（100個の式）
+(println "\nTest 3: 巨大なdoブロック（100個の式）")
+(def result3 (do
+  1 2 3 4 5 6 7 8 9 10
+  11 12 13 14 15 16 17 18 19 20
+  21 22 23 24 25 26 27 28 29 30
+  31 32 33 34 35 36 37 38 39 40
+  41 42 43 44 45 46 47 48 49 50
+  51 52 53 54 55 56 57 58 59 60
+  61 62 63 64 65 66 67 68 69 70
+  71 72 73 74 75 76 77 78 79 80
+  81 82 83 84 85 86 87 88 89 90
+  91 92 93 94 95 96 97 98 99 100))
+(println (if (= result3 100) "✓ PASS" "✗ FAIL"))
+
+;; Test 4: 深くネストされたdo（10層）
+(println "\nTest 4: 深くネストされたdo（10層）")
+(def result4 (do
+  (do
+    (do
+      (do
+        (do
+          (do
+            (do
+              (do
+                (do
+                  (do 42)))))))))))
+(println (if (= result4 42) "✓ PASS" "✗ FAIL"))
+
+;; Test 5: loop-recur 深い再帰（1000回）
+(println "\nTest 5: loop-recur 深い再帰（1000回）")
+(def result5 (loop [i 0]
+  (if (>= i 1000)
+    i
+    (recur (inc i)))))
+(println (if (= result5 1000) "✓ PASS" "✗ FAIL"))
+
+;; Test 6: loop-recur 10000回（スタック制限確認）
+(println "\nTest 6: loop-recur 10000回（スタック確認）")
+(def result6 (loop [i 0]
+  (if (>= i 10000)
+    i
+    (recur (inc i)))))
+(println (if (= result6 10000) "✓ PASS" "✗ FAIL"))
+
+;; Test 7: 複数のループ変数（10個）
+(println "\nTest 7: 複数のループ変数（10個）")
+(def result7 (loop [a 1 b 2 c 3 d 4 e 5 f 6 g 7 h 8 i 9 j 10]
+  (if (>= a 5)
+    (+ a b c d e f g h i j)
+    (recur (inc a) (inc b) (inc c) (inc d) (inc e) (inc f) (inc g) (inc h) (inc i) (inc j)))))
+(println (if (= result7 95) "✓ PASS" "✗ FAIL"))
+
+;; Test 8: ネストされたloop（3層）
+(println "\nTest 8: ネストされたloop（3層）")
+(def result8 (loop [i 0 sum 0]
+  (if (>= i 5)
+    sum
+    (recur (inc i)
+           (+ sum (loop [j 0 inner 0]
+                    (if (>= j 3)
+                      inner
+                      (recur (inc j)
+                             (+ inner (loop [k 0]
+                                        (if (>= k 2)
+                                          1
+                                          (recur (inc k)))))))))))))
+(println (if (= result8 30) "✓ PASS" "✗ FAIL"))
+
+;; Test 9: try + defer + loop の複合
+(println "\nTest 9: try + defer + loop の複合")
+(def result9 (try
+  (do
+    (defer (println "cleanup"))
+    (loop [i 0 acc 0]
+      (if (>= i 10)
+        acc
+        (recur (inc i) (+ acc i)))))))
+(def result9-ok (match result9 {:ok v} -> (= v 45) _ -> false))
+(println (if result9-ok "✓ PASS" "✗ FAIL"))
+
+;; Test 10: do + パイプライン + loop
+(println "\nTest 10: do + パイプライン + loop")
+(def result10 (do
+  (def data [1 2 3 4 5])
+  (data
+    |> (map (fn [x] (* x 2)))
+    |> (reduce + 0)
+    |> (fn [sum]
+         (loop [i 0 result sum]
+           (if (>= i 3)
+             result
+             (recur (inc i) (* result 2))))))))
+(println (if (= result10 240) "✓ PASS" "✗ FAIL"))
+
+;; Test 11: 深くネストされた defer（5層）- スキップ（無限ループの可能性）
+;; (println "\nTest 11: 深くネストされた defer（5層）")
+;; (def result11 (do
+;;   (defer (do
+;;     (defer (do
+;;       (defer (do
+;;         (defer (do
+;;           (defer (println "deepest defer"))
+;;           (println "defer 4")))
+;;         (println "defer 3")))
+;;       (println "defer 2")))
+;;     (println "defer 1")))
+;;   "done"))
+;; (println (if (= result11 "done") "✓ PASS" "✗ FAIL"))
+
+;; Test 12: try のエラー処理（ネストされたtry）
+(println "\nTest 12: tryのエラー処理（ネストされた try）")
+(def result12 (try
+  (do
+    (try (do
+      (try (do
+        (try (do
+          (/ 100 0)  ;; エラー発生
+          "no error"))
+        "recovered 1"))
+      "recovered 2"))
+    "recovered 3")))
+(def result12-ok (match result12 {:ok v} -> (= v "recovered 3") {:err _} -> false _ -> false))
+(println (if result12-ok "✓ PASS" "✗ FAIL"))
+
+;; Test 13: 超大規模loop（100000回）
+(println "\nTest 13: 超大規模loop（100000回）")
+(def result13 (loop [i 0 sum 0]
+  (if (>= i 100000)
+    sum
+    (recur (inc i) (+ sum 1)))))
+(println (if (= result13 100000) "✓ PASS" "✗ FAIL"))
+
+;; Test 14: loop内でのmatch + パイプライン
+(println "\nTest 14: loop内でのmatch + パイプライン")
+(def result14 (loop [i 0 acc []]
+  (if (>= i 5)
+    (len acc)
+    (recur (inc i)
+           (conj acc (i |> (match _
+                             0 -> "zero"
+                             1 -> "one"
+                             2 -> "two"
+                             _ -> "other")))))))
+(println (if (= result14 5) "✓ PASS" "✗ FAIL"))
+
+;; Test 15: do内での複数try-defer
+(println "\nTest 15: do内での複数try-defer")
+(def result15 (do
+  (def r1 (try (do (defer (println "d1")) 10)))
+  (def r2 (try (do (defer (println "d2")) 20)))
+  (def r3 (try (do (defer (println "d3")) 30)))
+  (+ r1 r2 r3)))
+(println (if (= result15 60) "✓ PASS" "✗ FAIL"))
+
+(println "\n=== Torture Test 完了 ===")

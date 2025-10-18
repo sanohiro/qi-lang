@@ -1,0 +1,177 @@
+;; Torture Test: Recursion, F-Strings, String Functions
+;; パーサー・評価器の限界を調べる拷問テスト
+
+(println "=== Torture Test: Recursion, F-Strings, String Functions ===\n")
+
+;; Test 1: 深い再帰（100回）
+(println "Test 1: 深い再帰（100回）")
+(defn factorial [n]
+  (if (<= n 1)
+    1
+    (* n (factorial (- n 1)))))
+(def result1 (factorial 20))
+(println (if (= result1 2432902008176640000) "✓ PASS" "✗ FAIL"))
+
+;; Test 2: 相互再帰（偶数・奇数判定）
+(println "\nTest 2: 相互再帰（100回）")
+(defn is-even [n]
+  (if (= n 0)
+    true
+    (is-odd (- n 1))))
+(defn is-odd [n]
+  (if (= n 0)
+    false
+    (is-even (- n 1))))
+(def result2 (and (is-even 100) (not (is-odd 100))))
+(println (if result2 "✓ PASS" "✗ FAIL"))
+
+;; Test 3: フィボナッチ（深い再帰）
+(println "\nTest 3: フィボナッチ（n=25）")
+(defn fib [n]
+  (if (<= n 1)
+    n
+    (+ (fib (- n 1)) (fib (- n 2)))))
+(def result3 (fib 25))
+(println (if (= result3 75025) "✓ PASS" "✗ FAIL"))
+
+;; Test 4: アッカーマン関数（超深い再帰）
+(println "\nTest 4: アッカーマン関数 A(3,4)")
+(defn ackermann [m n]
+  (if (= m 0)
+    (+ n 1)
+    (if (= n 0)
+      (ackermann (- m 1) 1)
+      (ackermann (- m 1) (ackermann m (- n 1))))))
+(def result4 (ackermann 3 4))
+(println (if (= result4 125) "✓ PASS" "✗ FAIL"))
+
+;; Test 5: 複雑なf-string（多数の変数埋め込み）
+(println "\nTest 5: 複雑なf-string（10個の変数）")
+(def a 1) (def b 2) (def c 3) (def d 4) (def e 5)
+(def f 6) (def g 7) (def h 8) (def i 9) (def j 10)
+(def result5 f"{a} {b} {c} {d} {e} {f} {g} {h} {i} {j}")
+(println (if (= result5 "1 2 3 4 5 6 7 8 9 10") "✓ PASS" "✗ FAIL"))
+
+;; Test 6: f-string内での複雑な式
+(println "\nTest 6: f-string内での複雑な式")
+(def x 10)
+(def y 20)
+(def result6 f"sum={(+ x y)} prod={(* x y)} div={(/ y x)}")
+(println (if (= result6 "sum=30 prod=200 div=2") "✓ PASS" "✗ FAIL"))
+
+;; Test 7: ネストされた関数呼び出しをf-stringで
+(println "\nTest 7: f-string内でのネストされた関数呼び出し")
+(defn double [n] (* n 2))
+(defn triple [n] (* n 3))
+(def result7 f"{(double (triple 5))}")
+(println (if (= result7 "30") "✓ PASS" "✗ FAIL"))
+
+;; Test 8: 超長文字列の生成（10000文字）
+(println "\nTest 8: 超長文字列の生成（10000文字）")
+(def result8 (loop [i 0 s ""]
+  (if (>= i 1000)
+    (len s)
+    (recur (inc i) (str s "0123456789")))))
+(println (if (= result8 10000) "✓ PASS" "✗ FAIL"))
+
+;; Test 9: 文字列パイプライン（連続変換）
+(println "\nTest 9: 文字列パイプライン（連続変換）")
+(def result9 ("hello world"
+  |> str/upper
+  |> (str _ "!")
+  |> str/lower
+  |> (str ">>> " _)))
+(println (if (= result9 ">>> hello world!") "✓ PASS" "✗ FAIL"))
+
+;; Test 10: 文字列分割と処理（大量データ）
+(println "\nTest 10: 文字列分割と処理")
+(def result10 ("a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z"
+  |> (str/split _ ",")
+  |> len))
+(println (if (= result10 26) "✓ PASS" "✗ FAIL"))
+
+;; Test 11: 文字列繰り返し（大量生成）
+(println "\nTest 11: 文字列繰り返し（1000回）")
+(def result11 (str/repeat "x" 1000))
+(println (if (= (len result11) 1000) "✓ PASS" "✗ FAIL"))
+
+;; Test 12: 深い再帰とf-stringの組み合わせ
+(println "\nTest 12: 深い再帰とf-stringの組み合わせ")
+(defn countdown [n]
+  (if (<= n 0)
+    "done"
+    (str f"{n} " (countdown (- n 1)))))
+(def result12 (countdown 10))
+(println (if (str/starts-with? result12 "10 9 8") "✓ PASS" "✗ FAIL"))
+
+;; Test 13: 複数行f-string（複雑なテンプレート）
+(println "\nTest 13: 複数行f-string")
+(def name "Alice")
+(def age 30)
+(def city "Tokyo")
+(def result13 f"""Name: {name}
+Age: {age}
+City: {city}""")
+(println (if (str/contains? result13 "Alice") "✓ PASS" "✗ FAIL"))
+
+;; Test 14: 文字列置換の連鎖
+(println "\nTest 14: 文字列置換の連鎖")
+(def result14 ("The quick brown fox"
+  |> (str/replace _ "quick" "slow")
+  |> (str/replace _ "brown" "red")
+  |> (str/replace _ "fox" "dog")))
+(println (if (= result14 "The slow red dog") "✓ PASS" "✗ FAIL"))
+
+;; Test 15: 再帰的リスト処理（逆順）
+(println "\nTest 15: 再帰的リスト処理（逆順）")
+(defn reverse-list [lst]
+  (if (empty? lst)
+    []
+    (conj (reverse-list (rest lst)) (first lst))))
+(def result15 (reverse-list [1 2 3 4 5]))
+(println (if (= result15 [5 4 3 2 1]) "✓ PASS" "✗ FAIL"))
+
+;; Test 16: f-string内でのmap処理
+(println "\nTest 16: f-string内でのmap処理")
+(def nums [1 2 3 4 5])
+(def result16 f"Sum: {(reduce + 0 nums)} Count: {(len nums)}")
+(println (if (= result16 "Sum: 15 Count: 5") "✓ PASS" "✗ FAIL"))
+
+;; Test 17: 深いネストでのf-string
+(println "\nTest 17: 深いネストでのf-string")
+(def result17 (let [x 10]
+  (let [y (+ x 5)]
+    (let [z (* y 2)]
+      f"x={x} y={y} z={z}"))))
+(println (if (= result17 "x=10 y=15 z=30") "✓ PASS" "✗ FAIL"))
+
+;; Test 18: 文字列の文字単位処理
+(println "\nTest 18: 文字列の文字単位処理")
+(def result18 ("hello"
+  |> str/chars
+  |> len))
+(println (if (= result18 5) "✓ PASS" "✗ FAIL"))
+
+;; Test 19: 再帰的なリスト処理とf-string
+(println "\nTest 19: 再帰的なリスト処理とf-string")
+(defn sum-list [lst]
+  (if (empty? lst)
+    0
+    (+ (first lst) (sum-list (rest lst)))))
+(def result19 f"Total: {(sum-list [1 2 3 4 5 6 7 8 9 10])}")
+(println (if (= result19 "Total: 55") "✓ PASS" "✗ FAIL"))
+
+;; Test 20: 超長パイプラインと文字列操作
+(println "\nTest 20: 超長パイプラインと文字列操作")
+(def result20 ("test"
+  |> str/upper
+  |> (str _ "!")
+  |> str/lower
+  |> (str ">>>" _)
+  |> str/trim
+  |> (str _ "<<<")
+  |> str/upper
+  |> (str/replace _ "TEST" "done")))
+(println (if (= result20 ">>>done!<<<") "✓ PASS" "✗ FAIL"))
+
+(println "\n=== Torture Test 完了 ===")

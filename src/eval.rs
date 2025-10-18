@@ -245,7 +245,9 @@ impl Evaluator {
                 }
 
                 // deferを実行（LIFO順）
-                if let Some(defers) = self.defer_stack.write().pop() {
+                // ロックを解放してから実行する必要があるため、先にpopする
+                let defers = self.defer_stack.write().pop();
+                if let Some(defers) = defers {
                     for defer_expr in defers.iter().rev() {
                         // deferの評価エラーは無視（元の結果を返す）
                         let _ = self.eval_with_env(defer_expr, env.clone());
@@ -282,7 +284,9 @@ impl Evaluator {
                 };
 
                 // deferを実行（LIFO順、エラーでも必ず実行）
-                if let Some(defers) = self.defer_stack.write().pop() {
+                // ロックを解放してから実行する必要があるため、先にpopする
+                let defers = self.defer_stack.write().pop();
+                if let Some(defers) = defers {
                     for defer_expr in defers.iter().rev() {
                         let _ = self.eval_with_env(defer_expr, env.clone());
                     }
