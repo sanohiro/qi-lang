@@ -58,6 +58,15 @@
 
 ;; drop-while - 述語が真の間削除
 (drop-while (fn [x] (< x 5)) [1 2 3 6 7 4])  ;; => (6 7 4)
+
+;; list/drop-last - 末尾n個を削除
+(list/drop-last 2 [1 2 3 4 5])  ;; => (1 2 3)
+
+;; list/take-nth - n個おきに取得
+(list/take-nth 2 [1 2 3 4 5 6])  ;; => (1 3 5)
+
+;; list/split-at - 指定位置で分割
+(list/split-at 2 [1 2 3 4 5])  ;; => [(1 2) (3 4 5)]
 ```
 
 ### 変換
@@ -72,8 +81,21 @@
 ;; distinct - 重複を排除
 (distinct [1 2 2 3 3 3])     ;; => (1 2 3)
 
+;; list/dedupe - 連続する重複を削除
+(list/dedupe [1 1 2 2 3 3])  ;; => (1 2 3)
+(list/dedupe [1 2 1 2])      ;; => (1 2 1 2) (非連続は残る)
+
 ;; sort - 昇順ソート
 (sort [3 1 4 1 5])           ;; => (1 1 3 4 5)
+
+;; list/interleave - 2つのリストを交互に結合
+(list/interleave [1 2 3] [4 5 6])  ;; => (1 4 2 5 3 6)
+
+;; list/chunk - 指定サイズで分割
+(list/chunk 2 [1 2 3 4 5 6])  ;; => ((1 2) (3 4) (5 6))
+
+;; list/zipmap - 2つのリストからマップを生成
+(list/zipmap [:a :b :c] [1 2 3])  ;; => {:a 1, :b 2, :c 3}
 ```
 
 ### サイズ・状態
@@ -177,6 +199,18 @@
 ;; get-in - ネストした値を取得
 (get-in {:user {:name "Bob"}} [:user :name])    ;; => "Bob"
 (get-in {} [:user :name] "guest")               ;; => "guest"
+
+;; map/assoc-in - ネストしたマップに値を設定
+(map/assoc-in {} [:user :profile :name] "Alice")
+;; => {:user {:profile {:name "Alice"}}}
+(map/assoc-in {:user {:age 30}} [:user :name] "Bob")
+;; => {:user {:age 30, :name "Bob"}}
+
+;; map/dissoc-in - ネストしたマップからキーを削除
+(map/dissoc-in {:user {:name "Alice" :age 30}} [:user :age])
+;; => {:user {:name "Alice"}}
+(map/dissoc-in {:a {:b {:c 1}}} [:a :b :c])
+;; => {:a {:b {}}}
 ```
 
 ### マップの一括変換

@@ -172,6 +172,34 @@ Qiでは関数は第一級オブジェクトであり、変数に代入したり
 ;; => ["Alice" 30 "alice@example.com"]
 ```
 
+### fn/tap> - 副作用を伴う処理
+
+```qi
+;; 値をそのまま返しつつ、副作用（ロギングなど）を実行
+(def log-and-pass (fn/tap> println))
+(log-and-pass 42)  ;; 42を出力して、42を返す
+
+;; パイプラインでのデバッグ
+(10
+  |> (fn/tap> (fn [x] (println "入力:" x)))
+  |> (* _ 2)
+  |> (fn/tap> (fn [x] (println "2倍:" x)))
+  |> (+ _ 5))
+;; 出力:
+;; 入力: 10
+;; 2倍: 20
+;; => 25
+
+;; カウンターの実装
+(def counter (atom 0))
+(def count-and-pass
+  (fn/tap> (fn [_] (reset! counter (+ (deref counter) 1)))))
+
+(map count-and-pass [1 2 3 4 5])
+;; => (1 2 3 4 5)
+(deref counter)  ;; => 5
+```
+
 ---
 
 ## 実用例

@@ -70,6 +70,9 @@
 - **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐ NEW
   - test/run、アサーション（assert-eq、assert、assert-not、assert-throws）
   - qi testコマンド（自動検出、シンプルな出力）
+- **[15-stdlib-math.md](15-stdlib-math.md)** - 数学関数 ⭐ NEW
+  - べき乗・平方根（pow、sqrt）、丸め（round、floor、ceil）、範囲制限（clamp）
+  - 乱数生成（rand、rand-int、random-range、shuffle）
 
 ---
 
