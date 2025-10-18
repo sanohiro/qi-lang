@@ -1127,6 +1127,36 @@ impl Evaluator {
                             return Ok(value);
                         }
                     }
+
+                    // partial特殊処理 - 部分適用された引数と新しい引数を結合
+                    if let Some(partial_func) = f.env.read().get("__partial_func__") {
+                        if let Some(Value::List(partial_args)) =
+                            f.env.read().get("__partial_args__")
+                        {
+                            // 部分適用された引数と新しい引数を結合
+                            let mut combined_args: SmallVec<[Value; 4]> =
+                                SmallVec::with_capacity(partial_args.len() + args.len());
+                            combined_args.extend(partial_args.iter().cloned());
+                            combined_args.extend(args.iter().cloned());
+                            return self.apply_func(&partial_func, combined_args);
+                        }
+                    }
+
+                    // comp特殊処理 - 関数合成（右から左に適用）
+                    if let Some(Value::List(comp_funcs)) = f.env.read().get("__comp_funcs__") {
+                        if args.len() != 1 {
+                            return Err(fmt_msg(
+                                MsgKey::ArgCountMismatch,
+                                &["1", &args.len().to_string()],
+                            ));
+                        }
+                        let mut result = args[0].clone();
+                        // 右から左に順番に適用
+                        for func in comp_funcs.iter().rev() {
+                            result = self.apply_func(func, smallvec![result])?;
+                        }
+                        return Ok(result);
+                    }
                 }
 
                 // 通常の関数処理
@@ -1531,7 +1561,8 @@ impl Evaluator {
 
     fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["list/every?"]));        }
+            return Err(fmt_msg(MsgKey::Need2Args, &["list/every?"]));
+        }
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))

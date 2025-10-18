@@ -101,6 +101,8 @@ pub enum MsgKey {
     SecondArgMustBe,      // {0}の第2引数は{1}が必要です
     ThirdArgMustBe,       // {0}の第3引数は{1}が必要です
     KeyMustBeKeyword,     // キーは文字列またはキーワードが必要
+    FloatKeyNotAllowed,   // Floatはマップのキーとして使用できません
+    InvalidMapKey,        // 無効なマップキー型: {0}
     KeyNotFound,          // キーが見つかりません: {0}
     MustBePositive,       // {0}: {1}は正の数である必要があります
     MustBeNonNegative,    // {0}: {1}は非負の数である必要があります
@@ -455,7 +457,7 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         // パーサーエラー
         (UnexpectedToken, "unexpected token: {0}"),
-        (UnexpectedEof, "unexpected end of file"),
+        (UnexpectedEof, "unexpected end of file (parenthesis, bracket, or brace may not be closed)"),
         (ExpectedToken, "expected {0}, got {1}"),
         (NeedsSymbol, "{0} requires a symbol"),
         (VarargNeedsName, "'&' requires a variable name"),
@@ -516,6 +518,8 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (SecondArgMustBe, "{0}'s second argument must be {1}"),
         (ThirdArgMustBe, "{0}'s third argument must be {1}"),
         (KeyMustBeKeyword, "key must be a string or keyword"),
+        (FloatKeyNotAllowed, "float cannot be used as a map key"),
+        (InvalidMapKey, "invalid map key type: {0}"),
         (KeyNotFound, "key not found: {0}"),
         (MustBePositive, "{0}: {1} must be positive"),
         (MustBeNonNegative, "{0}: {1} must be non-negative"),
@@ -982,7 +986,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         // パーサーエラー
         (UnexpectedToken, "予期しないトークン: {0}"),
-        (UnexpectedEof, "予期しないEOF"),
+        (UnexpectedEof, "ファイルが予期せず終了しました（括弧が閉じられていない可能性があります）"),
         (ExpectedToken, "期待: {0}, 実際: {1}"),
         (NeedsSymbol, "{0}にはシンボルが必要です"),
         (VarargNeedsName, "&の後には変数名が必要です"),
@@ -1064,6 +1068,8 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             KeyMustBeKeyword,
             "キーは文字列またはキーワードが必要です",
         ),
+        (FloatKeyNotAllowed, "Floatはマップのキーとして使用できません"),
+        (InvalidMapKey, "無効なマップキー型: {0}"),
         (KeyNotFound, "キーが見つかりません: {0}"),
         (MustBePositive, "{0}: {1}は正の数である必要があります"),
         (

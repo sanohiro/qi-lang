@@ -57,7 +57,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: true,
-        has_special_processing: false,
+        has_special_processing: true,
     })))
 }
 
@@ -85,7 +85,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
-        has_special_processing: false,
+        has_special_processing: true,
     })))
 }
 
