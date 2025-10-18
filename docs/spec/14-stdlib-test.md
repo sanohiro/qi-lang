@@ -138,7 +138,8 @@ Qiのテストフレームワークは、**シンプルさ**と**覚えやすさ
 (test/run "truthy tests" (fn []
   (test/assert (> 5 3))
   (test/assert (even? 4))
-  (test/assert (some? [1 2 3]))))
+  (test/assert (some? [1 2 3]))          ;; ベクタはnilでない
+  (test/assert (list/some? even? [2 4 6]))))
 ```
 
 ### test/assert-not

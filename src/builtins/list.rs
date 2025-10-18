@@ -478,12 +478,12 @@ pub fn native_find_index(
     }
 }
 
-/// every? - すべての要素が条件を満たすか
+/// list/every? - すべての要素が条件を満たすか
 pub fn native_every(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(
             MsgKey::NeedNArgsDesc,
-            &["every?", "2", "(predicate, collection)"],
+            &["list/every?", "2", "(predicate, collection)"],
         ));
     }
 
@@ -502,17 +502,17 @@ pub fn native_every(args: &[Value], evaluator: &crate::eval::Evaluator) -> Resul
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
-            &["every? (2nd arg)", "second argument"],
+            &["list/every? (2nd arg)", "second argument"],
         )),
     }
 }
 
-/// some? - いずれかの要素が条件を満たすか
+/// list/some? - いずれかの要素が条件を満たすか
 pub fn native_some(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(
             MsgKey::NeedNArgsDesc,
-            &["some?", "2", "(predicate, collection)"],
+            &["list/some?", "2", "(predicate, collection)"],
         ));
     }
 
@@ -531,7 +531,7 @@ pub fn native_some(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
-            &["some? (2nd arg)", "second argument"],
+            &["list/some? (2nd arg)", "second argument"],
         )),
     }
 }

@@ -508,3 +508,96 @@ fn、let、defなどの特殊形式内でもunquoteは正しく動作します�
 (map inc [1 2 3])  ;; (2 3 4)
 (filter even? [1 2 3 4])  ;; (2 4)
 ```
+
+---
+
+## Core述語関数
+
+Qiは型チェックや条件判定のための述語関数（`?`で終わる関数）を多数提供しています。
+
+### 型チェック述語（11個）
+
+```qi
+;; nil判定
+(nil? nil)          ;; => true
+(nil? 0)            ;; => false
+(nil? "")           ;; => false
+
+;; コレクション型
+(list? '(1 2 3))    ;; => true
+(vector? [1 2 3])   ;; => true
+(map? {:a 1})       ;; => true
+
+;; プリミティブ型
+(string? "hello")   ;; => true
+(integer? 42)       ;; => true
+(float? 3.14)       ;; => true
+(number? 42)        ;; => true  (integerまたはfloat)
+
+;; 特殊型
+(keyword? :test)    ;; => true
+(function? inc)     ;; => true
+(atom? (atom 0))    ;; => true
+```
+
+### コレクション述語（3個）
+
+```qi
+(coll? [1 2 3])           ;; => true  (list/vector/map)
+(sequential? [1 2 3])     ;; => true  (listまたはvector)
+(empty? [])               ;; => true
+(empty? nil)              ;; => true
+```
+
+### 状態述語（3個）
+
+```qi
+;; nilでない判定
+(some? 0)           ;; => true
+(some? "")          ;; => true
+(some? nil)         ;; => false
+
+;; 厳密な真偽値チェック
+(true? true)        ;; => true
+(true? 1)           ;; => false  (truthyだがtrueではない)
+
+(false? false)      ;; => true
+(false? nil)        ;; => false  (falsyだがfalseではない)
+```
+
+### 数値述語（5個）
+
+```qi
+;; 偶数・奇数
+(even? 2)           ;; => true
+(odd? 3)            ;; => true
+
+;; 符号判定
+(positive? 1)       ;; => true
+(negative? -1)      ;; => true
+(zero? 0)           ;; => true
+(zero? 0.0)         ;; => true
+```
+
+### 述語の用途
+
+述語は以下のような場面で活用されます：
+
+```qi
+;; filterとの組み合わせ
+(filter even? [1 2 3 4 5])        ;; => (2 4)
+(filter some? [1 nil 2 nil 3])    ;; => (1 2 3)
+
+;; 条件分岐
+(if (nil? x)
+  "xはnil"
+  "xは何らかの値")
+
+;; match文のガード
+(match data
+  {:value v} when (positive? v) -> "正の値"
+  {:value v} when (zero? v) -> "ゼロ"
+  _ -> "その他")
+```
+
+**注:** コレクション操作の`list/some?`と`list/every?`（述語+コレクションで判定）は別の関数です（→ データ構造参照）。

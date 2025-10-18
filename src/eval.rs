@@ -271,14 +271,14 @@ impl Evaluator {
                         // {:ok value}
                         // 1: okキーのみ（容量1で十分）
                         let mut map = HashMap::with_capacity(1);
-                        map.insert("ok".to_string(), value);
+                        map.insert(":ok".to_string(), value);
                         Ok(Value::Map(map.into()))
                     }
                     Err(e) => {
                         // {:error e}
                         // 1: errorキーのみ（容量1で十分）
                         let mut map = HashMap::with_capacity(1);
-                        map.insert("error".to_string(), Value::String(e));
+                        map.insert(":error".to_string(), Value::String(e));
                         Ok(Value::Map(map.into()))
                     }
                 };
@@ -413,7 +413,7 @@ impl Evaluator {
                 "defn" => return self.eval_defn(args, env),
                 "drop-while" => return self.eval_drop_while(args, env),
                 "eval" => return self.eval_eval(args, env),
-                "every?" => return self.eval_every(args, env),
+                "list/every?" => return self.eval_every(args, env),
                 "filter" => return self.eval_filter(args, env),
                 "find" => return self.eval_find(args, env),
                 "go" => return self.eval_go(args, env),
@@ -441,7 +441,7 @@ impl Evaluator {
                 "pmap" => return self.eval_pmap(args, env),
                 "quote" => return self.eval_quote(args),
                 "reduce" => return self.eval_reduce(args, env),
-                "some?" => return self.eval_some(args, env),
+                "list/some?" => return self.eval_some(args, env),
                 "stream/filter" => return self.eval_stream_filter(args, env),
                 "stream/iterate" => return self.eval_iterate(args, env),
                 "stream/map" => return self.eval_stream_map(args, env),
@@ -630,19 +630,22 @@ impl Evaluator {
                 Ok(true)
             }
             Pattern::Vector(patterns) => {
-                if let Value::Vector(values) = value {
-                    if patterns.len() != values.len() {
+                // VectorパターンはVectorとListの両方にマッチ（一貫性のため）
+                let values = match value {
+                    Value::Vector(v) => v,
+                    Value::List(v) => v,
+                    _ => return Ok(false),
+                };
+
+                if patterns.len() != values.len() {
+                    return Ok(false);
+                }
+                for (pat, val) in patterns.iter().zip(values.iter()) {
+                    if !self.match_pattern(pat, val, bindings)? {
                         return Ok(false);
                     }
-                    for (pat, val) in patterns.iter().zip(values.iter()) {
-                        if !self.match_pattern(pat, val, bindings)? {
-                            return Ok(false);
-                        }
-                    }
-                    Ok(true)
-                } else {
-                    Ok(false)
                 }
+                Ok(true)
             }
             Pattern::List(patterns, rest) => {
                 // ListパターンはListとVectorの両方にマッチ
@@ -1131,12 +1134,42 @@ impl Evaluator {
                 let mut new_env = Env::with_parent(parent_env);
 
                 if f.is_variadic {
-                    if f.params.len() != 1 {
-                        return Err(fmt_msg(MsgKey::VariadicFnNeedsOneParam, &[]));
+                    // 可変長引数関数は最低1つのパラメータが必要（可変長引数自体）
+                    if f.params.is_empty() {
+                        return Err(
+                            "内部エラー: 可変長引数関数にパラメータがありません".to_string()
+                        );
                     }
-                    // variadic引数は常にSimpleパターンのはず
-                    if let crate::value::FnParam::Simple(name) = &f.params[0] {
-                        new_env.set(name.clone(), Value::List(args.into_iter().collect()));
+
+                    // 固定引数の数（可変長引数を除く）
+                    let fixed_param_count = f.params.len() - 1;
+
+                    // 引数の数が固定引数の数より少ない場合はエラー
+                    if args.len() < fixed_param_count {
+                        return Err(fmt_msg(
+                            MsgKey::ArgCountMismatch,
+                            &[
+                                &format!("{}以上", fixed_param_count),
+                                &args.len().to_string(),
+                            ],
+                        ));
+                    }
+
+                    // 固定引数をバインド
+                    for (param, arg) in f.params.iter().take(fixed_param_count).zip(args.iter()) {
+                        self.bind_fn_param(param, arg, &mut new_env)?;
+                    }
+
+                    // 残りの引数を可変長引数にバインド
+                    let variadic_param = &f.params[fixed_param_count];
+                    let remaining_args: Vec<Value> =
+                        args.iter().skip(fixed_param_count).cloned().collect();
+
+                    if let crate::value::FnParam::Simple(name) = variadic_param {
+                        new_env.set(
+                            name.clone(),
+                            Value::List(remaining_args.into_iter().collect()),
+                        );
                     } else {
                         return Err(
                             "内部エラー: variadic引数がSimpleパターンではありません".to_string()
@@ -1498,8 +1531,7 @@ impl Evaluator {
 
     fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["every?"]));
-        }
+            return Err(fmt_msg(MsgKey::Need2Args, &["list/every?"]));        }
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, env.clone()))
@@ -1509,7 +1541,7 @@ impl Evaluator {
 
     fn eval_some(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["some?"]));
+            return Err(fmt_msg(MsgKey::Need2Args, &["list/some?"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -2080,8 +2112,28 @@ impl Evaluator {
             Expr::Vector(items) => {
                 let mut result = Vec::with_capacity(items.len());
                 for item in items {
-                    let val = self.eval_quasiquote(item, env.clone(), depth)?;
-                    result.push(val);
+                    if let Expr::UnquoteSplice(e) = item {
+                        if depth == 0 {
+                            // unquote-spliceは評価してリストを展開
+                            let val = self.eval_with_env(e, env.clone())?;
+                            match val {
+                                Value::List(v) | Value::Vector(v) => {
+                                    result.extend(v);
+                                }
+                                _ => {
+                                    return Err(
+                                        msg(MsgKey::UnquoteSpliceNeedsListOrVector).to_string()
+                                    )
+                                }
+                            }
+                        } else {
+                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            result.push(val);
+                        }
+                    } else {
+                        let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                        result.push(val);
+                    }
                 }
                 Ok(Value::Vector(result.into()))
             }

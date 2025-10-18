@@ -270,14 +270,16 @@
 ### 述語（全体チェック）
 
 ```qi
-;; every? - 全要素が条件を満たすか
-(every? (fn [x] (> x 0)) [1 2 3])   ;; => true
-(every? even? [2 4 6])              ;; => true
+;; list/every? - 全要素が条件を満たすか
+(list/every? (fn [x] (> x 0)) [1 2 3])   ;; => true
+(list/every? even? [2 4 6])              ;; => true
 
-;; some? - いずれかの要素が条件を満たすか
-(some? (fn [x] (> x 5)) [1 7 3])    ;; => true
-(some? even? [1 3 5])               ;; => false
+;; list/some? - いずれかの要素が条件を満たすか
+(list/some? (fn [x] (> x 5)) [1 7 3])    ;; => true
+(list/some? even? [1 3 5])               ;; => false
 ```
+
+**注:** `some?`（1引数）はCore述語関数として、nilでないかをチェックする述語です（→ 基本構文参照）。
 
 ---
 
@@ -348,7 +350,7 @@
 ;; => {:name "Bob" :age 25}
 
 ;; 全員成人か確認
-(every? (fn [u] (>= (get u :age) 20)) users)
+(list/every? (fn [u] (>= (get u :age) 20)) users)
 ;; => true
 
 ;; パイプラインで検索
