@@ -1,7 +1,7 @@
 //! Coreコレクション操作関数
 //!
-//! リスト基本（28個）: first, rest, last, nth, take, drop, map, filter, reduce, pmap, cons, conj,
-//!                     concat, flatten, range, reverse, zip, sort, distinct, find, every, some,
+//! リスト基本（29個）: first, rest, last, nth, take, drop, map, filter, reduce, pmap, cons, conj,
+//!                     concat, flatten, range, repeat, reverse, zip, sort, distinct, find, every, some,
 //!                     take-while, drop-while, len, count, split-at, interleave
 //! マップ基本（9個）: get, keys, vals, assoc, dissoc, merge, get-in, update-in, update
 //!
@@ -208,6 +208,30 @@ pub fn native_range(args: &[Value]) -> Result<Value, String> {
             MsgKey::ArgCountMismatch,
             &["1 or 2", &args.len().to_string()],
         )),
+    }
+}
+
+/// repeat - 同じ値をn回繰り返したリストを生成
+/// 引数: (n val) - 繰り返し回数と値
+/// 例: (repeat 5 0) => [0 0 0 0 0]
+pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["repeat"]));
+    }
+
+    match &args[0] {
+        Value::Integer(n) => {
+            if *n < 0 {
+                return Err(fmt_msg(
+                    MsgKey::MustBeNonNegative,
+                    &["repeat", "count"],
+                ));
+            }
+            let val = args[1].clone();
+            let items: im::Vector<Value> = (0..*n).map(|_| val.clone()).collect();
+            Ok(Value::List(items))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["repeat (count)", "integer"])),
     }
 }
 
@@ -521,6 +545,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("concat", native_concat),
     ("flatten", native_flatten),
     ("range", native_range),
+    ("repeat", native_repeat),
     ("reverse", native_reverse),
     ("take", native_take),
     ("drop", native_drop),

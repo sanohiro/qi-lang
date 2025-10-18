@@ -1,0 +1,430 @@
+; time_torture_test.qi
+; Time関数（25個）の torture test
+
+(println "========================================")
+(println "Time関数 Torture Test 開始")
+(println "========================================")
+
+; 固定タイムスタンプ: 2024-01-01 00:00:00 UTC
+(def base-timestamp 1704067200)
+(def base-iso "2024-01-01T00:00:00+00:00")
+
+; ========================================
+; Section 1: time/now-iso
+; ========================================
+
+(println "\n--- Section 1: time/now-iso ---")
+(def now-iso-pass
+  (let [result (time/now-iso)]
+    (and
+      (string? result)
+      (> (count result) 20))))
+
+(if now-iso-pass
+  (println "✓ time/now-isoは正しく動作した")
+  (println "✗ time/now-isoに問題がある"))
+
+; ========================================
+; Section 2: time/today
+; ========================================
+
+(println "\n--- Section 2: time/today ---")
+(def today-pass
+  (let [result (time/today)]
+    (and
+      (string? result)
+      (= (count result) 10))))
+
+(if today-pass
+  (println "✓ time/todayは正しく動作した")
+  (println "✗ time/todayに問題がある"))
+
+; ========================================
+; Section 3: time/from-unix
+; ========================================
+
+(println "\n--- Section 3: time/from-unix ---")
+(def from-unix-pass
+  (let [result (time/from-unix base-timestamp)]
+    (and
+      (string? result)
+      (str/starts-with? result "2024-01-01"))))
+
+(if from-unix-pass
+  (println "✓ time/from-unixは正しく動作した")
+  (println "✗ time/from-unixに問題がある"))
+
+; ========================================
+; Section 4: time/to-unix
+; ========================================
+
+(println "\n--- Section 4: time/to-unix ---")
+(def to-unix-pass
+  (let [result (time/to-unix base-iso)]
+    (= result base-timestamp)))
+
+(if to-unix-pass
+  (println "✓ time/to-unixは正しく動作した")
+  (println "✗ time/to-unixに問題がある"))
+
+; ========================================
+; Section 5: time/format
+; ========================================
+
+(println "\n--- Section 5: time/format ---")
+(def format-pass
+  (let [result1 (time/format base-timestamp "%Y-%m-%d")
+        result2 (time/format base-iso "%Y/%m/%d %H:%M")]
+    (and
+      (= result1 "2024-01-01")
+      (= result2 "2024/01/01 00:00"))))
+
+(if format-pass
+  (println "✓ time/formatは正しく動作した")
+  (println "✗ time/formatに問題がある"))
+
+; ========================================
+; Section 6: time/add-days
+; ========================================
+
+(println "\n--- Section 6: time/add-days ---")
+(def add-days-pass
+  (let [result (time/add-days base-timestamp 7)
+        formatted (time/format result "%Y-%m-%d")]
+    (= formatted "2024-01-08")))
+
+(if add-days-pass
+  (println "✓ time/add-daysは正しく動作した")
+  (println "✗ time/add-daysに問題がある"))
+
+; ========================================
+; Section 7: time/add-hours
+; ========================================
+
+(println "\n--- Section 7: time/add-hours ---")
+(def add-hours-pass
+  (let [result (time/add-hours base-timestamp 24)
+        formatted (time/format result "%Y-%m-%d %H:%M")]
+    (= formatted "2024-01-02 00:00")))
+
+(if add-hours-pass
+  (println "✓ time/add-hoursは正しく動作した")
+  (println "✗ time/add-hoursに問題がある"))
+
+; ========================================
+; Section 8: time/add-minutes
+; ========================================
+
+(println "\n--- Section 8: time/add-minutes ---")
+(def add-minutes-pass
+  (let [result (time/add-minutes base-timestamp 90)
+        formatted (time/format result "%H:%M")]
+    (= formatted "01:30")))
+
+(if add-minutes-pass
+  (println "✓ time/add-minutesは正しく動作した")
+  (println "✗ time/add-minutesに問題がある"))
+
+; ========================================
+; Section 9: time/sub-days
+; ========================================
+
+(println "\n--- Section 9: time/sub-days ---")
+(def sub-days-pass
+  (let [result (time/sub-days base-timestamp 1)
+        formatted (time/format result "%Y-%m-%d")]
+    (= formatted "2023-12-31")))
+
+(if sub-days-pass
+  (println "✓ time/sub-daysは正しく動作した")
+  (println "✗ time/sub-daysに問題がある"))
+
+; ========================================
+; Section 10: time/sub-hours
+; ========================================
+
+(println "\n--- Section 10: time/sub-hours ---")
+(def sub-hours-pass
+  (let [result (time/sub-hours base-timestamp 1)
+        formatted (time/format result "%Y-%m-%d %H:%M")]
+    (= formatted "2023-12-31 23:00")))
+
+(if sub-hours-pass
+  (println "✓ time/sub-hoursは正しく動作した")
+  (println "✗ time/sub-hoursに問題がある"))
+
+; ========================================
+; Section 11: time/sub-minutes
+; ========================================
+
+(println "\n--- Section 11: time/sub-minutes ---")
+(def sub-minutes-pass
+  (let [result (time/sub-minutes base-timestamp 30)
+        formatted (time/format result "%H:%M")]
+    (= formatted "23:30")))
+
+(if sub-minutes-pass
+  (println "✓ time/sub-minutesは正しく動作した")
+  (println "✗ time/sub-minutesに問題がある"))
+
+; ========================================
+; Section 12: time/diff-days
+; ========================================
+
+(println "\n--- Section 12: time/diff-days ---")
+(def diff-days-pass
+  (let [t1 (time/add-days base-timestamp 10)
+        t2 base-timestamp
+        diff (time/diff-days t1 t2)]
+    (= diff 10)))
+
+(if diff-days-pass
+  (println "✓ time/diff-daysは正しく動作した")
+  (println "✗ time/diff-daysに問題がある"))
+
+; ========================================
+; Section 13: time/diff-hours
+; ========================================
+
+(println "\n--- Section 13: time/diff-hours ---")
+(def diff-hours-pass
+  (let [t1 (time/add-hours base-timestamp 48)
+        t2 base-timestamp
+        diff (time/diff-hours t1 t2)]
+    (= diff 48)))
+
+(if diff-hours-pass
+  (println "✓ time/diff-hoursは正しく動作した")
+  (println "✗ time/diff-hoursに問題がある"))
+
+; ========================================
+; Section 14: time/diff-minutes
+; ========================================
+
+(println "\n--- Section 14: time/diff-minutes ---")
+(def diff-minutes-pass
+  (let [t1 (time/add-minutes base-timestamp 120)
+        t2 base-timestamp
+        diff (time/diff-minutes t1 t2)]
+    (= diff 120)))
+
+(if diff-minutes-pass
+  (println "✓ time/diff-minutesは正しく動作した")
+  (println "✗ time/diff-minutesに問題がある"))
+
+; ========================================
+; Section 15: time/before?
+; ========================================
+
+(println "\n--- Section 15: time/before? ---")
+(def before-pass
+  (let [t1 base-timestamp
+        t2 (time/add-days base-timestamp 1)]
+    (and
+      (time/before? t1 t2)
+      (not (time/before? t2 t1)))))
+
+(if before-pass
+  (println "✓ time/before?は正しく動作した")
+  (println "✗ time/before?に問題がある"))
+
+; ========================================
+; Section 16: time/after?
+; ========================================
+
+(println "\n--- Section 16: time/after? ---")
+(def after-pass
+  (let [t1 base-timestamp
+        t2 (time/add-days base-timestamp 1)]
+    (and
+      (time/after? t2 t1)
+      (not (time/after? t1 t2)))))
+
+(if after-pass
+  (println "✓ time/after?は正しく動作した")
+  (println "✗ time/after?に問題がある"))
+
+; ========================================
+; Section 17: time/between?
+; ========================================
+
+(println "\n--- Section 17: time/between? ---")
+(def between-pass
+  (let [start base-timestamp
+        end (time/add-days base-timestamp 10)
+        mid (time/add-days base-timestamp 5)
+        before (time/sub-days base-timestamp 1)]
+    (and
+      (time/between? mid start end)
+      (not (time/between? before start end)))))
+
+(if between-pass
+  (println "✓ time/between?は正しく動作した")
+  (println "✗ time/between?に問題がある"))
+
+; ========================================
+; Section 18: time/parse
+; ========================================
+
+(println "\n--- Section 18: time/parse ---")
+(def parse-pass
+  (let [result (time/parse "2024-01-01 00:00:00" "%Y-%m-%d %H:%M:%S")]
+    (= result base-timestamp)))
+
+(if parse-pass
+  (println "✓ time/parseは正しく動作した")
+  (println "✗ time/parseに問題がある"))
+
+; ========================================
+; Section 19: time/year
+; ========================================
+
+(println "\n--- Section 19: time/year ---")
+(def year-pass
+  (= (time/year base-timestamp) 2024))
+
+(if year-pass
+  (println "✓ time/yearは正しく動作した")
+  (println "✗ time/yearに問題がある"))
+
+; ========================================
+; Section 20: time/month
+; ========================================
+
+(println "\n--- Section 20: time/month ---")
+(def month-pass
+  (= (time/month base-timestamp) 1))
+
+(if month-pass
+  (println "✓ time/monthは正しく動作した")
+  (println "✗ time/monthに問題がある"))
+
+; ========================================
+; Section 21: time/day
+; ========================================
+
+(println "\n--- Section 21: time/day ---")
+(def day-pass
+  (= (time/day base-timestamp) 1))
+
+(if day-pass
+  (println "✓ time/dayは正しく動作した")
+  (println "✗ time/dayに問題がある"))
+
+; ========================================
+; Section 22: time/hour
+; ========================================
+
+(println "\n--- Section 22: time/hour ---")
+(def hour-pass
+  (= (time/hour base-timestamp) 0))
+
+(if hour-pass
+  (println "✓ time/hourは正しく動作した")
+  (println "✗ time/hourに問題がある"))
+
+; ========================================
+; Section 23: time/minute
+; ========================================
+
+(println "\n--- Section 23: time/minute ---")
+(def minute-pass
+  (= (time/minute base-timestamp) 0))
+
+(if minute-pass
+  (println "✓ time/minuteは正しく動作した")
+  (println "✗ time/minuteに問題がある"))
+
+; ========================================
+; Section 24: time/second
+; ========================================
+
+(println "\n--- Section 24: time/second ---")
+(def second-pass
+  (= (time/second base-timestamp) 0))
+
+(if second-pass
+  (println "✓ time/secondは正しく動作した")
+  (println "✗ time/secondに問題がある"))
+
+; ========================================
+; Section 25: time/weekday
+; ========================================
+
+(println "\n--- Section 25: time/weekday ---")
+(def weekday-pass
+  (let [wd (time/weekday base-timestamp)]
+    (and
+      (>= wd 0)
+      (<= wd 6))))
+
+(if weekday-pass
+  (println "✓ time/weekdayは正しく動作した")
+  (println "✗ time/weekdayに問題がある"))
+
+; ========================================
+; Section 26: 統合テスト
+; ========================================
+
+(println "\n--- Section 26: 統合テスト ---")
+
+; 26.1 往復変換
+(println "\n[26.1] 往復変換（to-unix → from-unix）")
+(def roundtrip-pass
+  (let [iso-str (time/from-unix base-timestamp)
+        timestamp (time/to-unix iso-str)]
+    (= timestamp base-timestamp)))
+
+(if roundtrip-pass
+  (println "✓ 往復変換は正しく動作した")
+  (println "✗ 往復変換に問題がある"))
+
+; 26.2 加算と減算の相殺
+(println "\n[26.2] 加算と減算の相殺")
+(def add-sub-pass
+  (let [t1 (time/add-days base-timestamp 10)
+        t2 (time/sub-days t1 10)]
+    (= t2 base-timestamp)))
+
+(if add-sub-pass
+  (println "✓ 加算と減算の相殺は正しく動作した")
+  (println "✗ 加算と減算の相殺に問題がある"))
+
+; 26.3 比較の一貫性
+(println "\n[26.3] 比較の一貫性")
+(def comparison-pass
+  (let [t1 base-timestamp
+        t2 (time/add-days base-timestamp 1)]
+    (and
+      (time/before? t1 t2)
+      (time/after? t2 t1)
+      (not (time/before? t2 t1))
+      (not (time/after? t1 t2)))))
+
+(if comparison-pass
+  (println "✓ 比較の一貫性は正しく動作した")
+  (println "✗ 比較の一貫性に問題がある"))
+
+; 26.4 大量データの処理
+(println "\n[26.4] 大量データの処理")
+(def bulk-pass
+  (let [timestamps (map (fn [i] (time/add-days base-timestamp i)) (range 0 100))
+        diffs (map (fn [t] (time/diff-days t base-timestamp)) timestamps)]
+    (and
+      (= (count diffs) 100)
+      (= (first diffs) 0)
+      (= (last diffs) 99))))
+
+(if bulk-pass
+  (println "✓ 大量データの処理は正しく動作した")
+  (println "✗ 大量データの処理に問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "Time関数 Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")

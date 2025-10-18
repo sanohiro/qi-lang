@@ -13,19 +13,40 @@ use crate::value::Value;
 
 /// + - 加算
 pub fn native_add(args: &[Value]) -> Result<Value, String> {
-    let mut sum = 0;
+    let mut int_sum = 0i64;
+    let mut float_sum = 0.0f64;
+    let mut has_float = false;
+
     for arg in args {
         match arg {
-            Value::Integer(n) => sum += n,
+            Value::Integer(n) => {
+                if has_float {
+                    float_sum += *n as f64;
+                } else {
+                    int_sum += n;
+                }
+            }
+            Value::Float(f) => {
+                if !has_float {
+                    float_sum = int_sum as f64;
+                    has_float = true;
+                }
+                float_sum += f;
+            }
             _ => {
                 return Err(fmt_msg(
                     MsgKey::TypeOnlyWithDebug,
-                    &["+", "integers", &format!("{:?}", arg)],
+                    &["+", "numbers", &format!("{:?}", arg)],
                 ))
             }
         }
     }
-    Ok(Value::Integer(sum))
+
+    if has_float {
+        Ok(Value::Float(float_sum))
+    } else {
+        Ok(Value::Integer(int_sum))
+    }
 }
 
 /// - - 減算（または符号反転）
@@ -34,48 +55,107 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["-", "1"]));
     }
 
+    // 符号反転（単項マイナス）
+    if args.len() == 1 {
+        return match &args[0] {
+            Value::Integer(n) => Ok(Value::Integer(-n)),
+            Value::Float(f) => Ok(Value::Float(-f)),
+            _ => Err(fmt_msg(
+                MsgKey::TypeOnlyWithDebug,
+                &["-", "numbers", &format!("{:?}", args[0])],
+            )),
+        };
+    }
+
+    // 減算
+    let mut has_float = false;
+    let mut result_int = 0i64;
+    let mut result_float = 0.0f64;
+
+    // 最初の値を設定
     match &args[0] {
-        Value::Integer(first) => {
-            if args.len() == 1 {
-                Ok(Value::Integer(-first))
-            } else {
-                let mut result = *first;
-                for arg in &args[1..] {
-                    match arg {
-                        Value::Integer(n) => result -= n,
-                        _ => {
-                            return Err(fmt_msg(
-                                MsgKey::TypeOnlyWithDebug,
-                                &["-", "integers", &format!("{:?}", arg)],
-                            ))
-                        }
-                    }
+        Value::Integer(n) => result_int = *n,
+        Value::Float(f) => {
+            has_float = true;
+            result_float = *f;
+        }
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnlyWithDebug,
+                &["-", "numbers", &format!("{:?}", args[0])],
+            ))
+        }
+    }
+
+    // 残りの値を減算
+    for arg in &args[1..] {
+        match arg {
+            Value::Integer(n) => {
+                if has_float {
+                    result_float -= *n as f64;
+                } else {
+                    result_int -= n;
                 }
-                Ok(Value::Integer(result))
+            }
+            Value::Float(f) => {
+                if !has_float {
+                    result_float = result_int as f64;
+                    has_float = true;
+                }
+                result_float -= f;
+            }
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnlyWithDebug,
+                    &["-", "numbers", &format!("{:?}", arg)],
+                ))
             }
         }
-        _ => Err(fmt_msg(
-            MsgKey::TypeOnlyWithDebug,
-            &["-", "integers", &format!("{:?}", args[0])],
-        )),
+    }
+
+    if has_float {
+        Ok(Value::Float(result_float))
+    } else {
+        Ok(Value::Integer(result_int))
     }
 }
 
 /// * - 乗算
 pub fn native_mul(args: &[Value]) -> Result<Value, String> {
-    let mut product = 1;
+    let mut int_product = 1i64;
+    let mut float_product = 1.0f64;
+    let mut has_float = false;
+
     for arg in args {
         match arg {
-            Value::Integer(n) => product *= n,
+            Value::Integer(n) => {
+                if has_float {
+                    float_product *= *n as f64;
+                } else {
+                    int_product *= n;
+                }
+            }
+            Value::Float(f) => {
+                if !has_float {
+                    float_product = int_product as f64;
+                    has_float = true;
+                }
+                float_product *= f;
+            }
             _ => {
                 return Err(fmt_msg(
                     MsgKey::TypeOnlyWithDebug,
-                    &["*", "integers", &format!("{:?}", arg)],
+                    &["*", "numbers", &format!("{:?}", arg)],
                 ))
             }
         }
     }
-    Ok(Value::Integer(product))
+
+    if has_float {
+        Ok(Value::Float(float_product))
+    } else {
+        Ok(Value::Integer(int_product))
+    }
 }
 
 /// / - 除算
@@ -90,7 +170,25 @@ pub fn native_div(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a / b))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["/", "integers"])),
+        (Value::Float(a), Value::Float(b)) => {
+            if *b == 0.0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float(a / b))
+        }
+        (Value::Integer(a), Value::Float(b)) => {
+            if *b == 0.0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float(*a as f64 / b))
+        }
+        (Value::Float(a), Value::Integer(b)) => {
+            if *b == 0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float(a / *b as f64))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["/", "numbers"])),
     }
 }
 
@@ -270,7 +368,10 @@ pub fn native_lt(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a < b)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<", "integers"])),
+        (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a < b)),
+        (Value::Integer(a), Value::Float(b)) => Ok(Value::Bool((*a as f64) < *b)),
+        (Value::Float(a), Value::Integer(b)) => Ok(Value::Bool(*a < (*b as f64))),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<", "numbers"])),
     }
 }
 
@@ -281,7 +382,10 @@ pub fn native_gt(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a > b)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">", "integers"])),
+        (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a > b)),
+        (Value::Integer(a), Value::Float(b)) => Ok(Value::Bool((*a as f64) > *b)),
+        (Value::Float(a), Value::Integer(b)) => Ok(Value::Bool(*a > (*b as f64))),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">", "numbers"])),
     }
 }
 
@@ -292,7 +396,10 @@ pub fn native_le(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a <= b)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<=", "integers"])),
+        (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a <= b)),
+        (Value::Integer(a), Value::Float(b)) => Ok(Value::Bool((*a as f64) <= *b)),
+        (Value::Float(a), Value::Integer(b)) => Ok(Value::Bool(*a <= (*b as f64))),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["<=", "numbers"])),
     }
 }
 
@@ -303,7 +410,10 @@ pub fn native_ge(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a >= b)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">=", "integers"])),
+        (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a >= b)),
+        (Value::Integer(a), Value::Float(b)) => Ok(Value::Bool((*a as f64) >= *b)),
+        (Value::Float(a), Value::Integer(b)) => Ok(Value::Bool(*a >= (*b as f64))),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &[">=", "numbers"])),
     }
 }
 

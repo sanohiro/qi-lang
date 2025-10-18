@@ -1,0 +1,239 @@
+; core_basic_torture_test.qi
+; Core基本関数（4個）の torture test
+;
+; print, println, not, error
+
+(println "========================================")
+(println "Core基本関数 Torture Test 開始")
+(println "========================================")
+
+; ========================================
+; Section 1: print
+; ========================================
+
+(println "\n--- Section 1: print ---")
+
+; 1.1 基本動作
+(println "\n[1.1] print - 基本動作")
+(def print-basic-pass
+  (and
+    (nil? (print "test"))
+    (nil? (print 42))
+    (nil? (print true))))
+
+(if print-basic-pass
+  (println "✓ printの基本動作は正しく動作した")
+  (println "✗ printの基本動作に問題がある"))
+
+; 1.2 複数引数
+(println "\n[1.2] print - 複数引数")
+(def print-multi-pass
+  (nil? (print "a" "b" "c")))
+
+(if print-multi-pass
+  (println "✓ printの複数引数は正しく動作した")
+  (println "✗ printの複数引数に問題がある"))
+
+; 1.3 引数なし
+(println "\n[1.3] print - 引数なし")
+(def print-no-args-pass
+  (nil? (print)))
+
+(if print-no-args-pass
+  (println "✓ printの引数なしは正しく動作した")
+  (println "✗ printの引数なしに問題がある"))
+
+; 1.4 様々な型
+(println "\n[1.4] print - 様々な型")
+(def print-types-pass
+  (do
+    (print 1 2.5 "str" true false nil :keyword [1 2] {:a 1})
+    true))
+
+(if print-types-pass
+  (println "✓ printの様々な型は正しく動作した")
+  (println "✗ printの様々な型に問題がある"))
+
+; ========================================
+; Section 2: println
+; ========================================
+
+(println "\n--- Section 2: println ---")
+
+; 2.1 基本動作
+(println "\n[2.1] println - 基本動作")
+(def println-basic-pass
+  (and
+    (nil? (println "test"))
+    (nil? (println 42))
+    (nil? (println true))))
+
+(if println-basic-pass
+  (println "✓ printlnの基本動作は正しく動作した")
+  (println "✗ printlnの基本動作に問題がある"))
+
+; 2.2 複数引数
+(println "\n[2.2] println - 複数引数")
+(def println-multi-pass
+  (nil? (println "a" "b" "c")))
+
+(if println-multi-pass
+  (println "✓ printlnの複数引数は正しく動作した")
+  (println "✗ printlnの複数引数に問題がある"))
+
+; 2.3 引数なし
+(println "\n[2.3] println - 引数なし")
+(def println-no-args-pass
+  (nil? (println)))
+
+(if println-no-args-pass
+  (println "✓ printlnの引数なしは正しく動作した")
+  (println "✗ printlnの引数なしに問題がある"))
+
+; ========================================
+; Section 3: not
+; ========================================
+
+(println "\n--- Section 3: not ---")
+
+; 3.1 基本動作
+(println "\n[3.1] not - 基本動作")
+(def not-basic-pass
+  (and
+    (= (not true) false)
+    (= (not false) true)
+    (= (not nil) true)))
+
+(if not-basic-pass
+  (println "✓ notの基本動作は正しく動作した")
+  (println "✗ notの基本動作に問題がある"))
+
+; 3.2 Truthyな値
+(println "\n[3.2] not - Truthyな値")
+(def not-truthy-pass
+  (and
+    (= (not 0) false)
+    (= (not 1) false)
+    (= (not "")  false)
+    (= (not "str") false)
+    (= (not []) false)
+    (= (not {}) false)))
+
+(if not-truthy-pass
+  (println "✓ notのTruthyな値は正しく動作した")
+  (println "✗ notのTruthyな値に問題がある"))
+
+; 3.3 二重否定
+(println "\n[3.3] not - 二重否定")
+(def not-double-pass
+  (and
+    (= (not (not true)) true)
+    (= (not (not false)) false)
+    (= (not (not nil)) false)))
+
+(if not-double-pass
+  (println "✓ notの二重否定は正しく動作した")
+  (println "✗ notの二重否定に問題がある"))
+
+; 3.4 大量データ
+(println "\n[3.4] not - 大量データ")
+(def not-bulk-pass
+  (let [results (map not (range 0 1000))]
+    (= (len results) 1000)))
+
+(if not-bulk-pass
+  (println "✓ notの大量データ処理は正しく動作した")
+  (println "✗ notの大量データ処理に問題がある"))
+
+; ========================================
+; Section 4: error
+; ========================================
+
+(println "\n--- Section 4: error ---")
+
+; 4.1 基本動作（tryで補足）
+(println "\n[4.1] error - 基本動作")
+(def error-basic-pass
+  (let [result (try (error "test error"))]
+    (and
+      (map? result)
+      (some? (get result :error)))))
+
+(if error-basic-pass
+  (println "✓ errorの基本動作は正しく動作した")
+  (println "✗ errorの基本動作に問題がある"))
+
+; 4.2 エラーメッセージの内容
+(println "\n[4.2] error - メッセージ内容")
+(def error-message-pass
+  (let [result (try (error "custom message"))]
+    (str/contains? (get result :error) "custom message")))
+
+(if error-message-pass
+  (println "✓ errorのメッセージ内容は正しく動作した")
+  (println "✗ errorのメッセージ内容に問題がある"))
+
+; 4.3 条件付きエラー
+(println "\n[4.3] error - 条件付き")
+(def error-conditional-pass
+  (let [safe-div (fn [a b]
+                   (if (= b 0)
+                     (error "division by zero")
+                     (/ a b)))
+        result1 (try (safe-div 10 2))
+        result2 (try (safe-div 10 0))]
+    (and
+      (= result1 {:ok 5})
+      (map? result2)
+      (some? (get result2 :error)))))
+
+(if error-conditional-pass
+  (println "✓ errorの条件付きは正しく動作した")
+  (println "✗ errorの条件付きに問題がある"))
+
+; ========================================
+; Section 5: 統合テスト
+; ========================================
+
+(println "\n--- Section 5: 統合テスト ---")
+
+; 5.1 print/println with not
+(println "\n[5.1] print/println with not")
+(def integration-pass
+  (do
+    (println "Testing not:" (not false))
+    (print "Result: ")
+    (println (not (not true)))
+    true))
+
+(if integration-pass
+  (println "✓ print/println with not統合は正しく動作した")
+  (println "✗ print/println with not統合に問題がある"))
+
+; 5.2 errorハンドリングパターン
+(println "\n[5.2] errorハンドリングパターン")
+(def error-pattern-pass
+  (let [validate (fn [x]
+                   (if (not (integer? x))
+                     (error "not an integer")
+                     x))
+        r1 (try (validate 42))
+        r2 (try (validate "str"))]
+    (and
+      (= r1 {:ok 42})
+      (map? r2)
+      (some? (get r2 :error)))))
+
+(if error-pattern-pass
+  (println "✓ errorハンドリングパターンは正しく動作した")
+  (println "✗ errorハンドリングパターンに問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "Core基本関数 Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")

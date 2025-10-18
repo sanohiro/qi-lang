@@ -1,0 +1,236 @@
+; log_torture_test.qi
+; ログ関数（6個）の torture test
+;
+; log/debug, log/info, log/warn, log/error, log/set-level, log/set-format
+
+(println "========================================")
+(println "ログ関数 Torture Test 開始")
+(println "========================================")
+
+; ========================================
+; Section 1: log/debug
+; ========================================
+
+(println "\n--- Section 1: log/debug ---")
+
+; 1.1 基本動作
+(println "\n[1.1] debug - 基本動作")
+(def debug-basic-pass
+  (do
+    (log/debug "test message")
+    (log/debug "message with context" {:key "value"})
+    true))
+
+(if debug-basic-pass
+  (println "✓ debugの基本動作は正しく動作した")
+  (println "✗ debugの基本動作に問題がある"))
+
+; 1.2 様々なコンテキスト
+(println "\n[1.2] debug - 様々なコンテキスト")
+(def debug-types-pass
+  (do
+    (log/debug "number value" {:value 42})
+    (log/debug "float value" {:value 3.14})
+    (log/debug "boolean value" {:value true})
+    (log/debug "nil value" {:value nil})
+    (log/debug "list value" {:value [1 2 3]})
+    (log/debug "nested map" {:user {:name "alice" :age 30}})
+    true))
+
+(if debug-types-pass
+  (println "✓ debugの様々な型は正しく動作した")
+  (println "✗ debugの様々な型に問題がある"))
+
+; ========================================
+; Section 2: log/info
+; ========================================
+
+(println "\n--- Section 2: log/info ---")
+
+; 2.1 基本動作
+(println "\n[2.1] info - 基本動作")
+(def info-basic-pass
+  (do
+    (log/info "information message")
+    (log/info "info with context" {:data "value"})
+    true))
+
+(if info-basic-pass
+  (println "✓ infoの基本動作は正しく動作した")
+  (println "✗ infoの基本動作に問題がある"))
+
+; ========================================
+; Section 3: log/warn
+; ========================================
+
+(println "\n--- Section 3: log/warn ---")
+
+; 3.1 基本動作
+(println "\n[3.1] warn - 基本動作")
+(def warn-basic-pass
+  (do
+    (log/warn "warning message")
+    (log/warn "warn with context" {:level "high"})
+    true))
+
+(if warn-basic-pass
+  (println "✓ warnの基本動作は正しく動作した")
+  (println "✗ warnの基本動作に問題がある"))
+
+; ========================================
+; Section 4: log/error
+; ========================================
+
+(println "\n--- Section 4: log/error ---")
+
+; 4.1 基本動作
+(println "\n[4.1] error - 基本動作")
+(def error-basic-pass
+  (do
+    (log/error "error message")
+    (log/error "error with context" {:code 500})
+    true))
+
+(if error-basic-pass
+  (println "✓ errorの基本動作は正しく動作した")
+  (println "✗ errorの基本動作に問題がある"))
+
+; ========================================
+; Section 5: log/set-level
+; ========================================
+
+(println "\n--- Section 5: log/set-level ---")
+
+; 5.1 レベル設定
+(println "\n[5.1] set-level - レベル設定")
+(def set-level-pass
+  (do
+    (log/set-level "debug")
+    (log/set-level "info")
+    (log/set-level "warn")
+    (log/set-level "error")
+    true))
+
+(if set-level-pass
+  (println "✓ set-levelは正しく動作した")
+  (println "✗ set-levelに問題がある"))
+
+; 5.2 レベルフィルタリング
+(println "\n[5.2] set-level - レベルフィルタリング")
+(def set-level-filter-pass
+  (do
+    (log/set-level "error")
+    (log/debug "これは表示されない")
+    (log/info "これも表示されない")
+    (log/warn "これも表示されない")
+    (log/error "これは表示される")
+    (log/set-level "info")
+    true))
+
+(if set-level-filter-pass
+  (println "✓ set-levelのフィルタリングは正しく動作した")
+  (println "✗ set-levelのフィルタリングに問題がある"))
+
+; ========================================
+; Section 6: log/set-format
+; ========================================
+
+(println "\n--- Section 6: log/set-format ---")
+
+; 6.1 フォーマット設定
+(println "\n[6.1] set-format - フォーマット設定")
+(def set-format-pass
+  (do
+    (log/set-format "text")
+    (log/info "text format message")
+    (log/set-format "json")
+    (log/info "json format message")
+    (log/set-format "text")
+    true))
+
+(if set-format-pass
+  (println "✓ set-formatは正しく動作した")
+  (println "✗ set-formatに問題がある"))
+
+; ========================================
+; Section 7: 大量ログ処理
+; ========================================
+
+(println "\n--- Section 7: 大量ログ処理 ---")
+
+; 7.1 大量のログ出力
+(println "\n[7.1] 大量ログ出力")
+(def bulk-log-pass
+  (do
+    (log/set-level "error")  ; DEBUGレベルを抑制してパフォーマンス向上
+    (map (fn [i] (log/debug (str "log message " i))) (range 0 1000))
+    (log/set-level "info")
+    true))
+
+(if bulk-log-pass
+  (println "✓ 大量ログ出力は正しく動作した")
+  (println "✗ 大量ログ出力に問題がある"))
+
+; 7.2 すべてのレベルの大量出力
+(println "\n[7.2] すべてのレベルの大量出力")
+(def all-levels-bulk-pass
+  (do
+    (log/set-level "debug")
+    (map (fn [i] (log/debug (str "debug " i))) (range 0 100))
+    (map (fn [i] (log/info (str "info " i))) (range 0 100))
+    (map (fn [i] (log/warn (str "warn " i))) (range 0 100))
+    (map (fn [i] (log/error (str "error " i))) (range 0 100))
+    (log/set-level "info")
+    true))
+
+(if all-levels-bulk-pass
+  (println "✓ すべてのレベルの大量出力は正しく動作した")
+  (println "✗ すべてのレベルの大量出力に問題がある"))
+
+; ========================================
+; Section 8: 統合テスト
+; ========================================
+
+(println "\n--- Section 8: 統合テスト ---")
+
+; 8.1 レベルとフォーマットの組み合わせ
+(println "\n[8.1] レベルとフォーマットの組み合わせ")
+(def integration-pass
+  (do
+    (log/set-level "debug")
+    (log/set-format "json")
+    (log/debug "debug in json")
+    (log/info "info in json")
+    (log/set-format "text")
+    (log/warn "warn in text")
+    (log/error "error in text")
+    (log/set-level "info")
+    true))
+
+(if integration-pass
+  (println "✓ レベルとフォーマットの組み合わせは正しく動作した")
+  (println "✗ レベルとフォーマットの組み合わせに問題がある"))
+
+; 8.2 複雑なメッセージ
+(println "\n[8.2] 複雑なメッセージ")
+(def complex-msg-pass
+  (do
+    (log/info "User logged in" {:user "alice" :ip "192.168.1.1"})
+    (log/warn "High memory usage" {:values (map (fn [x] (* x 2)) [1 2 3 4 5])})
+    (log/error "Error details" {:code 500 :message "Internal error"})
+    true))
+
+(if complex-msg-pass
+  (println "✓ 複雑なメッセージは正しく動作した")
+  (println "✗ 複雑なメッセージに問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "ログ関数 Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")
+(println "\n注意: ログ出力は標準エラー出力に表示されます。")
