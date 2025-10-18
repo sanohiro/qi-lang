@@ -108,6 +108,29 @@ impl Value {
         !matches!(self, Value::Nil | Value::Bool(false))
     }
 
+    /// 値をマップのキー文字列に変換
+    ///
+    /// 異なる型のキーが衝突しないよう、型プレフィックスをつける：
+    /// - Keyword: ":name"
+    /// - String: "\"text\""
+    /// - Symbol: "'symbol"
+    /// - Integer: "123"
+    /// - Nil: "nil"
+    /// - Bool: "true" or "false"
+    pub fn to_map_key(&self) -> Result<String, String> {
+        use crate::i18n::{fmt_msg, msg, MsgKey};
+        match self {
+            Value::Keyword(k) => Ok(format!(":{}", k)),
+            Value::String(s) => Ok(format!("\"{}\"", s)),
+            Value::Symbol(s) => Ok(format!("'{}", s)),
+            Value::Integer(n) => Ok(n.to_string()),
+            Value::Nil => Ok("nil".to_string()),
+            Value::Bool(b) => Ok(b.to_string()),
+            Value::Float(_) => Err(msg(MsgKey::FloatKeyNotAllowed).to_string()),
+            _ => Err(fmt_msg(MsgKey::InvalidMapKey, &[self.type_name()])),
+        }
+    }
+
     /// 型名を取得（エラーメッセージ用）
     pub fn type_name(&self) -> &'static str {
         match self {
@@ -146,6 +169,8 @@ impl PartialEq for Value {
             (Value::Keyword(a), Value::Keyword(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Vector(a), Value::Vector(b)) => a == b,
+            // ListとVectorは内容が同じなら等しい（Lisp系言語の一般的な仕様）
+            (Value::List(a), Value::Vector(b)) | (Value::Vector(a), Value::List(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => a == b,
             (Value::NativeFunc(a), Value::NativeFunc(b)) => a == b,
             (Value::Uvar(a), Value::Uvar(b)) => a == b,

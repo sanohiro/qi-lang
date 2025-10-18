@@ -179,17 +179,35 @@ pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
     Ok(Value::List(result))
 }
 
-/// range - 0からn-1までのリストを生成
+/// range - 範囲の生成
+/// (range n) => [0 1 2 ... n-1]
+/// (range start end) => [start start+1 ... end-1]
 pub fn native_range(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["range"]));
-    }
-    match &args[0] {
-        Value::Integer(n) => {
-            let items: im::Vector<Value> = (0..*n).map(Value::Integer).collect();
-            Ok(Value::List(items))
+    match args.len() {
+        1 => {
+            // (range n) => [0 1 2 ... n-1]
+            match &args[0] {
+                Value::Integer(n) => {
+                    let items: im::Vector<Value> = (0..*n).map(Value::Integer).collect();
+                    Ok(Value::List(items))
+                }
+                _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
+            }
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
+        2 => {
+            // (range start end) => [start start+1 ... end-1]
+            match (&args[0], &args[1]) {
+                (Value::Integer(start), Value::Integer(end)) => {
+                    let items: im::Vector<Value> = (*start..*end).map(Value::Integer).collect();
+                    Ok(Value::List(items))
+                }
+                _ => Err(fmt_msg(MsgKey::TypeOnly, &["range", "integers"])),
+            }
+        }
+        _ => Err(fmt_msg(
+            MsgKey::ArgCountMismatch,
+            &["1 or 2", &args.len().to_string()],
+        )),
     }
 }
 
@@ -286,22 +304,28 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// zip - 2つのリストを組み合わせる
+/// zip - 2つのリストを組み合わせる（List/Vectorの混在も可）
 pub fn native_zip(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["zip"]));
     }
-    match (&args[0], &args[1]) {
-        (Value::List(a), Value::List(b)) | (Value::Vector(a), Value::Vector(b)) => {
-            let result: im::Vector<Value> = a
-                .iter()
-                .zip(b.iter())
-                .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()].into()))
-                .collect();
-            Ok(Value::List(result))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["zip", "lists or vectors"])),
-    }
+
+    // 両引数からim::Vectorを取得
+    let vec_a = match &args[0] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["zip", "lists or vectors"])),
+    };
+    let vec_b = match &args[1] {
+        Value::List(v) | Value::Vector(v) => v,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["zip", "lists or vectors"])),
+    };
+
+    let result: im::Vector<Value> = vec_a
+        .iter()
+        .zip(vec_b.iter())
+        .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()].into()))
+        .collect();
+    Ok(Value::List(result))
 }
 
 // ========================================
@@ -315,11 +339,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Map(m) => {
-            let key = match &args[1] {
-                Value::String(s) => s.clone(),
-                Value::Keyword(k) => k.clone(),
-                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-            };
+            let key = args[1].to_map_key()?;
             Ok(m.get(&key).cloned().unwrap_or(Value::Nil))
         }
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["get", "a map"])),
@@ -327,13 +347,46 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 }
 
 /// keys - マップのキーを取得
+/// マップのキーは内部的に文字列で格納されているため、元の型に復元する
 pub fn native_keys(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["keys"]));
     }
     match &args[0] {
         Value::Map(m) => {
-            let keys: im::Vector<Value> = m.keys().map(|k| Value::Keyword(k.clone())).collect();
+            let keys: im::Vector<Value> = m
+                .keys()
+                .map(|k| {
+                    // キー文字列から元の型に復元
+                    if let Some(keyword) = k.strip_prefix(':') {
+                        // ":a" -> Keyword("a")
+                        Value::Keyword(keyword.to_string())
+                    } else if let Some(string) =
+                        k.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                    {
+                        // "\"foo\"" -> String("foo")
+                        Value::String(string.to_string())
+                    } else if let Some(symbol) = k.strip_prefix('\'') {
+                        // "'bar" -> Symbol("bar")
+                        Value::Symbol(symbol.to_string())
+                    } else if k == "nil" {
+                        // "nil" -> Nil
+                        Value::Nil
+                    } else if k == "true" {
+                        // "true" -> Bool(true)
+                        Value::Bool(true)
+                    } else if k == "false" {
+                        // "false" -> Bool(false)
+                        Value::Bool(false)
+                    } else if let Ok(n) = k.parse::<i64>() {
+                        // "123" -> Integer(123)
+                        Value::Integer(n)
+                    } else {
+                        // パースできない場合は文字列として返す
+                        Value::String(k.clone())
+                    }
+                })
+                .collect();
             Ok(Value::List(keys))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["keys", "maps"])),
@@ -363,11 +416,7 @@ pub fn native_assoc(args: &[Value]) -> Result<Value, String> {
         Value::Map(m) => {
             let mut new_map = m.clone();
             for i in (1..args.len()).step_by(2) {
-                let key = match &args[i] {
-                    Value::String(s) => s.clone(),
-                    Value::Keyword(k) => k.clone(),
-                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-                };
+                let key = args[i].to_map_key()?;
                 new_map.insert(key, args[i + 1].clone());
             }
             Ok(Value::Map(new_map))
@@ -387,11 +436,7 @@ pub fn native_dissoc(args: &[Value]) -> Result<Value, String> {
 
             // 削除するキーのリストを作成
             for arg in &args[1..] {
-                let key = match arg {
-                    Value::String(s) => s.clone(),
-                    Value::Keyword(k) => k.clone(),
-                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-                };
+                let key = arg.to_map_key()?;
                 new_map = new_map.without(&key);
             }
 
@@ -442,11 +487,7 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 
     let mut current = map.clone();
     for key_val in path {
-        let key = match key_val {
-            Value::String(s) => s.clone(),
-            Value::Keyword(k) => k.clone(),
-            _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-        };
+        let key = key_val.to_map_key()?;
 
         match current {
             Value::Map(m) => {

@@ -214,6 +214,7 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 値の等価性を判定するヘルパー関数
+/// ListとVectorは内容が同じなら等しいと見なす
 fn values_equal(a: &Value, b: &Value) -> bool {
     use std::ptr;
     match (a, b) {
@@ -224,7 +225,11 @@ fn values_equal(a: &Value, b: &Value) -> bool {
         (Value::String(a), Value::String(b)) => a == b,
         (Value::Symbol(a), Value::Symbol(b)) => a == b,
         (Value::Keyword(a), Value::Keyword(b)) => a == b,
-        (Value::List(a), Value::List(b)) | (Value::Vector(a), Value::Vector(b)) => {
+        // ListとVectorは内容が同じなら等しい（Lisp系言語の一般的な仕様）
+        (Value::List(a), Value::List(b))
+        | (Value::Vector(a), Value::Vector(b))
+        | (Value::List(a), Value::Vector(b))
+        | (Value::Vector(a), Value::List(b)) => {
             a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_equal(x, y))
         }
         (Value::Map(a), Value::Map(b)) => {
