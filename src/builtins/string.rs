@@ -96,7 +96,7 @@ pub fn native_contains(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => Ok(Value::Bool(s.contains(sub.as_str()))),
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["contains?", "two strings"])),
     }
 }
 
@@ -109,7 +109,7 @@ pub fn native_starts_with(args: &[Value]) -> Result<Value, String> {
         (Value::String(s), Value::String(prefix)) => {
             Ok(Value::Bool(s.starts_with(prefix.as_str())))
         }
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["starts-with?", "two strings"])),
     }
 }
 
@@ -120,7 +120,7 @@ pub fn native_ends_with(args: &[Value]) -> Result<Value, String> {
     }
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(suffix)) => Ok(Value::Bool(s.ends_with(suffix.as_str()))),
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["ends-with?", "two strings"])),
     }
 }
 
@@ -132,9 +132,9 @@ pub fn native_index_of(args: &[Value]) -> Result<Value, String> {
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => match s.find(sub.as_str()) {
             Some(idx) => Ok(Value::Integer(idx as i64)),
-            None => Ok(Value::Integer(-1)),
+            None => Ok(Value::Nil),
         },
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["index-of", "two strings"])),
     }
 }
 
@@ -146,9 +146,9 @@ pub fn native_last_index_of(args: &[Value]) -> Result<Value, String> {
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => match s.rfind(sub.as_str()) {
             Some(idx) => Ok(Value::Integer(idx as i64)),
-            None => Ok(Value::Integer(-1)),
+            None => Ok(Value::Nil),
         },
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["last-index-of", "two strings"])),
     }
 }
 
@@ -189,7 +189,7 @@ pub fn native_take_str(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["take-str"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::Integer(n)) => {
+        (Value::Integer(n), Value::String(s)) => {
             let take_count = (*n).max(0) as usize;
 
             // char_indices()を使ってtake_count番目の文字のバイトオフセットを取得
@@ -202,7 +202,7 @@ pub fn native_take_str(args: &[Value]) -> Result<Value, String> {
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
-            &["take-str", "string and integer"],
+            &["take-str", "integer and string"],
         )),
     }
 }
@@ -213,7 +213,7 @@ pub fn native_drop_str(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["drop-str"]));
     }
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::Integer(n)) => {
+        (Value::Integer(n), Value::String(s)) => {
             let drop_count = (*n).max(0) as usize;
 
             // char_indices()を使ってdrop_count番目の文字のバイトオフセットを取得
@@ -226,7 +226,7 @@ pub fn native_drop_str(args: &[Value]) -> Result<Value, String> {
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
-            &["drop-str", "string and integer"],
+            &["drop-str", "integer and string"],
         )),
     }
 }
@@ -241,7 +241,7 @@ pub fn native_sub_before(args: &[Value]) -> Result<Value, String> {
             Some(idx) => Ok(Value::String(s[..idx].to_string())),
             None => Ok(Value::String(s.clone())),
         },
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sub-before", "two strings"])),
     }
 }
 
@@ -255,7 +255,7 @@ pub fn native_sub_after(args: &[Value]) -> Result<Value, String> {
             Some(idx) => Ok(Value::String(s[idx + delim.len()..].to_string())),
             None => Ok(Value::String(String::new())),
         },
-        _ => Err(msg(MsgKey::SplitTwoStrings).to_string()),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sub-after", "two strings"])),
     }
 }
 
@@ -1541,32 +1541,32 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
 }
 
 /// format-decimal - 小数点桁数を指定してフォーマット
-/// 使い方: (str/format-decimal decimals number) または number |> (str/format-decimal decimals)
+/// 使い方: (str/format-decimal number decimals) または number |> (str/format-decimal _ decimals)
 pub fn native_format_decimal(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["format-decimal"]));
     }
 
-    let decimals = match &args[0] {
-        Value::Integer(n) if *n >= 0 => *n as usize,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &[
-                    "format-decimal (1st arg - decimals)",
-                    "non-negative integer",
-                ],
-            ))
-        }
-    };
-
-    let number = match &args[1] {
+    let number = match &args[0] {
         Value::Integer(n) => *n as f64,
         Value::Float(f) => *f,
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
-                &["format-decimal (2nd arg - number)", "number"],
+                &["format-decimal (1st arg - number)", "number"],
+            ))
+        }
+    };
+
+    let decimals = match &args[1] {
+        Value::Integer(n) if *n >= 0 => *n as usize,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "format-decimal (2nd arg - decimals)",
+                    "non-negative integer",
+                ],
             ))
         }
     };
@@ -1646,26 +1646,26 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
     }
 
     let (number, decimals) = if args.len() == 2 {
-        // 2引数: (format-percent decimals number) - パイプライン用
-        let decimals = match &args[0] {
-            Value::Integer(n) if *n >= 0 => *n as usize,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &[
-                        "format-percent (1st arg - decimals)",
-                        "non-negative integer",
-                    ],
-                ))
-            }
-        };
-        let number = match &args[1] {
+        // 2引数: (format-percent number decimals)
+        let number = match &args[0] {
             Value::Integer(n) => (*n as f64) * 100.0,
             Value::Float(f) => f * 100.0,
             _ => {
                 return Err(fmt_msg(
                     MsgKey::TypeOnly,
-                    &["format-percent (2nd arg - number)", "number"],
+                    &["format-percent (1st arg - number)", "number"],
+                ))
+            }
+        };
+        let decimals = match &args[1] {
+            Value::Integer(n) if *n >= 0 => *n as usize,
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &[
+                        "format-percent (2nd arg - decimals)",
+                        "non-negative integer",
+                    ],
                 ))
             }
         };

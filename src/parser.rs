@@ -1,5 +1,5 @@
-use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::lexer::{Lexer, Token};
+use crate::i18n::{fmt_msg, MsgKey};
+use crate::lexer::{Lexer, LocatedToken, Token};
 use crate::value::{Expr, MatchArm, Pattern, UseMode};
 use std::collections::HashSet;
 use std::sync::LazyLock;
@@ -13,7 +13,7 @@ static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 });
 
 pub struct Parser {
-    tokens: Vec<Token>,
+    tokens: Vec<LocatedToken>,
     pos: usize,
 }
 
@@ -26,9 +26,28 @@ impl Parser {
 
     fn current(&self) -> Option<&Token> {
         if self.pos < self.tokens.len() {
-            Some(&self.tokens[self.pos])
+            Some(&self.tokens[self.pos].token)
         } else {
             None
+        }
+    }
+
+    /// 現在のトークンのSpanを取得
+    fn current_span(&self) -> Option<&crate::lexer::Span> {
+        if self.pos < self.tokens.len() {
+            Some(&self.tokens[self.pos].span)
+        } else {
+            None
+        }
+    }
+
+    /// 行番号付きエラーメッセージを生成
+    fn error_with_line(&self, key: MsgKey, args: &[&str]) -> String {
+        let base_msg = fmt_msg(key, args);
+        if let Some(span) = self.current_span() {
+            format!("{} (line {})", base_msg, span.line)
+        } else {
+            base_msg
         }
     }
 
@@ -42,14 +61,13 @@ impl Parser {
                 self.advance();
                 Ok(())
             }
-            Some(token) => Err(fmt_msg(
+            Some(token) => Err(self.error_with_line(
                 MsgKey::ExpectedToken,
-                &[&format!("{:?}", expected), &format!("{:?}", token)],
+                &[&expected.display_name(), &token.display_name()],
             )),
-            None => Err(fmt_msg(
-                MsgKey::ExpectedToken,
-                &[&format!("{:?}", expected), "EOF"],
-            )),
+            None => {
+                Err(self.error_with_line(MsgKey::ExpectedToken, &[&expected.display_name(), "EOF"]))
+            }
         }
     }
 
@@ -177,8 +195,10 @@ impl Parser {
             Some(Token::Unquote) => self.parse_unquote(),
             Some(Token::UnquoteSplice) => self.parse_unquote_splice(),
             Some(Token::At) => self.parse_at(),
-            Some(token) => Err(fmt_msg(MsgKey::UnexpectedToken, &[&format!("{:?}", token)])),
-            None => Err(msg(MsgKey::UnexpectedEof).to_string()),
+            Some(token) => {
+                Err(self.error_with_line(MsgKey::UnexpectedToken, &[&token.display_name()]))
+            }
+            None => Err(self.error_with_line(MsgKey::UnexpectedEof, &[])),
         }
     }
 
@@ -336,7 +356,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["def"]).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["def"])),
         };
         self.advance();
 
@@ -354,7 +374,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["defn"])),
         };
         self.advance();
 
@@ -366,40 +386,8 @@ impl Parser {
             None
         };
 
-        // パラメータリストのパース
-        self.expect(Token::LBracket)?;
-        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
-        let mut params = Vec::with_capacity(4);
-        let mut is_variadic = false;
-
-        while self.current() != Some(&Token::RBracket) {
-            if let Some(Token::Symbol(s)) = self.current() {
-                if s == "&" {
-                    self.advance();
-                    is_variadic = true;
-                    if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(crate::value::FnParam::Simple(vararg.clone()));
-                        self.advance();
-                    } else {
-                        return Err(msg(MsgKey::VarargNeedsName).to_string());
-                    }
-                    break;
-                } else {
-                    params.push(crate::value::FnParam::Simple(s.clone()));
-                    self.advance();
-                }
-            } else if let Some(Token::LBracket) = self.current() {
-                // ベクタの分解パターン
-                params.push(self.parse_fn_param_vector()?);
-            } else if let Some(Token::LBrace) = self.current() {
-                // マップの分解パターン
-                params.push(self.parse_fn_param_map()?);
-            } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn"]).to_string());
-            }
-        }
-
-        self.expect(Token::RBracket)?;
+        // パラメータリストのパース（共通化された関数を使用）
+        let (params, is_variadic) = self.parse_fn_params()?;
 
         // 本体のパース
         let body = Box::new(self.parse_expr()?);
@@ -432,7 +420,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn-"]).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["defn-"])),
         };
         self.advance();
 
@@ -444,40 +432,8 @@ impl Parser {
             None
         };
 
-        // パラメータリストのパース
-        self.expect(Token::LBracket)?;
-        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
-        let mut params = Vec::with_capacity(4);
-        let mut is_variadic = false;
-
-        while self.current() != Some(&Token::RBracket) {
-            if let Some(Token::Symbol(s)) = self.current() {
-                if s == "&" {
-                    self.advance();
-                    is_variadic = true;
-                    if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(crate::value::FnParam::Simple(vararg.clone()));
-                        self.advance();
-                    } else {
-                        return Err(msg(MsgKey::VarargNeedsName).to_string());
-                    }
-                    break;
-                } else {
-                    params.push(crate::value::FnParam::Simple(s.clone()));
-                    self.advance();
-                }
-            } else if let Some(Token::LBracket) = self.current() {
-                // ベクタの分解パターン
-                params.push(self.parse_fn_param_vector()?);
-            } else if let Some(Token::LBrace) = self.current() {
-                // マップの分解パターン
-                params.push(self.parse_fn_param_map()?);
-            } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["defn-"]).to_string());
-            }
-        }
-
-        self.expect(Token::RBracket)?;
+        // パラメータリストのパース（共通化された関数を使用）
+        let (params, is_variadic) = self.parse_fn_params()?;
 
         // 本体のパース
         let body = Box::new(self.parse_expr()?);
@@ -505,7 +461,21 @@ impl Parser {
     fn parse_fn(&mut self) -> Result<Expr, String> {
         self.advance(); // 'fn'をスキップ
 
-        // パラメータリストのパース
+        let (params, is_variadic) = self.parse_fn_params()?;
+
+        // 本体のパース
+        let body = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Fn {
+            params,
+            body,
+            is_variadic,
+        })
+    }
+
+    /// 関数パラメータリストのパース（defn, defn-, fn共通）
+    fn parse_fn_params(&mut self) -> Result<(Vec<crate::value::FnParam>, bool), String> {
         self.expect(Token::LBracket)?;
         // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
         let mut params = Vec::with_capacity(4);
@@ -520,35 +490,34 @@ impl Parser {
                         params.push(crate::value::FnParam::Simple(vararg.clone()));
                         self.advance();
                     } else {
-                        return Err(msg(MsgKey::VarargNeedsName).to_string());
+                        return Err(self.error_with_line(MsgKey::VarargNeedsName, &[]));
                     }
                     break;
                 } else {
-                    params.push(crate::value::FnParam::Simple(s.clone()));
-                    self.advance();
+                    params.push(self.parse_binding_pattern()?);
                 }
-            } else if let Some(Token::LBracket) = self.current() {
-                // ベクタの分解パターン
-                params.push(self.parse_fn_param_vector()?);
-            } else if let Some(Token::LBrace) = self.current() {
-                // マップの分解パターン
-                params.push(self.parse_fn_param_map()?);
             } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn"]).to_string());
+                params.push(self.parse_binding_pattern()?);
             }
         }
 
         self.expect(Token::RBracket)?;
+        Ok((params, is_variadic))
+    }
 
-        // 本体のパース
-        let body = Box::new(self.parse_expr()?);
-        self.expect(Token::RParen)?;
-
-        Ok(Expr::Fn {
-            params,
-            body,
-            is_variadic,
-        })
+    /// 束縛パターンのパース（let, fn, defn等で共通）
+    /// シンボル、ベクタ分解、マップ分解をサポート
+    fn parse_binding_pattern(&mut self) -> Result<crate::value::FnParam, String> {
+        match self.current() {
+            Some(Token::Symbol(s)) => {
+                let name = s.clone();
+                self.advance();
+                Ok(crate::value::FnParam::Simple(name))
+            }
+            Some(Token::LBracket) => self.parse_fn_param_vector(),
+            Some(Token::LBrace) => self.parse_fn_param_map(),
+            _ => Err(self.error_with_line(MsgKey::NeedsSymbol, &["binding pattern"])),
+        }
     }
 
     /// ベクタの分解パターンをパース: [x y] or [[a b] c] or [x ...rest]
@@ -571,16 +540,35 @@ impl Parser {
                         // ...rest の後に他のパターンがあってはならない
                         break;
                     }
-                    _ => return Err(msg(MsgKey::RestNeedsVar).to_string()),
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
                 }
             } else if let Some(Token::Symbol(s)) = self.current() {
-                params.push(crate::value::FnParam::Simple(s.clone()));
-                self.advance();
+                // & rest パターンのチェック
+                if s == "&" {
+                    self.advance(); // &
+                                    // 次は変数名でなければならない
+                    match self.current() {
+                        Some(Token::Symbol(s)) => {
+                            rest = Some(Box::new(crate::value::FnParam::Simple(s.clone())));
+                            self.advance();
+                            // & rest の後に他のパターンがあってはならない
+                            break;
+                        }
+                        _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                    }
+                } else {
+                    // 通常のシンボル
+                    params.push(crate::value::FnParam::Simple(s.clone()));
+                    self.advance();
+                }
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
                 params.push(self.parse_fn_param_vector()?);
+            } else if let Some(Token::LBrace) = self.current() {
+                // ネストしたマップパターン
+                params.push(self.parse_fn_param_map()?);
             } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["fn parameter"]).to_string());
+                return Err(self.error_with_line(MsgKey::NeedsSymbol, &["fn parameter"]));
             }
         }
 
@@ -609,14 +597,14 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        _ => return Err(msg(MsgKey::AsNeedsVarName).to_string()),
+                        _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
                     }
                 }
             }
 
             let key = match self.current() {
                 Some(Token::Keyword(k)) => k.clone(),
-                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
+                _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
             self.advance();
 
@@ -632,7 +620,7 @@ impl Parser {
                 // ネストしたマップパターン
                 self.parse_fn_param_map()?
             } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["map pattern"]).to_string());
+                return Err(self.error_with_line(MsgKey::NeedsSymbol, &["map pattern"]));
             };
 
             pairs.push((key, pattern));
@@ -652,19 +640,8 @@ impl Parser {
         let mut bindings = Vec::with_capacity(4);
 
         while self.current() != Some(&Token::RBracket) {
-            // パターンをパース（シンボル、ベクタ分解、またはマップ分解）
-            let pattern = if let Some(Token::Symbol(s)) = self.current() {
-                let name = s.clone();
-                self.advance();
-                crate::value::FnParam::Simple(name)
-            } else if let Some(Token::LBracket) = self.current() {
-                self.parse_fn_param_vector()?
-            } else if let Some(Token::LBrace) = self.current() {
-                self.parse_fn_param_map()?
-            } else {
-                return Err(fmt_msg(MsgKey::NeedsSymbol, &["let"]).to_string());
-            };
-
+            // 共通化された束縛パターンパース関数を使用
+            let pattern = self.parse_binding_pattern()?;
             let value = self.parse_expr()?;
             bindings.push((pattern, value));
         }
@@ -823,7 +800,7 @@ impl Parser {
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
                 Some(Token::Symbol(s)) => s.clone(),
-                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["loop"]).to_string()),
+                _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["loop"])),
             };
             self.advance();
 
@@ -861,7 +838,7 @@ impl Parser {
         // マクロ名
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["mac"]).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
         };
         self.advance();
 
@@ -882,14 +859,14 @@ impl Parser {
                             params.push(s.clone());
                             self.advance();
                         }
-                        _ => return Err(msg(MsgKey::MacVarargNeedsSymbol).to_string()),
+                        _ => return Err(self.error_with_line(MsgKey::MacVarargNeedsSymbol, &[])),
                     }
                 }
                 Some(Token::Symbol(s)) => {
                     params.push(s.clone());
                     self.advance();
                 }
-                _ => return Err(fmt_msg(MsgKey::NeedsSymbol, &["mac"]).to_string()),
+                _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
             }
         }
 
@@ -1132,11 +1109,10 @@ impl Parser {
             }
             Some(Token::LBracket) => self.parse_vector_pattern(),
             Some(Token::LBrace) => self.parse_map_pattern(),
-            Some(token) => Err(fmt_msg(
-                MsgKey::UnexpectedPattern,
-                &[&format!("{:?}", token)],
-            )),
-            None => Err(msg(MsgKey::UnexpectedEof).to_string()),
+            Some(token) => {
+                Err(self.error_with_line(MsgKey::UnexpectedPattern, &[&token.display_name()]))
+            }
+            None => Err(self.error_with_line(MsgKey::UnexpectedEof, &[])),
         }
     }
 
@@ -1159,7 +1135,20 @@ impl Parser {
                         // ...rest の後に他のパターンがあってはならない
                         break;
                     }
-                    _ => return Err(msg(MsgKey::RestNeedsVar).to_string()),
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                }
+            } else if matches!(self.current(), Some(Token::Symbol(s)) if s == "&") {
+                // & rest パターン
+                self.advance(); // &
+                                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(s)) => {
+                        rest = Some(Box::new(Pattern::Var(s.clone())));
+                        self.advance();
+                        // & rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
                 }
             } else {
                 patterns.push(self.parse_pattern()?);
@@ -1195,14 +1184,14 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        _ => return Err(msg(MsgKey::AsNeedsVarName).to_string()),
+                        _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
                     }
                 }
             }
 
             let key = match self.current() {
                 Some(Token::Keyword(k)) => k.clone(),
-                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
+                _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
             self.advance();
 
@@ -1246,7 +1235,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(n)) => n.clone(),
-            _ => return Err(msg(MsgKey::ModuleNeedsName).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
         };
         self.advance();
 
@@ -1267,7 +1256,7 @@ impl Parser {
                     symbols.push(s.clone());
                     self.advance();
                 }
-                _ => return Err(msg(MsgKey::ExportNeedsSymbols).to_string()),
+                _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
             }
         }
 
@@ -1284,7 +1273,7 @@ impl Parser {
         let module = match self.current() {
             Some(Token::Symbol(n)) => n.clone(),
             Some(Token::String(s)) => s.clone(),
-            _ => return Err(msg(MsgKey::UseNeedsModuleName).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::UseNeedsModuleName, &[])),
         };
         self.advance();
 
@@ -1302,7 +1291,9 @@ impl Parser {
                             symbols.push(s.clone());
                             self.advance();
                         }
-                        _ => return Err(msg(MsgKey::ExpectedSymbolInOnlyList).to_string()),
+                        _ => {
+                            return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
+                        }
                     }
                 }
                 self.expect(Token::RBracket)?;
@@ -1316,14 +1307,14 @@ impl Parser {
                         self.advance();
                         UseMode::As(alias)
                     }
-                    _ => return Err(msg(MsgKey::AsNeedsAlias).to_string()),
+                    _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
                 }
             }
             Some(Token::Keyword(k)) if k == "all" => {
                 self.advance();
                 UseMode::All
             }
-            _ => return Err(msg(MsgKey::UseNeedsMode).to_string()),
+            _ => return Err(self.error_with_line(MsgKey::UseNeedsMode, &[])),
         };
 
         self.expect(Token::RParen)?;
@@ -1338,6 +1329,37 @@ impl Parser {
             Expr::Call { args, .. } => args.iter().any(Self::has_placeholder),
             Expr::Vector(items) => items.iter().any(Self::has_placeholder),
             Expr::List(items) => items.iter().any(Self::has_placeholder),
+            Expr::Map(pairs) => pairs
+                .iter()
+                .any(|(k, v)| Self::has_placeholder(k) || Self::has_placeholder(v)),
+            Expr::Match { expr, arms } => {
+                Self::has_placeholder(expr)
+                    || arms
+                        .iter()
+                        .any(|arm| arm.guard.as_ref().is_some_and(|g| Self::has_placeholder(g)))
+            }
+            Expr::If {
+                test,
+                then,
+                otherwise,
+            } => {
+                Self::has_placeholder(test)
+                    || Self::has_placeholder(then)
+                    || otherwise.as_ref().is_some_and(|e| Self::has_placeholder(e))
+            }
+            Expr::Let { bindings, body } => {
+                bindings.iter().any(|(_, v)| Self::has_placeholder(v))
+                    || Self::has_placeholder(body)
+            }
+            Expr::Do(exprs) => exprs.iter().any(Self::has_placeholder),
+            Expr::Try(expr) | Expr::Defer(expr) => Self::has_placeholder(expr),
+            Expr::Loop { bindings, body } => {
+                bindings.iter().any(|(_, v)| Self::has_placeholder(v))
+                    || Self::has_placeholder(body)
+            }
+            Expr::Recur(args) => args.iter().any(Self::has_placeholder),
+            Expr::Fn { body, .. } => Self::has_placeholder(body),
+            Expr::Def(_, value, _) => Self::has_placeholder(value),
             _ => false,
         }
     }
@@ -1370,6 +1392,98 @@ impl Parser {
                     .collect();
                 Expr::List(new_items)
             }
+            Expr::Map(pairs) => {
+                let new_pairs = pairs
+                    .into_iter()
+                    .map(|(k, v)| {
+                        (
+                            Self::replace_placeholder(k, value.clone()),
+                            Self::replace_placeholder(v, value.clone()),
+                        )
+                    })
+                    .collect();
+                Expr::Map(new_pairs)
+            }
+            Expr::Match {
+                expr: match_expr,
+                arms,
+            } => {
+                let new_expr = Box::new(Self::replace_placeholder(*match_expr, value.clone()));
+                let new_arms = arms
+                    .into_iter()
+                    .map(|arm| MatchArm {
+                        pattern: arm.pattern,
+                        guard: arm
+                            .guard
+                            .map(|g| Box::new(Self::replace_placeholder(*g, value.clone()))),
+                        body: arm.body, // bodyはプレースホルダーを置換しない（パターンマッチ結果を使うため）
+                    })
+                    .collect();
+                Expr::Match {
+                    expr: new_expr,
+                    arms: new_arms,
+                }
+            }
+            Expr::If {
+                test,
+                then,
+                otherwise,
+            } => Expr::If {
+                test: Box::new(Self::replace_placeholder(*test, value.clone())),
+                then: Box::new(Self::replace_placeholder(*then, value.clone())),
+                otherwise: otherwise
+                    .map(|e| Box::new(Self::replace_placeholder(*e, value.clone()))),
+            },
+            Expr::Let { bindings, body } => {
+                let new_bindings = bindings
+                    .into_iter()
+                    .map(|(pat, v)| (pat, Self::replace_placeholder(v, value.clone())))
+                    .collect();
+                Expr::Let {
+                    bindings: new_bindings,
+                    body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                }
+            }
+            Expr::Do(exprs) => {
+                let new_exprs = exprs
+                    .into_iter()
+                    .map(|e| Self::replace_placeholder(e, value.clone()))
+                    .collect();
+                Expr::Do(new_exprs)
+            }
+            Expr::Try(e) => Expr::Try(Box::new(Self::replace_placeholder(*e, value))),
+            Expr::Defer(e) => Expr::Defer(Box::new(Self::replace_placeholder(*e, value))),
+            Expr::Loop { bindings, body } => {
+                let new_bindings = bindings
+                    .into_iter()
+                    .map(|(name, v)| (name, Self::replace_placeholder(v, value.clone())))
+                    .collect();
+                Expr::Loop {
+                    bindings: new_bindings,
+                    body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                }
+            }
+            Expr::Recur(args) => {
+                let new_args = args
+                    .into_iter()
+                    .map(|arg| Self::replace_placeholder(arg, value.clone()))
+                    .collect();
+                Expr::Recur(new_args)
+            }
+            Expr::Fn {
+                params,
+                body,
+                is_variadic,
+            } => Expr::Fn {
+                params,
+                body: Box::new(Self::replace_placeholder(*body, value)),
+                is_variadic,
+            },
+            Expr::Def(name, def_value, is_private) => Expr::Def(
+                name,
+                Box::new(Self::replace_placeholder(*def_value, value)),
+                is_private,
+            ),
             _ => expr,
         }
     }

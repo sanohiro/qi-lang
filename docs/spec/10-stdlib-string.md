@@ -18,11 +18,13 @@
 ;; str/ends-with? - 後方一致判定
 (str/ends-with? "hello" "lo")             ;; => true
 
-;; str/index-of - 最初の出現位置
+;; str/index-of - 最初の出現位置（見つからない場合はnil）
 (str/index-of "hello world" "world")      ;; => 6
+(str/index-of "hello" "xyz")              ;; => nil
 
-;; str/last-index-of - 最後の出現位置
+;; str/last-index-of - 最後の出現位置（見つからない場合はnil）
 (str/last-index-of "hello hello" "hello") ;; => 6
+(str/last-index-of "hello" "xyz")         ;; => nil
 ```
 
 ---
@@ -121,11 +123,13 @@
 ;; str/slice - 範囲を取得
 (str/slice "hello world" 0 5)             ;; => "hello"
 
-;; str/take - 先頭n文字を取得
-(str/take "hello" 3)                      ;; => "hel"
+;; str/take-str - 先頭n文字を取得（パイプライン最適化）
+(str/take-str 3 "hello")                  ;; => "hel"
+("hello" |> (str/take-str 3))             ;; => "hel"
 
-;; str/drop - 先頭n文字を削除
-(str/drop "hello" 2)                      ;; => "llo"
+;; str/drop-str - 先頭n文字を削除（パイプライン最適化）
+(str/drop-str 2 "hello")                  ;; => "llo"
+("hello" |> (str/drop-str 2))             ;; => "llo"
 
 ;; str/sub-before - 区切り文字より前を取得
 (str/sub-before "user@example.com" "@")   ;; => "user"
@@ -300,8 +304,8 @@
 (str/format "{} + {} = {}" 1 2 3)         ;; => "1 + 2 = 3"
 
 ;; str/format-decimal - 小数点桁数指定
-(str/format-decimal 2 3.14159)            ;; => "3.14"
-(3.14159 |> (str/format-decimal 2))       ;; パイプラインで使用
+(str/format-decimal 3.14159 2)            ;; => "3.14"
+(3.14159 |> (str/format-decimal _ 2))     ;; パイプラインで使用
 
 ;; str/format-comma - 3桁カンマ区切り
 (str/format-comma 1234567)                ;; => "1,234,567"
@@ -309,8 +313,8 @@
 
 ;; str/format-percent - パーセント表示
 (str/format-percent 0.1234)               ;; => "12%"
-(str/format-percent 2 0.1234)             ;; => "12.34%"
-(0.856 |> (str/format-percent 1))         ;; => "85.6%"
+(str/format-percent 0.1234 2)             ;; => "12.34%"
+(0.856 |> (str/format-percent _ 1))       ;; => "85.6%"
 ```
 
 ---
