@@ -1,0 +1,28 @@
+;; ネストされた:asパターンの動作確認
+
+(println "=== ネストされた:asパターンの動作確認 ===\n")
+
+;; Test 1
+(println "Test 1: 基本的なマップでの:as")
+(def r1 (match {:x 1 :y 2} {:x a :y b :as m} -> m))
+(println r1)
+
+;; Test 2
+(println "\nTest 2: ネストされた:as")
+(def r2 (match {:type "person" :data {:name "Alice"}}
+  {:type t :data {:name n :as data} :as all} -> [t n data all]))
+(println r2)
+
+;; Test 3
+(println "\nTest 3: let内でのas")
+(let [{:x a :as m} {:x 10}]
+  (do
+    (println a)
+    (println m)))
+
+;; Test 4
+(println "\nTest 4: 関数パラメータでの:as")
+(defn test-fn [{:name n :as user}] [n user])
+(println (test-fn {:name "Bob"}))
+
+(println "\n=== 完了 ===")

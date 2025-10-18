@@ -1,0 +1,58 @@
+;; Quasiquote/Unquote の動作確認（特殊形式内での評価）
+
+(println "=== Quasiquote/Unquote 動作確認 ===\n")
+
+;; Test 1: 基本的なunquote
+(println "Test 1: 基本的なunquote")
+(def x 10)
+(def template `(+ 1 ,x))
+(println template)
+(println (eval template))
+
+;; Test 2: fn内でのunquote
+(println "\nTest 2: fn内でのunquote")
+(def value 42)
+(def fn-template `(fn [x] ,value))
+(println fn-template)
+(def fn-result (eval fn-template))
+(println (fn-result 100))
+
+;; Test 3: let内でのunquote
+(println "\nTest 3: let内でのunquote")
+(def val 30)
+(def let-template `(let [a ,val b 20] (+ a b)))
+(println let-template)
+(println (eval let-template))
+
+;; Test 4: def内でのunquote
+(println "\nTest 4: def内でのunquote")
+(def init-value 99)
+(def def-template `(def myvar ,init-value))
+(println def-template)
+(eval def-template)
+(println myvar)
+
+;; Test 5: unquote-splice
+(println "\nTest 5: unquote-splice")
+(def items [1 2 3])
+(def splice-template `(list ,@items))
+(println splice-template)
+(println (eval splice-template))
+
+;; Test 6: マクロ実行例（when）
+(println "\nTest 6: whenマクロ")
+(mac when [test & body]
+  `(if ,test (do ,@body) nil))
+
+(def result-when (when true (+ 10 20)))
+(println result-when)
+
+;; Test 7: マクロ実行例（unless）
+(println "\nTest 7: unlessマクロ")
+(mac unless [test & body]
+  `(if ,test nil (do ,@body)))
+
+(def result-unless (unless false (+ 5 10)))
+(println result-unless)
+
+(println "\n=== 完了 ===")
