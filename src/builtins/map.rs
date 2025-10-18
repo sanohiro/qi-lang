@@ -16,11 +16,7 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
         (Value::Map(m), Value::List(keys) | Value::Vector(keys)) => {
             let mut result = im::HashMap::new();
             for key_val in keys {
-                let key = match key_val {
-                    Value::String(s) => s.clone(),
-                    Value::Keyword(k) => k.clone(),
-                    _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-                };
+                let key = key_val.to_map_key()?;
                 if let Some(v) = m.get(&key) {
                     result.insert(key, v.clone());
                 }
@@ -70,11 +66,7 @@ fn assoc_in_helper(
     index: usize,
     value: &Value,
 ) -> Result<(), String> {
-    let key = match &path[index] {
-        Value::String(s) => s.clone(),
-        Value::Keyword(k) => k.clone(),
-        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-    };
+    let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {
         // 最後のキー：値を設定
@@ -135,11 +127,7 @@ fn dissoc_in_helper(
     path: &im::Vector<Value>,
     index: usize,
 ) -> Result<(), String> {
-    let key = match &path[index] {
-        Value::String(s) => s.clone(),
-        Value::Keyword(k) => k.clone(),
-        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-    };
+    let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {
         // 最後のキー：削除

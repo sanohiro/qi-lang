@@ -1,0 +1,250 @@
+; hof_torture_test.qi
+; 高階関数（3個）の torture test
+;
+; fn/complement, fn/juxt, fn/tap>
+
+(println "========================================")
+(println "高階関数 Torture Test 開始")
+(println "========================================")
+
+; ========================================
+; Section 1: fn/complement
+; ========================================
+
+(println "\n--- Section 1: fn/complement ---")
+
+; 1.1 基本動作
+(println "\n[1.1] complement - 基本動作")
+(def not-even (fn/complement even?))
+(def complement-basic-pass
+  (and
+    (not-even 1)
+    (not-even 3)
+    (not (not-even 2))
+    (not (not-even 4))))
+
+(if complement-basic-pass
+  (println "✓ complementの基本動作は正しく動作した")
+  (println "✗ complementの基本動作に問題がある"))
+
+; 1.2 filterでの使用
+(println "\n[1.2] complement - filterで使用")
+(def not-nil (fn/complement nil?))
+(def complement-filter-pass
+  (= (filter not-nil [1 nil 2 nil 3]) [1 2 3]))
+
+(if complement-filter-pass
+  (println "✓ complementのfilter使用は正しく動作した")
+  (println "✗ complementのfilter使用に問題がある"))
+
+; 1.3 大量データ
+(println "\n[1.3] complement - 大量データ")
+(def not-positive (fn/complement positive?))
+(def complement-bulk-pass
+  (let [result (filter not-positive (range -100 101))]
+    (and
+      (= (len result) 101)
+      (= (first result) -100)
+      (= (last result) 0))))
+
+(if complement-bulk-pass
+  (println "✓ complementの大量データ処理は正しく動作した")
+  (println "✗ complementの大量データ処理に問題がある"))
+
+; ========================================
+; Section 2: fn/juxt
+; ========================================
+
+(println "\n--- Section 2: fn/juxt ---")
+
+; 2.1 基本動作
+(println "\n[2.1] juxt - 基本動作")
+(def stats (fn/juxt first last len))
+(def juxt-basic-pass
+  (= (stats [1 2 3 4 5]) [1 5 5]))
+
+(if juxt-basic-pass
+  (println "✓ juxtの基本動作は正しく動作した")
+  (println "✗ juxtの基本動作に問題がある"))
+
+; 2.2 複数関数の適用
+(println "\n[2.2] juxt - 複数関数")
+(def calc (fn/juxt (fn [x] (+ x 1)) (fn [x] (* x 2)) (fn [x] (- x 1))))
+(def juxt-multi-pass
+  (= (calc 10) [11 20 9]))
+
+(if juxt-multi-pass
+  (println "✓ juxtの複数関数適用は正しく動作した")
+  (println "✗ juxtの複数関数適用に問題がある"))
+
+; 2.3 mapでの使用
+(println "\n[2.3] juxt - mapで使用")
+(def double-triple (fn/juxt (fn [x] (* x 2)) (fn [x] (* x 3))))
+(def juxt-map-pass
+  (= (map double-triple [1 2 3]) [[2 3] [4 6] [6 9]]))
+
+(if juxt-map-pass
+  (println "✓ juxtのmap使用は正しく動作した")
+  (println "✗ juxtのmap使用に問題がある"))
+
+; 2.4 大量データ
+(println "\n[2.4] juxt - 大量データ")
+(def add-sub (fn/juxt (fn [x] (+ x 1)) (fn [x] (- x 1))))
+(def juxt-bulk-pass
+  (let [result (map add-sub (range 0 1000))]
+    (and
+      (= (len result) 1000)
+      (= (first result) [1 -1])
+      (= (last result) [1000 998]))))
+
+(if juxt-bulk-pass
+  (println "✓ juxtの大量データ処理は正しく動作した")
+  (println "✗ juxtの大量データ処理に問題がある"))
+
+; ========================================
+; Section 3: fn/tap>
+; ========================================
+
+(println "\n--- Section 3: fn/tap> ---")
+
+; 3.1 基本動作
+(println "\n[3.1] tap> - 基本動作")
+(def tap-counter (atom 0))
+(def tap-inc (fn/tap> (fn [_] (reset! tap-counter (+ (deref tap-counter) 1)))))
+(def tap-basic-pass
+  (and
+    (= (tap-inc 42) 42)
+    (= (deref tap-counter) 1)
+    (= (tap-inc 99) 99)
+    (= (deref tap-counter) 2)))
+
+(if tap-basic-pass
+  (println "✓ tap>の基本動作は正しく動作した")
+  (println "✗ tap>の基本動作に問題がある"))
+
+; 3.2 パイプラインでの使用
+(println "\n[3.2] tap> - パイプライン")
+(def tap-log (atom []))
+(def tap-logger (fn/tap> (fn [x] (reset! tap-log (conj (deref tap-log) x)))))
+(def tap-pipeline-pass
+  (let [result (10 |> tap-logger |> (fn [x] (* x 2)) |> tap-logger)]
+    (and
+      (= result 20)
+      (= (len (deref tap-log)) 2))))
+
+(if tap-pipeline-pass
+  (println "✓ tap>のパイプライン使用は正しく動作した")
+  (println "✗ tap>のパイプライン使用に問題がある"))
+
+; 3.3 mapでの使用
+(println "\n[3.3] tap> - mapで使用")
+(def tap-sum (atom 0))
+(def tap-adder (fn/tap> (fn [x] (reset! tap-sum (+ (deref tap-sum) x)))))
+(def tap-map-pass
+  (let [result (map tap-adder [1 2 3 4 5])]
+    (and
+      (= result [1 2 3 4 5])
+      (= (deref tap-sum) 15))))
+
+(if tap-map-pass
+  (println "✓ tap>のmap使用は正しく動作した")
+  (println "✗ tap>のmap使用に問題がある"))
+
+; ========================================
+; Section 4: 統合テスト
+; ========================================
+
+(println "\n--- Section 4: 統合テスト ---")
+
+; 4.1 complement + filter
+(println "\n[4.1] complement + filter")
+(def not-zero (fn/complement zero?))
+(def integration1-pass
+  (= (filter not-zero [0 1 0 2 0 3]) [1 2 3]))
+
+(if integration1-pass
+  (println "✓ complement + filter統合は正しく動作した")
+  (println "✗ complement + filter統合に問題がある"))
+
+; 4.2 juxt + map
+(println "\n[4.2] juxt + map")
+(def analyze (fn/juxt len first last))
+(def integration2-pass
+  (let [lists [[1 2] [3 4 5] [6]]]
+    (= (map analyze lists) [[2 1 2] [3 3 5] [1 6 6]])))
+
+(if integration2-pass
+  (println "✓ juxt + map統合は正しく動作した")
+  (println "✗ juxt + map統合に問題がある"))
+
+; 4.3 tap> + パイプライン
+(println "\n[4.3] tap> + パイプライン")
+(def tap-result (atom []))
+(def integration3-pass
+  (let [log-tap (fn/tap> (fn [x] (reset! tap-result (conj (deref tap-result) x))))
+        final (5 |> log-tap |> (fn [x] (* x 2)) |> log-tap |> (fn [x] (+ x 1)))]
+    (and
+      (= final 11)
+      (= (deref tap-result) [5 10]))))
+
+(if integration3-pass
+  (println "✓ tap> + パイプライン統合は正しく動作した")
+  (println "✗ tap> + パイプライン統合に問題がある"))
+
+; ========================================
+; Section 5: 高負荷テスト
+; ========================================
+
+(println "\n--- Section 5: 高負荷テスト ---")
+
+; 5.1 大量データでのcomplement
+(println "\n[5.1] 大量データでのcomplement")
+(def not-even-bulk (fn/complement even?))
+(def bulk1-pass
+  (let [result (filter not-even-bulk (range 0 10000))]
+    (and
+      (= (len result) 5000)
+      (= (first result) 1)
+      (= (last result) 9999))))
+
+(if bulk1-pass
+  (println "✓ 大量データでのcomplementは正しく動作した")
+  (println "✗ 大量データでのcomplementに問題がある"))
+
+; 5.2 大量データでのjuxt
+(println "\n[5.2] 大量データでのjuxt")
+(def ops (fn/juxt (fn [x] (+ x 1)) (fn [x] (* x 2))))
+(def bulk2-pass
+  (let [result (map ops (range 0 10000))]
+    (and
+      (= (len result) 10000)
+      (= (first result) [1 0])
+      (= (last result) [10000 19998]))))
+
+(if bulk2-pass
+  (println "✓ 大量データでのjuxtは正しく動作した")
+  (println "✗ 大量データでのjuxtに問題がある"))
+
+; 5.3 並列処理でのtap>
+(println "\n[5.3] 並列処理でのtap>")
+(def tap-parallel (atom 0))
+(def tap-inc-parallel (fn/tap> (fn [_] (reset! tap-parallel (+ (deref tap-parallel) 1)))))
+(def bulk3-pass
+  (let [result (pmap tap-inc-parallel (range 0 100))]
+    (and
+      (= (len result) 100)
+      (> (deref tap-parallel) 0))))
+
+(if bulk3-pass
+  (println "✓ 並列処理でのtap>は正しく動作した")
+  (println "✗ 並列処理でのtap>に問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "高階関数 Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")

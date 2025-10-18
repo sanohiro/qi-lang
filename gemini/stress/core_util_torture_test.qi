@@ -1,0 +1,347 @@
+; core_util_torture_test.qi
+; Coreユーティリティ関数（6個）の torture test
+;
+; 型変換(3): to-int, to-float, to-string
+; 日時(3): now, timestamp, sleep
+
+(println "========================================")
+(println "Coreユーティリティ Torture Test 開始")
+(println "========================================")
+
+; ========================================
+; Section 1: 型変換関数 - to-int
+; ========================================
+
+(println "\n--- Section 1: to-int ---")
+
+; 1.1 基本的な変換
+(println "\n[1.1] to-int - 基本変換")
+(def to-int-basic-pass
+  (and
+    (= (to-int 42) 42)
+    (= (to-int 3.14) 3)
+    (= (to-int 3.99) 3)
+    (= (to-int "123") 123)
+    (= (to-int "-456") -456)
+    (= (to-int true) 1)
+    (= (to-int false) 0)))
+
+(if to-int-basic-pass
+  (println "✓ to-intの基本変換は正しく動作した")
+  (println "✗ to-intの基本変換に問題がある"))
+
+; 1.2 境界値テスト
+(println "\n[1.2] to-int - 境界値")
+(def to-int-boundary-pass
+  (and
+    (= (to-int 0) 0)
+    (= (to-int -0.0) 0)
+    (= (to-int 0.0) 0)
+    (= (to-int "0") 0)
+    (integer? (to-int 999999999999))
+    (integer? (to-int -999999999999))))
+
+(if to-int-boundary-pass
+  (println "✓ to-intの境界値テストは正しく動作した")
+  (println "✗ to-intの境界値テストに問題がある"))
+
+; 1.3 大量データ変換
+(println "\n[1.3] to-int - 大量データ")
+(def numbers (map to-int (range 0 1000)))
+(def to-int-bulk-pass
+  (and
+    (= (len numbers) 1000)
+    (= (first numbers) 0)
+    (= (last numbers) 999)))
+
+(if to-int-bulk-pass
+  (println "✓ to-intの大量データ変換は正しく動作した")
+  (println "✗ to-intの大量データ変換に問題がある"))
+
+; ========================================
+; Section 2: 型変換関数 - to-float
+; ========================================
+
+(println "\n--- Section 2: to-float ---")
+
+; 2.1 基本的な変換
+(println "\n[2.1] to-float - 基本変換")
+(def to-float-basic-pass
+  (and
+    (= (to-float 42) 42.0)
+    (= (to-float 3.14) 3.14)
+    (= (to-float "3.14") 3.14)
+    (= (to-float "123") 123.0)
+    (float? (to-float 1))
+    (float? (to-float "2.5"))))
+
+(if to-float-basic-pass
+  (println "✓ to-floatの基本変換は正しく動作した")
+  (println "✗ to-floatの基本変換に問題がある"))
+
+; 2.2 境界値テスト
+(println "\n[2.2] to-float - 境界値")
+(def to-float-boundary-pass
+  (and
+    (= (to-float 0) 0.0)
+    (= (to-float "0.0") 0.0)
+    (float? (to-float 999999999999))
+    (float? (to-float "123.456789"))))
+
+(if to-float-boundary-pass
+  (println "✓ to-floatの境界値テストは正しく動作した")
+  (println "✗ to-floatの境界値テストに問題がある"))
+
+; 2.3 大量データ変換
+(println "\n[2.3] to-float - 大量データ")
+(def floats (map to-float (range 0 1000)))
+(def to-float-bulk-pass
+  (and
+    (= (len floats) 1000)
+    (float? (first floats))
+    (float? (last floats))
+    (= (first floats) 0.0)))
+
+(if to-float-bulk-pass
+  (println "✓ to-floatの大量データ変換は正しく動作した")
+  (println "✗ to-floatの大量データ変換に問題がある"))
+
+; ========================================
+; Section 3: 型変換関数 - to-string
+; ========================================
+
+(println "\n--- Section 3: to-string ---")
+
+; 3.1 基本的な変換
+(println "\n[3.1] to-string - 基本変換")
+(def to-string-basic-pass
+  (and
+    (= (to-string 42) "42")
+    (= (to-string 3.14) "3.14")
+    (= (to-string "hello") "hello")
+    (= (to-string true) "true")
+    (= (to-string false) "false")
+    (= (to-string nil) "nil")
+    (= (to-string :keyword) "keyword")))
+
+(if to-string-basic-pass
+  (println "✓ to-stringの基本変換は正しく動作した")
+  (println "✗ to-stringの基本変換に問題がある"))
+
+; 3.2 様々な型の変換
+(println "\n[3.2] to-string - 様々な型")
+(def to-string-types-pass
+  (and
+    (string? (to-string 0))
+    (string? (to-string 0.0))
+    (string? (to-string ""))
+    (string? (to-string nil))
+    (string? (to-string :test))
+    (string? (to-string true))))
+
+(if to-string-types-pass
+  (println "✓ to-stringの型変換は正しく動作した")
+  (println "✗ to-stringの型変換に問題がある"))
+
+; 3.3 大量データ変換
+(println "\n[3.3] to-string - 大量データ")
+(def strings (map to-string (range 0 1000)))
+(def to-string-bulk-pass
+  (and
+    (= (len strings) 1000)
+    (= (first strings) "0")
+    (= (last strings) "999")))
+
+(if to-string-bulk-pass
+  (println "✓ to-stringの大量データ変換は正しく動作した")
+  (println "✗ to-stringの大量データ変換に問題がある"))
+
+; ========================================
+; Section 4: 時刻関数 - now
+; ========================================
+
+(println "\n--- Section 4: now ---")
+
+; 4.1 基本的な動作
+(println "\n[4.1] now - 基本動作")
+(def t1 (now))
+(sleep 100)
+(def t2 (now))
+(def now-basic-pass
+  (and
+    (integer? t1)
+    (integer? t2)
+    (>= t2 t1)
+    (> t1 1600000000)))  ; 2020年以降
+
+(if now-basic-pass
+  (println "✓ nowは正しく動作した")
+  (println "✗ nowに問題がある"))
+
+; 4.2 複数回呼び出し
+(println "\n[4.2] now - 複数回呼び出し")
+(def times (map (fn [_] (do (sleep 10) (now))) (range 0 10)))
+(def now-multiple-pass
+  (and
+    (= (len times) 10)
+    (list/every? integer? times)
+    (>= (last times) (first times))))
+
+(if now-multiple-pass
+  (println "✓ nowの複数回呼び出しは正しく動作した")
+  (println "✗ nowの複数回呼び出しに問題がある"))
+
+; ========================================
+; Section 5: 時刻関数 - timestamp
+; ========================================
+
+(println "\n--- Section 5: timestamp ---")
+
+; 5.1 基本的な動作
+(println "\n[5.1] timestamp - 基本動作")
+(def ts1 (timestamp))
+(sleep 50)
+(def ts2 (timestamp))
+(def timestamp-basic-pass
+  (and
+    (integer? ts1)
+    (integer? ts2)
+    (> ts2 ts1)
+    (>= (- ts2 ts1) 50)  ; 最低50ms経過
+    (> ts1 1600000000000)))  ; 2020年以降（ミリ秒）
+
+(if timestamp-basic-pass
+  (println "✓ timestampは正しく動作した")
+  (println "✗ timestampに問題がある"))
+
+; 5.2 now との比較
+(println "\n[5.2] timestamp - nowとの比較")
+(def n (now))
+(def ts (timestamp))
+(def timestamp-now-pass
+  (and
+    (> ts (* n 1000))  ; timestampはnowの約1000倍
+    (< ts (* (+ n 1) 1000))))
+
+(if timestamp-now-pass
+  (println "✓ timestampとnowの関係は正しい")
+  (println "✗ timestampとnowの関係に問題がある"))
+
+; ========================================
+; Section 6: 時刻関数 - sleep
+; ========================================
+
+(println "\n--- Section 6: sleep ---")
+
+; 6.1 基本的な動作
+(println "\n[6.1] sleep - 基本動作")
+(def before-sleep (timestamp))
+(sleep 100)
+(def after-sleep (timestamp))
+(def sleep-basic-pass
+  (and
+    (nil? (sleep 1))  ; sleepはnilを返す
+    (>= (- after-sleep before-sleep) 100)))
+
+(if sleep-basic-pass
+  (println "✓ sleepは正しく動作した")
+  (println "✗ sleepに問題がある"))
+
+; 6.2 様々な時間でのsleep
+(println "\n[6.2] sleep - 様々な時間")
+(def sleep-various-pass
+  (let [start (timestamp)]
+    (do
+      (sleep 0)  ; 0msスリープ
+      (sleep 10)
+      (sleep 50)
+      (>= (- (timestamp) start) 60))))
+
+(if sleep-various-pass
+  (println "✓ 様々な時間のsleepは正しく動作した")
+  (println "✗ 様々な時間のsleepに問題がある"))
+
+; ========================================
+; Section 7: 統合テスト
+; ========================================
+
+(println "\n--- Section 7: 統合テスト ---")
+
+; 7.1 型変換の連鎖
+(println "\n[7.1] 型変換の連鎖")
+(def chain-pass
+  (and
+    (= (to-string (to-int "42")) "42")
+    (= (to-int (to-float 3)) 3)
+    (= (to-float (to-int 5.7)) 5.0)
+    (= (to-string (to-float (to-int "123"))) "123")))
+
+(if chain-pass
+  (println "✓ 型変換の連鎖は正しく動作した")
+  (println "✗ 型変換の連鎖に問題がある"))
+
+; 7.2 パイプラインでの使用
+(println "\n[7.2] パイプラインでの使用")
+(def pipeline-pass
+  (let [result ("123" |> to-int |> to-float |> to-string)]
+    (= result "123")))
+
+(if pipeline-pass
+  (println "✓ パイプラインでの使用は正しく動作した")
+  (println "✗ パイプラインでの使用に問題がある"))
+
+; 7.3 時間計測の精度
+(println "\n[7.3] 時間計測の精度")
+(def timing-pass
+  (let [start (timestamp)
+        _ (sleep 200)
+        elapsed (- (timestamp) start)]
+    (and (>= elapsed 200) (< elapsed 300))))
+
+(if timing-pass
+  (println "✓ 時間計測の精度は適切")
+  (println "✗ 時間計測の精度に問題がある"))
+
+; ========================================
+; Section 8: 高負荷テスト
+; ========================================
+
+(println "\n--- Section 8: 高負荷テスト ---")
+
+; 8.1 大量の型変換
+(println "\n[8.1] 大量の型変換")
+(def bulk-convert-pass
+  (let [nums (range 0 10000)
+        ints (map to-int nums)
+        floats (map to-float ints)
+        strings (map to-string floats)]
+    (and
+      (= (len strings) 10000)
+      (= (first strings) "0")
+      (= (last strings) "9999"))))
+
+(if bulk-convert-pass
+  (println "✓ 大量の型変換は正しく動作した")
+  (println "✗ 大量の型変換に問題がある"))
+
+; 8.2 並列での時刻取得
+(println "\n[8.2] 並列での時刻取得")
+(def parallel-time-pass
+  (let [times (pmap (fn [_] (now)) (range 0 100))]
+    (and
+      (= (len times) 100)
+      (list/every? integer? times))))
+
+(if parallel-time-pass
+  (println "✓ 並列での時刻取得は正しく動作した")
+  (println "✗ 並列での時刻取得に問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "Coreユーティリティ Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")
