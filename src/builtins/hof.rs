@@ -131,6 +131,12 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // 小さいコレクション（< 100要素）は通常のmapにフォールバック
+            // 並列処理のオーバーヘッドが変換コストで相殺されるため
+            if items.len() < 100 {
+                return native_map(args, evaluator);
+            }
+
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
             let mut items_vec = Vec::with_capacity(items.len());
             for item in items.iter() {
@@ -171,6 +177,11 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
+            // 小さいコレクション（< 100要素）は通常のfilterにフォールバック
+            if items.len() < 100 {
+                return native_filter(args, evaluator);
+            }
+
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
             let mut items_vec = Vec::with_capacity(items.len());
             for item in items.iter() {
@@ -221,6 +232,11 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
         Value::List(items) | Value::Vector(items) => {
             if items.is_empty() {
                 return Ok(init);
+            }
+
+            // 小さいコレクション（< 100要素）は通常のreduceにフォールバック
+            if items.len() < 100 {
+                return native_reduce(args, evaluator);
             }
 
             // im::Vectorはpar_iterをサポートしていないため、一時的にVecに変換
