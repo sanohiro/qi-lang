@@ -57,6 +57,136 @@ fn compress_gzip_response(body: &str) -> Result<String, std::io::Error> {
     Ok(compressed.iter().map(|&b| b as char).collect())
 }
 
+// ========================================
+// ミドルウェアヘルパー関数
+// ========================================
+
+/// JSONボディをパースしてリクエストに追加
+fn apply_json_body_middleware(req: &Value) -> Value {
+    if let Value::Map(req_map) = req {
+        if let Some(Value::String(body)) = req_map.get("body") {
+            if !body.is_empty() {
+                if let Ok(Value::Map(result)) =
+                    crate::builtins::json::native_parse(&[Value::String(body.clone())])
+                {
+                    if let Some(json_value) = result.get("ok") {
+                        let mut new_req = req_map.clone();
+                        new_req.insert("json".to_string(), json_value.clone());
+                        return Value::Map(new_req);
+                    }
+                }
+            }
+        }
+    }
+    req.clone()
+}
+
+/// Bearerトークンを抽出してリクエストに追加
+fn apply_bearer_middleware(req: &Value) -> Value {
+    if let Value::Map(req_map) = req {
+        let mut new_req = req_map.clone();
+        let token = req_map
+            .get("headers")
+            .and_then(|h| match h {
+                Value::Map(headers) => headers.get("authorization"),
+                _ => None,
+            })
+            .and_then(|v| match v {
+                Value::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .and_then(|auth| auth.strip_prefix("Bearer ").map(|t| t.to_string()));
+
+        if let Some(t) = token {
+            new_req.insert("bearer-token".to_string(), Value::String(t));
+        }
+        return Value::Map(new_req);
+    }
+    req.clone()
+}
+
+/// リクエストをロギング
+fn apply_logging_middleware(req: &Value) {
+    if let Value::Map(req_map) = req {
+        let method = req_map
+            .get("method")
+            .and_then(|v| match v {
+                Value::Keyword(k) => Some(k.to_uppercase()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "?".to_string());
+        let path = req_map
+            .get("path")
+            .and_then(|v| match v {
+                Value::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "?".to_string());
+        println!("[HTTP] {} {}", method, path);
+    }
+}
+
+/// CORSヘッダーを追加
+fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
+    if let Value::Map(resp_map) = resp {
+        let mut new_resp = resp_map.clone();
+        let origin = origins
+            .get(0)
+            .and_then(|v| match v {
+                Value::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "*".to_string());
+
+        let mut headers = match resp_map.get("headers") {
+            Some(Value::Map(h)) => h.clone(),
+            _ => HashMap::new(),
+        };
+
+        headers.insert(
+            "Access-Control-Allow-Origin".to_string(),
+            Value::String(origin),
+        );
+        headers.insert(
+            "Access-Control-Allow-Methods".to_string(),
+            Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()),
+        );
+        headers.insert(
+            "Access-Control-Allow-Headers".to_string(),
+            Value::String("Content-Type, Authorization".to_string()),
+        );
+
+        new_resp.insert("headers".to_string(), Value::Map(headers));
+        return Value::Map(new_resp);
+    }
+    resp.clone()
+}
+
+/// レスポンスボディを圧縮
+fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
+    if let Value::Map(resp_map) = resp {
+        if let Some(Value::String(body)) = resp_map.get("body") {
+            if body.len() >= min_size {
+                if let Ok(compressed) = compress_gzip_response(body) {
+                    let mut new_resp = resp_map.clone();
+                    let mut headers = match resp_map.get("headers") {
+                        Some(Value::Map(h)) => h.clone(),
+                        _ => HashMap::new(),
+                    };
+                    headers.insert(
+                        "Content-Encoding".to_string(),
+                        Value::String("gzip".to_string()),
+                    );
+                    new_resp.insert("headers".to_string(), Value::Map(headers));
+                    new_resp.insert("body".to_string(), Value::String(compressed));
+                    return Value::Map(new_resp);
+                }
+            }
+        }
+    }
+    resp.clone()
+}
+
 /// クエリパラメータをパース
 /// ?page=1&limit=10 → {"page": "1", "limit": "10"}
 /// ?tag=a&tag=b → {"tag": ["a", "b"]}
@@ -761,88 +891,14 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
 
                 // リクエストを前処理（json-body, bearer）
                 let processed_req = match middleware_type.as_str() {
-                    "json-body" => {
-                        // リクエストボディをJSONパース
-                        if let Value::Map(req_map) = req {
-                            if let Some(Value::String(body)) = req_map.get("body") {
-                                if !body.is_empty() {
-                                    match crate::builtins::json::native_parse(&[Value::String(
-                                        body.clone(),
-                                    )]) {
-                                        Ok(Value::Map(result)) => {
-                                            if let Some(json_value) = result.get("ok") {
-                                                let mut new_req = req_map.clone();
-                                                new_req
-                                                    .insert("json".to_string(), json_value.clone());
-                                                Value::Map(new_req)
-                                            } else {
-                                                req.clone()
-                                            }
-                                        }
-                                        _ => req.clone(),
-                                    }
-                                } else {
-                                    req.clone()
-                                }
-                            } else {
-                                req.clone()
-                            }
-                        } else {
-                            req.clone()
-                        }
-                    }
-                    "bearer" => {
-                        // AuthorizationヘッダーからBearerトークンを抽出
-                        if let Value::Map(mut req_map) = req.clone() {
-                            let token = req_map
-                                .get("headers")
-                                .and_then(|h| match h {
-                                    Value::Map(headers) => headers.get("authorization"),
-                                    _ => None,
-                                })
-                                .and_then(|v| match v {
-                                    Value::String(s) => Some(s.clone()),
-                                    _ => None,
-                                })
-                                .and_then(|auth| {
-                                    if auth.starts_with("Bearer ") {
-                                        Some(auth.strip_prefix("Bearer ").unwrap().to_string())
-                                    // "Bearer " を除く
-                                    } else {
-                                        None
-                                    }
-                                });
-
-                            if let Some(t) = token {
-                                req_map.insert("bearer-token".to_string(), Value::String(t));
-                            }
-                            Value::Map(req_map)
-                        } else {
-                            req.clone()
-                        }
-                    }
+                    "json-body" => apply_json_body_middleware(req),
+                    "bearer" => apply_bearer_middleware(req),
                     _ => req.clone(),
                 };
 
                 // ロギング（リクエスト）
                 if middleware_type == "logging" {
-                    if let Value::Map(req_map) = &processed_req {
-                        let method = req_map
-                            .get("method")
-                            .and_then(|v| match v {
-                                Value::Keyword(k) => Some(k.to_uppercase()),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "?".to_string());
-                        let path = req_map
-                            .get("path")
-                            .and_then(|v| match v {
-                                Value::String(s) => Some(s.clone()),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "?".to_string());
-                        println!("[HTTP] {} {}", method, path);
-                    }
+                    apply_logging_middleware(&processed_req);
                 }
 
                 // 内部ハンドラーを再帰的に実行（ネストしたミドルウェア対応）
@@ -851,96 +907,24 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                 // レスポンスを後処理（cors, compression, logging）
                 let processed_resp = match middleware_type.as_str() {
                     "cors" => {
-                        // CORSヘッダーを追加
-                        if let Value::Map(mut resp_map) = response.clone() {
-                            let origins = m
-                                .get("__origins__")
-                                .and_then(|v| match v {
-                                    Value::Vector(v) => Some(v.clone()),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| vec![Value::String("*".to_string())].into());
-
-                            let origin = origins
-                                .get(0)
-                                .and_then(|v| match v {
-                                    Value::String(s) => Some(s.to_string()),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| "*".to_string());
-
-                            let mut headers = match resp_map.get("headers") {
-                                Some(Value::Map(h)) => h.clone(),
-                                _ => HashMap::new(),
-                            };
-
-                            headers.insert(
-                                "Access-Control-Allow-Origin".to_string(),
-                                Value::String(origin),
-                            );
-                            headers.insert(
-                                "Access-Control-Allow-Methods".to_string(),
-                                Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()),
-                            );
-                            headers.insert(
-                                "Access-Control-Allow-Headers".to_string(),
-                                Value::String("Content-Type, Authorization".to_string()),
-                            );
-
-                            resp_map.insert("headers".to_string(), Value::Map(headers));
-                            Value::Map(resp_map)
-                        } else {
-                            response
-                        }
+                        let origins = m
+                            .get("__origins__")
+                            .and_then(|v| match v {
+                                Value::Vector(v) => Some(v.clone()),
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| vec![Value::String("*".to_string())].into());
+                        apply_cors_middleware(&response, &origins)
                     }
                     "compression" => {
-                        // レスポンスボディを圧縮
-                        if let Value::Map(mut resp_map) = response.clone() {
-                            let min_size = m
-                                .get("__min_size__")
-                                .and_then(|v| match v {
-                                    Value::Integer(s) => Some(*s as usize),
-                                    _ => None,
-                                })
-                                .unwrap_or(1024);
-
-                            // ボディを取得
-                            if let Some(Value::String(body)) = resp_map.get("body") {
-                                // ボディサイズチェック（latin1形式なので、char数 = byte数）
-                                if body.len() >= min_size {
-                                    // gzip圧縮
-                                    match compress_gzip_response(body) {
-                                        Ok(compressed_body) => {
-                                            // 圧縮されたボディを設定
-                                            resp_map.insert(
-                                                "body".to_string(),
-                                                Value::String(compressed_body),
-                                            );
-
-                                            // Content-Encodingヘッダーを追加
-                                            let mut headers = match resp_map.get("headers") {
-                                                Some(Value::Map(h)) => h.clone(),
-                                                _ => HashMap::new(),
-                                            };
-                                            headers.insert(
-                                                "Content-Encoding".to_string(),
-                                                Value::String("gzip".to_string()),
-                                            );
-                                            resp_map
-                                                .insert("headers".to_string(), Value::Map(headers));
-                                        }
-                                        Err(e) => {
-                                            eprintln!("Failed to compress response: {}", e);
-                                            // 圧縮失敗時は元のレスポンスを返す
-                                        }
-                                    }
-                                }
-                            }
-
-                            Value::Map(resp_map)
-                        } else {
-                            response
-                        }
+                        let min_size = m
+                            .get("__min_size__")
+                            .and_then(|v| match v {
+                                Value::Integer(s) => Some(*s as usize),
+                                _ => None,
+                            })
+                            .unwrap_or(1024);
+                        apply_compression_middleware(&response, min_size)
                     }
                     "logging" => {
                         // レスポンスステータスをログ出力

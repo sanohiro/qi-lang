@@ -189,6 +189,39 @@ impl Lexer {
         }
     }
 
+    /// エスケープシーケンスを処理（共通ヘルパー）
+    fn process_escape_sequence(&mut self) -> Result<char, String> {
+        self.advance(); // \ をスキップ
+        match self.current() {
+            Some('n') => {
+                self.advance();
+                Ok('\n')
+            }
+            Some('t') => {
+                self.advance();
+                Ok('\t')
+            }
+            Some('r') => {
+                self.advance();
+                Ok('\r')
+            }
+            Some('\\') => {
+                self.advance();
+                Ok('\\')
+            }
+            Some('"') => {
+                self.advance();
+                Ok('"')
+            }
+            Some(c) => {
+                let ch = c;
+                self.advance();
+                Ok(ch)
+            }
+            None => Err(msg(MsgKey::UnclosedString).to_string()),
+        }
+    }
+
     fn read_string(&mut self) -> Result<String, String> {
         self.advance(); // 先頭の "
                         // 32: 一般的な文字列リテラル（変数名、短いメッセージ等）の平均長
@@ -200,17 +233,7 @@ impl Lexer {
                 self.advance();
                 return Ok(result);
             } else if ch == '\\' {
-                self.advance();
-                match self.current() {
-                    Some('n') => result.push('\n'),
-                    Some('t') => result.push('\t'),
-                    Some('r') => result.push('\r'),
-                    Some('\\') => result.push('\\'),
-                    Some('"') => result.push('"'),
-                    Some(c) => result.push(c),
-                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
-                }
-                self.advance();
+                result.push(self.process_escape_sequence()?);
             } else {
                 result.push(ch);
                 self.advance();
@@ -239,18 +262,7 @@ impl Lexer {
                 self.advance(); // "
                 return Ok(result);
             } else if ch == '\\' {
-                // エスケープシーケンス処理
-                self.advance();
-                match self.current() {
-                    Some('n') => result.push('\n'),
-                    Some('t') => result.push('\t'),
-                    Some('r') => result.push('\r'),
-                    Some('\\') => result.push('\\'),
-                    Some('"') => result.push('"'),
-                    Some(c) => result.push(c),
-                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
-                }
-                self.advance();
+                result.push(self.process_escape_sequence()?);
             } else {
                 result.push(ch);
                 self.advance();
@@ -352,19 +364,15 @@ impl Lexer {
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
-                self.advance();
-                match self.current() {
-                    Some('n') => current_text.push('\n'),
-                    Some('t') => current_text.push('\t'),
-                    Some('r') => current_text.push('\r'),
-                    Some('\\') => current_text.push('\\'),
-                    Some('"') => current_text.push('"'),
-                    Some('{') => current_text.push('{'),
-                    Some('}') => current_text.push('}'),
-                    Some(c) => current_text.push(c),
-                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
+                // { や } のエスケープは特殊処理
+                if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
+                    self.advance(); // \ をスキップ
+                    let special_ch = self.current().unwrap();
+                    current_text.push(special_ch);
+                    self.advance();
+                } else {
+                    current_text.push(self.process_escape_sequence()?);
                 }
-                self.advance();
             } else {
                 current_text.push(ch);
                 self.advance();
@@ -472,20 +480,15 @@ impl Lexer {
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
-                // エスケープシーケンス処理
-                self.advance();
-                match self.current() {
-                    Some('n') => current_text.push('\n'),
-                    Some('t') => current_text.push('\t'),
-                    Some('r') => current_text.push('\r'),
-                    Some('\\') => current_text.push('\\'),
-                    Some('"') => current_text.push('"'),
-                    Some('{') => current_text.push('{'),
-                    Some('}') => current_text.push('}'),
-                    Some(c) => current_text.push(c),
-                    None => return Err(msg(MsgKey::UnclosedString).to_string()),
+                // { や } のエスケープは特殊処理
+                if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
+                    self.advance(); // \ をスキップ
+                    let special_ch = self.current().unwrap();
+                    current_text.push(special_ch);
+                    self.advance();
+                } else {
+                    current_text.push(self.process_escape_sequence()?);
                 }
-                self.advance();
             } else {
                 current_text.push(ch);
                 self.advance();

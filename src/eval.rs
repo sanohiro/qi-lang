@@ -257,97 +257,27 @@ impl Evaluator {
                 }
             }
 
-            Expr::Do(exprs) => {
-                // deferスコープを作成
-                self.defer_stack.write().push(Vec::new());
-
-                let mut result = Value::Nil;
-                for expr in exprs {
-                    result = self.eval_with_env(expr, env.clone())?;
-                }
-
-                // deferを実行（LIFO順）
-                // ロックを解放してから実行する必要があるため、先にpopする
-                let defers = self.defer_stack.write().pop();
-                if let Some(defers) = defers {
-                    for defer_expr in defers.iter().rev() {
-                        // deferの評価エラーは無視（元の結果を返す）
-                        let _ = self.eval_with_env(defer_expr, env.clone());
-                    }
-                }
-
-                Ok(result)
-            }
+            Expr::Do(exprs) => self.eval_do(exprs, env),
 
             Expr::Match { expr, arms } => {
                 let value = self.eval_with_env(expr, env.clone())?;
                 self.eval_match(&value, arms, env)
             }
 
-            Expr::Try(expr) => {
-                // Tryもdeferスコープを作成
-                self.defer_stack.write().push(Vec::new());
+            Expr::Try(expr) => self.eval_try(expr, env),
 
-                let result = match self.eval_with_env(expr, env.clone()) {
-                    Ok(value) => Ok(ok_map(value)),
-                    Err(e) => Ok(err_map(e)),
-                };
-
-                // deferを実行（LIFO順、エラーでも必ず実行）
-                // ロックを解放してから実行する必要があるため、先にpopする
-                let defers = self.defer_stack.write().pop();
-                if let Some(defers) = defers {
-                    for defer_expr in defers.iter().rev() {
-                        let _ = self.eval_with_env(defer_expr, env.clone());
-                    }
-                }
-
-                result
-            }
-
-            Expr::Defer(expr) => {
-                // defer式をスタックに追加（評価はしない）
-                let mut stack = self.defer_stack.write();
-                if let Some(current_scope) = stack.last_mut() {
-                    current_scope.push(expr.as_ref().clone());
-                } else {
-                    // スコープがない場合は新しいスコープを作成
-                    stack.push(vec![expr.as_ref().clone()]);
-                }
-                Ok(Value::Nil)
-            }
+            Expr::Defer(expr) => self.eval_defer(expr.as_ref()),
 
             Expr::Loop { bindings, body } => self.eval_loop(bindings, body, env),
 
-            Expr::Recur(args) => {
-                // 引数を評価
-                let values: Result<Vec<_>, _> = args
-                    .iter()
-                    .map(|e| self.eval_with_env(e, env.clone()))
-                    .collect();
-                let values = values?;
+            Expr::Recur(args) => self.eval_recur(args, env),
 
-                // Recurは特別なエラーとして扱う（Valueとして返すことができないため）
-                Err(format!("__RECUR__:{}", values.len()))
-            }
-
-            // マクロ
             Expr::Mac {
                 name,
                 params,
                 is_variadic,
                 body,
-            } => {
-                let mac = Macro {
-                    name: name.clone(),
-                    params: params.clone(),
-                    body: (**body).clone(),
-                    env: Arc::clone(&env),
-                    is_variadic: *is_variadic,
-                };
-                env.write().set(name.clone(), Value::Macro(Arc::new(mac)));
-                Ok(Value::Symbol(name.clone()))
-            }
+            } => self.eval_mac(name, params, *is_variadic, body.as_ref(), env),
 
             Expr::Quasiquote(expr) => self.eval_quasiquote(expr, env, 0),
 
@@ -2014,6 +1944,94 @@ impl Evaluator {
         }
 
         Ok(Value::String(result))
+    }
+
+    /// doを評価
+    fn eval_do(&self, exprs: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        // deferスコープを作成
+        self.defer_stack.write().push(Vec::new());
+
+        let mut result = Value::Nil;
+        for expr in exprs {
+            result = self.eval_with_env(expr, env.clone())?;
+        }
+
+        // deferを実行（LIFO順）
+        let defers = self.defer_stack.write().pop();
+        if let Some(defers) = defers {
+            for defer_expr in defers.iter().rev() {
+                let _ = self.eval_with_env(defer_expr, env.clone());
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// tryを評価
+    fn eval_try(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        // Tryもdeferスコープを作成
+        self.defer_stack.write().push(Vec::new());
+
+        let result = match self.eval_with_env(expr, env.clone()) {
+            Ok(value) => Ok(ok_map(value)),
+            Err(e) => Ok(err_map(e)),
+        };
+
+        // deferを実行（LIFO順、エラーでも必ず実行）
+        let defers = self.defer_stack.write().pop();
+        if let Some(defers) = defers {
+            for defer_expr in defers.iter().rev() {
+                let _ = self.eval_with_env(defer_expr, env.clone());
+            }
+        }
+
+        result
+    }
+
+    /// deferを評価
+    fn eval_defer(&self, expr: &Expr) -> Result<Value, String> {
+        // defer式をスタックに追加（評価はしない）
+        let mut stack = self.defer_stack.write();
+        if let Some(current_scope) = stack.last_mut() {
+            current_scope.push(expr.clone());
+        } else {
+            stack.push(vec![expr.clone()]);
+        }
+        Ok(Value::Nil)
+    }
+
+    /// recurを評価
+    fn eval_recur(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        // 引数を評価
+        let values: Result<Vec<_>, _> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, env.clone()))
+            .collect();
+        let values = values?;
+
+        // Recurは特別なエラーとして扱う
+        Err(format!("__RECUR__:{}", values.len()))
+    }
+
+    /// macroを評価
+    fn eval_mac(
+        &self,
+        name: &str,
+        params: &[String],
+        is_variadic: bool,
+        body: &Expr,
+        env: Arc<RwLock<Env>>,
+    ) -> Result<Value, String> {
+        let mac = Macro {
+            name: name.to_string(),
+            params: params.to_vec(),
+            body: body.clone(),
+            env: Arc::clone(&env),
+            is_variadic,
+        };
+        env.write()
+            .set(name.to_string(), Value::Macro(Arc::new(mac)));
+        Ok(Value::Symbol(name.to_string()))
     }
 
     /// loopを評価

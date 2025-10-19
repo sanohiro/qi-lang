@@ -7,6 +7,37 @@ use crossbeam_channel::{bounded, unbounded};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+// ========================================
+// 内部ヘルパー関数
+// ========================================
+
+/// Promiseチャネルを作成（capacity=1のboundedチャネル）
+fn create_promise_channel() -> Arc<Channel> {
+    let (sender, receiver) = bounded(1);
+    Arc::new(Channel { sender, receiver })
+}
+
+/// スレッドを起動してPromiseを返す汎用ヘルパー
+///
+/// クロージャ内でチャネルのsenderに結果を送信する処理を実行する
+fn spawn_promise<F>(f: F) -> Value
+where
+    F: FnOnce(crossbeam_channel::Sender<Value>) + Send + 'static,
+{
+    let channel = create_promise_channel();
+    let sender = channel.sender.clone();
+
+    std::thread::spawn(move || {
+        f(sender);
+    });
+
+    Value::Channel(channel)
+}
+
+// ========================================
+// チャネル基本操作
+// ========================================
+
 /// chan - チャネルを作成
 ///
 /// 引数:
@@ -247,24 +278,12 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     let f = args[1].clone();
     let eval = evaluator.clone();
 
-    // 新しいPromiseを作成
-    let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel {
-        sender: sender.clone(),
-        receiver,
-    });
-
-    // 別スレッドで処理
-    std::thread::spawn(move || {
-        // 元のPromiseから受信
+    Ok(spawn_promise(move |sender| {
         if let Ok(value) = promise.receiver.recv() {
-            // 関数を適用
             let result = eval.apply_function(&f, &[value]);
             let _ = sender.send(result.unwrap_or_else(Value::String));
         }
-    });
-
-    Ok(Value::Channel(result_channel))
+    }))
 }
 
 /// catch - エラーハンドリング
@@ -302,31 +321,16 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
     let handler = args[1].clone();
     let eval = evaluator.clone();
 
-    // 新しいPromiseを作成
-    let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel {
-        sender: sender.clone(),
-        receiver,
-    });
-
-    // 別スレッドで処理
-    std::thread::spawn(move || {
-        // 元のPromiseから受信
-        match promise.receiver.recv() {
-            Ok(value) => {
-                // 成功した場合はそのまま転送
-                let _ = sender.send(value);
-            }
-            Err(_) => {
-                // エラーの場合はハンドラを呼び出す
-                let result =
-                    eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
-                let _ = sender.send(result.unwrap_or(Value::Nil));
-            }
+    Ok(spawn_promise(move |sender| match promise.receiver.recv() {
+        Ok(value) => {
+            let _ = sender.send(value);
         }
-    });
-
-    Ok(Value::Channel(result_channel))
+        Err(_) => {
+            let result =
+                eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
+            let _ = sender.send(result.unwrap_or(Value::Nil));
+        }
+    }))
 }
 
 /// all - 複数のPromiseを並列実行して全て待機
@@ -351,19 +355,11 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
     }
 
     let promises = match &args[0] {
-        Value::List(ps) | Value::Vector(ps) => ps,
+        Value::List(ps) | Value::Vector(ps) => ps.clone(),
         _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["all", "argument"])),
     };
 
-    // 新しいPromiseを作成
-    let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel {
-        sender: sender.clone(),
-        receiver,
-    });
-
-    let promises = promises.clone();
-    std::thread::spawn(move || {
+    Ok(spawn_promise(move |sender| {
         let mut results = Vec::new();
         for promise in promises {
             if let Value::Channel(ch) = promise {
@@ -380,9 +376,7 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
             }
         }
         let _ = sender.send(Value::List(results.into()));
-    });
-
-    Ok(Value::Channel(result_channel))
+    }))
 }
 
 /// race - 複数のPromiseで最初に完了したものを返す
@@ -411,12 +405,8 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeListOrVector, &["race", "argument"])),
     };
 
-    // 新しいPromiseを作成
-    let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel {
-        sender: sender.clone(),
-        receiver,
-    });
+    let result_channel = create_promise_channel();
+    let sender = result_channel.sender.clone();
 
     // すべてのpromiseから受信を試みる（最初に完了したものを返す）
     for promise in promises {
@@ -462,36 +452,16 @@ pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
         return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
     }
 
-    // 結果を返すチャネルを作成
-    let (sender, receiver) = bounded(1);
-    let result_channel = Arc::new(Channel {
-        sender: sender.clone(),
-        receiver,
-    });
-
-    // 実行する式
     let expr = args[0].clone();
     let eval = evaluator.clone();
 
-    // 別スレッドで実行
-    std::thread::spawn(move || {
-        // 式を評価
+    Ok(spawn_promise(move |sender| {
         let result = match expr {
-            Value::Function(ref _f) => {
-                // 関数の場合は引数なしで呼び出し
-                eval.apply_function(&expr, &[])
-            }
-            _ => {
-                // その他の値はそのまま返す
-                Ok(expr.clone())
-            }
+            Value::Function(ref _f) => eval.apply_function(&expr, &[]),
+            _ => Ok(expr.clone()),
         };
-
-        // 結果をチャネルに送信
         let _ = sender.send(result.unwrap_or_else(Value::String));
-    });
-
-    Ok(Value::Channel(result_channel))
+    }))
 }
 
 /// fan-out - チャネルを複数に分岐

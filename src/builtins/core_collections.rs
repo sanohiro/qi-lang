@@ -162,9 +162,7 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::List(v) | Value::Vector(v) => {
-                for item in v.iter() {
-                    result.push_back(item.clone());
-                }
+                result.extend(v.iter().cloned());
             }
             _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
         }
