@@ -5,6 +5,7 @@
 //! - stringify: 値をJSON文字列に変換（コンパクト）
 //! - pretty: 値をJSON文字列に変換（整形済み）
 
+use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_json;
@@ -28,19 +29,8 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     };
 
     match serde_json::from_str::<serde_json::Value>(json_str) {
-        Ok(json) => Ok(Value::Map(
-            [(":ok".to_string(), json_to_value(json))]
-                .into_iter()
-                .collect(),
-        )),
-        Err(e) => Ok(Value::Map(
-            [(
-                ":error".to_string(),
-                Value::String(format!("JSONパースエラー: {}", e)),
-            )]
-            .into_iter()
-            .collect(),
-        )),
+        Ok(json) => Ok(ok_map(json_to_value(json))),
+        Err(e) => Ok(err_map(format!("JSONパースエラー: {}", e))),
     }
 }
 
@@ -58,19 +48,8 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_json::to_string(&value_to_json(&args[0])) {
-        Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
-        )),
-        Err(e) => Ok(Value::Map(
-            [(
-                ":error".to_string(),
-                Value::String(format!("JSON変換エラー: {}", e)),
-            )]
-            .into_iter()
-            .collect(),
-        )),
+        Ok(s) => Ok(ok_map(Value::String(s))),
+        Err(e) => Ok(err_map(format!("JSON変換エラー: {}", e))),
     }
 }
 
@@ -88,19 +67,8 @@ pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {
-        Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
-        )),
-        Err(e) => Ok(Value::Map(
-            [(
-                ":error".to_string(),
-                Value::String(format!("JSON変換エラー: {}", e)),
-            )]
-            .into_iter()
-            .collect(),
-        )),
+        Ok(s) => Ok(ok_map(Value::String(s))),
+        Err(e) => Ok(err_map(format!("JSON変換エラー: {}", e))),
     }
 }
 
@@ -162,9 +130,9 @@ fn value_to_json(value: &Value) -> serde_json::Value {
             let mut obj = serde_json::Map::with_capacity(m.len());
             for (k, v) in m {
                 // Qiのマップキー形式からJSONキーに変換
-                let json_key = if k.starts_with(':') {
+                let json_key = if let Some(stripped) = k.strip_prefix(':') {
                     // キーワードキー ":name" → "name"
-                    k[1..].to_string()
+                    stripped.to_string()
                 } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
                     // 文字列キー "\"test\"" → "test"
                     k[1..k.len() - 1].to_string()
@@ -185,6 +153,8 @@ fn value_to_json(value: &Value) -> serde_json::Value {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category data/json
+/// @qi-doc:functions parse, stringify, pretty
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("json/parse", native_parse),
     ("json/stringify", native_stringify),

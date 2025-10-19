@@ -1,7 +1,40 @@
-//! ユーティリティ関数（デバッグ、Railway Pipeline）
+//! ユーティリティ関数（デバッグ、Railway Pipeline、Result型ヘルパー）
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+
+// ========================================
+// Result型マップ生成ヘルパー
+// ========================================
+
+/// {:ok value} 形式のマップを生成
+///
+/// データフォーマット系関数（json/yaml/csv等）で使用する成功結果マップを生成
+pub fn ok_map(value: Value) -> Value {
+    Value::Map([(":ok".to_string(), value)].into_iter().collect())
+}
+
+/// {:error message} 形式のマップを生成
+///
+/// データフォーマット系関数（json/yaml/csv等）で使用するエラー結果マップを生成
+pub fn err_map(message: String) -> Value {
+    Value::Map(
+        [(":error".to_string(), Value::String(message))]
+            .into_iter()
+            .collect(),
+    )
+}
+
+/// キーワード形式のマップキーを生成
+///
+/// 文字列からキーワードキー（`:key`形式）を生成する
+pub fn to_map_key(key: &str) -> String {
+    format!(":{}", key)
+}
+
+// ========================================
+// Railway Pipeline関数
+// ========================================
 
 /// _railway-pipe - Railway Oriented Programming用の内部関数
 ///

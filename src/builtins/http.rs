@@ -8,6 +8,7 @@
 //!
 //! このモジュールは `http-client` feature でコンパイルされます。
 
+use crate::builtins::util::ok_map;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
@@ -367,22 +368,15 @@ fn http_request(
             // ボディを取得
             let body = response.text().unwrap_or_else(|_| String::new());
 
-            Ok(Value::Map(
-                [(
-                    ":ok".to_string(),
-                    Value::Map(
-                        [
-                            ("status".to_string(), Value::Integer(status)),
-                            ("headers".to_string(), Value::Map(headers)),
-                            ("body".to_string(), Value::String(body)),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                )]
+            Ok(ok_map(Value::Map(
+                [
+                    ("status".to_string(), Value::Integer(status)),
+                    ("headers".to_string(), Value::Map(headers)),
+                    ("body".to_string(), Value::String(body)),
+                ]
                 .into_iter()
                 .collect(),
-            ))
+            )))
         }
         Err(e) => {
             let error_type = if e.is_timeout() {
@@ -590,6 +584,8 @@ fn http_stream(
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category net/http
+/// @qi-doc:functions get, post, put, delete, patch, head, options, request, get-stream, post-stream, request-stream
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("http/get", native_get),
     ("http/post", native_post),

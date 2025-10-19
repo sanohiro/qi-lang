@@ -154,6 +154,17 @@ impl Value {
             Value::Uvar(_) => "uvar",
         }
     }
+
+    /// List/Vectorを統一的に扱うヘルパー
+    ///
+    /// ListまたはVectorの内部データ（im::Vector）への参照を返す
+    /// どちらでもない場合はNoneを返す
+    pub fn as_seq(&self) -> Option<&im::Vector<Value>> {
+        match self {
+            Value::List(v) | Value::Vector(v) => Some(v),
+            _ => None,
+        }
+    }
 }
 
 /// ValueのPartialEq実装（関数やマクロなどはポインタ比較）

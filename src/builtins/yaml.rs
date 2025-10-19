@@ -5,6 +5,7 @@
 //! - stringify: 値をYAML文字列に変換
 //! - pretty: 値をYAML文字列に変換（整形済み、json/prettyとの互換性）
 
+use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_yaml;
@@ -28,19 +29,8 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     };
 
     match serde_yaml::from_str::<serde_yaml::Value>(yaml_str) {
-        Ok(yaml) => Ok(Value::Map(
-            [(":ok".to_string(), yaml_to_value(yaml))]
-                .into_iter()
-                .collect(),
-        )),
-        Err(e) => Ok(Value::Map(
-            [(
-                ":error".to_string(),
-                Value::String(format!("YAMLパースエラー: {}", e)),
-            )]
-            .into_iter()
-            .collect(),
-        )),
+        Ok(yaml) => Ok(ok_map(yaml_to_value(yaml))),
+        Err(e) => Ok(err_map(format!("YAMLパースエラー: {}", e))),
     }
 }
 
@@ -58,19 +48,8 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
-        Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))]
-                .into_iter()
-                .collect(),
-        )),
-        Err(e) => Ok(Value::Map(
-            [(
-                ":error".to_string(),
-                Value::String(format!("YAML変換エラー: {}", e)),
-            )]
-            .into_iter()
-            .collect(),
-        )),
+        Ok(s) => Ok(ok_map(Value::String(s))),
+        Err(e) => Ok(err_map(format!("YAML変換エラー: {}", e))),
     }
 }
 
@@ -155,9 +134,9 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
             let mut mapping = serde_yaml::Mapping::new();
             for (k, v) in m.iter() {
                 // Qiのマップキー形式からYAMLキーに変換
-                let yaml_key = if k.starts_with(':') {
+                let yaml_key = if let Some(stripped) = k.strip_prefix(':') {
                     // キーワードキー ":name" → "name"
-                    k[1..].to_string()
+                    stripped.to_string()
                 } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
                     // 文字列キー "\"test\"" → "test"
                     k[1..k.len() - 1].to_string()
@@ -178,6 +157,8 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category data/yaml
+/// @qi-doc:functions parse, stringify, pretty
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("yaml/parse", native_parse),
     ("yaml/stringify", native_stringify),
