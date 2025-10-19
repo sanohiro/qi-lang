@@ -17,8 +17,8 @@ use std::sync::Arc;
 ///
 /// 例:
 /// ```qi
-/// (def ch (chan))      ;; 無制限バッファ
-/// (def ch (chan 10))   ;; バッファサイズ10
+/// (def ch (go/chan))      ;; 無制限バッファ
+/// (def ch (go/chan 10))   ;; バッファサイズ10
 /// ```
 pub fn native_chan(args: &[Value]) -> Result<Value, String> {
     let capacity = if args.is_empty() {
@@ -55,8 +55,8 @@ pub fn native_chan(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ch (chan))
-/// (send! ch 42)
+/// (def ch (go/chan))
+/// (go/send! ch 42)
 /// ```
 pub fn native_send(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
@@ -86,9 +86,9 @@ pub fn native_send(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ch (chan))
-/// (recv! ch)                    ;; ブロックして待つ
-/// (recv! ch :timeout 1000)      ;; 最大1秒待つ
+/// (def ch (go/chan))
+/// (go/recv! ch)                    ;; ブロックして待つ
+/// (go/recv! ch :timeout 1000)      ;; 最大1秒待つ
 /// ```
 pub fn native_recv(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 3 {
@@ -137,8 +137,8 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ch (chan))
-/// (try-recv! ch)  ;; すぐに返る（nilまたは値）
+/// (def ch (go/chan))
+/// (go/try-recv! ch)  ;; すぐに返る（nilまたは値）
 /// ```
 pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -161,8 +161,8 @@ pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ch (chan))
-/// (close! ch)
+/// (def ch (go/chan))
+/// (go/close! ch)
 /// ```
 pub fn native_close(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -181,10 +181,10 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
 }
 
 // ============================================================================
-// Layer 3: async/await - 高レベル非同期処理
+// Layer 3: go/await - 高レベル非同期処理
 // ============================================================================
 
-/// await - Promiseを待機（チャネルから受信）
+/// go/await - Promiseを待機（チャネルから受信）
 ///
 /// 引数:
 /// - promise: Promise（チャネル）
@@ -194,8 +194,8 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def p (go (fn [] (+ 1 2))))
-/// (await p)  ;; => 3
+/// (def p (go/run (fn [] (+ 1 2))))
+/// (go/await p)  ;; => 3
 /// ```
 pub fn native_await(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -222,9 +222,9 @@ pub fn native_await(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def p (go (fn [] 10)))
-/// (def p2 (then p (fn [x] (* x 2))))
-/// (await p2)  ;; => 20
+/// (def p (go/run (fn [] 10)))
+/// (def p2 (go/then p (fn [x] (* x 2))))
+/// (go/await p2)  ;; => 20
 /// ```
 pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
@@ -278,8 +278,8 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 ///
 /// 例:
 /// ```qi
-/// (def p (go (fn [] (error "oops"))))
-/// (def p2 (catch p (fn [e] (println "Error:" e))))
+/// (def p (go/run (fn [] (error "oops"))))
+/// (def p2 (go/catch p (fn [e] (println "Error:" e))))
 /// ```
 pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
@@ -339,8 +339,8 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
 ///
 /// 例:
 /// ```qi
-/// (def promises [(go (fn [] 1)) (go (fn [] 2)) (go (fn [] 3))])
-/// (def result (await (all promises)))  ;; => [1 2 3]
+/// (def promises [(go/run (fn [] 1)) (go/run (fn [] 2)) (go/run (fn [] 3))])
+/// (def result (go/await (go/all promises)))  ;; => [1 2 3]
 /// ```
 pub fn native_all(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -395,8 +395,8 @@ pub fn native_all(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def promises [(go (fn [] (sleep 100) 1)) (go (fn [] 2))])
-/// (def result (await (race promises)))  ;; => 2 (最速)
+/// (def promises [(go/run (fn [] (sleep 100) 1)) (go/run (fn [] 2))])
+/// (def result (go/await (go/race promises)))  ;; => 2 (最速)
 /// ```
 pub fn native_race(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -443,7 +443,7 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
 // Layer 1: go/chan - 基盤
 // ============================================================================
 
-/// go - goroutine風の非同期実行
+/// go/run - goroutine風の非同期実行
 ///
 /// 引数:
 /// - expr: 実行する式
@@ -453,9 +453,9 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (go (println "async!"))
-/// (def result (go (+ 1 2)))
-/// (recv! result)  ;; => 3
+/// (go/run (println "async!"))
+/// (def result (go/run (+ 1 2)))
+/// (go/recv! result)  ;; => 3
 /// ```
 pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
@@ -505,8 +505,8 @@ pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 ///
 /// 例:
 /// ```qi
-/// (def in-ch (chan))
-/// (def out-chs (fan-out in-ch 3))  ;; 3つに分岐
+/// (def in-ch (go/chan))
+/// (def out-chs (go/fan-out in-ch 3))  ;; 3つに分岐
 /// ```
 pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
@@ -566,8 +566,8 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def chs [(chan) (chan) (chan)])
-/// (def merged (fan-in chs))
+/// (def chs [(go/chan) (chan) (chan)])
+/// (def merged (go/fan-in chs))
 /// ```
 pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -618,8 +618,8 @@ pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def in-ch (chan))
-/// (def out-ch (pipeline 4 (fn [x] (* x x)) in-ch))
+/// (def in-ch (go/chan))
+/// (def out-ch (go/pipeline 4 (fn [x] (* x x)) in-ch))
 /// ```
 pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
@@ -686,7 +686,7 @@ pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 ///
 /// 例:
 /// ```qi
-/// (pipeline-map 4 (fn [x] (* x x)) [1 2 3 4 5])
+/// (go/pipeline-map 4 (fn [x] (* x x)) [1 2 3 4 5])
 /// ```
 pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
@@ -791,7 +791,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 ///
 /// 例:
 /// ```qi
-/// (pipeline-filter 4 even? [1 2 3 4 5 6])
+/// (go/pipeline-filter 4 even? [1 2 3 4 5 6])
 /// ```
 pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 3 {
@@ -1045,9 +1045,9 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 ///
 /// 例:
 /// ```qi
-/// (def ctx (make-scope))
-/// (scope-go ctx task1)
-/// (cancel! ctx)  ;; 全てキャンセル
+/// (def ctx (go/make-scope))
+/// (go/scope-go ctx task1)
+/// (go/cancel! ctx)  ;; 全てキャンセル
 /// ```
 pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
@@ -1072,8 +1072,8 @@ pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ctx (make-scope))
-/// (scope-go ctx (fn [] (println "running")))
+/// (def ctx (go/make-scope))
+/// (go/scope-go ctx (fn [] (println "running")))
 /// ```
 pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
@@ -1123,8 +1123,8 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 ///
 /// 例:
 /// ```qi
-/// (def ctx (make-scope))
-/// (cancel! ctx)
+/// (def ctx (go/make-scope))
+/// (go/cancel! ctx)
 /// ```
 pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -1150,10 +1150,10 @@ pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (def ctx (make-scope))
-/// (cancelled? ctx)  ;; => false
-/// (cancel! ctx)
-/// (cancelled? ctx)  ;; => true
+/// (def ctx (go/make-scope))
+/// (go/cancelled? ctx)  ;; => false
+/// (go/cancel! ctx)
+/// (go/cancelled? ctx)  ;; => true
 /// ```
 pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -1179,9 +1179,9 @@ pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
 ///
 /// 例:
 /// ```qi
-/// (with-scope (fn [ctx]
-///   (scope-go ctx (fn [] (println "task 1")))
-///   (scope-go ctx (fn [] (println "task 2")))
+/// (go/with-scope (fn [ctx]
+///   (go/scope-go ctx (fn [] (println "task 1")))
+///   (go/scope-go ctx (fn [] (println "task 2")))
 ///   (sleep 100)))
 /// ;; 関数終了時に自動的にキャンセルされる
 /// ```
@@ -1220,7 +1220,7 @@ pub fn native_with_scope(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 ///
 /// 例:
 /// ```qi
-/// (parallel-do
+/// (go/parallel-do
 ///   (http/get "url1")
 ///   (http/get "url2")
 ///   (http/get "url3"))
