@@ -740,26 +740,26 @@ mod tests {
     #[test]
     fn test_integers() {
         let mut lexer = Lexer::new("123 -456");
-        assert_eq!(lexer.next_token().unwrap(), Token::Integer(123));
-        assert_eq!(lexer.next_token().unwrap(), Token::Integer(-456));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Integer(123));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Integer(-456));
     }
 
     #[test]
     fn test_floats() {
         let mut lexer = Lexer::new("3.14 -2.5");
-        assert_eq!(lexer.next_token().unwrap(), Token::Float(3.14));
-        assert_eq!(lexer.next_token().unwrap(), Token::Float(-2.5));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Float(3.14));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Float(-2.5));
     }
 
     #[test]
     fn test_strings() {
         let mut lexer = Lexer::new(r#""hello" "world\n""#);
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::String("hello".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::String("world\n".to_string())
         );
     }
@@ -768,15 +768,15 @@ mod tests {
     fn test_symbols() {
         let mut lexer = Lexer::new("foo bar+ baz?");
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::Symbol("foo".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::Symbol("bar+".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::Symbol("baz?".to_string())
         );
     }
@@ -785,11 +785,11 @@ mod tests {
     fn test_keywords() {
         let mut lexer = Lexer::new(":name :age");
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::Keyword("name".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().token,
             Token::Keyword("age".to_string())
         );
     }
@@ -797,19 +797,19 @@ mod tests {
     #[test]
     fn test_special_values() {
         let mut lexer = Lexer::new("nil true false");
-        assert_eq!(lexer.next_token().unwrap(), Token::Nil);
-        assert_eq!(lexer.next_token().unwrap(), Token::True);
-        assert_eq!(lexer.next_token().unwrap(), Token::False);
+        assert_eq!(lexer.next_token().unwrap().token, Token::Nil);
+        assert_eq!(lexer.next_token().unwrap().token, Token::True);
+        assert_eq!(lexer.next_token().unwrap().token, Token::False);
     }
 
     #[test]
     fn test_parens() {
         let mut lexer = Lexer::new("(+ 1 2)");
-        assert_eq!(lexer.next_token().unwrap(), Token::LParen);
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("+".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Integer(1));
-        assert_eq!(lexer.next_token().unwrap(), Token::Integer(2));
-        assert_eq!(lexer.next_token().unwrap(), Token::RParen);
+        assert_eq!(lexer.next_token().unwrap().token, Token::LParen);
+        assert_eq!(lexer.next_token().unwrap().token, Token::Symbol("+".to_string()));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Integer(1));
+        assert_eq!(lexer.next_token().unwrap().token, Token::Integer(2));
+        assert_eq!(lexer.next_token().unwrap().token, Token::RParen);
     }
 
     #[test]
@@ -818,7 +818,7 @@ mod tests {
             r#""""hello
 world""""#,
         );
-        match lexer.next_token().unwrap() {
+        match lexer.next_token().unwrap().token {
             Token::String(s) => assert_eq!(s, "hello\nworld"),
             _ => panic!("Expected multiline string"),
         }
@@ -827,7 +827,7 @@ world""""#,
     #[test]
     fn test_multiline_string_with_escape() {
         let mut lexer = Lexer::new(r#""""line1\nline2\tindented""""#);
-        match lexer.next_token().unwrap() {
+        match lexer.next_token().unwrap().token {
             Token::String(s) => assert_eq!(s, "line1\nline2\tindented"),
             _ => panic!("Expected multiline string with escapes"),
         }
@@ -839,7 +839,7 @@ world""""#,
         let input = r#"f"""Hello, {name}
 Welcome!""""#;
         let mut lexer = Lexer::new(input);
-        match lexer.next_token().unwrap() {
+        match lexer.next_token().unwrap().token {
             Token::FString(parts) => {
                 assert_eq!(parts.len(), 3);
                 assert_eq!(parts[0], FStringPart::Text("Hello, ".to_string()));

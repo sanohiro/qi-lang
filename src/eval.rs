@@ -3209,8 +3209,8 @@ mod tests {
         let result = eval_str("(try (+ 1 2))").unwrap();
         match result {
             Value::Map(m) => {
-                assert_eq!(m.get("ok"), Some(&Value::Integer(3)));
-                assert_eq!(m.get("error"), None);
+                assert_eq!(m.get(":ok"), Some(&Value::Integer(3)));
+                assert_eq!(m.get(":error"), None);
             }
             _ => panic!("Expected map"),
         }
@@ -3222,8 +3222,8 @@ mod tests {
         let result = eval_str("(try (/ 1 0))").unwrap();
         match result {
             Value::Map(m) => {
-                assert_eq!(m.get("ok"), None);
-                assert!(m.get("error").is_some());
+                assert_eq!(m.get(":ok"), None);
+                assert!(m.get(":error").is_some());
             }
             _ => panic!("Expected map"),
         }
