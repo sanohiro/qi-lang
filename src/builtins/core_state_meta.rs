@@ -149,6 +149,8 @@ pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category core/state-meta
+/// @qi-doc:functions atom, deref, swap!, reset!, eval, uvar, variable, macro?
 ///
 /// 注意: swap!, evalはEvaluatorが必要なため、mod.rsで別途登録されます
 pub const FUNCTIONS: super::NativeFunctions = &[

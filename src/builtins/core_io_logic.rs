@@ -91,6 +91,8 @@ pub fn native_error(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category core/io-logic
+/// @qi-doc:functions print, println, not, error
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("print", native_print),
     ("println", native_println),

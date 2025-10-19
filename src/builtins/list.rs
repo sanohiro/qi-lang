@@ -805,6 +805,8 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category list
+/// @qi-doc:functions take-while, drop-while, split-at, interleave, frequencies, sort-by, chunk, max-by, min-by, sum-by, find, find-index, every?, some?, zipmap, partition-by, take-nth, keep, dedupe, drop-last
 ///
 /// 注意: take-while, drop-while, sort-by, max-by, min-by, sum-by, find, find-index,
 /// every?, some?, partition-by, keepはEvaluatorが必要なため、mod.rsで別途登録されます

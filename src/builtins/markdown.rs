@@ -625,6 +625,8 @@ pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category markdown
+/// @qi-doc:functions header, bold, italic, code, codeblock, link, list, table, quote, hr, escape
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("markdown/header", native_markdown_header),
     ("markdown/list", native_markdown_list),

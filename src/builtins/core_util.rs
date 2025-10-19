@@ -131,6 +131,8 @@ pub fn native_sleep(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category core/util
+/// @qi-doc:functions to-int, to-float, to-string, now, timestamp, sleep
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("to-int", native_to_int),
     ("to-float", native_to_float),

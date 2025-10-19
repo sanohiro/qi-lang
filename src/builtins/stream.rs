@@ -332,6 +332,8 @@ pub fn native_realize(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category stream
+/// @qi-doc:functions stream, range, iterate, repeat, cycle, map, filter, take, drop, realize
 ///
 /// 注意: iterate, stream_map, stream_filterはEvaluatorが必要なため、
 /// mod.rsで別途登録されます

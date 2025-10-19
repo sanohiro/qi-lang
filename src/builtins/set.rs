@@ -265,6 +265,8 @@ pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category set
+/// @qi-doc:functions union, intersection, difference, subset?, superset?
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("set/union", native_union),
     ("set/intersect", native_intersect),

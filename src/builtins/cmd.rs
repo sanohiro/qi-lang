@@ -655,6 +655,8 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category cmd
+/// @qi-doc:functions exec, sh, pipe, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("cmd/exec", native_exec),
     ("cmd/sh", native_sh),

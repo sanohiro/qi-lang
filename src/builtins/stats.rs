@@ -287,6 +287,8 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category stats
+/// @qi-doc:functions mean, median, mode, stddev, variance, min, max, sum, product, percentile
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("stats/mean", native_mean),
     ("stats/median", native_median),

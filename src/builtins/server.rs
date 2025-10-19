@@ -1447,6 +1447,8 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category server
+/// @qi-doc:functions serve, router, ok, json, not-found, no-content, with-logging, with-cors, with-json-body, static-file, static-dir
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("server/serve", native_server_serve),
     ("server/router", native_server_router),

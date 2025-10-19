@@ -607,6 +607,8 @@ pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category fn
+/// @qi-doc:functions map, filter, reduce, pmap, pfilter, preduce, partition, group-by, map-lines, update, update-in, count-by, complement, juxt, tap>, tap
 ///
 /// 注意: map, filter, reduce, pmap, pfilter, preduce, partition, group_by,
 /// map_lines, update, update_in, count_by, tap_directはEvaluatorが必要なため、

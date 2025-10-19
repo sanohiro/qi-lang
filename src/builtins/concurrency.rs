@@ -1277,6 +1277,8 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category go
+/// @qi-doc:functions chan, send!, recv!, close!, chan-closed?, then, catch, go, pipeline, pipeline-map, pipeline-filter, select!, atom, swap!, reset!, deref, scope, scope-go, with-scope, parallel-do
 ///
 /// 注意: then, catch, go, pipeline, pipeline-map, pipeline-filter, select!, scope-go, with-scope, parallel-do
 /// はEvaluatorが必要なため、mod.rsで別途登録されます

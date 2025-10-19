@@ -386,6 +386,8 @@ fn parse_integer(value: &Value, context: &str) -> Result<i64, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category time
+/// @qi-doc:functions now-iso, from-unix, to-unix, format, today, add-days, add-hours, add-minutes, sub-days, sub-hours, sub-minutes, diff-days, diff-hours, diff-minutes, before?, after?, between?, parse, year, month, day, hour, minute, second, weekday
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("time/now-iso", native_now_iso),
     ("time/from-unix", native_from_unix),

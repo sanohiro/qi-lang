@@ -229,6 +229,8 @@ pub fn native_path_is_relative(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category path
+/// @qi-doc:functions join, basename, dirname, extension, stem, absolute, normalize, is-absolute?, is-relative?
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("path/join", native_path_join),
     ("path/basename", native_path_basename),

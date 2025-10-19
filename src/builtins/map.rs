@@ -216,6 +216,8 @@ pub fn native_update_vals(
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category map
+/// @qi-doc:functions select-keys, assoc-in, dissoc-in, update-keys, update-vals
 ///
 /// 注意: update-keys, update-valsはEvaluatorが必要なため、mod.rsで別途登録されます
 pub const FUNCTIONS: super::NativeFunctions = &[

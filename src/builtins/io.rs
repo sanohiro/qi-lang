@@ -963,6 +963,8 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category io
+/// @qi-doc:functions read-file, write-file, append-file, read-lines, file-exists?, file-stream, write-stream, list-dir, create-dir, delete-file, delete-dir, copy-file, move-file, file-info, is-file?, is-dir?
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/read-file", native_read_file),
     ("io/write-file", native_write_file),

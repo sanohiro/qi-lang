@@ -245,6 +245,8 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category core/predicates
+/// @qi-doc:functions nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, coll?, sequential?, empty?, some?, true?, false?, even?, odd?, positive?, negative?, zero?
 pub const FUNCTIONS: super::NativeFunctions = &[
     // 型チェック
     ("nil?", native_nil),

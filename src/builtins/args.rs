@@ -131,6 +131,8 @@ pub fn native_args_count(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category args
+/// @qi-doc:functions all, get, parse, count
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("args/all", native_args_all),
     ("args/get", native_args_get),

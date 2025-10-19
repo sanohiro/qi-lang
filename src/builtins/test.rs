@@ -191,6 +191,8 @@ pub fn native_test_clear(_args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category test
+/// @qi-doc:functions assert-eq, assert-ne, assert-true, assert-false, assert-nil, run, assert-throws, summary, clear
 ///
 /// 注意: test/run, test/assert-throwsはEvaluatorが必要なため、mod.rsで別途登録されます
 pub const FUNCTIONS: super::NativeFunctions = &[

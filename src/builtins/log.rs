@@ -360,6 +360,8 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category log
+/// @qi-doc:functions debug, info, warn, error, set-level, set-format
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("log/debug", native_log_debug),
     ("log/info", native_log_info),

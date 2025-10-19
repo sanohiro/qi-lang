@@ -315,6 +315,8 @@ fn stringify_csv_with_delimiter(records: &[Vec<String>], delimiter: char) -> Str
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category data/csv
+/// @qi-doc:functions parse, stringify, read-file, write-file, read-stream
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("csv/parse", native_csv_parse),
     ("csv/stringify", native_csv_stringify),

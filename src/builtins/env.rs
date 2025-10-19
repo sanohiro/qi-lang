@@ -145,6 +145,8 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category env
+/// @qi-doc:functions get, set, all, load-dotenv
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("env/get", native_env_get),
     ("env/set", native_env_set),

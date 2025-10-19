@@ -1316,6 +1316,8 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
 }
 
 /// データベース関数配列（24個）
+/// @qi-doc:category db
+/// @qi-doc:functions connect, close, exec, query, query-one, prepare, exec-prepared, query-prepared, begin, commit, rollback, escape-string, escape-identifier, table-list, column-list, table-exists?, column-exists?, create-table, drop-table, add-column, drop-column, list-indexes, create-index, drop-index
 pub const FUNCTIONS: super::NativeFunctions = &[
     // Phase 1: 基本操作、サニタイズ（8個）
     ("db/connect", native_connect),

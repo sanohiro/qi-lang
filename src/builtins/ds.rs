@@ -317,6 +317,8 @@ pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category ds
+/// @qi-doc:functions queue/new, queue/enqueue, queue/dequeue, queue/peek, queue/empty?, queue/size, stack/new, stack/push, stack/pop, stack/peek, stack/empty?, stack/size
 pub const FUNCTIONS: super::NativeFunctions = &[
     // Queue functions
     ("queue/new", native_queue_new),

@@ -129,6 +129,8 @@ pub fn is_enabled() -> bool {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category profile
+/// @qi-doc:functions enable, disable, reset, report
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("profile/start", native_profile_start),
     ("profile/stop", native_profile_stop),

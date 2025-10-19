@@ -122,6 +122,8 @@ pub fn native_temp_dir_keep(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
+/// @qi-doc:category io/temp
+/// @qi-doc:functions temp-file, temp-dir, cleanup-temp
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/temp-file", native_temp_file),
     ("io/temp-file-keep", native_temp_file_keep),
