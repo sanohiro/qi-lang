@@ -64,6 +64,54 @@ impl Parser {
         self.pos += 1;
     }
 
+    /// 現在のトークンがStringの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_string(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::String(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// 現在のトークンがSymbolの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_symbol(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::Symbol(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// 現在のトークンがKeywordの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_keyword(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::Keyword(k) => Some(k),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     fn expect(&mut self, expected: Token) -> Result<(), String> {
         match self.current() {
             Some(token) if token == &expected => {
@@ -176,9 +224,8 @@ impl Parser {
                 self.advance();
                 Ok(Expr::Float(f))
             }
-            Some(Token::String(s)) => {
-                let s = s.clone();
-                self.advance();
+            Some(Token::String(_)) => {
+                let s = self.take_string().unwrap();
                 Ok(Expr::String(s))
             }
             Some(Token::FString(parts)) => {
@@ -186,14 +233,12 @@ impl Parser {
                 self.advance();
                 Ok(Expr::FString(parts))
             }
-            Some(Token::Symbol(s)) => {
-                let s = s.clone();
-                self.advance();
+            Some(Token::Symbol(_)) => {
+                let s = self.take_symbol().unwrap();
                 Ok(Expr::Symbol(s))
             }
-            Some(Token::Keyword(k)) => {
-                let k = k.clone();
-                self.advance();
+            Some(Token::Keyword(_)) => {
+                let k = self.take_keyword().unwrap();
                 Ok(Expr::Keyword(k))
             }
             Some(Token::LParen) => self.parse_list(),
@@ -224,8 +269,8 @@ impl Parser {
         if let Some(Token::Symbol(name)) = self.current() {
             // HashSetで特殊形式かチェック（高速）
             if SPECIAL_FORMS.contains(name.as_str()) {
-                let name = name.clone();
-                return match name.as_str() {
+                let name_str = name.as_str();
+                return match name_str {
                     "def" => self.parse_def(),
                     "defn" => self.parse_defn(),
                     "defn-" => self.parse_defn_private(),
@@ -364,10 +409,9 @@ impl Parser {
         self.advance(); // 'def'をスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(s)) => s.clone(),
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["def"])),
         };
-        self.advance();
 
         let value = Box::new(self.parse_expr()?);
         self.expect(Token::RParen)?;
@@ -382,10 +426,9 @@ impl Parser {
         self.advance(); // キーワードをスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(s)) => s.clone(),
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &[keyword])),
         };
-        self.advance();
 
         // ドキュメント文字列/マップの処理
         let doc_expr = if !matches!(self.current(), Some(Token::LBracket)) {
@@ -463,9 +506,8 @@ impl Parser {
                 if s == "&" {
                     self.advance();
                     is_variadic = true;
-                    if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(crate::value::Pattern::Var(vararg.clone()));
-                        self.advance();
+                    if let Some(Token::Symbol(_)) = self.current() {
+                        params.push(crate::value::Pattern::Var(self.take_symbol().unwrap()));
                     } else {
                         return Err(self.error_with_line(MsgKey::VarargNeedsName, &[]));
                     }
@@ -486,9 +528,8 @@ impl Parser {
     /// シンボル、ベクタ分解、マップ分解をサポート
     fn parse_binding_pattern(&mut self) -> Result<crate::value::Pattern, String> {
         match self.current() {
-            Some(Token::Symbol(s)) => {
-                let name = s.clone();
-                self.advance();
+            Some(Token::Symbol(_)) => {
+                let name = self.take_symbol().unwrap();
                 Ok(crate::value::Pattern::Var(name))
             }
             Some(Token::LBracket) => self.parse_fn_param_vector(),
@@ -511,9 +552,10 @@ impl Parser {
                 self.advance(); // ...
                                 // 次は変数名でなければならない
                 match self.current() {
-                    Some(Token::Symbol(s)) => {
-                        rest = Some(Box::new(crate::value::Pattern::Var(s.clone())));
-                        self.advance();
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(crate::value::Pattern::Var(
+                            self.take_symbol().unwrap(),
+                        )));
                         // ...rest の後に他のパターンがあってはならない
                         break;
                     }
@@ -525,18 +567,18 @@ impl Parser {
                     self.advance(); // &
                                     // 次は変数名でなければならない
                     match self.current() {
-                        Some(Token::Symbol(s)) => {
-                            rest = Some(Box::new(crate::value::Pattern::Var(s.clone())));
-                            self.advance();
+                        Some(Token::Symbol(_)) => {
+                            rest = Some(Box::new(crate::value::Pattern::Var(
+                                self.take_symbol().unwrap(),
+                            )));
                             // & rest の後に他のパターンがあってはならない
                             break;
                         }
                         _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
                     }
                 } else {
-                    // 通常のシンボル
-                    params.push(crate::value::Pattern::Var(s.clone()));
-                    self.advance();
+                    // 通常のシンボル - take_symbolを使ってクローンを避ける
+                    params.push(crate::value::Pattern::Var(self.take_symbol().unwrap()));
                 }
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
@@ -569,9 +611,8 @@ impl Parser {
                     self.advance(); // :as
                                     // 次は変数名
                     match self.current() {
-                        Some(Token::Symbol(var)) => {
-                            as_var = Some(var.clone());
-                            self.advance();
+                        Some(Token::Symbol(_)) => {
+                            as_var = Some(self.take_symbol().unwrap());
                             break;
                         }
                         _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
@@ -580,15 +621,13 @@ impl Parser {
             }
 
             let key = match self.current() {
-                Some(Token::Keyword(k)) => k.clone(),
+                Some(Token::Keyword(_)) => self.take_keyword().unwrap(),
                 _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
-            self.advance();
 
             // 変数名またはパターン
-            let pattern = if let Some(Token::Symbol(var)) = self.current() {
-                let var_name = var.clone();
-                self.advance();
+            let pattern = if let Some(Token::Symbol(_)) = self.current() {
+                let var_name = self.take_symbol().unwrap();
                 crate::value::Pattern::Var(var_name)
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
@@ -776,10 +815,9 @@ impl Parser {
 
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
-                Some(Token::Symbol(s)) => s.clone(),
+                Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
                 _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["loop"])),
             };
-            self.advance();
 
             let value = self.parse_expr()?;
             bindings.push((name, value));
@@ -814,10 +852,9 @@ impl Parser {
 
         // マクロ名
         let name = match self.current() {
-            Some(Token::Symbol(s)) => s.clone(),
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
         };
-        self.advance();
 
         // パラメータリスト
         self.expect(Token::LBracket)?;
@@ -832,16 +869,14 @@ impl Parser {
                     self.advance();
                     // 次のシンボルが可変引数名
                     match self.current() {
-                        Some(Token::Symbol(s)) => {
-                            params.push(s.clone());
-                            self.advance();
+                        Some(Token::Symbol(_)) => {
+                            params.push(self.take_symbol().unwrap());
                         }
                         _ => return Err(self.error_with_line(MsgKey::MacVarargNeedsSymbol, &[])),
                     }
                 }
-                Some(Token::Symbol(s)) => {
-                    params.push(s.clone());
-                    self.advance();
+                Some(Token::Symbol(_)) => {
+                    params.push(self.take_symbol().unwrap());
                 }
                 _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
             }
@@ -1032,19 +1067,16 @@ impl Parser {
                 self.advance();
                 Ok(Pattern::Float(f))
             }
-            Some(Token::String(s)) => {
-                let s = s.clone();
-                self.advance();
+            Some(Token::String(_)) => {
+                let s = self.take_string().unwrap();
                 Ok(Pattern::String(s))
             }
-            Some(Token::Keyword(k)) => {
-                let k = k.clone();
-                self.advance();
+            Some(Token::Keyword(_)) => {
+                let k = self.take_keyword().unwrap();
                 Ok(Pattern::Keyword(k))
             }
-            Some(Token::Symbol(s)) => {
-                let s = s.clone();
-                self.advance();
+            Some(Token::Symbol(_)) => {
+                let s = self.take_symbol().unwrap();
                 Ok(Pattern::Var(s))
             }
             Some(Token::LBracket) => self.parse_vector_pattern(),
@@ -1069,9 +1101,8 @@ impl Parser {
                 self.advance(); // ...
                                 // 次は変数名でなければならない
                 match self.current() {
-                    Some(Token::Symbol(s)) => {
-                        rest = Some(Box::new(Pattern::Var(s.clone())));
-                        self.advance();
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol().unwrap())));
                         // ...rest の後に他のパターンがあってはならない
                         break;
                     }
@@ -1082,9 +1113,8 @@ impl Parser {
                 self.advance(); // &
                                 // 次は変数名でなければならない
                 match self.current() {
-                    Some(Token::Symbol(s)) => {
-                        rest = Some(Box::new(Pattern::Var(s.clone())));
-                        self.advance();
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol().unwrap())));
                         // & rest の後に他のパターンがあってはならない
                         break;
                     }
@@ -1119,9 +1149,8 @@ impl Parser {
                     self.advance(); // :as
                                     // 次は変数名
                     match self.current() {
-                        Some(Token::Symbol(var)) => {
-                            as_var = Some(var.clone());
-                            self.advance();
+                        Some(Token::Symbol(_)) => {
+                            as_var = Some(self.take_symbol().unwrap());
                             break;
                         }
                         _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
@@ -1130,15 +1159,13 @@ impl Parser {
             }
 
             let key = match self.current() {
-                Some(Token::Keyword(k)) => k.clone(),
+                Some(Token::Keyword(_)) => self.take_keyword().unwrap(),
                 _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
-            self.advance();
 
             // 変数名またはパターン
-            let pattern = if let Some(Token::Symbol(var)) = self.current() {
-                let var_name = var.clone();
-                self.advance();
+            let pattern = if let Some(Token::Symbol(_)) = self.current() {
+                let var_name = self.take_symbol().unwrap();
 
                 // => チェック
                 if self.current() == Some(&Token::FatArrow) {
@@ -1174,10 +1201,9 @@ impl Parser {
         self.advance(); // 'module'をスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(n)) => n.clone(),
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
         };
-        self.advance();
 
         self.expect(Token::RParen)?;
 
@@ -1192,9 +1218,8 @@ impl Parser {
         let mut symbols = Vec::with_capacity(8);
         while self.current() != Some(&Token::RParen) {
             match self.current() {
-                Some(Token::Symbol(s)) => {
-                    symbols.push(s.clone());
-                    self.advance();
+                Some(Token::Symbol(_)) => {
+                    symbols.push(self.take_symbol().unwrap());
                 }
                 _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
             }
@@ -1211,11 +1236,10 @@ impl Parser {
 
         // モジュール名（シンボルまたは文字列）
         let module = match self.current() {
-            Some(Token::Symbol(n)) => n.clone(),
-            Some(Token::String(s)) => s.clone(),
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::String(_)) => self.take_string().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::UseNeedsModuleName, &[])),
         };
-        self.advance();
 
         // モード指定
         let mode = match self.current() {
@@ -1227,9 +1251,8 @@ impl Parser {
                 let mut symbols = Vec::with_capacity(8);
                 while self.current() != Some(&Token::RBracket) {
                     match self.current() {
-                        Some(Token::Symbol(s)) => {
-                            symbols.push(s.clone());
-                            self.advance();
+                        Some(Token::Symbol(_)) => {
+                            symbols.push(self.take_symbol().unwrap());
                         }
                         _ => {
                             return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
@@ -1242,9 +1265,8 @@ impl Parser {
             Some(Token::Keyword(k)) if k == "as" => {
                 self.advance();
                 match self.current() {
-                    Some(Token::Symbol(alias)) => {
-                        let alias = alias.clone();
-                        self.advance();
+                    Some(Token::Symbol(_)) => {
+                        let alias = self.take_symbol().unwrap();
                         UseMode::As(alias)
                     }
                     _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
