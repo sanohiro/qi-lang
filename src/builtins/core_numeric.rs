@@ -193,6 +193,7 @@ pub fn native_div(args: &[Value]) -> Result<Value, String> {
 }
 
 /// % - 剰余
+/// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_mod(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["%"]));
@@ -205,7 +206,25 @@ pub fn native_mod(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::Integer(a % b))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["%", "integers"])),
+        (Value::Integer(a), Value::Float(b)) => {
+            if *b == 0.0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float((*a as f64).rem_euclid(*b)))
+        }
+        (Value::Float(a), Value::Integer(b)) => {
+            if *b == 0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float(a.rem_euclid(*b as f64)))
+        }
+        (Value::Float(a), Value::Float(b)) => {
+            if *b == 0.0 {
+                return Err(msg(MsgKey::DivisionByZero).to_string());
+            }
+            Ok(Value::Float(a.rem_euclid(*b)))
+        }
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["%", "numbers"])),
     }
 }
 
@@ -222,86 +241,174 @@ pub fn native_abs(args: &[Value]) -> Result<Value, String> {
 }
 
 /// min - 最小値
+/// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_min(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["min", "1"]));
     }
-    let mut min = match &args[0] {
-        Value::Integer(n) => *n,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "integers"])),
-    };
+
+    let mut has_float = false;
+    let mut min_int = i64::MAX;
+    let mut min_float = f64::INFINITY;
+
+    // 最初の値を設定
+    match &args[0] {
+        Value::Integer(n) => min_int = *n,
+        Value::Float(f) => {
+            has_float = true;
+            min_float = *f;
+        }
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "numbers"])),
+    }
+
+    // 残りの値と比較
     for arg in &args[1..] {
         match arg {
             Value::Integer(n) => {
-                if *n < min {
-                    min = *n;
+                if has_float {
+                    if (*n as f64) < min_float {
+                        min_float = *n as f64;
+                    }
+                } else if *n < min_int {
+                    min_int = *n;
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "integers"])),
+            Value::Float(f) => {
+                if !has_float {
+                    min_float = min_int as f64;
+                    has_float = true;
+                }
+                if *f < min_float {
+                    min_float = *f;
+                }
+            }
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["min", "numbers"])),
         }
     }
-    Ok(Value::Integer(min))
+
+    if has_float {
+        Ok(Value::Float(min_float))
+    } else {
+        Ok(Value::Integer(min_int))
+    }
 }
 
 /// max - 最大値
+/// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_max(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["max", "1"]));
     }
-    let mut max = match &args[0] {
-        Value::Integer(n) => *n,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "integers"])),
-    };
+
+    let mut has_float = false;
+    let mut max_int = i64::MIN;
+    let mut max_float = f64::NEG_INFINITY;
+
+    // 最初の値を設定
+    match &args[0] {
+        Value::Integer(n) => max_int = *n,
+        Value::Float(f) => {
+            has_float = true;
+            max_float = *f;
+        }
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "numbers"])),
+    }
+
+    // 残りの値と比較
     for arg in &args[1..] {
         match arg {
             Value::Integer(n) => {
-                if *n > max {
-                    max = *n;
+                if has_float {
+                    if (*n as f64) > max_float {
+                        max_float = *n as f64;
+                    }
+                } else if *n > max_int {
+                    max_int = *n;
                 }
             }
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "integers"])),
+            Value::Float(f) => {
+                if !has_float {
+                    max_float = max_int as f64;
+                    has_float = true;
+                }
+                if *f > max_float {
+                    max_float = *f;
+                }
+            }
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["max", "numbers"])),
         }
     }
-    Ok(Value::Integer(max))
+
+    if has_float {
+        Ok(Value::Float(max_float))
+    } else {
+        Ok(Value::Integer(max_int))
+    }
 }
 
 /// inc - インクリメント
+/// 整数・浮動小数の両方に対応
 pub fn native_inc(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["inc"]));
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n + 1)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["inc", "integers"])),
+        Value::Float(f) => Ok(Value::Float(f + 1.0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["inc", "numbers"])),
     }
 }
 
 /// dec - デクリメント
+/// 整数・浮動小数の両方に対応
 pub fn native_dec(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["dec"]));
     }
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(n - 1)),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["dec", "integers"])),
+        Value::Float(f) => Ok(Value::Float(f - 1.0)),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["dec", "numbers"])),
     }
 }
 
 /// sum - 合計
+/// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_sum(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["sum"]));
     }
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
-            let mut sum = 0;
+            let mut int_sum = 0i64;
+            let mut float_sum = 0.0f64;
+            let mut has_float = false;
+
             for item in items {
                 match item {
-                    Value::Integer(n) => sum += n,
-                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["sum", "integers"])),
+                    Value::Integer(n) => {
+                        if has_float {
+                            float_sum += *n as f64;
+                        } else {
+                            int_sum += n;
+                        }
+                    }
+                    Value::Float(f) => {
+                        if !has_float {
+                            float_sum = int_sum as f64;
+                            has_float = true;
+                        }
+                        float_sum += f;
+                    }
+                    _ => return Err(fmt_msg(MsgKey::TypeOnly, &["sum (elements)", "numbers"])),
                 }
             }
-            Ok(Value::Integer(sum))
+
+            if has_float {
+                Ok(Value::Float(float_sum))
+            } else {
+                Ok(Value::Integer(int_sum))
+            }
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["sum", "lists or vectors"])),
     }
