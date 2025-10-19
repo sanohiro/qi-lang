@@ -62,8 +62,6 @@ static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
         "apply",
         "partial",
         "comp",
-        "complement",
-        "juxt",
         // 制御構造
         "if",
         "do",
@@ -73,13 +71,6 @@ static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
         "defn",
         "loop",
         "recur",
-        // 並行処理
-        "go",
-        "chan",
-        "<!",
-        ">!",
-        "close!",
-        "thread",
     ] {
         map.insert(s.to_string(), Arc::from(s));
     }

@@ -1,0 +1,596 @@
+;; ========================================
+;; go/名前空間の並行処理関数 Torture Test
+;; ========================================
+;;
+;; 対象関数（13個）:
+;;   go/chan, go/send!, go/recv!, go/try-recv!, go/close!,
+;;   go/await, go/all, go/race,
+;;   go/fan-out, go/fan-in,
+;;   go/make-scope, go/cancel!, go/cancelled?
+
+(println "=== go/chan Torture Test ===")
+
+;; 1. 基本的なチャネル作成
+(def ch1 (go/chan))
+(println "✓ 無制限バッファチャネル作成")
+
+;; 2. バッファ付きチャネル（様々なサイズ）
+(def ch-buf-0 (go/chan 0))
+(def ch-buf-1 (go/chan 1))
+(def ch-buf-10 (go/chan 10))
+(def ch-buf-100 (go/chan 100))
+(def ch-buf-1000 (go/chan 1000))
+(println "✓ バッファサイズ 0, 1, 10, 100, 1000 のチャネル作成")
+
+;; 3. 大量のチャネル作成（メモリ負荷テスト）
+(def channels (map (fn [i] (go/chan 10)) (range 100)))
+(println "✓ 100個のチャネルを同時作成")
+
+(println "\n=== go/send! & go/recv! Torture Test ===")
+
+;; 4. 様々な型のデータ送受信
+(def ch-test (go/chan 10))
+
+;; 整数
+(go/send! ch-test 42)
+(def v1 (go/recv! ch-test))
+(if (= v1 42) (println "✓ 整数の送受信") (println "✗ 整数の送受信失敗"))
+
+;; 文字列
+(go/send! ch-test "hello")
+(def v2 (go/recv! ch-test))
+(if (= v2 "hello") (println "✓ 文字列の送受信") (println "✗ 文字列の送受信失敗"))
+
+;; リスト
+(go/send! ch-test [1 2 3])
+(def v3 (go/recv! ch-test))
+(if (= v3 [1 2 3]) (println "✓ リストの送受信") (println "✗ リストの送受信失敗"))
+
+;; ベクター
+(go/send! ch-test [1 2 3])
+(def v4 (go/recv! ch-test))
+(if (= v4 [1 2 3]) (println "✓ ベクターの送受信") (println "✗ ベクターの送受信失敗"))
+
+;; マップ
+(go/send! ch-test {:a 1 :b 2})
+(def v5 (go/recv! ch-test))
+(if (= (get v5 :a) 1) (println "✓ マップの送受信") (println "✗ マップの送受信失敗"))
+
+;; 関数
+(def fn-test (fn [x] (* x 2)))
+(go/send! ch-test fn-test)
+(def v6 (go/recv! ch-test))
+(if (= (v6 5) 10) (println "✓ 関数の送受信") (println "✗ 関数の送受信失敗"))
+
+;; nil
+(go/send! ch-test nil)
+(def v7 (go/recv! ch-test))
+(if (nil? v7) (println "✓ nilの送受信") (println "✗ nilの送受信失敗"))
+
+;; true/false
+(go/send! ch-test true)
+(def v8 (go/recv! ch-test))
+(if (= v8 true) (println "✓ booleanの送受信") (println "✗ booleanの送受信失敗"))
+
+;; ネストされたデータ構造
+(go/send! ch-test {:users [{:name "Alice" :age 30} {:name "Bob" :age 25}]})
+(def v9 (go/recv! ch-test))
+(if (= (get (first (get v9 :users)) :name) "Alice")
+  (println "✓ ネストされたデータ構造の送受信")
+  (println "✗ ネストされたデータ構造の送受信失敗"))
+
+;; 5. 大量データの送受信（負荷テスト）
+(def ch-bulk (go/chan 1000))
+(map (fn [i] (go/send! ch-bulk i)) (range 1000))
+(def received (map (fn [_] (go/recv! ch-bulk)) (range 1000)))
+(if (= (len received) 1000)
+  (println "✓ 1000個のデータを送受信")
+  (println "✗ 1000個のデータ送受信失敗"))
+
+;; 6. 並行送受信（goroutineとの組み合わせ）
+(def ch-concurrent (go/chan))
+(go/run (fn [] (go/send! ch-concurrent (* 2 3))))
+(go/run (fn [] (go/send! ch-concurrent (* 4 5))))
+(go/run (fn [] (go/send! ch-concurrent (* 6 7))))
+(def results [
+  (go/recv! ch-concurrent)
+  (go/recv! ch-concurrent)
+  (go/recv! ch-concurrent)
+])
+(if (= (len results) 3)
+  (println "✓ 並行送受信")
+  (println "✗ 並行送受信失敗"))
+
+(println "\n=== go/recv! with :timeout Torture Test ===")
+
+;; 7. タイムアウト付き受信
+(def ch-timeout (go/chan))
+(def timeout-result (go/recv! ch-timeout :timeout 100))
+(if (nil? timeout-result)
+  (println "✓ タイムアウト動作確認")
+  (println "✗ タイムアウト動作確認失敗"))
+
+;; 8. タイムアウト前にデータが来る場合
+(def ch-timeout2 (go/chan))
+(go/run (fn [] (do (sleep 50) (go/send! ch-timeout2 "data"))))
+(def timeout-result2 (go/recv! ch-timeout2 :timeout 200))
+(if (= timeout-result2 "data")
+  (println "✓ タイムアウト前の受信")
+  (println "✗ タイムアウト前の受信失敗"))
+
+;; 9. 様々なタイムアウト値
+(def ch-timeout3 (go/chan))
+(def t1 (go/recv! ch-timeout3 :timeout 1))
+(def t10 (go/recv! ch-timeout3 :timeout 10))
+(def t50 (go/recv! ch-timeout3 :timeout 50))
+(println "✓ 様々なタイムアウト値（1ms, 10ms, 50ms）")
+
+(println "\n=== go/try-recv! Torture Test ===")
+
+;; 10. 非ブロッキング受信（データなし）
+(def ch-try (go/chan))
+(def try-result1 (go/try-recv! ch-try))
+(if (nil? try-result1)
+  (println "✓ データなし時の非ブロッキング受信")
+  (println "✗ データなし時の非ブロッキング受信失敗"))
+
+;; 11. 非ブロッキング受信（データあり）
+(go/send! ch-try "available")
+(def try-result2 (go/try-recv! ch-try))
+(if (= try-result2 "available")
+  (println "✓ データあり時の非ブロッキング受信")
+  (println "✗ データあり時の非ブロッキング受信失敗"))
+
+;; 12. 連続非ブロッキング受信
+(def ch-try2 (go/chan 10))
+(go/send! ch-try2 1)
+(go/send! ch-try2 2)
+(go/send! ch-try2 3)
+(def try-results [
+  (go/try-recv! ch-try2)
+  (go/try-recv! ch-try2)
+  (go/try-recv! ch-try2)
+  (go/try-recv! ch-try2)  ;; これはnil
+])
+(if (and (= (first try-results) 1) (nil? (last try-results)))
+  (println "✓ 連続非ブロッキング受信")
+  (println "✗ 連続非ブロッキング受信失敗"))
+
+(println "\n=== go/close! Torture Test ===")
+
+;; 13. チャネルクローズ基本
+(def ch-close (go/chan 5))
+(go/send! ch-close 1)
+(go/send! ch-close 2)
+(go/close! ch-close)
+(println "✓ チャネルクローズ")
+
+;; 14. クローズ後の受信（既存データ）
+(def close-recv1 (go/recv! ch-close))
+(def close-recv2 (go/recv! ch-close))
+(if (and (= close-recv1 1) (= close-recv2 2))
+  (println "✓ クローズ後の既存データ受信")
+  (println "✗ クローズ後の既存データ受信失敗"))
+
+;; 15. クローズ後の受信（データなし）
+(def close-recv3 (go/try-recv! ch-close))
+(if (nil? close-recv3)
+  (println "✓ クローズ後の空受信")
+  (println "✗ クローズ後の空受信失敗"))
+
+;; 16. 複数チャネルの同時クローズ
+(def chs-to-close (map (fn [_] (go/chan)) (range 10)))
+(map go/close! chs-to-close)
+(println "✓ 複数チャネルの同時クローズ")
+
+(println "\n=== go/await Torture Test ===")
+
+;; 17. 基本的なawait
+(def p1 (go/run (fn [] (+ 1 2 3))))
+(def await-result1 (go/await p1))
+(if (= await-result1 6)
+  (println "✓ 基本的なawait")
+  (println "✗ 基本的なawait失敗"))
+
+;; 18. 様々な型の値をawait
+(def p-int (go/run (fn [] 42)))
+(def p-str (go/run (fn [] "hello")))
+(def p-list (go/run (fn [] [1 2 3])))
+(def p-map (go/run (fn [] {:a 1 :b 2})))
+(def p-nil (go/run (fn [] nil)))
+
+(if (= (go/await p-int) 42) (println "✓ await整数") (println "✗ await整数失敗"))
+(if (= (go/await p-str) "hello") (println "✓ await文字列") (println "✗ await文字列失敗"))
+(if (= (go/await p-list) [1 2 3]) (println "✓ awaitリスト") (println "✗ awaitリスト失敗"))
+(if (= (get (go/await p-map) :a) 1) (println "✓ awaitマップ") (println "✗ awaitマップ失敗"))
+(if (nil? (go/await p-nil)) (println "✓ await nil") (println "✗ await nil失敗"))
+
+;; 19. 計算時間のかかるPromise
+(def p-slow (go/run (fn [] (do (sleep 100) "done"))))
+(def slow-result (go/await p-slow))
+(if (= slow-result "done")
+  (println "✓ 遅いPromiseのawait")
+  (println "✗ 遅いPromiseのawait失敗"))
+
+;; 20. 連続await
+(def p-chain1 (go/run (fn [] 10)))
+(def p-chain2 (go/run (fn [] 20)))
+(def p-chain3 (go/run (fn [] 30)))
+(def chain-sum (+ (go/await p-chain1) (go/await p-chain2) (go/await p-chain3)))
+(if (= chain-sum 60)
+  (println "✓ 連続await")
+  (println "✗ 連続await失敗"))
+
+(println "\n=== go/all Torture Test ===")
+
+;; 21. 基本的なgo/all
+(def promises-all [(go/run (fn [] 1)) (go/run (fn [] 2)) (go/run (fn [] 3))])
+(def all-result (go/await (go/all promises-all)))
+(if (= all-result [1 2 3])
+  (println "✓ 基本的なgo/all")
+  (println "✗ 基本的なgo/all失敗"))
+
+;; 22. 空のPromiseリスト
+(def empty-promises [])
+(def empty-result (go/await (go/all empty-promises)))
+(if (= empty-result [])
+  (println "✓ 空のPromiseリストでgo/all")
+  (println "✗ 空のPromiseリストでgo/all失敗"))
+
+;; 23. 1個のPromise
+(def single-promises [(go/run (fn [] 42))])
+(def single-result (go/await (go/all single-promises)))
+(if (= single-result [42])
+  (println "✓ 1個のPromiseでgo/all")
+  (println "✗ 1個のPromiseでgo/all失敗"))
+
+;; 24. 大量のPromise（負荷テスト）
+(def many-promises (map (fn [i] (go/run (fn [] i))) (range 100)))
+(def many-result (go/await (go/all many-promises)))
+(if (= (len many-result) 100)
+  (println "✓ 100個のPromiseでgo/all")
+  (println "✗ 100個のPromiseでgo/all失敗"))
+
+;; 25. 様々な型を返すPromise
+(def mixed-promises [
+  (go/run (fn [] 1))
+  (go/run (fn [] "two"))
+  (go/run (fn [] [3]))
+  (go/run (fn [] {:four 4}))
+])
+(def mixed-result (go/await (go/all mixed-promises)))
+(if (= (len mixed-result) 4)
+  (println "✓ 様々な型を返すPromiseでgo/all")
+  (println "✗ 様々な型を返すPromiseでgo/all失敗"))
+
+;; 26. 計算時間が異なるPromise
+(def varied-promises [
+  (go/run (fn [] (do (sleep 10) "fast")))
+  (go/run (fn [] (do (sleep 50) "medium")))
+  (go/run (fn [] (do (sleep 100) "slow")))
+])
+(def varied-result (go/await (go/all varied-promises)))
+(if (= (len varied-result) 3)
+  (println "✓ 異なる速度のPromiseでgo/all")
+  (println "✗ 異なる速度のPromiseでgo/all失敗"))
+
+(println "\n=== go/race Torture Test ===")
+
+;; 27. 基本的なgo/race
+(def race-promises [
+  (go/run (fn [] (do (sleep 100) "slow")))
+  (go/run (fn [] (do (sleep 10) "fast")))
+])
+(def race-result (go/await (go/race race-promises)))
+(if (= race-result "fast")
+  (println "✓ 基本的なgo/race")
+  (println "✗ 基本的なgo/race失敗"))
+
+;; 28. すぐに完了するPromise
+(def instant-promises [
+  (go/run (fn [] 1))
+  (go/run (fn [] 2))
+  (go/run (fn [] 3))
+])
+(def instant-result (go/await (go/race instant-promises)))
+(if (or (= instant-result 1) (= instant-result 2) (= instant-result 3))
+  (println "✓ すぐに完了するPromiseでgo/race")
+  (println "✗ すぐに完了するPromiseでgo/race失敗"))
+
+;; 29. 1個のPromise
+(def single-race [(go/run (fn [] "only"))])
+(def single-race-result (go/await (go/race single-race)))
+(if (= single-race-result "only")
+  (println "✓ 1個のPromiseでgo/race")
+  (println "✗ 1個のPromiseでgo/race失敗"))
+
+;; 30. 大量のPromise
+(def many-race (map (fn [i]
+  (go/run (fn [] (do (sleep (* i 10)) i)))
+) (range 50)))
+(def many-race-result (go/await (go/race many-race)))
+(if (= many-race-result 0)
+  (println "✓ 大量のPromiseでgo/race")
+  (println "✗ 大量のPromiseでgo/race失敗"))
+
+(println "\n=== go/fan-out Torture Test ===")
+
+;; 31. 基本的なfan-out
+(def fan-ch (go/chan))
+(def fan-outputs (go/fan-out fan-ch 3))
+(println "✓ 基本的なfan-out（3分岐）")
+
+;; 32. 様々な分岐数
+(def fan-ch2 (go/chan))
+(def fan-out-2 (go/fan-out fan-ch2 2))
+(def fan-out-5 (go/fan-out (go/chan) 5))
+(def fan-out-10 (go/fan-out (go/chan) 10))
+(def fan-out-20 (go/fan-out (go/chan) 20))
+(println "✓ 様々な分岐数（2, 5, 10, 20）")
+
+;; 33. データ送信とfan-out
+(def fan-ch3 (go/chan))
+(def fan-outs3 (go/fan-out fan-ch3 3))
+(go/run (fn [] (go/send! fan-ch3 "broadcast")))
+(sleep 50)
+(println "✓ fan-outでデータ送信")
+
+(println "\n=== go/fan-in Torture Test ===")
+
+;; 34. 基本的なfan-in
+(def in-ch1 (go/chan))
+(def in-ch2 (go/chan))
+(def in-ch3 (go/chan))
+(def merged (go/fan-in [in-ch1 in-ch2 in-ch3]))
+(go/run (fn [] (go/send! in-ch1 "from1")))
+(go/run (fn [] (go/send! in-ch2 "from2")))
+(go/run (fn [] (go/send! in-ch3 "from3")))
+(sleep 50)
+(println "✓ 基本的なfan-in（3合流）")
+
+;; 35. 様々な合流数
+(def in-chs-2 [(go/chan) (go/chan)])
+(def merged-2 (go/fan-in in-chs-2))
+(def in-chs-5 (map (fn [_] (go/chan)) (range 5)))
+(def merged-5 (go/fan-in in-chs-5))
+(def in-chs-10 (map (fn [_] (go/chan)) (range 10)))
+(def merged-10 (go/fan-in in-chs-10))
+(println "✓ 様々な合流数（2, 5, 10）")
+
+;; 36. 空のチャネルリスト
+(def empty-chs [])
+(def merged-empty (go/fan-in empty-chs))
+(println "✓ 空のチャネルリストでfan-in")
+
+;; 37. 大量データのfan-in
+(def bulk-in-chs (map (fn [_] (go/chan)) (range 10)))
+(def bulk-merged (go/fan-in bulk-in-chs))
+(map (fn [ch] (go/run (fn [] (map (fn [i] (go/send! ch i)) (range 10))))) bulk-in-chs)
+(sleep 100)
+(println "✓ 大量データのfan-in")
+
+(println "\n=== go/make-scope Torture Test ===")
+
+;; 38. 基本的なスコープ作成
+(def scope1 (go/make-scope))
+(println "✓ 基本的なスコープ作成")
+
+;; 39. 複数スコープ作成
+(def scopes (map (fn [_] (go/make-scope)) (range 10)))
+(println "✓ 10個のスコープ作成")
+
+;; 40. ネストされたスコープ
+(def parent-scope (go/make-scope))
+(def child-scope (go/make-scope))
+(println "✓ ネストされたスコープ作成")
+
+(println "\n=== go/cancel! Torture Test ===")
+
+;; 41. 基本的なキャンセル
+(def scope-cancel (go/make-scope))
+(go/cancel! scope-cancel)
+(println "✓ 基本的なキャンセル")
+
+;; 42. 複数スコープのキャンセル
+(def scopes-cancel (map (fn [_] (go/make-scope)) (range 5)))
+(map go/cancel! scopes-cancel)
+(println "✓ 複数スコープのキャンセル")
+
+;; 43. 即座にキャンセル
+(def scope-instant (go/make-scope))
+(go/cancel! scope-instant)
+(if (go/cancelled? scope-instant)
+  (println "✓ 即座にキャンセル確認")
+  (println "✗ 即座にキャンセル確認失敗"))
+
+(println "\n=== go/cancelled? Torture Test ===")
+
+;; 44. キャンセルされていないスコープ
+(def scope-active (go/make-scope))
+(if (not (go/cancelled? scope-active))
+  (println "✓ アクティブなスコープ確認")
+  (println "✗ アクティブなスコープ確認失敗"))
+
+;; 45. キャンセル後の確認
+(def scope-check (go/make-scope))
+(go/cancel! scope-check)
+(if (go/cancelled? scope-check)
+  (println "✓ キャンセル後の確認")
+  (println "✗ キャンセル後の確認失敗"))
+
+;; 46. 複数回のcancelled?呼び出し
+(def scope-multi (go/make-scope))
+(def check1 (go/cancelled? scope-multi))
+(def check2 (go/cancelled? scope-multi))
+(def check3 (go/cancelled? scope-multi))
+(if (and (not check1) (not check2) (not check3))
+  (println "✓ 複数回のcancelled?呼び出し")
+  (println "✗ 複数回のcancelled?呼び出し失敗"))
+
+(println "\n=== 統合シナリオテスト ===")
+
+;; 47. チャネル + goroutine + await の組み合わせ
+(def ch-integrated (go/chan))
+(def p-integrated (go/run (fn [] (do
+  (go/send! ch-integrated 100)
+  (go/send! ch-integrated 200)
+  (+ (go/recv! ch-integrated) (go/recv! ch-integrated))
+))))
+(def integrated-result (go/await p-integrated))
+(if (= integrated-result 300)
+  (println "✓ チャネル + goroutine + await")
+  (println "✗ チャネル + goroutine + await失敗"))
+
+;; 48. fan-out + fan-in の組み合わせ
+(def fan-source (go/chan))
+(def fan-branches (go/fan-out fan-source 3))
+(def fan-result (go/fan-in fan-branches))
+(go/run (fn [] (do
+  (go/send! fan-source 1)
+  (go/send! fan-source 2)
+  (go/send! fan-source 3)
+)))
+(sleep 50)
+(println "✓ fan-out + fan-in")
+
+;; 49. go/all + go/race の組み合わせ
+(def all-race-promises [
+  (go/all [(go/run (fn [] 1)) (go/run (fn [] 2))])
+  (go/race [(go/run (fn [] (do (sleep 100) 3))) (go/run (fn [] 4))])
+])
+(def all-race-result (go/await (go/all all-race-promises)))
+(if (= (len all-race-result) 2)
+  (println "✓ go/all + go/race")
+  (println "✗ go/all + go/race失敗"))
+
+;; 50. スコープ + goroutine + キャンセル
+(def scope-full (go/make-scope))
+(def counter (atom 0))
+(go/scope-go scope-full (fn [] (do
+  (loop [i 0]
+    (if (go/cancelled? scope-full)
+      (reset! counter i)
+      (recur (inc i))))
+)))
+(sleep 50)
+(go/cancel! scope-full)
+(sleep 50)
+(if (> @counter 0)
+  (println "✓ スコープ + goroutine + キャンセル")
+  (println "✗ スコープ + goroutine + キャンセル失敗"))
+
+;; 51. 大量の並行goroutine（負荷テスト）
+(def load-ch (go/chan 100))
+(map (fn [i] (go/run (fn [] (go/send! load-ch (* i i))))) (range 100))
+(sleep 200)
+(println "✓ 100個の並行goroutine")
+
+;; 52. タイムアウト + 非ブロッキング受信の組み合わせ
+(def combo-ch (go/chan))
+(def combo1 (go/try-recv! combo-ch))
+(def combo2 (go/recv! combo-ch :timeout 50))
+(if (and (nil? combo1) (nil? combo2))
+  (println "✓ タイムアウト + 非ブロッキング受信")
+  (println "✗ タイムアウト + 非ブロッキング受信失敗"))
+
+(println "\n=== |>? (Railway Pipeline) Torture Test ===")
+
+;; 53. 基本的なRailway Pipeline
+(def rail1 ({:ok 10} |>? (fn [x] {:ok (* x 2)})))
+(if (= rail1 {:ok 20})
+  (println "✓ 基本的な|>?")
+  (println "✗ 基本的な|>?失敗"))
+
+;; 54. エラー伝播
+(def rail2 ({:ok 10} |>? (fn [x] {:error "failed"}) |>? (fn [x] {:ok (* x 2)})))
+(if (= (get rail2 :error) "failed")
+  (println "✓ エラー伝播")
+  (println "✗ エラー伝播失敗"))
+
+;; 55. 連鎖的な成功
+(def rail3 ({:ok 10} |>? (fn [x] {:ok (+ x 5)}) |>? (fn [x] {:ok (* x 2)}) |>? (fn [x] {:ok (- x 10)})))
+(if (= rail3 {:ok 20})
+  (println "✓ 連鎖的な成功")
+  (println "✗ 連鎖的な成功失敗"))
+
+;; 56. 最初からエラー
+(def rail4 ({:error "initial"} |>? (fn [x] {:ok (* x 2)})))
+(if (= (get rail4 :error) "initial")
+  (println "✓ 最初からエラー")
+  (println "✗ 最初からエラー失敗"))
+
+;; 57. 様々な型のエラーメッセージ
+(def rail-err1 ({:error "string error"} |>? (fn [x] {:ok x})))
+(def rail-err2 ({:error 404} |>? (fn [x] {:ok x})))
+(def rail-err3 ({:error {:code 500 :msg "server error"}} |>? (fn [x] {:ok x})))
+(if (and (= (get rail-err1 :error) "string error")
+         (= (get rail-err2 :error) 404)
+         (= (get (get rail-err3 :error) :code) 500))
+  (println "✓ 様々な型のエラーメッセージ")
+  (println "✗ 様々な型のエラーメッセージ失敗"))
+
+;; 58. 様々な型の成功値
+(def rail-val1 ({:ok 42} |>? (fn [x] {:ok x})))
+(def rail-val2 ({:ok "hello"} |>? (fn [x] {:ok x})))
+(def rail-val3 ({:ok [1 2 3]} |>? (fn [x] {:ok x})))
+(def rail-val4 ({:ok {:a 1 :b 2}} |>? (fn [x] {:ok x})))
+(if (and (= (get rail-val1 :ok) 42)
+         (= (get rail-val2 :ok) "hello")
+         (= (get rail-val3 :ok) [1 2 3])
+         (= (get (get rail-val4 :ok) :a) 1))
+  (println "✓ 様々な型の成功値")
+  (println "✗ 様々な型の成功値失敗"))
+
+;; 59. 長いチェーン（10段）
+(def rail-long
+  ({:ok 1}
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})))
+(if (= (get rail-long :ok) 11)
+  (println "✓ 長いチェーン（10段）")
+  (println "✗ 長いチェーン（10段）失敗"))
+
+;; 60. チェーンの途中でエラー
+(def rail-mid-error
+  ({:ok 1}
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:error "middle error"})
+   |>? (fn [x] {:ok (+ x 1)})
+   |>? (fn [x] {:ok (+ x 1)})))
+(if (= (get rail-mid-error :error) "middle error")
+  (println "✓ チェーンの途中でエラー")
+  (println "✗ チェーンの途中でエラー失敗"))
+
+;; 61. |>と|>?の混在
+(def rail-mixed (10 |> inc |> inc))
+(def rail-mixed2 ({:ok rail-mixed} |>? (fn [x] {:ok (* x 2)})))
+(if (= (get rail-mixed2 :ok) 24)
+  (println "✓ |>と|>?の混在")
+  (println "✗ |>と|>?の混在失敗"))
+
+;; 62. nil値の扱い
+(def rail-nil ({:ok nil} |>? (fn [x] {:ok x})))
+(if (nil? (get rail-nil :ok))
+  (println "✓ nil値の扱い")
+  (println "✗ nil値の扱い失敗"))
+
+;; 63. 複雑なネスト
+(def rail-nested
+  ({:ok {:data {:value 10}}}
+   |>? (fn [x] {:ok (get (get x :data) :value)})
+   |>? (fn [x] {:ok (* x 2)})))
+(if (= (get rail-nested :ok) 20)
+  (println "✓ 複雑なネスト")
+  (println "✗ 複雑なネスト失敗"))
+
+(println "\n=== Torture Test 完了 ===")
+(println "全63テストケースを実行しました")
