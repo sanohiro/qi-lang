@@ -1697,6 +1697,8 @@ pub fn native_format_percent(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（feature-gatedでない関数のみ）
+/// @qi-doc:category string
+/// @qi-doc:note 60+ string manipulation functions
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("str/split", native_split),
     ("str/upper", native_upper),

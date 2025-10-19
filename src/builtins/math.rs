@@ -213,8 +213,9 @@ pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト（feature-gatedでない関数のみ）
-///
-/// 注意: rand, rand-int, random-range, shuffleは "std-math" featureが必要なため別途登録
+/// @qi-doc:category math
+/// @qi-doc:functions pow, sqrt, round, floor, ceil, clamp
+/// @qi-doc:note rand, rand-int, random-range, shuffleは "std-math" featureが必要なため別途登録
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("math/pow", native_pow),
     ("math/sqrt", native_sqrt),

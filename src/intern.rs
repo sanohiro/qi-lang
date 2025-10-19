@@ -10,6 +10,12 @@ use dashmap::DashMap;
 use std::sync::{Arc, LazyLock};
 
 /// グローバルなシンボルインターンテーブル（頻出シンボルを事前登録）
+/// @qi-doc:common-symbols
+/// @qi-doc:io print, println
+/// @qi-doc:collections list, vector, map, filter, reduce, first, rest, cons, concat
+/// @qi-doc:operators +, -, *, /, =, <, >, <=, >=, not=
+/// @qi-doc:accessors get, assoc
+/// @qi-doc:predicates number?, fn?, string?, list?, vector?, map?, nil?, empty?
 static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
     let map = DashMap::new();
     // 頻出シンボルを事前インターン（評価器で頻繁に使われるもの）
@@ -81,6 +87,11 @@ static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
 });
 
 /// グローバルなキーワードインターンテーブル（頻出キーワードを事前登録）
+/// @qi-doc:common-keywords
+/// @qi-doc:result ok, error
+/// @qi-doc:http status, message, body, headers, method, path, query, params, request, response
+/// @qi-doc:data name, value, id, type, title, description, data
+/// @qi-doc:time created, updated, timestamp
 static KEYWORD_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
     let map = DashMap::new();
     // 頻出キーワードを事前インターン（Tryやレスポンスでよく使われるもの）

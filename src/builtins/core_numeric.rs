@@ -529,6 +529,8 @@ pub fn native_ge(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category core/numeric
+/// @qi-doc:functions +, -, *, /, %, abs, min, max, inc, dec, sum, =, <, >, <=, >=
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("+", native_add),
     ("-", native_sub),

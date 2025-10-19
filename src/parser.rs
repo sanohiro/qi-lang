@@ -5,6 +5,15 @@ use std::collections::HashSet;
 use std::sync::LazyLock;
 
 /// 特殊形式のリスト（LazyLockで初期化）
+/// @qi-doc:special-forms
+/// @qi-doc:definition def, defn, defn-
+/// @qi-doc:function fn
+/// @qi-doc:binding let
+/// @qi-doc:control-flow if, do, loop, recur
+/// @qi-doc:pattern-matching match
+/// @qi-doc:error-handling try, defer
+/// @qi-doc:macro mac
+/// @qi-doc:module module, export, use, flow
 static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     HashSet::from([
         "def", "defn", "defn-", "fn", "let", "if", "do", "match", "try", "defer", "loop", "recur",
@@ -366,15 +375,15 @@ impl Parser {
         Ok(Expr::Def(name, value, false))
     }
 
-    /// defn を def + fn に展開
-    /// (defn name [params] body) -> (def name (fn [params] body))
-    /// (defn name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body)))
-    fn parse_defn(&mut self) -> Result<Expr, String> {
-        self.advance(); // 'defn'をスキップ
+    /// defn/defn- 共通の内部実装
+    /// is_private: プライベート定義かどうか
+    /// keyword: エラーメッセージ用のキーワード名
+    fn parse_defn_internal(&mut self, is_private: bool, keyword: &str) -> Result<Expr, String> {
+        self.advance(); // キーワードをスキップ
 
         let name = match self.current() {
             Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["defn"])),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &[keyword])),
         };
         self.advance();
 
@@ -386,7 +395,7 @@ impl Parser {
             None
         };
 
-        // パラメータリストのパース（共通化された関数を使用）
+        // パラメータリストのパース
         let (params, is_variadic) = self.parse_fn_params()?;
 
         // 本体のパース
@@ -404,58 +413,26 @@ impl Parser {
         // ない場合は (def name (fn ...))
         if let Some(doc) = doc_expr {
             let doc_key = format!("__doc__{}", name);
-            let doc_def = Expr::Def(doc_key, Box::new(doc), false);
-            let fn_def = Expr::Def(name, Box::new(fn_expr), false);
+            let doc_def = Expr::Def(doc_key, Box::new(doc), is_private);
+            let fn_def = Expr::Def(name, Box::new(fn_expr), is_private);
             Ok(Expr::Do(vec![doc_def, fn_def]))
         } else {
-            Ok(Expr::Def(name, Box::new(fn_expr), false))
+            Ok(Expr::Def(name, Box::new(fn_expr), is_private))
         }
+    }
+
+    /// defn を def + fn に展開
+    /// (defn name [params] body) -> (def name (fn [params] body))
+    /// (defn name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body)))
+    fn parse_defn(&mut self) -> Result<Expr, String> {
+        self.parse_defn_internal(false, "defn")
     }
 
     /// defn- を def + fn に展開（プライベート）
     /// (defn- name [params] body) -> (def name (fn [params] body)) with is_private=true
     /// (defn- name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body))) with is_private=true
     fn parse_defn_private(&mut self) -> Result<Expr, String> {
-        self.advance(); // 'defn-'をスキップ
-
-        let name = match self.current() {
-            Some(Token::Symbol(s)) => s.clone(),
-            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["defn-"])),
-        };
-        self.advance();
-
-        // ドキュメント文字列/マップの処理
-        let doc_expr = if !matches!(self.current(), Some(Token::LBracket)) {
-            // パラメータリストでない場合はドキュメント
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
-
-        // パラメータリストのパース（共通化された関数を使用）
-        let (params, is_variadic) = self.parse_fn_params()?;
-
-        // 本体のパース
-        let body = Box::new(self.parse_expr()?);
-        self.expect(Token::RParen)?;
-
-        // (fn [params] body) を構築
-        let fn_expr = Expr::Fn {
-            params,
-            body,
-            is_variadic,
-        };
-
-        // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...))) with is_private=true
-        // ない場合は (def name (fn ...)) with is_private=true
-        if let Some(doc) = doc_expr {
-            let doc_key = format!("__doc__{}", name);
-            let doc_def = Expr::Def(doc_key, Box::new(doc), true); // プライベート
-            let fn_def = Expr::Def(name, Box::new(fn_expr), true); // プライベート
-            Ok(Expr::Do(vec![doc_def, fn_def]))
-        } else {
-            Ok(Expr::Def(name, Box::new(fn_expr), true)) // プライベート
-        }
+        self.parse_defn_internal(true, "defn-")
     }
 
     fn parse_fn(&mut self) -> Result<Expr, String> {

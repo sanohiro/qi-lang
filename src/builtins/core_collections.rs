@@ -580,6 +580,8 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 // ========================================
 
 /// 登録すべき関数のリスト
+/// @qi-doc:category core/collections
+/// @qi-doc:functions first, rest, last, nth, len, count, cons, conj, concat, reverse, sort, distinct, range, repeat, take, drop, zip, etc.
 pub const FUNCTIONS: super::NativeFunctions = &[
     // リスト操作
     ("first", native_first),

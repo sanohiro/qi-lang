@@ -34,6 +34,13 @@ impl LocatedToken {
 
 /// トークンの種類
 #[derive(Debug, Clone, PartialEq)]
+/// トークン定義
+/// @qi-doc:tokens
+/// @qi-doc:pipe-operators |>, |>?, ||>, ~>
+/// @qi-doc:arrow-operators ->, =>
+/// @qi-doc:pattern-operators |
+/// @qi-doc:quote-operators ', `, ,, ,@
+/// @qi-doc:special-operators @, ...
 pub enum Token {
     // リテラル
     Integer(i64),

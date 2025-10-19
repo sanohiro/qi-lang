@@ -269,6 +269,116 @@ Err(fmt_msg(MsgKey::FileNotFound, &[path]))
 .map_err(|e| fmt_msg(MsgKey::FailedToRead, &[&e.to_string()]))
 ```
 
+## ドキュメンテーションシステム
+
+### @qi-docタグによる言語要素の自動抽出
+
+ソースコードに軽量なマーキング（`@qi-doc`タグ）を入れることで、言語要素（関数、特殊形式、演算子など）を自動抽出できるシステムを導入しています。
+
+#### タグの種類
+
+**組み込み関数用**:
+```rust
+/// @qi-doc:category <カテゴリ名>
+/// @qi-doc:functions <関数リスト>
+/// @qi-doc:note <補足情報>
+```
+
+**特殊形式用**:
+```rust
+/// @qi-doc:special-forms
+/// @qi-doc:definition def, defn, defn-
+/// @qi-doc:control-flow if, do, loop, recur
+```
+
+**演算子用**:
+```rust
+/// @qi-doc:tokens
+/// @qi-doc:pipe-operators |>, |>?, ||>, ~>
+/// @qi-doc:arrow-operators ->, =>
+```
+
+**頻出シンボル・キーワード用**:
+```rust
+/// @qi-doc:common-symbols
+/// @qi-doc:io print, println
+/// @qi-doc:collections list, vector, map, filter
+
+/// @qi-doc:common-keywords
+/// @qi-doc:result ok, error
+/// @qi-doc:http status, body, headers
+```
+
+#### 言語要素の一覧取得
+
+```bash
+# すべての言語要素（特殊形式、演算子、関数など）を表示
+./scripts/list_qi_functions.sh
+
+# 出力例:
+# === Qi Language Reference ===
+#
+# ## Special Forms
+#   - definition def, defn, defn-
+#   - control-flow if, do, loop, recur
+#   - pattern-matching match
+#   ...
+#
+# ## Operators
+#   - pipe-operators |>, |>?, ||>, ~>
+#   - arrow-operators ->, =>
+#   ...
+#
+# ## Common Symbols
+#   - collections list, vector, map, filter
+#   ...
+#
+# ## Built-in Functions by Category
+#   ### core/numeric
+#     - +, -, *, /, %, abs, min, max
+#   ...
+```
+
+特定の要素だけ抽出:
+```bash
+# 特殊形式だけ
+rg '@qi-doc:(definition|control-flow|pattern-matching)' src/parser.rs
+
+# 演算子だけ
+rg '@qi-doc:.*-operators' src/lexer.rs
+
+# 関数カテゴリだけ
+rg '@qi-doc:category' src/builtins/*.rs
+```
+
+#### AIとの連携
+
+ClaudeやCodexに以下のように依頼できます：
+
+- 「@qi-docタグから言語仕様の全体像を抽出して」
+- 「パイプ演算子の種類を教えて」
+- 「特殊形式のリストを出して」
+- 「data/jsonカテゴリの関数を教えて」
+
+#### 現在のタグ付け状況
+
+**完全タグ付け済み**:
+- ✅ 特殊形式（parser.rs） - def, defn, fn, let, if, match, try, defer, loop, など
+- ✅ 演算子（lexer.rs） - `|>`, `|>?`, `||>`, `~>`, `->`, `=>`, など
+- ✅ 頻出シンボル（intern.rs） - print, map, filter, first, rest, など
+- ✅ 頻出キーワード（intern.rs） - :ok, :error, :status, :body, など
+
+**関数タグ付け済み（8カテゴリ）**:
+- `core/numeric` - 基本演算・数値関数
+- `core/string` - 文字列基本
+- `core/collections` - コレクション操作
+- `string` - 文字列拡張（60+関数）
+- `data/json`, `data/yaml` - データフォーマット
+- `net/http` - HTTPクライアント
+- `math` - 数学関数
+
+**未タグ付け**: 残り29の関数ファイル（段階的に追加予定）
+
 ## チャット
 
 - 出力は日本語で行うこと
