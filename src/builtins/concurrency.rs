@@ -457,9 +457,9 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
 /// (def result (go (+ 1 2)))
 /// (recv! result)  ;; => 3
 /// ```
-pub fn native_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["go"]));
+        return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
     }
 
     // 結果を返すチャネルを作成
@@ -1281,17 +1281,17 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
 /// 注意: then, catch, go, pipeline, pipeline-map, pipeline-filter, select!, scope-go, with-scope, parallel-do
 /// はEvaluatorが必要なため、mod.rsで別途登録されます
 pub const FUNCTIONS: super::NativeFunctions = &[
-    ("chan", native_chan),
-    ("send!", native_send),
-    ("recv!", native_recv),
-    ("try-recv!", native_try_recv),
-    ("close!", native_close),
-    ("await", native_await),
-    ("all", native_all),
-    ("race", native_race),
-    ("fan-out", native_fan_out),
-    ("fan-in", native_fan_in),
-    ("make-scope", native_make_scope),
-    ("cancel!", native_cancel),
-    ("cancelled?", native_cancelled_q),
+    ("go/chan", native_chan),
+    ("go/send!", native_send),
+    ("go/recv!", native_recv),
+    ("go/try-recv!", native_try_recv),
+    ("go/close!", native_close),
+    ("go/await", native_await),
+    ("go/all", native_all),
+    ("go/race", native_race),
+    ("go/fan-out", native_fan_out),
+    ("go/fan-in", native_fan_in),
+    ("go/make-scope", native_make_scope),
+    ("go/cancel!", native_cancel),
+    ("go/cancelled?", native_cancelled_q),
 ];

@@ -45,7 +45,6 @@ pub mod lazy_init;
 
 // Coreモジュール
 pub mod core_collections;
-pub mod core_concurrency;
 pub mod core_functions;
 pub mod core_io_logic;
 pub mod core_numeric;
@@ -155,7 +154,6 @@ const CORE_MODULES: &[NativeFunctions] = &[
     core_io_logic::FUNCTIONS,
     core_functions::FUNCTIONS,
     core_state_meta::FUNCTIONS,
-    core_concurrency::FUNCTIONS,
 ];
 
 /// 標準専門モジュール一覧（feature-gatedでないもの）
@@ -327,9 +325,9 @@ pub fn eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_state_meta::native_eval(args, evaluator)
 }
 
-/// go - goroutine風の非同期実行
-pub fn go(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    core_concurrency::native_go(args, evaluator)
+/// go/run - goroutine風の非同期実行
+pub fn run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    concurrency::native_run(args, evaluator)
 }
 
 /// time - 関数実行時間を計測

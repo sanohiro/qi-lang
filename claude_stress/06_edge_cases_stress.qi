@@ -227,7 +227,7 @@
 ; nthは範囲外でnilを返す実装の場合
 (def result (try
               {:ok (nth vec -1)}
-              (catch e {:error e})))
+              (go/catch e {:error e})))
 
 (if (or (= nil (get result :ok)) (= :error (first (keys result))))
   (println "  ✓ 負のインデックス処理成功")

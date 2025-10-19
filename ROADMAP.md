@@ -356,10 +356,10 @@ finished in 0.05s
 
 ### フェーズ5: 並行・並列処理の完成
 
-- ✅ 並列コレクション完成（`async/pfilter`, `async/preduce`）
-- ✅ `select!`とタイムアウト（`recv! :timeout`, `select!`）
-- ✅ Structured Concurrency（`make-scope`, `async/scope-go`, `cancel!`, `cancelled?`, `async/with-scope`）
-- ✅ `async/parallel-do`（複数式の並列実行）
+- ✅ 並列コレクション完成（`go/pfilter`, `go/preduce`）
+- ✅ `go/select!`とタイムアウト（`go/recv! :timeout`, `go/select!`）
+- ✅ Structured Concurrency（`go/make-scope`, `go/scope-go`, `go/cancel!`, `go/cancelled?`, `go/with-scope`）
+- ✅ `go/parallel-do`（複数式の並列実行）
 
 ### フェーズ5.5: アプリケーション開発機能
 

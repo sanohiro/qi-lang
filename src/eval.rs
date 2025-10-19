@@ -410,14 +410,15 @@ impl Evaluator {
                 "_railway-pipe" => return self.eval_railway_pipe(args, env),
                 "and" => return self.eval_and(args, env),
                 "apply" => return self.eval_apply(args, env),
-                "async/catch" => return self.eval_catch(args, env),
-                "async/parallel-do" => return self.eval_parallel_do(args, env),
-                "async/pfilter" => return self.eval_pfilter(args, env),
-                "async/preduce" => return self.eval_preduce(args, env),
-                "async/scope-go" => return self.eval_scope_go(args, env),
-                "async/select!" => return self.eval_select(args, env),
-                "async/then" => return self.eval_then(args, env),
-                "async/with-scope" => return self.eval_with_scope(args, env),
+                "go/catch" => return self.eval_catch(args, env),
+                "go/parallel-do" => return self.eval_parallel_do(args, env),
+                "go/pfilter" => return self.eval_pfilter(args, env),
+                "go/preduce" => return self.eval_preduce(args, env),
+                "go/run" => return self.eval_run(args, env),
+                "go/scope-go" => return self.eval_scope_go(args, env),
+                "go/select!" => return self.eval_select(args, env),
+                "go/then" => return self.eval_then(args, env),
+                "go/with-scope" => return self.eval_with_scope(args, env),
                 "branch" => return self.eval_branch(args, env),
                 "comp" => return self.eval_comp(args, env),
                 "drop-while" => return self.eval_drop_while(args, env),
@@ -425,7 +426,6 @@ impl Evaluator {
                 "list/every?" => return self.eval_every(args, env),
                 "filter" => return self.eval_filter(args, env),
                 "find" => return self.eval_find(args, env),
-                "go" => return self.eval_go(args, env),
                 "list/chunk" => return self.eval_chunk(args, env),
                 "list/count-by" => return self.eval_count_by(args, env),
                 "list/drop-last" => return self.eval_drop_last(args, env),
@@ -839,7 +839,7 @@ impl Evaluator {
     /// pfilter関数の実装: (pfilter pred coll)
     fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["pfilter"]));
+            return Err(fmt_msg(MsgKey::Need2Args, &["go/pfilter"]));
         }
         let pred = self.eval_with_env(&args[0], env.clone())?;
         let coll = self.eval_with_env(&args[1], env.clone())?;
@@ -849,7 +849,7 @@ impl Evaluator {
     /// preduce関数の実装: (preduce f init coll)
     fn eval_preduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["preduce", "3", ""]));
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["go/preduce", "3", ""]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         let init = self.eval_with_env(&args[1], env.clone())?;
@@ -1321,15 +1321,6 @@ impl Evaluator {
         builtins::sum_by(&vals, self)
     }
 
-    fn eval_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["go"]));
-        }
-        // 式を評価して値に変換
-        let val = self.eval_with_env(&args[0], env)?;
-        builtins::go(&[val], self)
-    }
-
     fn eval_pipeline(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
             return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline", "3", ""]));
@@ -1407,7 +1398,7 @@ impl Evaluator {
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["then"]));
+            return Err(fmt_msg(MsgKey::Need2Args, &["go/then"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1418,7 +1409,7 @@ impl Evaluator {
 
     fn eval_catch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["catch"]));
+            return Err(fmt_msg(MsgKey::Need2Args, &["go/catch"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1429,7 +1420,7 @@ impl Evaluator {
 
     fn eval_select(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["select!"]));
+            return Err(fmt_msg(MsgKey::Need1Arg, &["go/select!"]));
         }
         let val = self.eval_with_env(&args[0], env.clone())?;
         builtins::select(&[val], self)
@@ -1437,7 +1428,7 @@ impl Evaluator {
 
     fn eval_scope_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["scope-go"]));
+            return Err(fmt_msg(MsgKey::Need2Args, &["go/scope-go"]));
         }
         let scope = self.eval_with_env(&args[0], env.clone())?;
         let func = self.eval_with_env(&args[1], env.clone())?;
@@ -1446,10 +1437,18 @@ impl Evaluator {
 
     fn eval_with_scope(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["with-scope"]));
+            return Err(fmt_msg(MsgKey::Need1Arg, &["go/with-scope"]));
         }
         let func = self.eval_with_env(&args[0], env.clone())?;
         builtins::with_scope(&[func], self)
+    }
+
+    fn eval_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 1 {
+            return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
+        }
+        let val = self.eval_with_env(&args[0], env.clone())?;
+        builtins::run(&[val], self)
     }
 
     fn eval_parallel_do(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
