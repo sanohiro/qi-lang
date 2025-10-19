@@ -160,11 +160,10 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
 
     let mut result = im::Vector::new();
     for arg in args {
-        match arg {
-            Value::List(v) | Value::Vector(v) => {
-                result.extend(v.iter().cloned());
-            }
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
+        if let Some(iter) = arg.as_sequence_iter() {
+            result.extend(iter.cloned());
+        } else {
+            return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"]));
         }
     }
 
@@ -180,13 +179,12 @@ pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["flatten"]));
     }
     fn flatten_value(v: &Value, result: &mut im::Vector<Value>) {
-        match v {
-            Value::List(items) | Value::Vector(items) => {
-                for item in items {
-                    flatten_value(item, result);
-                }
+        if let Some(iter) = v.as_sequence_iter() {
+            for item in iter {
+                flatten_value(item, result);
             }
-            _ => result.push_back(v.clone()),
+        } else {
+            result.push_back(v.clone());
         }
     }
     let mut result = im::Vector::new();

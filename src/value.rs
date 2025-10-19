@@ -165,6 +165,26 @@ impl Value {
             _ => None,
         }
     }
+
+    /// List/Vectorをイテレータとして扱うヘルパー
+    ///
+    /// ListまたはVectorのイテレータを返す
+    /// どちらでもない場合はNoneを返す
+    ///
+    /// 使用例:
+    /// ```ignore
+    /// if let Some(iter) = value.as_sequence_iter() {
+    ///     for item in iter {
+    ///         // itemを処理
+    ///     }
+    /// }
+    /// ```
+    pub fn as_sequence_iter(&self) -> Option<impl Iterator<Item = &Value>> {
+        match self {
+            Value::List(v) | Value::Vector(v) => Some(v.iter()),
+            _ => None,
+        }
+    }
 }
 
 /// ValueのPartialEq実装（関数やマクロなどはポインタ比較）
