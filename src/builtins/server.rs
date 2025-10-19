@@ -285,7 +285,7 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     // データをJSON文字列に変換
     let json_result = crate::builtins::json::native_stringify(&[args[0].clone()])?;
     let json_str = match json_result {
-        Value::Map(m) => match m.get("ok") {
+        Value::Map(m) => match m.get(":ok") {
             Some(Value::String(s)) => s.clone(),
             _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
         },

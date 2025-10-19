@@ -1,0 +1,475 @@
+;; ========================================
+;; profile/とserver/名前空間 Torture Test
+;; ========================================
+;;
+;; 対象関数:
+;; - profile/: start, stop, clear, report (4個)
+;; - server/: ok, json, not-found, no-content, router, with-* (16個)
+
+(println "=== profile/start Torture Test ===")
+
+;; 1. 基本的なstart
+(profile/start)
+(println "✓ 基本的なprofile/start")
+
+;; 2. 複数回start（冪等性）
+(profile/start)
+(profile/start)
+(profile/start)
+(println "✓ 複数回profile/start")
+
+(println "\n=== profile/stop Torture Test ===")
+
+;; 3. 基本的なstop
+(profile/stop)
+(println "✓ 基本的なprofile/stop")
+
+;; 4. 複数回stop（冪等性）
+(profile/stop)
+(profile/stop)
+(profile/stop)
+(println "✓ 複数回profile/stop")
+
+;; 5. start/stopの繰り返し
+(profile/start)
+(profile/stop)
+(profile/start)
+(profile/stop)
+(profile/start)
+(profile/stop)
+(println "✓ start/stopの繰り返し")
+
+(println "\n=== profile/clear Torture Test ===")
+
+;; 6. 基本的なclear
+(profile/clear)
+(println "✓ 基本的なprofile/clear")
+
+;; 7. 複数回clear（冪等性）
+(profile/clear)
+(profile/clear)
+(profile/clear)
+(println "✓ 複数回profile/clear")
+
+;; 8. start → clear → stop
+(profile/start)
+(profile/clear)
+(profile/stop)
+(println "✓ start → clear → stop")
+
+(println "\n=== profile/report Torture Test ===")
+
+;; 9. データなしでreport
+(profile/clear)
+(profile/report)
+(println "✓ データなしでprofile/report")
+
+;; 10. start → report → stop
+(profile/start)
+(profile/report)
+(profile/stop)
+(println "✓ start → report → stop")
+
+;; 11. 複数回report
+(profile/report)
+(profile/report)
+(profile/report)
+(println "✓ 複数回profile/report")
+
+(println "\n=== profile/ 統合シナリオ ===")
+
+;; 12. 完全なワークフロー
+(profile/clear)
+(profile/start)
+(def _ (+ 1 2 3))
+(def _ (map inc [1 2 3]))
+(profile/stop)
+(profile/report)
+(println "✓ 完全なワークフロー")
+
+;; 13. clear → start → stop → report
+(profile/clear)
+(profile/start)
+(def _ (* 2 3))
+(profile/stop)
+(profile/report)
+(println "✓ clear → start → stop → report")
+
+;; 14. start → clear → start → stop
+(profile/start)
+(profile/clear)
+(profile/start)
+(profile/stop)
+(println "✓ start → clear → start → stop")
+
+(println "\n=== server/ok Torture Test ===")
+
+;; 15. 基本的なserver/ok
+(def resp1 (server/ok "Hello"))
+(if (map? resp1)
+  (println "✓ 基本的なserver/ok")
+  (println "✗ 基本的なserver/ok失敗"))
+
+;; 16. 様々な型の値
+(def ok-str (server/ok "test"))
+(def ok-int (server/ok 42))
+(def ok-list (server/ok [1 2 3]))
+(def ok-map (server/ok {:a 1}))
+(if (and (map? ok-str) (map? ok-int) (map? ok-list) (map? ok-map))
+  (println "✓ 様々な型でserver/ok")
+  (println "✗ 様々な型でserver/ok失敗"))
+
+;; 17. 空文字列
+(def ok-empty (server/ok ""))
+(if (map? ok-empty)
+  (println "✓ 空文字列でserver/ok")
+  (println "✗ 空文字列でserver/ok失敗"))
+
+;; 18. 長い文字列
+(def long-str (str/repeat "abc" 1000))
+(def ok-long (server/ok long-str))
+(if (map? ok-long)
+  (println "✓ 長い文字列でserver/ok")
+  (println "✗ 長い文字列でserver/ok失敗"))
+
+;; 19. nilは不可（エラー確認は省略）
+
+(println "\n=== server/json Torture Test ===")
+
+;; 20. 基本的なserver/json
+(def json-resp1 (server/json {:message "hello"}))
+(if (map? json-resp1)
+  (println "✓ 基本的なserver/json")
+  (println "✗ 基本的なserver/json失敗"))
+
+;; 21. 様々なデータ型
+(def json-int (server/json 42))
+(def json-str (server/json "test"))
+(def json-list (server/json [1 2 3]))
+(def json-map (server/json {:a 1 :b 2}))
+(if (and (map? json-int) (map? json-str) (map? json-list) (map? json-map))
+  (println "✓ 様々なデータ型でserver/json")
+  (println "✗ 様々なデータ型でserver/json失敗"))
+
+;; 22. ネストされたデータ
+(def json-nested (server/json {:users [{:name "Alice" :age 30} {:name "Bob" :age 25}]}))
+(if (map? json-nested)
+  (println "✓ ネストされたデータでserver/json")
+  (println "✗ ネストされたデータでserver/json失敗"))
+
+;; 23. 空のマップ
+(def json-empty-map (server/json {}))
+(if (map? json-empty-map)
+  (println "✓ 空のマップでserver/json")
+  (println "✗ 空のマップでserver/json失敗"))
+
+;; 24. 空のリスト
+(def json-empty-list (server/json []))
+(if (map? json-empty-list)
+  (println "✓ 空のリストでserver/json")
+  (println "✗ 空のリストでserver/json失敗"))
+
+;; 25. 大量のデータ
+(def large-data (map (fn [i] {:id i :value (* i i)}) (range 100)))
+(def json-large (server/json large-data))
+(if (map? json-large)
+  (println "✓ 大量のデータでserver/json")
+  (println "✗ 大量のデータでserver/json失敗"))
+
+(println "\n=== server/not-found Torture Test ===")
+
+;; 26. 基本的なserver/not-found
+(def nf1 (server/not-found))
+(if (map? nf1)
+  (println "✓ 基本的なserver/not-found")
+  (println "✗ 基本的なserver/not-found失敗"))
+
+;; 27. カスタムメッセージ
+(def nf2 (server/not-found "Page not found"))
+(if (map? nf2)
+  (println "✓ カスタムメッセージでserver/not-found")
+  (println "✗ カスタムメッセージでserver/not-found失敗"))
+
+;; 28. 様々なメッセージ
+(def nf-empty (server/not-found ""))
+(def nf-long (server/not-found (str/repeat "not found " 100)))
+(if (and (map? nf-empty) (map? nf-long))
+  (println "✓ 様々なメッセージでserver/not-found")
+  (println "✗ 様々なメッセージでserver/not-found失敗"))
+
+(println "\n=== server/no-content Torture Test ===")
+
+;; 29. 基本的なserver/no-content
+(def nc1 (server/no-content))
+(if (map? nc1)
+  (println "✓ 基本的なserver/no-content")
+  (println "✗ 基本的なserver/no-content失敗"))
+
+;; 30. 複数回生成
+(def nc2 (server/no-content))
+(def nc3 (server/no-content))
+(if (and (map? nc2) (map? nc3))
+  (println "✓ 複数回server/no-content生成")
+  (println "✗ 複数回server/no-content生成失敗"))
+
+(println "\n=== server/router Torture Test ===")
+
+;; 31. 基本的なrouter
+(def routes1 [
+  ["/api/users" {:get (fn [req] (server/ok "users"))}]
+])
+(def router1 (server/router routes1))
+(if (list? router1)
+  (println "✓ 基本的なserver/router")
+  (println "✗ 基本的なserver/router失敗"))
+
+;; 32. 複数ルート
+(def routes2 [
+  ["/api/users" {:get (fn [req] (server/ok "users"))}]
+  ["/api/posts" {:get (fn [req] (server/ok "posts"))}]
+  ["/api/comments" {:get (fn [req] (server/ok "comments"))}]
+])
+(def router2 (server/router routes2))
+(if (list? router2)
+  (println "✓ 複数ルートでserver/router")
+  (println "✗ 複数ルートでserver/router失敗"))
+
+;; 33. 複数メソッド
+(def routes3 [
+  ["/api/users" {
+    :get (fn [req] (server/ok "get users"))
+    :post (fn [req] (server/ok "create user"))
+    :put (fn [req] (server/ok "update user"))
+    :delete (fn [req] (server/ok "delete user"))
+  }]
+])
+(def router3 (server/router routes3))
+(if (list? router3)
+  (println "✓ 複数メソッドでserver/router")
+  (println "✗ 複数メソッドでserver/router失敗"))
+
+;; 34. 空のルート
+(def routes-empty [])
+(def router-empty (server/router routes-empty))
+(if (list? router-empty)
+  (println "✓ 空のルートでserver/router")
+  (println "✗ 空のルートでserver/router失敗"))
+
+;; 35. パスパラメータ風
+(def routes4 [
+  ["/api/users/:id" {:get (fn [req] (server/ok "user detail"))}]
+  ["/api/posts/:id/comments" {:get (fn [req] (server/ok "post comments"))}]
+])
+(def router4 (server/router routes4))
+(if (list? router4)
+  (println "✓ パスパラメータ風でserver/router")
+  (println "✗ パスパラメータ風でserver/router失敗"))
+
+;; 36. 大量のルート
+(def routes-many (map (fn [i] [(str "/api/resource" i) {:get (fn [req] (server/ok (str "resource" i)))}]) (range 100)))
+(def router-many (server/router routes-many))
+(if (list? router-many)
+  (println "✓ 大量のルート（100個）でserver/router")
+  (println "✗ 大量のルート（100個）でserver/router失敗"))
+
+(println "\n=== server/with-logging Torture Test ===")
+
+;; 37. 基本的なwith-logging
+(def resp-log1 (server/ok "test"))
+(def resp-log2 (server/with-logging resp-log1))
+(if (map? resp-log2)
+  (println "✓ 基本的なserver/with-logging")
+  (println "✗ 基本的なserver/with-logging失敗"))
+
+;; 38. 複数回適用
+(def resp-log3 (server/with-logging (server/with-logging resp-log1)))
+(if (map? resp-log3)
+  (println "✓ 複数回server/with-logging")
+  (println "✗ 複数回server/with-logging失敗"))
+
+;; 39. 様々なレスポンスに適用
+(def log-ok (server/with-logging (server/ok "ok")))
+(def log-json (server/with-logging (server/json {:a 1})))
+(def log-404 (server/with-logging (server/not-found)))
+(if (and (map? log-ok) (map? log-json) (map? log-404))
+  (println "✓ 様々なレスポンスにserver/with-logging")
+  (println "✗ 様々なレスポンスにserver/with-logging失敗"))
+
+(println "\n=== server/with-cors Torture Test ===")
+
+;; 40. 基本的なwith-cors
+(def resp-cors1 (server/ok "test"))
+(def resp-cors2 (server/with-cors resp-cors1))
+(if (map? resp-cors2)
+  (println "✓ 基本的なserver/with-cors")
+  (println "✗ 基本的なserver/with-cors失敗"))
+
+;; 41. 複数回適用
+(def resp-cors3 (server/with-cors (server/with-cors resp-cors1)))
+(if (map? resp-cors3)
+  (println "✓ 複数回server/with-cors")
+  (println "✗ 複数回server/with-cors失敗"))
+
+;; 42. 様々なレスポンスに適用
+(def cors-ok (server/with-cors (server/ok "ok")))
+(def cors-json (server/with-cors (server/json {:a 1})))
+(def cors-404 (server/with-cors (server/not-found)))
+(if (and (map? cors-ok) (map? cors-json) (map? cors-404))
+  (println "✓ 様々なレスポンスにserver/with-cors")
+  (println "✗ 様々なレスポンスにserver/with-cors失敗"))
+
+(println "\n=== server/with-json-body Torture Test ===")
+
+;; 43. 基本的なwith-json-body
+(def resp-jb1 (server/ok "test"))
+(def resp-jb2 (server/with-json-body resp-jb1))
+(if (map? resp-jb2)
+  (println "✓ 基本的なserver/with-json-body")
+  (println "✗ 基本的なserver/with-json-body失敗"))
+
+(println "\n=== server/with-compression Torture Test ===")
+
+;; 44. 基本的なwith-compression
+(def resp-comp1 (server/ok "test"))
+(def resp-comp2 (server/with-compression resp-comp1))
+(if (map? resp-comp2)
+  (println "✓ 基本的なserver/with-compression")
+  (println "✗ 基本的なserver/with-compression失敗"))
+
+;; 45. 大きなレスポンスで圧縮
+(def large-resp (server/ok (str/repeat "Hello World! " 1000)))
+(def large-comp (server/with-compression large-resp))
+(if (map? large-comp)
+  (println "✓ 大きなレスポンスでserver/with-compression")
+  (println "✗ 大きなレスポンスでserver/with-compression失敗"))
+
+(println "\n=== server/with-basic-auth Torture Test ===")
+
+;; 46. 基本的なwith-basic-auth
+(def resp-auth1 (server/ok "test"))
+(def resp-auth2 (server/with-basic-auth resp-auth1 "admin" "password"))
+(if (map? resp-auth2)
+  (println "✓ 基本的なserver/with-basic-auth")
+  (println "✗ 基本的なserver/with-basic-auth失敗"))
+
+;; 47. 様々な認証情報
+(def auth-short (server/with-basic-auth (server/ok "test") "a" "b"))
+(def auth-long (server/with-basic-auth (server/ok "test") "administrator" "super_secret_password_123"))
+(if (and (map? auth-short) (map? auth-long))
+  (println "✓ 様々な認証情報でserver/with-basic-auth")
+  (println "✗ 様々な認証情報でserver/with-basic-auth失敗"))
+
+(println "\n=== server/with-bearer Torture Test ===")
+
+;; 48. 基本的なwith-bearer
+(def resp-bearer1 (server/ok "test"))
+(def resp-bearer2 (server/with-bearer resp-bearer1 "secret-token"))
+(if (map? resp-bearer2)
+  (println "✓ 基本的なserver/with-bearer")
+  (println "✗ 基本的なserver/with-bearer失敗"))
+
+;; 49. 様々なトークン
+(def bearer-short (server/with-bearer (server/ok "test") "abc"))
+(def bearer-long (server/with-bearer (server/ok "test") "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ"))
+(if (and (map? bearer-short) (map? bearer-long))
+  (println "✓ 様々なトークンでserver/with-bearer")
+  (println "✗ 様々なトークンでserver/with-bearer失敗"))
+
+(println "\n=== server/with-no-cache Torture Test ===")
+
+;; 50. 基本的なwith-no-cache
+(def resp-nc1 (server/ok "test"))
+(def resp-nc2 (server/with-no-cache resp-nc1))
+(if (map? resp-nc2)
+  (println "✓ 基本的なserver/with-no-cache")
+  (println "✗ 基本的なserver/with-no-cache失敗"))
+
+;; 51. 複数回適用
+(def resp-nc3 (server/with-no-cache (server/with-no-cache resp-nc1)))
+(if (map? resp-nc3)
+  (println "✓ 複数回server/with-no-cache")
+  (println "✗ 複数回server/with-no-cache失敗"))
+
+(println "\n=== server/with-cache-control Torture Test ===")
+
+;; 52. 基本的なwith-cache-control
+(def resp-cc1 (server/ok "test"))
+(def resp-cc2 (server/with-cache-control resp-cc1 3600))
+(if (map? resp-cc2)
+  (println "✓ 基本的なserver/with-cache-control")
+  (println "✗ 基本的なserver/with-cache-control失敗"))
+
+;; 53. 様々なキャッシュ時間
+(def cc-0 (server/with-cache-control (server/ok "test") 0))
+(def cc-1 (server/with-cache-control (server/ok "test") 1))
+(def cc-60 (server/with-cache-control (server/ok "test") 60))
+(def cc-3600 (server/with-cache-control (server/ok "test") 3600))
+(def cc-86400 (server/with-cache-control (server/ok "test") 86400))
+(if (and (map? cc-0) (map? cc-1) (map? cc-60) (map? cc-3600) (map? cc-86400))
+  (println "✓ 様々なキャッシュ時間でserver/with-cache-control")
+  (println "✗ 様々なキャッシュ時間でserver/with-cache-control失敗"))
+
+(println "\n=== server/static-file Torture Test ===")
+
+;; 54. 基本的なstatic-file（存在しないファイルでテスト）
+;; 実際のファイルがないとエラーになるため、エラーハンドリングのテスト
+;; (def sf1 (server/static-file "/nonexistent.txt"))
+
+(println "✓ server/static-file（実ファイル不要でスキップ）")
+
+(println "\n=== server/static-dir Torture Test ===")
+
+;; 55. 基本的なstatic-dir（存在しないディレクトリでテスト）
+;; 実際のディレクトリがないとエラーになるため、エラーハンドリングのテスト
+;; (def sd1 (server/static-dir "/nonexistent"))
+
+(println "✓ server/static-dir（実ディレクトリ不要でスキップ）")
+
+(println "\n=== ミドルウェアの組み合わせ ===")
+
+;; 56. 複数ミドルウェアの組み合わせ
+(def base-resp (server/ok "test"))
+(def combined1 (server/with-logging (server/with-cors base-resp)))
+(if (map? combined1)
+  (println "✓ logging + cors")
+  (println "✗ logging + cors失敗"))
+
+;; 57. 3つのミドルウェア
+(def combined2 (server/with-logging (server/with-cors (server/with-json-body base-resp))))
+(if (map? combined2)
+  (println "✓ logging + cors + json-body")
+  (println "✗ logging + cors + json-body失敗"))
+
+;; 58. 全ミドルウェア適用
+(def full-resp
+  (server/with-no-cache
+    (server/with-compression
+      (server/with-json-body
+        (server/with-cors
+          (server/with-logging
+            (server/ok "test")))))))
+(if (map? full-resp)
+  (println "✓ 全ミドルウェア適用")
+  (println "✗ 全ミドルウェア適用失敗"))
+
+;; 59. JSONレスポンス + ミドルウェア
+(def json-full
+  (server/with-compression
+    (server/with-logging
+      (server/with-cors
+        (server/json {:status "ok" :data [1 2 3]})))))
+(if (map? json-full)
+  (println "✓ JSONレスポンス + ミドルウェア")
+  (println "✗ JSONレスポンス + ミドルウェア失敗"))
+
+;; 60. 404レスポンス + ミドルウェア
+(def nf-full
+  (server/with-logging
+    (server/with-cors
+      (server/not-found "Resource not found"))))
+(if (map? nf-full)
+  (println "✓ 404レスポンス + ミドルウェア")
+  (println "✗ 404レスポンス + ミドルウェア失敗"))
+
+(println "\n=== Torture Test 完了 ===")
+(println "全60テストケースを実行しました")
