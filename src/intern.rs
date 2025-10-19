@@ -62,15 +62,46 @@ static SYMBOL_INTERN: LazyLock<DashMap<String, Arc<str>>> = LazyLock::new(|| {
         "apply",
         "partial",
         "comp",
-        // 制御構造
+        // 制御構造・特殊形式
         "if",
         "do",
         "let",
         "fn",
         "def",
         "defn",
+        "defn-",
         "loop",
         "recur",
+        "match",
+        "try",
+        "defer",
+        "module",
+        "export",
+        "use",
+        // 並行処理 (go/名前空間)
+        "go/chan",
+        "go/send!",
+        "go/recv!",
+        "go/try-recv!",
+        "go/close!",
+        "go/run",
+        "go/await",
+        "go/all",
+        "go/race",
+        // 文字列操作 (str/名前空間 - 頻出)
+        "str/split",
+        "str/trim",
+        "str/upper",
+        "str/lower",
+        "str/replace",
+        "str/contains?",
+        "str/starts-with?",
+        "str/ends-with?",
+        // JSON/HTTP (Web開発)
+        "json/parse",
+        "json/stringify",
+        "http/get",
+        "http/post",
     ] {
         map.insert(s.to_string(), Arc::from(s));
     }
