@@ -1,0 +1,211 @@
+; json_torture_test.qi
+; JSON関数（3個）の torture test
+;
+; json/parse, json/stringify, json/pretty
+
+(println "========================================")
+(println "JSON関数 Torture Test 開始")
+(println "========================================")
+
+; ========================================
+; Section 1: json/parse
+; ========================================
+
+(println "\n--- Section 1: json/parse ---")
+
+; 1.1 基本動作
+(println "\n[1.1] json/parse - 基本動作")
+(def parse-basic-pass
+  (let [result (json/parse "{\"name\":\"test\",\"value\":42}")
+        data (get result :ok)]
+    (and
+      (map? data)
+      (= (get data :name) "test")
+      (= (get data :value) 42))))
+
+(if parse-basic-pass
+  (println "✓ json/parseの基本動作は正しく動作した")
+  (println "✗ json/parseの基本動作に問題がある"))
+
+; 1.2 配列のパース
+(println "\n[1.2] json/parse - 配列")
+(def parse-array-pass
+  (let [result (json/parse "[1,2,3,4,5]")
+        data (get result :ok)]
+    (and
+      (coll? data)
+      (= (count data) 5)
+      (= (first data) 1))))
+
+(if parse-array-pass
+  (println "✓ json/parseの配列パースは正しく動作した")
+  (println "✗ json/parseの配列パースに問題がある"))
+
+; 1.3 ネストされた構造
+(println "\n[1.3] json/parse - ネスト")
+(def parse-nested-pass
+  (let [json "{\"user\":{\"name\":\"alice\",\"age\":30}}"
+        result (json/parse json)
+        data (get result :ok)
+        user (get data :user)]
+    (and
+      (map? user)
+      (= (get user :name) "alice")
+      (= (get user :age) 30))))
+
+(if parse-nested-pass
+  (println "✓ json/parseのネスト構造は正しく動作した")
+  (println "✗ json/parseのネスト構造に問題がある"))
+
+; ========================================
+; Section 2: json/stringify
+; ========================================
+
+(println "\n--- Section 2: json/stringify ---")
+
+; 2.1 基本動作
+(println "\n[2.1] json/stringify - 基本動作")
+(def stringify-basic-pass
+  (let [data {:name "test" :value 42}
+        result (json/stringify data)
+        json-str (get result :ok)]
+    (and
+      (string? json-str)
+      (> (count json-str) 0))))
+
+(if stringify-basic-pass
+  (println "✓ json/stringifyの基本動作は正しく動作した")
+  (println "✗ json/stringifyの基本動作に問題がある"))
+
+; 2.2 配列の文字列化
+(println "\n[2.2] json/stringify - 配列")
+(def stringify-array-pass
+  (let [data [1 2 3 4 5]
+        result (json/stringify data)
+        json-str (get result :ok)]
+    (and
+      (string? json-str)
+      (str/starts-with? json-str "["))))
+
+(if stringify-array-pass
+  (println "✓ json/stringifyの配列文字列化は正しく動作した")
+  (println "✗ json/stringifyの配列文字列化に問題がある"))
+
+; 2.3 往復変換
+(println "\n[2.3] json/stringify - 往復変換")
+(def stringify-roundtrip-pass
+  (let [original {:name "test" :count 100}
+        str-result (json/stringify original)
+        json-str (get str-result :ok)
+        parse-result (json/parse json-str)
+        parsed (get parse-result :ok)]
+    (and
+      (= (get parsed :name) "test")
+      (= (get parsed :count) 100))))
+
+(if stringify-roundtrip-pass
+  (println "✓ json/stringifyの往復変換は正しく動作した")
+  (println "✗ json/stringifyの往復変換に問題がある"))
+
+; ========================================
+; Section 3: json/pretty
+; ========================================
+
+(println "\n--- Section 3: json/pretty ---")
+
+; 3.1 基本動作
+(println "\n[3.1] json/pretty - 基本動作")
+(def pretty-basic-pass
+  (let [data {:name "test" :value 42}
+        result (json/pretty data)
+        json-str (get result :ok)]
+    (and
+      (string? json-str)
+      (> (count json-str) 0))))
+
+(if pretty-basic-pass
+  (println "✓ json/prettyの基本動作は正しく動作した")
+  (println "✗ json/prettyの基本動作に問題がある"))
+
+; 3.2 インデント確認
+(println "\n[3.2] json/pretty - インデント")
+(def pretty-indent-pass
+  (let [data {:name "test" :nested {:key "value"}}
+        result (json/pretty data)
+        json-str (get result :ok)]
+    (and
+      (string? json-str)
+      (str/contains? json-str "\n"))))
+
+(if pretty-indent-pass
+  (println "✓ json/prettyのインデントは正しく動作した")
+  (println "✗ json/prettyのインデントに問題がある"))
+
+; ========================================
+; Section 4: 統合テスト
+; ========================================
+
+(println "\n--- Section 4: 統合テスト ---")
+
+; 4.1 大量データ
+(println "\n[4.1] 大量データの処理")
+(def bulk-pass
+  (let [data (map (fn [i] {:id i :name (str "item" i)}) (range 0 100))
+        str-result (json/stringify data)
+        json-str (get str-result :ok)
+        parse-result (json/parse json-str)
+        parsed (get parse-result :ok)]
+    (and
+      (string? json-str)
+      (coll? parsed)
+      (= (count parsed) 100))))
+
+(if bulk-pass
+  (println "✓ 大量データの処理は正しく動作した")
+  (println "✗ 大量データの処理に問題がある"))
+
+; 4.2 複雑なネスト構造
+(println "\n[4.2] 複雑なネスト構造")
+(def complex-nest-pass
+  (let [data {:users [{:name "alice" :roles ["admin" "user"]}
+                      {:name "bob" :roles ["user"]}]
+              :config {:debug true :timeout 30}}
+        str-result (json/stringify data)
+        json-str (get str-result :ok)
+        parse-result (json/parse json-str)
+        parsed (get parse-result :ok)]
+    (map? parsed)))
+
+(if complex-nest-pass
+  (println "✓ 複雑なネスト構造は正しく動作した")
+  (println "✗ 複雑なネスト構造に問題がある"))
+
+; 4.3 stringifyとprettyの一貫性
+(println "\n[4.3] stringifyとprettyの一貫性")
+(def consistency-pass
+  (let [data {:a 1 :b 2}
+        str-result1 (json/stringify data)
+        str1 (get str-result1 :ok)
+        str-result2 (json/pretty data)
+        str2 (get str-result2 :ok)
+        parse-result1 (json/parse str1)
+        p1 (get parse-result1 :ok)
+        parse-result2 (json/parse str2)
+        p2 (get parse-result2 :ok)]
+    (and
+      (= (get p1 :a) (get p2 :a))
+      (= (get p1 :b) (get p2 :b)))))
+
+(if consistency-pass
+  (println "✓ stringifyとprettyの一貫性は正しく動作した")
+  (println "✗ stringifyとprettyの一貫性に問題がある"))
+
+; ========================================
+; 最終結果
+; ========================================
+
+(println "\n========================================")
+(println "JSON関数 Torture Test 完了")
+(println "========================================")
+(println "\n全セクションが実行されました。")
+(println "各セクションのチェックマーク (✓/✗) を確認してください。")
