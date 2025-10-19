@@ -369,7 +369,7 @@ fn http_request(
 
             Ok(Value::Map(
                 [(
-                    "ok".to_string(),
+                    ":ok".to_string(),
                     Value::Map(
                         [
                             ("status".to_string(), Value::Integer(status)),
@@ -395,7 +395,7 @@ fn http_request(
 
             Ok(Value::Map(
                 [(
-                    "error".to_string(),
+                    ":error".to_string(),
                     Value::Map(
                         [
                             ("type".to_string(), Value::String(error_type.to_string())),

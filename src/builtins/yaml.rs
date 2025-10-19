@@ -29,13 +29,13 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
     match serde_yaml::from_str::<serde_yaml::Value>(yaml_str) {
         Ok(yaml) => Ok(Value::Map(
-            [("ok".to_string(), yaml_to_value(yaml))]
+            [(":ok".to_string(), yaml_to_value(yaml))]
                 .into_iter()
                 .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
-                "error".to_string(),
+                ":error".to_string(),
                 Value::String(format!("YAMLパースエラー: {}", e)),
             )]
             .into_iter()
@@ -59,11 +59,11 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [("ok".to_string(), Value::String(s))].into_iter().collect(),
+            [(":ok".to_string(), Value::String(s))].into_iter().collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
-                "error".to_string(),
+                ":error".to_string(),
                 Value::String(format!("YAML変換エラー: {}", e)),
             )]
             .into_iter()
@@ -116,7 +116,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
                     serde_yaml::Value::Bool(b) => b.to_string(),
                     _ => continue, // その他のキーはスキップ
                 };
-                map.insert(key, yaml_to_value(v));
+                map.insert(format!("\"{}\"", key), yaml_to_value(v));
             }
             Value::Map(map)
         }
@@ -152,7 +152,18 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Map(m) => {
             let mut mapping = serde_yaml::Mapping::new();
             for (k, v) in m.iter() {
-                mapping.insert(serde_yaml::Value::String(k.clone()), value_to_yaml(v));
+                // Qiのマップキー形式からYAMLキーに変換
+                let yaml_key = if k.starts_with(':') {
+                    // キーワードキー ":name" → "name"
+                    k[1..].to_string()
+                } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
+                    // 文字列キー "\"test\"" → "test"
+                    k[1..k.len()-1].to_string()
+                } else {
+                    // その他はそのまま
+                    k.clone()
+                };
+                mapping.insert(serde_yaml::Value::String(yaml_key), value_to_yaml(v));
             }
             serde_yaml::Value::Mapping(mapping)
         }
