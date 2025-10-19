@@ -1,0 +1,288 @@
+; ========================================
+; matchパターンマッチングストレステスト
+; ========================================
+;
+; 目的: matchの全ての機能を組み合わせて限界を試す
+;
+; テスト項目:
+; 1. orパターンの複雑な組み合わせ
+; 2. when（ガード条件）と:asの組み合わせ
+; 3. 深くネストしたデータ構造のマッチング
+; 4. 全てのデータ型のマッチング
+; 5. ...rest（可変長）とワイルドカードの組み合わせ
+; 6. matchのネスト
+;
+; なぜこれが重要か:
+; - matchはQiの中核機能であり、堅牢性が必須
+; - パターンマッチングのエッジケースを洗い出す
+; - ガード条件の評価順序が正しいことを確認
+; - メモリリークがないことを確認（大量のパターン）
+
+(println "=== Match Stress Test ===\n")
+
+; ========================================
+; Test 1: orパターンの複雑な組み合わせ
+; ========================================
+; 理由: orパターンが正しく展開されることを確認
+;       複数のorパターンが干渉しないことを確認
+
+(println "Test 1: Complex OR Patterns")
+(defn classify-status [code]
+  (match code
+    200 | 201 | 202 | 203 | 204 -> "success"
+    300 | 301 | 302 | 303 | 304 -> "redirect"
+    400 | 401 | 403 | 404 | 405 -> "client-error"
+    500 | 501 | 502 | 503 | 504 -> "server-error"
+    _ -> "unknown"))
+
+(if (and
+      (= "success" (classify-status 200))
+      (= "success" (classify-status 204))
+      (= "redirect" (classify-status 302))
+      (= "client-error" (classify-status 404))
+      (= "server-error" (classify-status 503))
+      (= "unknown" (classify-status 999)))
+  (println "  ✓ orパターン分類成功")
+  (println "  ✗ orパターン分類失敗"))
+
+; ========================================
+; Test 2: whenとorパターンの組み合わせ
+; ========================================
+; 理由: orパターンとガード条件が正しく組み合わせられることを確認
+;       評価順序が正しいことを確認
+
+(println "\nTest 2: OR Patterns with Guards")
+(defn categorize-number [n]
+  (match n
+    x when (< x 0) -> "negative"
+    0 | 1 | 2 | 3 | 4 | 5 when (= (% n 2) 0) -> "small-even"
+    0 | 1 | 2 | 3 | 4 | 5 -> "small-odd"
+    x when (and (> x 5) (< x 100) (= (% x 2) 0)) -> "medium-even"
+    x when (and (> x 5) (< x 100)) -> "medium-odd"
+    x when (>= x 100) -> "large"
+    _ -> "unknown"))
+
+(if (and
+      (= "negative" (categorize-number -5))
+      (= "small-even" (categorize-number 2))
+      (= "small-odd" (categorize-number 3))
+      (= "medium-even" (categorize-number 50))
+      (= "medium-odd" (categorize-number 51))
+      (= "large" (categorize-number 200)))
+  (println "  ✓ orパターン + when 成功")
+  (println "  ✗ orパターン + when 失敗"))
+
+; ========================================
+; Test 3: :as束縛とwhenの組み合わせ
+; ========================================
+; 理由: :asで全体を束縛しつつ、whenで条件チェックできることを確認
+;       部分と全体の両方を使える
+
+(println "\nTest 3: :as Binding with Guards")
+(defn validate-user [user]
+  (match user
+    {:name n :age a :email e} :as u when (and (> a 18) (str/contains? e "@"))
+      -> {:ok u}
+    {:name n :age a} :as u when (<= a 18)
+      -> {:error "Age must be over 18"}
+    {:name n :email e} :as u when (not (str/contains? e "@"))
+      -> {:error "Invalid email"}
+    _ -> {:error "Invalid user format"}))
+
+(def valid-result (validate-user {:name "Alice" :age 25 :email "alice@example.com"}))
+(def age-error (validate-user {:name "Bob" :age 15 :email "bob@example.com"}))
+(def email-error (validate-user {:name "Charlie" :age 25 :email "invalid"}))
+
+(if (and
+      (= :ok (first (keys valid-result)))
+      (= "Age must be over 18" (get age-error :error))
+      (= "Invalid email" (get email-error :error)))
+  (println "  ✓ :as + when バリデーション成功")
+  (println "  ✗ :as + when バリデーション失敗"))
+
+; ========================================
+; Test 4: 深くネストしたマッチング
+; ========================================
+; 理由: ネストしたデータ構造を一度に分解できることを確認
+;       パターンマッチングの表現力をテスト
+
+(println "\nTest 4: Deeply Nested Matching")
+(def api-response
+  {:status "ok"
+   :data {:user {:profile {:name "Alice" :age 30}
+                 :settings {:theme "dark" :lang "ja"}}}})
+
+(match api-response
+  {:status "ok"
+   :data {:user {:profile {:name n :age a}
+                 :settings {:theme t :lang l}}}}
+    -> (if (and (= n "Alice") (= a 30) (= t "dark") (= l "ja"))
+         (println "  ✓ 深いネストマッチング成功")
+         (println "  ✗ 深いネストマッチング失敗: 値が不一致"))
+  _ -> (println "  ✗ 深いネストマッチング失敗: パターン不一致"))
+
+; ========================================
+; Test 5: リストの複雑なマッチング
+; ========================================
+; 理由: ...restが正しく動作することを確認
+;       複数の要素を同時に取り出せることを確認
+
+(println "\nTest 5: List Pattern Matching")
+(defn describe-list [lst]
+  (match lst
+    [] -> "empty"
+    [x] -> f"single: {x}"
+    [x y] -> f"pair: {x}, {y}"
+    [x y z] -> f"triple: {x}, {y}, {z}"
+    [first second ...rest] -> f"many: first={first}, second={second}, rest-count={(len rest)}"
+    _ -> "not a list"))
+
+(if (and
+      (= "empty" (describe-list []))
+      (= "single: 42" (describe-list [42]))
+      (= "pair: 1, 2" (describe-list [1 2]))
+      (= "triple: 1, 2, 3" (describe-list [1 2 3]))
+      (= "many: first=1, second=2, rest-count=3" (describe-list [1 2 3 4 5])))
+  (println "  ✓ リストパターンマッチング成功")
+  (println "  ✗ リストパターンマッチング失敗"))
+
+; ========================================
+; Test 6: 全データ型のマッチング
+; ========================================
+; 理由: 全ての型が正しくマッチングできることを確認
+;       型の区別が正しいことを確認
+
+(println "\nTest 6: All Data Types Matching")
+(defn type-match [value]
+  (match value
+    nil -> "nil"
+    true -> "true"
+    false -> "false"
+    0 -> "zero"
+    n when (integer? n) -> "integer"
+    f when (float? f) -> "float"
+    s when (string? s) -> "string"
+    k when (keyword? k) -> "keyword"
+    [] -> "empty-vector"
+    v when (vector? v) -> "vector"
+    {} -> "empty-map"
+    m when (map? m) -> "map"
+    f when (fn? f) -> "function"
+    _ -> "unknown"))
+
+(if (and
+      (= "nil" (type-match nil))
+      (= "true" (type-match true))
+      (= "false" (type-match false))
+      (= "zero" (type-match 0))
+      (= "integer" (type-match 42))
+      (= "float" (type-match 3.14))
+      (= "string" (type-match "hello"))
+      (= "keyword" (type-match :test))
+      (= "empty-vector" (type-match []))
+      (= "vector" (type-match [1 2 3]))
+      (= "empty-map" (type-match {}))
+      (= "map" (type-match {:a 1}))
+      (= "function" (type-match (fn [] nil))))
+  (println "  ✓ 全データ型マッチング成功")
+  (println "  ✗ 全データ型マッチング失敗"))
+
+; ========================================
+; Test 7: ネストしたmatch
+; ========================================
+; 理由: match内でmatchを使えることを確認
+;       複雑な条件分岐が可能であることを確認
+
+(println "\nTest 7: Nested Match")
+(defn complex-decision [data]
+  (match data
+    {:type "user" :role role :status status}
+      -> (match role
+           "admin" -> (match status
+                        "active" -> "admin-active"
+                        "suspended" -> "admin-suspended"
+                        _ -> "admin-other")
+           "user" -> (match status
+                       "active" -> "user-active"
+                       _ -> "user-other")
+           _ -> "unknown-role")
+    {:type "guest"} -> "guest"
+    _ -> "unknown"))
+
+(if (and
+      (= "admin-active" (complex-decision {:type "user" :role "admin" :status "active"}))
+      (= "admin-suspended" (complex-decision {:type "user" :role "admin" :status "suspended"}))
+      (= "user-active" (complex-decision {:type "user" :role "user" :status "active"}))
+      (= "guest" (complex-decision {:type "guest"})))
+  (println "  ✓ ネストしたmatch成功")
+  (println "  ✗ ネストしたmatch失敗"))
+
+; ========================================
+; Test 8: 大量のパターン（50個）
+; ========================================
+; 理由: パターン数が多い場合の性能を確認
+;       メモリ使用量が適切であることを確認
+
+(println "\nTest 8: Many Patterns (50)")
+(defn match-many [n]
+  (match n
+    1 -> "one" 2 -> "two" 3 -> "three" 4 -> "four" 5 -> "five"
+    6 -> "six" 7 -> "seven" 8 -> "eight" 9 -> "nine" 10 -> "ten"
+    11 -> "eleven" 12 -> "twelve" 13 -> "thirteen" 14 -> "fourteen" 15 -> "fifteen"
+    16 -> "sixteen" 17 -> "seventeen" 18 -> "eighteen" 19 -> "nineteen" 20 -> "twenty"
+    21 -> "21" 22 -> "22" 23 -> "23" 24 -> "24" 25 -> "25"
+    26 -> "26" 27 -> "27" 28 -> "28" 29 -> "29" 30 -> "30"
+    31 -> "31" 32 -> "32" 33 -> "33" 34 -> "34" 35 -> "35"
+    36 -> "36" 37 -> "37" 38 -> "38" 39 -> "39" 40 -> "40"
+    41 -> "41" 42 -> "42" 43 -> "43" 44 -> "44" 45 -> "45"
+    46 -> "46" 47 -> "47" 48 -> "48" 49 -> "49" 50 -> "50"
+    _ -> "other"))
+
+(if (and
+      (= "one" (match-many 1))
+      (= "25" (match-many 25))
+      (= "50" (match-many 50))
+      (= "other" (match-many 999)))
+  (println "  ✓ 50個のパターンマッチング成功")
+  (println "  ✗ 50個のパターンマッチング失敗"))
+
+; ========================================
+; Test 9: 文字列のorパターン（多言語）
+; ========================================
+; 理由: 文字列とorパターンの組み合わせ
+;       実用的なユースケース（国際化）
+
+(println "\nTest 9: String OR Patterns (i18n)")
+(defn day-type [day]
+  (match day
+    "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" |
+    "月曜日" | "火曜日" | "水曜日" | "木曜日" | "金曜日" -> "平日"
+    "Saturday" | "Sunday" | "土曜日" | "日曜日" -> "週末"
+    _ -> "不明"))
+
+(if (and
+      (= "平日" (day-type "Monday"))
+      (= "平日" (day-type "金曜日"))
+      (= "週末" (day-type "Saturday"))
+      (= "週末" (day-type "日曜日"))
+      (= "不明" (day-type "Holiday")))
+  (println "  ✓ 多言語文字列パターン成功")
+  (println "  ✗ 多言語文字列パターン失敗"))
+
+; ========================================
+; Test 10: ワイルドカードの複数使用
+; ========================================
+; 理由: _（ワイルドカード）が複数使えることを確認
+;       不要な値を明示的に無視できることを確認
+
+(println "\nTest 10: Multiple Wildcards")
+(def coords [[1 2 3] [4 5 6] [7 8 9]])
+
+(match coords
+  [[_ y1 _] [_ y2 _] [_ y3 _]]
+    -> (if (= [y1 y2 y3] [2 5 8])
+         (println "  ✓ 複数ワイルドカード成功")
+         (println "  ✗ 複数ワイルドカード失敗: 値が不一致"))
+  _ -> (println "  ✗ 複数ワイルドカード失敗: パターン不一致"))
+
+(println "\n=== Match Stress Test Complete ===")

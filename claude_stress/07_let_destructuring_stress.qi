@@ -1,0 +1,338 @@
+; ========================================
+; let分解束縛ストレステスト
+; ========================================
+;
+; 目的: letの分解束縛のあらゆるパターンをテスト
+;
+; テスト項目:
+; 1. ベクター分解の複雑なパターン
+; 2. マップ分解の複雑なパターン
+; 3. ネストした分解の複雑な組み合わせ
+; 4. :asバインディングの複雑なケース
+; 5. ...restと& restの様々なパターン
+; 6. 実世界で使いそうな複雑な分解
+;
+; なぜこれが重要か:
+; - letはQiで最も頻繁に使われる構文の一つ
+; - 複雑な分解パターンでバグが出やすい
+; - ユーザーが書く実際のコードを想定
+
+(println "=== Let Destructuring Stress Test ===\n")
+
+; ========================================
+; Test 1: 多重ネストしたベクター分解
+; ========================================
+; 理由: [[a b] [c d]] のような入れ子を深くテスト
+;       実世界では座標、行列、ペアのリストなどで使う
+
+(println "Test 1: Deeply Nested Vector Destructuring")
+(def matrix [[[1 2] [3 4]] [[5 6] [7 8]]])
+
+(let [[[[a b] [c d]] [[e f] [g h]]] matrix]
+  (if (and (= a 1) (= b 2) (= c 3) (= d 4)
+           (= e 5) (= f 6) (= g 7) (= h 8))
+    (println "  ✓ 4階層ベクター分解成功")
+    (println "  ✗ 4階層ベクター分解失敗")))
+
+; ベクター分解とrest
+(def data [1 2 [3 4 5] 6 7])
+(let [[a b [x y z] & rest] data]
+  (if (and (= a 1) (= b 2) (= x 3) (= y 4) (= z 5)
+           (= rest '(6 7)))
+    (println "  ✓ ネストベクター+rest成功")
+    (println "  ✗ ネストベクター+rest失敗")))
+
+; ========================================
+; Test 2: 複雑なマップ分解
+; ========================================
+; 理由: 実世界のAPIレスポンス、設定オブジェクトなどを想定
+
+(println "\nTest 2: Complex Map Destructuring")
+
+; ネストしたマップの分解
+(def config
+  {:server {:host "localhost"
+            :port 8080
+            :ssl {:enabled true
+                  :cert "/path/to/cert"}}
+   :database {:type "postgres"
+              :connection {:host "db.example.com"
+                          :port 5432}}})
+
+(let [{:server {:host h
+                :port p
+                :ssl {:enabled ssl-enabled
+                      :cert cert-path}}
+       :database {:type db-type
+                  :connection {:host db-host
+                              :port db-port}}} config]
+  (if (and (= h "localhost") (= p 8080) (= ssl-enabled true)
+           (= cert-path "/path/to/cert")
+           (= db-type "postgres") (= db-host "db.example.com") (= db-port 5432))
+    (println "  ✓ 深いマップ分解成功")
+    (println "  ✗ 深いマップ分解失敗")))
+
+; ========================================
+; Test 3: マップとベクターの混在分解
+; ========================================
+; 理由: 実世界ではJSON APIレスポンスなどで頻出
+
+(println "\nTest 3: Mixed Map and Vector Destructuring")
+
+(def api-response
+  {:status 200
+   :data [{:id 1 :name "Alice" :tags ["admin" "user"]}
+          {:id 2 :name "Bob" :tags ["user"]}]
+   :meta {:total 2 :page 1}})
+
+(let [{:status status
+       :data [{:id id1 :name name1 :tags [tag1 tag2]}
+              {:id id2 :name name2 :tags tags2}]
+       :meta {:total total :page page}} api-response]
+  (if (and (= status 200)
+           (= id1 1) (= name1 "Alice") (= tag1 "admin") (= tag2 "user")
+           (= id2 2) (= name2 "Bob") (= tags2 ["user"])
+           (= total 2) (= page 1))
+    (println "  ✓ マップ・ベクター混在分解成功")
+    (println "  ✗ マップ・ベクター混在分解失敗")))
+
+; ========================================
+; Test 4: :asバインディングの複雑なケース
+; ========================================
+; 理由: 元のデータも残しつつ分解したい場合に使う
+;       実装でバグりやすい
+
+(println "\nTest 4: Complex :as Binding")
+
+(def user-data {:name "Alice" :age 30 :email "alice@example.com"})
+
+(let [{:name n :age a :as original} user-data]
+  (if (and (= n "Alice") (= a 30)
+           (= original user-data))
+    (println "  ✓ :asバインディング成功")
+    (println "  ✗ :asバインディング失敗")))
+
+; ネストした:as
+(def nested {:outer {:inner {:value 42}}})
+
+(let [{:outer {:inner {:value v} :as inner-map} :as outer-map} nested]
+  (if (and (= v 42)
+           (= inner-map {:value 42})
+           (= outer-map {:inner {:value 42}}))
+    (println "  ✓ ネストした:as成功")
+    (println "  ✗ ネストした:as失敗")))
+
+; ========================================
+; Test 5: ...restと& restの様々なパターン
+; ========================================
+; 理由: 可変長引数のパターンは実装が複雑
+
+(println "\nTest 5: Rest Patterns")
+
+; 先頭を取り出してrest
+(let [[first & rest] [1 2 3 4 5]]
+  (if (and (= first 1) (= rest '(2 3 4 5)))
+    (println "  ✓ 先頭+rest成功")
+    (println "  ✗ 先頭+rest失敗")))
+
+; 先頭2つを取り出してrest
+(let [[a b & rest] [1 2 3 4 5]]
+  (if (and (= a 1) (= b 2) (= rest '(3 4 5)))
+    (println "  ✓ 2要素+rest成功")
+    (println "  ✗ 2要素+rest失敗")))
+
+; 空のrest
+(let [[a b & rest] [1 2]]
+  (if (and (= a 1) (= b 2) (= rest '()))
+    (println "  ✓ 空のrest成功")
+    (println "  ✗ 空のrest失敗")))
+
+; ...restパターン
+(let [[first ...rest] [1 2 3 4 5]]
+  (if (and (= first 1) (= rest '(2 3 4 5)))
+    (println "  ✓ ...restパターン成功")
+    (println "  ✗ ...restパターン失敗")))
+
+; ========================================
+; Test 6: letの中でletを使う複雑なスコープ
+; ========================================
+; 理由: スコープ管理が正しいことを確認
+;       シャドーイングのバグを検出
+
+(println "\nTest 6: Nested let with Complex Scoping")
+
+(let [{:a a :b b} {:a 1 :b 2}]
+  (let [{:x x :y y} {:x a :y b}]  ; 外側のa, bを使う
+    (let [[a b] [x y]]  ; シャドーイング
+      (if (and (= a 1) (= b 2))  ; 新しいa, b
+        (println "  ✓ ネストしたletのスコープ成功")
+        (println "  ✗ ネストしたletのスコープ失敗")))))
+
+; ========================================
+; Test 7: 実世界で使いそうなHTTPリクエスト処理
+; ========================================
+; 理由: 実際のWebアプリケーションでよく見るパターン
+
+(println "\nTest 7: Real-world HTTP Request Handling")
+
+(def request
+  {:method "POST"
+   :path "/api/users"
+   :headers {:content-type "application/json"
+             :authorization "Bearer token123"}
+   :body {:name "Alice"
+          :email "alice@example.com"
+          :preferences {:theme "dark"
+                       :notifications true}}})
+
+(let [{:method method
+       :path path
+       :headers {:content-type content-type
+                 :authorization auth}
+       :body {:name name
+              :email email
+              :preferences {:theme theme
+                           :notifications notif}}} request]
+  (if (and (= method "POST")
+           (= path "/api/users")
+           (= content-type "application/json")
+           (= auth "Bearer token123")
+           (= name "Alice")
+           (= email "alice@example.com")
+           (= theme "dark")
+           (= notif true))
+    (println "  ✓ HTTPリクエスト処理成功")
+    (println "  ✗ HTTPリクエスト処理失敗")))
+
+; ========================================
+; Test 8: 関数引数の分解パターン
+; ========================================
+; 理由: defnで分解束縛を使うパターンをテスト
+
+(println "\nTest 8: Function Parameter Destructuring")
+
+; ベクター引数の分解
+(defn process-point [[x y]]
+  (+ x y))
+
+(if (= 5 (process-point [2 3]))
+  (println "  ✓ ベクター引数分解成功")
+  (println "  ✗ ベクター引数分解失敗"))
+
+; マップ引数の分解
+(defn greet-user [{:name name :age age}]
+  (str "Hello " name ", you are " age " years old"))
+
+(if (= "Hello Alice, you are 30 years old"
+       (greet-user {:name "Alice" :age 30}))
+  (println "  ✓ マップ引数分解成功")
+  (println "  ✗ マップ引数分解失敗"))
+
+; :asを使った引数分解
+(defn log-user [{:name name :as user}]
+  {:logged-name name :original user})
+
+(def result (log-user {:name "Bob" :age 25}))
+(if (and (= "Bob" (:logged-name result))
+         (= {:name "Bob" :age 25} (:original result)))
+  (println "  ✓ :as引数分解成功")
+  (println "  ✗ :as引数分解失敗"))
+
+; ========================================
+; Test 9: 複数の分解を連続して行う
+; ========================================
+; 理由: 実際のコードでは複数のletが連続することが多い
+
+(println "\nTest 9: Sequential Destructuring")
+
+(def data
+  {:users [{:id 1 :profile {:name "Alice" :scores [95 87 92]}}
+           {:id 2 :profile {:name "Bob" :scores [78 85 90]}}]})
+
+(let [{:users users} data
+      first-user (first users)
+      {:id id :profile profile} first-user
+      {:name name :scores scores} profile
+      [s1 s2 s3] scores]
+  (if (and (= id 1) (= name "Alice")
+           (= s1 95) (= s2 87) (= s3 92))
+    (println "  ✓ 連続分解成功")
+    (println "  ✗ 連続分解失敗")))
+
+; ========================================
+; Test 10: nilや空の値の分解
+; ========================================
+; 理由: エッジケースでエラーにならないことを確認
+
+(println "\nTest 10: Destructuring with nil and Empty Values")
+
+; nilを含むベクター
+(def with-nil [1 nil 3])
+(let [[a b c] with-nil]
+  (if (and (= a 1) (= b nil) (= c 3))
+    (println "  ✓ nil含むベクター分解成功")
+    (println "  ✗ nil含むベクター分解失敗")))
+
+; 存在しないキー
+(def partial-map {:a 1})
+(let [{:a a} partial-map
+      b (get partial-map :b)
+      c (get partial-map :c)]
+  (if (and (= a 1) (= b nil) (= c nil))
+    (println "  ✓ 存在しないキー分解成功")
+    (println "  ✗ 存在しないキー分解失敗")))
+
+; ========================================
+; Test 11: 同じ変数名を異なるスコープで使う
+; ========================================
+; 理由: シャドーイングが正しく動作することを確認
+
+(println "\nTest 11: Variable Shadowing")
+
+(def x 100)
+(let [x 1]
+  (let [x 2]
+    (let [x 3]
+      (if (= x 3)
+        (println "  ✓ 変数シャドーイング成功")
+        (println "  ✗ 変数シャドーイング失敗")))))
+
+; 分解でのシャドーイング
+(def data {:x 1 :y 2})
+(let [x 100]  ; xを定義
+  (let [{:x x :y y} data]  ; xをシャドーイング
+    (if (and (= x 1) (= y 2))
+      (println "  ✓ 分解でのシャドーイング成功")
+      (println "  ✗ 分解でのシャドーイング失敗"))))
+
+; ========================================
+; Test 12: 関数を返す関数での分解
+; ========================================
+; 理由: クロージャと分解の組み合わせをテスト
+
+(println "\nTest 12: Destructuring in Closures")
+
+(defn make-adder [{:base base}]
+  (fn [x] (+ base x)))
+
+(def add-10 (make-adder {:base 10}))
+(if (= 15 (add-10 5))
+  (println "  ✓ クロージャでの分解成功")
+  (println "  ✗ クロージャでの分解失敗"))
+
+; ========================================
+; Test 13: 文字列キーを持つマップの分解
+; ========================================
+; 理由: キーワード以外のキーもサポートされるべき
+
+(println "\nTest 13: Map with String Keys")
+
+(def str-map {"one" 1 "two" 2 "three" 3})
+(let [one (get str-map "one")
+      two (get str-map "two")
+      three (get str-map "three")]
+  (if (and (= one 1) (= two 2) (= three 3))
+    (println "  ✓ 文字列キーマップ成功")
+    (println "  ✗ 文字列キーマップ失敗")))
+
+(println "\n=== Let Destructuring Stress Test Complete ===")

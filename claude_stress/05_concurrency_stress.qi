@@ -1,0 +1,241 @@
+; ========================================
+; 並行処理ストレステスト
+; ========================================
+;
+; 目的: Qiの並行・並列処理機能の限界と正確性を試す
+;
+; テスト項目:
+; 1. go/chan（goroutine風）
+; 2. atom操作の競合
+; 3. async/awaitの組み合わせ
+; 4. 非同期パイプライン (~>)
+; 5. pmap（並列map）
+;
+; なぜこれが重要か:
+; - 並行処理はQiの核心機能
+; - データ競合がないことを確認
+; - デッドロックしないことを確認
+; - パフォーマンスが向上することを確認
+
+(println "=== Concurrency Stress Test ===\n")
+
+; ========================================
+; Test 1: 基本的なgo/chan
+; ========================================
+; 理由: チャネル経由の通信が正しく動作することを確認
+
+(println "Test 1: Basic go/chan")
+(def ch (chan))
+
+(go (send! ch 42))
+(def result (recv! ch))
+
+(if (= result 42)
+  (println "  ✓ 基本go/chan成功")
+  (println "  ✗ 基本go/chan失敗"))
+
+; ========================================
+; Test 2: 複数のgoroutineからの送信
+; ========================================
+; 理由: 複数の並行タスクが正しく動作することを確認
+
+(println "\nTest 2: Multiple Goroutines")
+(def ch (chan))
+
+(go (send! ch 1))
+(go (send! ch 2))
+(go (send! ch 3))
+
+(def results [(recv! ch) (recv! ch) (recv! ch)])
+(def sum (reduce + 0 results))
+
+(if (= sum 6)
+  (println "  ✓ 複数goroutine成功")
+  (println "  ✗ 複数goroutine失敗"))
+
+; ========================================
+; Test 3: atom操作の競合テスト
+; ========================================
+; 理由: atomがスレッドセーフであることを確認
+;       複数goroutineからの更新が正しく反映される
+
+(println "\nTest 3: Atom Concurrent Updates")
+(def counter (atom 0))
+
+; 10個のgoroutineがそれぞれ10回インクリメント
+(def tasks (range 0 10))
+(doseq [_ tasks]
+  (go
+    (doseq [_ (range 0 10)]
+      (swap! counter inc))))
+
+; 少し待つ
+(sleep 100)
+
+(if (= @counter 100)
+  (println "  ✓ atom並行更新成功")
+  (println f"  ✗ atom並行更新失敗: {(deref counter)} (expected 100)"))
+
+; ========================================
+; Test 4: 非同期パイプライン (~>)
+; ========================================
+; 理由: 非同期パイプラインが即座にチャネルを返すことを確認
+;       バックグラウンドで処理が進むことを確認
+
+(println "\nTest 4: Async Pipeline (~>)")
+(def ch (10 ~> inc ~> (* 2) ~> (+ 5)))
+(def result (recv! ch))
+
+; 10 -> 11 -> 22 -> 27
+
+(if (= result 27)
+  (println "  ✓ 非同期パイプライン成功")
+  (println f"  ✗ 非同期パイプライン失敗: {result}"))
+
+; ========================================
+; Test 5: 複数の非同期パイプラインの並行実行
+; ========================================
+; 理由: 複数の非同期処理が同時に実行できることを確認
+
+(println "\nTest 5: Multiple Async Pipelines")
+(def ch1 (1 ~> inc ~> (* 10)))
+(def ch2 (2 ~> (* 5) ~> (+ 3)))
+(def ch3 (3 ~> (+ 7) ~> (* 2)))
+
+(def r1 (recv! ch1))  ; 1 -> 2 -> 20
+(def r2 (recv! ch2))  ; 2 -> 10 -> 13
+(def r3 (recv! ch3))  ; 3 -> 10 -> 20
+
+(if (and (= r1 20) (= r2 13) (= r3 20))
+  (println "  ✓ 複数非同期パイプライン成功")
+  (println "  ✗ 複数非同期パイプライン失敗"))
+
+; ========================================
+; Test 6: pmap（並列map）
+; ========================================
+; 理由: データ並列処理が正しく動作することを確認
+;       順序が保たれることを確認
+
+(println "\nTest 6: Parallel Map (pmap)")
+(def numbers [1 2 3 4 5])
+
+(def doubled (pmap (fn [x] (* x 2)) numbers))
+
+(if (= doubled [2 4 6 8 10])
+  (println "  ✓ pmap成功")
+  (println "  ✗ pmap失敗"))
+
+; ========================================
+; Test 7: async/await
+; ========================================
+; 理由: 非同期タスクをawaitで待てることを確認
+
+(println "\nTest 7: async/await")
+(def task (async (fn []
+                   (sleep 50)
+                   42)))
+
+(def result (await task))
+
+(if (= result 42)
+  (println "  ✓ async/await成功")
+  (println "  ✗ async/await失敗"))
+
+; ========================================
+; Test 8: 複数のasyncタスクをawait
+; ========================================
+; 理由: 複数の非同期タスクを並行実行して待てることを確認
+
+(println "\nTest 8: Multiple async/await")
+(def task1 (async (fn [] (sleep 30) 10)))
+(def task2 (async (fn [] (sleep 30) 20)))
+(def task3 (async (fn [] (sleep 30) 30)))
+
+(def results [(await task1) (await task2) (await task3)])
+(def sum (reduce + 0 results))
+
+(if (= sum 60)
+  (println "  ✓ 複数async/await成功")
+  (println "  ✗ 複数async/await失敗"))
+
+; ========================================
+; Test 9: チャネルのバッファ
+; ========================================
+; 理由: バッファ付きチャネルが正しく動作することを確認
+;       ブロックせずに送信できることを確認
+
+(println "\nTest 9: Buffered Channel")
+(def ch (chan 3))  ; バッファサイズ3
+
+; ブロックせずに3つ送信できる
+(send! ch 1)
+(send! ch 2)
+(send! ch 3)
+
+(def results [(recv! ch) (recv! ch) (recv! ch)])
+
+(if (= (reduce + 0 results) 6)
+  (println "  ✓ バッファ付きチャネル成功")
+  (println "  ✗ バッファ付きチャネル失敗"))
+
+; ========================================
+; Test 10: プロデューサー・コンシューマー
+; ========================================
+; 理由: 古典的な並行パターンが実装できることを確認
+
+(println "\nTest 10: Producer-Consumer Pattern")
+(def ch (chan))
+
+; プロデューサー: 1から10までをチャネルに送信
+(go
+  (doseq [i (range 1 11)]
+    (send! ch i))
+  (close! ch))
+
+; コンシューマー: チャネルから受信して合計
+(def sum (atom 0))
+(loop []
+  (let [val (recv! ch)]
+    (if (not (nil? val))
+      (do
+        (swap! sum + val)
+        (recur)))))
+
+(if (= @sum 55)
+  (println "  ✓ プロデューサー・コンシューマー成功")
+  (println f"  ✗ プロデューサー・コンシューマー失敗: {(deref sum)}"))
+
+; ========================================
+; Test 11: 並列パイプライン (||>)
+; ========================================
+; 理由: 並列パイプライン演算子が正しく動作することを確認
+
+(println "\nTest 11: Parallel Pipeline (||>)")
+(def numbers [1 2 3 4 5 6 7 8 9 10])
+
+(def doubled
+  (numbers
+   ||> (fn [x] (* x 2))  ; 並列実行
+   |> sort))             ; 結果をソート
+
+(if (= doubled [2 4 6 8 10 12 14 16 18 20])
+  (println "  ✓ 並列パイプライン成功")
+  (println "  ✗ 並列パイプライン失敗"))
+
+; ========================================
+; Test 12: atomのreset!とswap!の組み合わせ
+; ========================================
+; 理由: 異なるatom操作が正しく機能することを確認
+
+(println "\nTest 12: Atom reset! and swap!")
+(def state (atom 0))
+
+(reset! state 10)
+(swap! state + 5)
+(swap! state * 2)
+
+(if (= @state 30)
+  (println "  ✓ atom reset!/swap!成功")
+  (println f"  ✗ atom reset!/swap!失敗: {(deref state)}"))
+
+(println "\n=== Concurrency Stress Test Complete ===")

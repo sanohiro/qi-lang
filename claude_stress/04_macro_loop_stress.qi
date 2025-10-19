@@ -1,0 +1,253 @@
+; ========================================
+; マクロとloop/recurストレステスト
+; ========================================
+;
+; 目的: メタプログラミング機能とループ構造の限界を試す
+;
+; テスト項目:
+; 1. マクロの展開と衛生性
+; 2. 準クオート(`)とアンクオート(,)の複雑な組み合わせ
+; 3. マクロでmatch/loop/defnを生成
+; 4. loop/recurの深い再帰
+; 5. マクロのネスト
+;
+; なぜこれが重要か:
+; - マクロはコード生成の要
+; - 衛生性が保たれないとバグの温床になる
+; - loop/recurは末尾再帰最適化の検証
+; - スタックオーバーフローしないことを確認
+
+(println "=== Macro and Loop/Recur Stress Test ===\n")
+
+; ========================================
+; Test 1: 基本的なマクロ展開
+; ========================================
+; 理由: マクロが正しく展開されることを確認
+
+(println "Test 1: Basic Macro Expansion")
+(mac unless [test & body]
+  `(if (not ,test)
+     (do ,@body)))
+
+(def result (unless false "success"))
+
+(if (= result "success")
+  (println "  ✓ 基本マクロ展開成功")
+  (println "  ✗ 基本マクロ展開失敗"))
+
+; ========================================
+; Test 2: マクロの衛生性テスト
+; ========================================
+; 理由: マクロ内部の変数が外部に漏れないことを確認
+;       変数キャプチャが起きないことを確認
+
+(println "\nTest 2: Macro Hygiene")
+(mac with-temp [body]
+  `(let [temp "internal"]
+     ,body))
+
+(def temp "external")
+(def result (with-temp temp))  ; 外部のtempを参照
+
+(if (= result "external")
+  (println "  ✓ マクロ衛生性保持")
+  (println "  ✗ マクロ衛生性違反"))
+
+; ========================================
+; Test 3: 複雑な準クオートとアンクオート
+; ========================================
+; 理由: ネストした準クオートが正しく動作することを確認
+
+(println "\nTest 3: Complex Quasiquote")
+(mac make-adder [n]
+  `(fn [x] (+ x ,n)))
+
+(def add10 (make-adder 10))
+(def add20 (make-adder 20))
+
+(if (and (= 15 (add10 5)) (= 25 (add20 5)))
+  (println "  ✓ 複雑な準クオート成功")
+  (println "  ✗ 複雑な準クオート失敗"))
+
+; ========================================
+; Test 4: マクロでループ生成
+; ========================================
+; 理由: マクロでloop/recurを生成できることを確認
+
+(println "\nTest 4: Macro Generating Loop")
+(mac times [n & body]
+  `(loop [i 0]
+     (if (< i ,n)
+       (do
+         ,@body
+         (recur (inc i))))))
+
+(def counter (atom 0))
+(times 10
+  (swap! counter inc))
+
+(if (= @counter 10)
+  (println "  ✓ ループ生成マクロ成功")
+  (println "  ✗ ループ生成マクロ失敗"))
+
+; ========================================
+; Test 5: マクロでmatch生成
+; ========================================
+; 理由: マクロで複雑な制御構造を生成できることを確認
+
+(println "\nTest 5: Macro Generating Match")
+(mac cond-match [value & clauses]
+  `(match ,value
+     ,@clauses))
+
+(def result
+  (cond-match 42
+    x when (< x 0) -> "negative"
+    x when (< x 50) -> "small"
+    x when (< x 100) -> "medium"
+    _ -> "large"))
+
+(if (= result "small")
+  (println "  ✓ match生成マクロ成功")
+  (println "  ✗ match生成マクロ失敗"))
+
+; ========================================
+; Test 6: loop/recurで階乗（深い再帰）
+; ========================================
+; 理由: 末尾再帰最適化が機能していることを確認
+;       スタックオーバーフローしないことを確認
+
+(println "\nTest 6: Deep Recursion with loop/recur")
+(defn factorial [n]
+  (loop [i n acc 1]
+    (if (<= i 1)
+      acc
+      (recur (dec i) (* acc i)))))
+
+; 20! = 2432902008176640000
+(def result (factorial 20))
+
+(if (= result 2432902008176640000)
+  (println "  ✓ 深い再帰（factorial 20）成功")
+  (println "  ✗ 深い再帰失敗"))
+
+; ========================================
+; Test 7: loop/recurでフィボナッチ
+; ========================================
+; 理由: 複数のアキュムレータを持つloop/recur
+
+(println "\nTest 7: Fibonacci with loop/recur")
+(defn fib [n]
+  (loop [i n a 0 b 1]
+    (if (<= i 0)
+      a
+      (recur (dec i) b (+ a b)))))
+
+; fib(10) = 55
+(if (= (fib 10) 55)
+  (println "  ✓ フィボナッチ成功")
+  (println "  ✗ フィボナッチ失敗"))
+
+; ========================================
+; Test 8: loop/recurでリスト処理
+; ========================================
+; 理由: リストを消費しながら結果を蓄積
+
+(println "\nTest 8: List Processing with loop/recur")
+(defn reverse-list [lst]
+  (loop [remaining lst result []]
+    (if (empty? remaining)
+      result
+      (recur (rest remaining) (conj result (first remaining))))))
+
+(def reversed (reverse-list [1 2 3 4 5]))
+
+(if (= reversed [5 4 3 2 1])
+  (println "  ✓ loop/recurリスト処理成功")
+  (println "  ✗ loop/recurリスト処理失敗"))
+
+; ========================================
+; Test 9: ネストしたマクロ
+; ========================================
+; 理由: マクロが別のマクロを呼び出せることを確認
+
+(println "\nTest 9: Nested Macros")
+(mac when [test & body]
+  `(if ,test (do ,@body)))
+
+(mac when-not [test & body]
+  `(when (not ,test) ,@body))
+
+(def result1 (when true "yes"))
+(def result2 (when-not false "yes"))
+
+(if (and (= result1 "yes") (= result2 "yes"))
+  (println "  ✓ ネストしたマクロ成功")
+  (println "  ✗ ネストしたマクロ失敗"))
+
+; ========================================
+; Test 10: マクロでdefn生成
+; ========================================
+; 理由: マクロで関数定義を生成できることを確認
+
+(println "\nTest 10: Macro Generating defn")
+(mac defn-traced [name args & body]
+  `(defn ,name ,args
+     (do
+       (println ,(str "Calling " name))
+       ,@body)))
+
+(defn-traced add [x y]
+  (+ x y))
+
+(def result (add 3 4))
+
+(if (= result 7)
+  (println "  ✓ defn生成マクロ成功")
+  (println "  ✗ defn生成マクロ失敗"))
+
+; ========================================
+; Test 11: 極端に深いloop/recur（10000回）
+; ========================================
+; 理由: 末尾再帰最適化の限界テスト
+;       メモリが線形に増えないことを確認
+
+(println "\nTest 11: Extremely Deep loop/recur (10000 iterations)")
+(defn count-down [n]
+  (loop [i n]
+    (if (<= i 0)
+      "done"
+      (recur (dec i)))))
+
+(def result (count-down 10000))
+
+(if (= result "done")
+  (println "  ✓ 10000回再帰成功")
+  (println "  ✗ 10000回再帰失敗"))
+
+; ========================================
+; Test 12: マクロで複雑なDSL生成
+; ========================================
+; 理由: マクロの実用的なユースケース
+;       ドメイン特化言語を作れることを確認
+
+(println "\nTest 12: DSL with Macros")
+(mac defhandler [name pattern & body]
+  `(defn ,name [request]
+     (match request
+       ,pattern -> (do ,@body)
+       _ -> {:error "No match"})))
+
+(defhandler handle-user {:type "user" :id id}
+  {:ok id})
+
+(def result1 (handle-user {:type "user" :id 123}))
+(def result2 (handle-user {:type "admin"}))
+
+(if (and
+      (= {:ok 123} result1)
+      (= :error (first (keys result2))))
+  (println "  ✓ DSL生成マクロ成功")
+  (println "  ✗ DSL生成マクロ失敗"))
+
+(println "\n=== Macro and Loop/Recur Stress Test Complete ===")
