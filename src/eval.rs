@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{
     Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value,
@@ -288,20 +289,8 @@ impl Evaluator {
                 self.defer_stack.write().push(Vec::new());
 
                 let result = match self.eval_with_env(expr, env.clone()) {
-                    Ok(value) => {
-                        // {:ok value}
-                        // 1: okキーのみ（容量1で十分）
-                        let mut map = HashMap::with_capacity(1);
-                        map.insert(":ok".to_string(), value);
-                        Ok(Value::Map(map.into()))
-                    }
-                    Err(e) => {
-                        // {:error e}
-                        // 1: errorキーのみ（容量1で十分）
-                        let mut map = HashMap::with_capacity(1);
-                        map.insert(":error".to_string(), Value::String(e));
-                        Ok(Value::Map(map.into()))
-                    }
+                    Ok(value) => Ok(ok_map(value)),
+                    Err(e) => Ok(err_map(e)),
                 };
 
                 // deferを実行（LIFO順、エラーでも必ず実行）
@@ -431,7 +420,6 @@ impl Evaluator {
                 "async/with-scope" => return self.eval_with_scope(args, env),
                 "branch" => return self.eval_branch(args, env),
                 "comp" => return self.eval_comp(args, env),
-                "defn" => return self.eval_defn(args, env),
                 "drop-while" => return self.eval_drop_while(args, env),
                 "eval" => return self.eval_eval(args, env),
                 "list/every?" => return self.eval_every(args, env),
@@ -581,10 +569,59 @@ impl Evaluator {
                 bindings.insert(var.clone(), value.clone());
                 Ok(true)
             }
+            Pattern::Vector(patterns) => {
+                // ネストされたTransformパターンを扱うため、再帰的に処理
+                let values = match value {
+                    Value::Vector(v) | Value::List(v) => v,
+                    _ => return Ok(false),
+                };
+
+                if patterns.len() != values.len() {
+                    return Ok(false);
+                }
+                for (pat, val) in patterns.iter().zip(values.iter()) {
+                    if !self.match_pattern_with_transforms(pat, val, bindings, transforms)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+            Pattern::List(patterns, rest) => {
+                // ネストされたTransformパターンを扱うため、再帰的に処理
+                let values = match value {
+                    Value::List(v) | Value::Vector(v) => v,
+                    _ => return Ok(false),
+                };
+
+                if patterns.len() > values.len() {
+                    return Ok(false);
+                }
+                for (pat, val) in patterns.iter().zip(values.iter()) {
+                    if !self.match_pattern_with_transforms(pat, val, bindings, transforms)? {
+                        return Ok(false);
+                    }
+                }
+
+                // restパターンの処理
+                if let Some(rest_pattern) = rest {
+                    let rest_values: Vec<Value> =
+                        values.iter().skip(patterns.len()).cloned().collect();
+                    self.match_pattern_with_transforms(
+                        rest_pattern,
+                        &Value::List(rest_values.into()),
+                        bindings,
+                        transforms,
+                    )?;
+                } else if patterns.len() != values.len() {
+                    return Ok(false);
+                }
+
+                Ok(true)
+            }
             Pattern::Map(pattern_pairs) => {
+                // ネストされたTransformパターンを扱うため、再帰的に処理
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
-                        // キーワードをマップキー形式に変換
                         let map_key = format!(":{}", key);
                         if let Some(val) = map.get(&map_key) {
                             if !self
@@ -602,6 +639,7 @@ impl Evaluator {
                 }
             }
             Pattern::As(inner_pattern, var) => {
+                // ネストされたTransformパターンを扱うため、再帰的に処理
                 if self.match_pattern_with_transforms(inner_pattern, value, bindings, transforms)? {
                     bindings.insert(var.clone(), value.clone());
                     Ok(true)
@@ -610,7 +648,8 @@ impl Evaluator {
                 }
             }
             _ => {
-                // 他のパターンは従来のmatch_patternを使用
+                // Wildcard, Nil, Bool, Integer, Float, String, Keyword, Var, Or
+                // これらはTransformを含まないので、通常のmatch_patternで処理
                 self.match_pattern(pattern, value, bindings)
             }
         }
@@ -743,101 +782,6 @@ impl Evaluator {
                 unreachable!("Transform pattern should be handled in match_pattern_with_transforms")
             }
         }
-    }
-
-    /// defn関数の実装: (defn name [params] body...) または (defn name "doc" [params] body...)
-    fn eval_defn(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        // 最低3つの引数が必要: name, params, body
-        if args.len() < 3 {
-            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "3"]));
-        }
-
-        // 名前を取得
-        let name = match &args[0] {
-            Expr::Symbol(s) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn", "a symbol"])),
-        };
-
-        // ドキュメント文字列の有無を判定
-        let (doc_opt, params_idx) = match &args[1] {
-            Expr::Vector(_) => (None, 1), // パラメータリストが2番目
-            _ => {
-                // ドキュメントを評価して取得
-                let doc_val = self.eval_with_env(&args[1], env.clone())?;
-                let doc_str = match doc_val {
-                    Value::String(s) => Some(s),
-                    Value::Map(ref m) => {
-                        // 構造化ドキュメント
-                        m.get("desc").and_then(|v| match v {
-                            Value::String(s) => Some(s.clone()),
-                            _ => None,
-                        })
-                    }
-                    _ => None,
-                };
-                (doc_str, 2) // パラメータリストが3番目
-            }
-        };
-
-        // パラメータリストと本体を確認
-        if params_idx >= args.len() {
-            return Err(fmt_msg(
-                MsgKey::NeedAtLeastNArgs,
-                &["defn", "parameter list"],
-            ));
-        }
-
-        // ドキュメントを保存
-        if let Some(doc) = doc_opt {
-            let doc_key = format!("__doc__{}", name);
-            self.global_env.write().set(doc_key, Value::String(doc));
-        }
-
-        // パラメータリストからパラメータ名を抽出
-        let params = match &args[params_idx] {
-            Expr::Vector(params_exprs) => {
-                let mut param_names = Vec::with_capacity(params_exprs.len());
-                for param_expr in params_exprs {
-                    match param_expr {
-                        Expr::Symbol(s) => param_names.push(s.clone()),
-                        _ => {
-                            return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "symbols"]))
-                        }
-                    }
-                }
-                param_names
-            }
-            _ => return Err(fmt_msg(MsgKey::ArgMustBeType, &["defn params", "a vector"])),
-        };
-
-        // 本体を取得
-        let body_exprs: Vec<Expr> = args[params_idx + 1..].to_vec();
-
-        // 本体が複数ある場合はdoでラップ、1つの場合はそのまま
-        let body = if body_exprs.len() == 1 {
-            Box::new(body_exprs[0].clone())
-        } else if body_exprs.is_empty() {
-            return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["defn", "body"]));
-        } else {
-            Box::new(Expr::Do(body_exprs))
-        };
-
-        // fnの本体を構築（Vec<String>をVec<FnParam>に変換）
-        let fn_params: Vec<crate::value::FnParam> = params
-            .into_iter()
-            .map(crate::value::FnParam::Simple)
-            .collect();
-        let fn_expr = Expr::Fn {
-            params: fn_params,
-            body,
-            is_variadic: false,
-        };
-
-        // defに展開（publicとして）
-        let def_expr = Expr::Def(name, Box::new(fn_expr), false);
-
-        // 評価
-        self.eval_with_env(&def_expr, env)
     }
 
     /// map関数の実装: (map f coll)
