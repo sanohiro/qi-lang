@@ -2,44 +2,43 @@
 ; このファイルはQi言語の遅延評価ストリーム機能のテストです。
 ; 意図: streamの生成、変換、実現が仕様通りに動作することを確認します。
 
-(use test :only [run assert-eq assert])
 (use stream)
 (use io)
 (use path)
 
-(run "Stream Creation and Realization" (fn []
+(test/run "Stream Creation and Realization" (fn []
   ; 意図: 様々な方法でストリームを生成し、realizeでリストに変換できるか。
-  (assert-eq '(1 2 3) (realize (stream [1 2 3])))
-  (assert-eq '(0 1 2 3 4) (realize (range 0 5)))
-  (assert-eq '() (realize (stream [])))
+  (test/assert-eq '(1 2 3) (realize (stream [1 2 3])))
+  (test/assert-eq '(0 1 2 3 4) (realize (range 0 5)))
+  (test/assert-eq '() (realize (stream [])))
 ))
 
-(run "Stream Transformations (map, filter)" (fn []
+(test/run "Stream Transformations (map, filter)" (fn []
   ; 意図: map, filterなどの変換が遅延評価され、realize時に正しく適用されるか。
   (def s ([1 2 3 4 5]
           |> stream
           |> (map (fn [x] (* x 2))) ; (2 4 6 8 10)
           |> (filter (fn [x] (> x 5)))) ; (6 8 10)
-  (assert-eq '(6 8 10) (realize s))
+  (test/assert-eq '(6 8 10) (realize s))
 ))
 
-(run "Infinite Streams with take" (fn []
+(test/run "Infinite Streams with take" (fn []
   ; 意図: 無限ストリームをtakeで有限にしてから安全にrealizeできるか。
 
   ; stream/repeat
   (def s-repeat (repeat 42))
-  (assert-eq '(42 42 42) (realize (take 3 s-repeat)))
+  (test/assert-eq '(42 42 42) (realize (take 3 s-repeat)))
 
   ; stream/cycle
   (def s-cycle (cycle [1 2 3]))
-  (assert-eq '(1 2 3 1 2) (realize (take 5 s-cycle)))
+  (test/assert-eq '(1 2 3 1 2) (realize (take 5 s-cycle)))
 
   ; stream/iterate
   (def s-iterate (iterate (fn [x] (* x 2)) 1)) ; 1, 2, 4, 8, ...
-  (assert-eq '(1 2 4 8 16) (realize (take 5 s-iterate)))
+  (test/assert-eq '(1 2 4 8 16) (realize (take 5 s-iterate)))
 ))
 
-(run "Stream drop and other transformations" (fn []
+(test/run "Stream drop and other transformations" (fn []
   ; 意図: dropや複数の変換を組み合わせた複雑なパイプラインが機能するか。
   (def result ( (range 1 100) ; 1..99
                 |> (drop 9)      ; 10..99
@@ -47,10 +46,10 @@
                 |> (map (fn [x] (/ x 10))) ; 1, 2, ..., 9
                 |> (take 5)      ; 1, 2, 3, 4, 5
                 |> realize))
-  (assert-eq '(1 2 3 4 5) result)
+  (test/assert-eq '(1 2 3 4 5) result)
 ))
 
-(run "I/O Stream (stream/file)" (fn []
+(test/run "I/O Stream (stream/file)" (fn []
   ; 意図: stream/fileがファイルを一行ずつ遅延読み込みできるか。
   (def temp-file (temp-file-keep))
   (defer (delete-file temp-file))
@@ -62,11 +61,11 @@
                 |> (map (fn [line] (str/sub-after line ": ")))
                 |> realize))
 
-  (assert-eq '("third line" "fifth line") errors)
+  (test/assert-eq '("third line" "fifth line") errors)
 
   ; takeと組み合わせる
   (def first-line ( (file temp-file)
                      |> (take 1)
                      |> realize))
-  (assert-eq '("line 1") first-line)
+  (test/assert-eq '("line 1") first-line)
 ))

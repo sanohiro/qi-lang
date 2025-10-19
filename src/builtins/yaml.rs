@@ -59,7 +59,9 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))].into_iter().collect(),
+            [(":ok".to_string(), Value::String(s))]
+                .into_iter()
+                .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -158,7 +160,7 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
                     k[1..].to_string()
                 } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
                     // 文字列キー "\"test\"" → "test"
-                    k[1..k.len()-1].to_string()
+                    k[1..k.len() - 1].to_string()
                 } else {
                     // その他はそのまま
                     k.clone()

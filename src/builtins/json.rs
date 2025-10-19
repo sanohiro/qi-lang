@@ -59,7 +59,9 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 
     match serde_json::to_string(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))].into_iter().collect(),
+            [(":ok".to_string(), Value::String(s))]
+                .into_iter()
+                .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -87,7 +89,9 @@ pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::Map(
-            [(":ok".to_string(), Value::String(s))].into_iter().collect(),
+            [(":ok".to_string(), Value::String(s))]
+                .into_iter()
+                .collect(),
         )),
         Err(e) => Ok(Value::Map(
             [(
@@ -163,7 +167,7 @@ fn value_to_json(value: &Value) -> serde_json::Value {
                     k[1..].to_string()
                 } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
                     // 文字列キー "\"test\"" → "test"
-                    k[1..k.len()-1].to_string()
+                    k[1..k.len() - 1].to_string()
                 } else {
                     // その他はそのまま
                     k.clone()

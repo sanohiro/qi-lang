@@ -99,6 +99,7 @@ pub fn native_count(args: &[Value]) -> Result<Value, String> {
 
 /// cons - リストの先頭に要素を追加
 /// im::Vectorの構造共有を活かしてO(1)で実行
+/// 戻り値は第二引数（コレクション）の型を維持します
 pub fn native_cons(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["cons"]));
@@ -113,7 +114,7 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
         Value::Vector(v) => {
             let mut new_vec = v.clone();
             new_vec.push_front(args[0].clone());
-            Ok(Value::List(new_vec))
+            Ok(Value::Vector(new_vec))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["cons", "lists or vectors"])),
     }
@@ -144,7 +145,19 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
 }
 
 /// concat - 複数のリストを連結
+/// 戻り値は第一引数の型を優先します（引数がない場合はListを返す）
 pub fn native_concat(args: &[Value]) -> Result<Value, String> {
+    // 第一引数の型を記憶
+    let result_type = if args.is_empty() {
+        None
+    } else {
+        match &args[0] {
+            Value::List(_) => Some(false),  // List
+            Value::Vector(_) => Some(true), // Vector
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
+        }
+    };
+
     let mut result = im::Vector::new();
     for arg in args {
         match arg {
@@ -156,7 +169,11 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
             _ => return Err(fmt_msg(MsgKey::TypeOnly, &["concat", "lists or vectors"])),
         }
     }
-    Ok(Value::List(result))
+
+    match result_type {
+        Some(true) => Ok(Value::Vector(result)),
+        _ => Ok(Value::List(result)),
+    }
 }
 
 /// flatten - ネストしたリストを平坦化
@@ -222,10 +239,7 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Integer(n) => {
             if *n < 0 {
-                return Err(fmt_msg(
-                    MsgKey::MustBeNonNegative,
-                    &["repeat", "count"],
-                ));
+                return Err(fmt_msg(MsgKey::MustBeNonNegative, &["repeat", "count"]));
             }
             let val = args[1].clone();
             let items: im::Vector<Value> = (0..*n).map(|_| val.clone()).collect();
@@ -286,12 +300,13 @@ pub fn native_drop(args: &[Value]) -> Result<Value, String> {
 }
 
 /// sort - リストをソート
+/// 戻り値は入力コレクションの型を維持します
 pub fn native_sort(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["sort"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
+        Value::List(v) => {
             let mut sorted: Vec<Value> = v.iter().cloned().collect();
             sorted.sort_by(|a, b| match (a, b) {
                 (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
@@ -303,17 +318,30 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
             });
             Ok(Value::List(sorted.into()))
         }
+        Value::Vector(v) => {
+            let mut sorted: Vec<Value> = v.iter().cloned().collect();
+            sorted.sort_by(|a, b| match (a, b) {
+                (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                (Value::Float(x), Value::Float(y)) => {
+                    x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
+                }
+                (Value::String(x), Value::String(y)) => x.cmp(y),
+                _ => std::cmp::Ordering::Equal,
+            });
+            Ok(Value::Vector(sorted.into()))
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["sort", "lists or vectors"])),
     }
 }
 
 /// distinct - 重複を排除
+/// 戻り値は入力コレクションの型を維持します
 pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["distinct"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
+        Value::List(v) => {
             let mut result = im::Vector::new();
             let mut seen = std::collections::HashSet::new();
             for item in v {
@@ -324,15 +352,30 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
             }
             Ok(Value::List(result))
         }
+        Value::Vector(v) => {
+            let mut result = im::Vector::new();
+            let mut seen = std::collections::HashSet::new();
+            for item in v {
+                let key = format!("{:?}", item);
+                if seen.insert(key) {
+                    result.push_back(item.clone());
+                }
+            }
+            Ok(Value::Vector(result))
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["distinct", "lists or vectors"])),
     }
 }
 
 /// zip - 2つのリストを組み合わせる（List/Vectorの混在も可）
+/// 戻り値は第一引数の型を優先します
 pub fn native_zip(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["zip"]));
     }
+
+    // 第一引数の型を記憶
+    let is_first_vector = matches!(&args[0], Value::Vector(_));
 
     // 両引数からim::Vectorを取得
     let vec_a = match &args[0] {
@@ -349,7 +392,12 @@ pub fn native_zip(args: &[Value]) -> Result<Value, String> {
         .zip(vec_b.iter())
         .map(|(x, y)| Value::Vector(vec![x.clone(), y.clone()].into()))
         .collect();
-    Ok(Value::List(result))
+
+    if is_first_vector {
+        Ok(Value::Vector(result))
+    } else {
+        Ok(Value::List(result))
+    }
 }
 
 // ========================================

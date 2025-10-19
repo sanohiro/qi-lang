@@ -56,7 +56,7 @@ impl Evaluator {
         // 組み込み関数を登録
         builtins::register_all(&env_rc);
 
-        // 特殊な関数を登録（printとlist）
+        // 特殊な関数を登録（print, list, vector, to-list, to-vector）
         env_rc.write().set(
             "print".to_string(),
             Value::NativeFunc(NativeFunc {
@@ -69,6 +69,27 @@ impl Evaluator {
             Value::NativeFunc(NativeFunc {
                 name: "list",
                 func: native_list,
+            }),
+        );
+        env_rc.write().set(
+            "vector".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "vector",
+                func: native_vector,
+            }),
+        );
+        env_rc.write().set(
+            "to-list".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "to-list",
+                func: native_to_list,
+            }),
+        );
+        env_rc.write().set(
+            "to-vector".to_string(),
+            Value::NativeFunc(NativeFunc {
+                name: "to-vector",
+                func: native_to_vector,
             }),
         );
 
@@ -1666,6 +1687,38 @@ macro_rules! check_args {
 /// list - リストを作成
 fn native_list(args: &[Value]) -> Result<Value, String> {
     Ok(Value::List(args.iter().cloned().collect()))
+}
+
+/// vector - ベクタを作成
+fn native_vector(args: &[Value]) -> Result<Value, String> {
+    Ok(Value::Vector(args.iter().cloned().collect()))
+}
+
+/// to-list - List/VectorをListに変換
+fn native_to_list(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["to-list"]));
+    }
+    match &args[0] {
+        Value::List(_) => Ok(args[0].clone()),
+        Value::Vector(v) => Ok(Value::List(v.clone())),
+        _ => Err(fmt_msg(MsgKey::TypeOnly, &["to-list", "lists or vectors"])),
+    }
+}
+
+/// to-vector - List/VectorをVectorに変換
+fn native_to_vector(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["to-vector"]));
+    }
+    match &args[0] {
+        Value::Vector(_) => Ok(args[0].clone()),
+        Value::List(v) => Ok(Value::Vector(v.clone())),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["to-vector", "lists or vectors"],
+        )),
+    }
 }
 
 /// print - 値を出力

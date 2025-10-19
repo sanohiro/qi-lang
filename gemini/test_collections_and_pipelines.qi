@@ -2,95 +2,94 @@
 ; このファイルはQi言語のデータ構造操作とパイプライン演算子のテストです。
 ; 意図: コレクション操作関数と各種パイプラインが仕様通りに動作することを確認します。
 
-(use test :only [run assert-eq assert])
 
-(run "Vector/List Manipulation" (fn []
+(test/run "Vector/List Manipulation" (fn []
   ; 意図: ベクターやリストに対する基本的な操作関数が正しく動作するか。
   (def data [10 20 30 40 20])
-  (assert-eq 20 (nth data 1))
-  (assert-eq 10 (first data))
-  (assert-eq 20 (last data))
-  (assert-eq '(20 30 40 20) (rest data))
-  (assert-eq '(0 10 20 30 40 20) (cons 0 data))
-  (assert-eq '(10 20 30 40 20 50) (conj data 50))
-  (assert-eq '(10 20 30 40 20 50 60) (concat data [50 60]))
-  (assert-eq '(10 20) (take 2 data))
-  (assert-eq '(30 40 20) (drop 2 data))
-  (assert-eq '(20 40 30 20 10) (reverse data))
-  (assert-eq '(10 20 30 40) (distinct data |> sort))
-  (assert-eq '(10 20 20 30 40) (sort data))
+  (test/assert-eq 20 (nth data 1))
+  (test/assert-eq 10 (first data))
+  (test/assert-eq 20 (last data))
+  (test/assert-eq '(20 30 40 20) (rest data))
+  (test/assert-eq '(0 10 20 30 40 20) (cons 0 data))
+  (test/assert-eq '(10 20 30 40 20 50) (conj data 50))
+  (test/assert-eq '(10 20 30 40 20 50 60) (concat data [50 60]))
+  (test/assert-eq '(10 20) (take 2 data))
+  (test/assert-eq '(30 40 20) (drop 2 data))
+  (test/assert-eq '(20 40 30 20 10) (reverse data))
+  (test/assert-eq '(10 20 30 40) (distinct data |> sort))
+  (test/assert-eq '(10 20 20 30 40) (sort data))
 ))
 
-(run "Map Manipulation" (fn []
+(test/run "Map Manipulation" (fn []
   ; 意図: マップに対する基本的な操作関数が正しく動作するか。
   (def data {:name "Alice" :age 30 :tags ["dev"]})
-  (assert-eq "Alice" (get data :name))
-  (assert-eq "guest" (get data :role "guest")) ; デフォルト値
-  (assert-eq '("name" "age" "tags") (keys data |> sort))
-  (assert-eq '("Alice" 30 ["dev"]) (vals data |> (map str) |> sort |> (map json/parse) |> (map (fn [x] (if (string? x) x (if (list? x) (vec x) x)))) |> (fn [x] (let [a (nth x 0) b (nth x 1) c (nth x 2)] [c a b]))))
-  (assert-eq {:name "Alice" :age 30 :tags ["dev"] :role "admin"} (assoc data :role "admin"))
-  (assert-eq {:name "Alice" :tags ["dev"]} (dissoc data :age))
-  (assert-eq {:name "Bob" :age 30 :tags ["dev"]} (merge data {:name "Bob"}))
+  (test/assert-eq "Alice" (get data :name))
+  (test/assert-eq "guest" (get data :role "guest")) ; デフォルト値
+  (test/assert-eq '("name" "age" "tags") (keys data |> sort))
+  (test/assert-eq '("Alice" 30 ["dev"]) (vals data |> (map str) |> sort |> (map json/parse) |> (map (fn [x] (if (string? x) x (if (list? x) (vec x) x)))) |> (fn [x] (let [a (nth x 0) b (nth x 1) c (nth x 2)] [c a b]))))
+  (test/assert-eq {:name "Alice" :age 30 :tags ["dev"] :role "admin"} (assoc data :role "admin"))
+  (test/assert-eq {:name "Alice" :tags ["dev"]} (dissoc data :age))
+  (test/assert-eq {:name "Bob" :age 30 :tags ["dev"]} (merge data {:name "Bob"}))
 ))
 
-(run "Nested Map/Vector Manipulation" (fn []
+(test/run "Nested Map/Vector Manipulation" (fn []
   ; 意図: get-in, update-in などネストされたデータ構造を操作する関数が機能するか。
   (def data {:user {:name "Alice" :visits 10} :path ["/home" "user"]})
-  (assert-eq "Alice" (get-in data [:user :name]))
-  (assert-eq "/home" (get-in data [:path 0]))
-  (assert-eq nil (get-in data [:user :role]))
+  (test/assert-eq "Alice" (get-in data [:user :name]))
+  (test/assert-eq "/home" (get-in data [:path 0]))
+  (test/assert-eq nil (get-in data [:user :role]))
   (def updated (update-in data [:user :visits] inc))
-  (assert-eq 11 (get-in updated [:user :visits]))
+  (test/assert-eq 11 (get-in updated [:user :visits]))
   (def updated2 (update-in data [:path 1] (fn [s] (str s "/alice"))))
-  (assert-eq "/user/alice" (get-in updated2 [:path 1]))
+  (test/assert-eq "/user/alice" (get-in updated2 [:path 1]))
 ))
 
-(run "Higher-Order Functions on Collections" (fn []
+(test/run "Higher-Order Functions on Collections" (fn []
   ; 意図: map, filter, reduce などの高階関数がコレクションを正しく処理するか。
   (def nums [1 2 3 4 5])
-  (assert-eq '(2 3 4 5 6) (map inc nums))
-  (assert-eq '(2 4) (filter even? nums))
-  (assert-eq 15 (reduce + 0 nums))
-  (assert-eq 4 (find (fn [x] (> x 3)) nums))
-  (assert-eq true (every? (fn [x] (> x 0)) nums))
-  (assert-eq false (every? even? nums))
-  (assert-eq true (some? even? nums))
-  (assert-eq false (some? (fn [x] (> x 10)) nums))
+  (test/assert-eq '(2 3 4 5 6) (map inc nums))
+  (test/assert-eq '(2 4) (filter even? nums))
+  (test/assert-eq 15 (reduce + 0 nums))
+  (test/assert-eq 4 (find (fn [x] (> x 3)) nums))
+  (test/assert-eq true (every? (fn [x] (> x 0)) nums))
+  (test/assert-eq false (every? even? nums))
+  (test/assert-eq true (some? even? nums))
+  (test/assert-eq false (some? (fn [x] (> x 10)) nums))
 ))
 
-(run "Basic Pipeline |>" (fn []
+(test/run "Basic Pipeline |>" (fn []
   ; 意図: 基本的なパイプライン演算子が左から右へ正しくデータを渡すか。
   (def result ([1 2 3]
                |> (map inc)
                |> (filter (fn [x] (> x 2)))
                |> (reduce + 0)))
-  (assert-eq 7 result) ; (2 3 4) -> (3 4) -> 7
+  (test/assert-eq 7 result) ; (2 3 4) -> (3 4) -> 7
 
   ; プレースホルダー `_` のテスト
-  (assert-eq "Hello, Qi" ("Qi" |> (str "Hello, " _)))
-  (assert-eq 10 (5 |> (+ _ 5)))
+  (test/assert-eq "Hello, Qi" ("Qi" |> (str "Hello, " _)))
+  (test/assert-eq 10 (5 |> (+ _ 5)))
 ))
 
-(run "Railway Pipeline |>?" (fn []
+(test/run "Railway Pipeline |>?" (fn []
   ; 意図: Railwayパイプが {:ok} の場合は処理を継続し、{:error} の場合はショートサーキットするか。
   (def success-flow
     ({:ok 10}
      |>? (fn [x] {:ok (* x 2)}) ; 20
      |>? (fn [x] {:ok (+ x 5)})) ; 25
-  (assert-eq {:ok 25} success-flow)
+  (test/assert-eq {:ok 25} success-flow)
 
   (def error-flow
     ({:ok 10}
      |>? (fn [x] {:error "Something went wrong"})
      |>? (fn [x] {:ok (* x 2)}))) ; この関数は実行されない
-  (assert-eq {:error "Something went wrong"} error-flow)
+  (test/assert-eq {:error "Something went wrong"} error-flow)
 
   (def safe-div (fn [x y] (if (= y 0) {:error "div by zero"} {:ok (/ x y)})))
-  (assert-eq {:ok 5} ({:ok 10} |>? (safe-div _ 2)))
-  (assert-eq {:error "div by zero"} ({:ok 10} |>? (safe-div _ 0)))
+  (test/assert-eq {:ok 5} ({:ok 10} |>? (safe-div _ 2)))
+  (test/assert-eq {:error "div by zero"} ({:ok 10} |>? (safe-div _ 0)))
 ))
 
-(run "Tap Pipeline tap>" (fn []
+(test/run "Tap Pipeline tap>" (fn []
   ; 意図: tap> (または |> (tap ...)) がパイプラインの値を変更せずに副作用を実行するか。
   (def counter (atom 0))
   (def tap-fn (fn [x] (swap! counter + x)))
@@ -100,17 +99,17 @@
                |> (tap tap-fn) ; counter becomes 2+3+4=9
                |> sum)) ; sum of (2 3 4)
 
-  (assert-eq 9 result)
-  (assert-eq 9 (deref counter))
+  (test/assert-eq 9 result)
+  (test/assert-eq 9 (deref counter))
 ))
 
-(run "Parallel Pipeline ||> (Conceptual)" (fn []
+(test/run "Parallel Pipeline ||> (Conceptual)" (fn []
   ; 意図: ||> が pmap と同じように動作し、並列に処理した結果を返すか。
   ; 実際の並列実行をアサートするのは難しいが、結果が正しいことは確認できる。
   (def result ([1 2 3 4 5] ||> inc |> sort))
-  (assert-eq '(2 3 4 5 6) result)
+  (test/assert-eq '(2 3 4 5 6) result)
 
   (def urls ["a" "b" "c"])
   (def processed (urls ||> (fn [url] (str "processed:" url)) |> sort))
-  (assert-eq '("processed:a" "processed:b" "processed:c") processed)
+  (test/assert-eq '("processed:a" "processed:b" "processed:c") processed)
 ))

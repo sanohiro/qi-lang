@@ -21,11 +21,11 @@ pub fn native_railway_pipe(
     match result {
         Value::Map(m) => {
             // {:ok value}の場合は値を取り出して関数に渡す
-            if let Some(ok_val) = m.get("ok") {
+            if let Some(ok_val) = m.get(":ok") {
                 evaluator.apply_function(func, std::slice::from_ref(ok_val))
             }
             // {:error e}の場合はそのまま返す(ショートサーキット)
-            else if m.contains_key("error") {
+            else if m.contains_key(":error") {
                 Ok(result.clone())
             } else {
                 Err(fmt_msg(MsgKey::RailwayRequiresOkError, &[]))

@@ -5,6 +5,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// map - リストの各要素に関数を適用
+/// 戻り値は入力コレクションの型を維持します
 pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["map"]));
@@ -14,7 +15,7 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
     let collection = &args[1];
 
     match collection {
-        Value::List(items) | Value::Vector(items) => {
+        Value::List(items) => {
             // Vec一時利用でwith_capacity最適化→im::Vectorへ変換
             let mut results = Vec::with_capacity(items.len());
             for item in items {
@@ -22,6 +23,14 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
                 results.push(result);
             }
             Ok(Value::List(results.into()))
+        }
+        Value::Vector(items) => {
+            let mut results = Vec::with_capacity(items.len());
+            for item in items {
+                let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
+                results.push(result);
+            }
+            Ok(Value::Vector(results.into()))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
@@ -31,6 +40,7 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 }
 
 /// filter - リストから条件を満たす要素を抽出
+/// 戻り値は入力コレクションの型を維持します
 pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["filter"]));
@@ -40,7 +50,7 @@ pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
     let collection = &args[1];
 
     match collection {
-        Value::List(items) | Value::Vector(items) => {
+        Value::List(items) => {
             let mut results = im::Vector::new();
             for item in items {
                 let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
@@ -49,6 +59,16 @@ pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                 }
             }
             Ok(Value::List(results))
+        }
+        Value::Vector(items) => {
+            let mut results = im::Vector::new();
+            for item in items {
+                let result = evaluator.apply_function(pred, std::slice::from_ref(item))?;
+                if result.is_truthy() {
+                    results.push_back(item.clone());
+                }
+            }
+            Ok(Value::Vector(results))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
