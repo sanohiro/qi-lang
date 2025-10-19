@@ -14,7 +14,7 @@
 
   ; letで一度に分解する
   {:user {:id user-id, :roles [role1], :prefs prefs :as user-profile}
-   :posts [[{_ _} {:id post2-id, :title post2-title}]]} data
+   :posts [[{:id _ :title _} {:id post2-id, :title post2-title}]]} data
 ]
   (if (and
         (= user-id 123)
