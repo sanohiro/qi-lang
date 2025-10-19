@@ -503,7 +503,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
     // 引数を否定する関数を返す
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("x".to_string())],
+        params: vec![crate::value::Pattern::Var("x".to_string())],
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
@@ -527,7 +527,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
 
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("x".to_string())],
+        params: vec![crate::value::Pattern::Var("x".to_string())],
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
@@ -566,7 +566,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
     // (fn [x] (do (f x) x)) を返す
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("x".to_string())],
+        params: vec![crate::value::Pattern::Var("x".to_string())],
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();

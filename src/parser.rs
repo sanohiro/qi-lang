@@ -452,7 +452,7 @@ impl Parser {
     }
 
     /// 関数パラメータリストのパース（defn, defn-, fn共通）
-    fn parse_fn_params(&mut self) -> Result<(Vec<crate::value::FnParam>, bool), String> {
+    fn parse_fn_params(&mut self) -> Result<(Vec<crate::value::Pattern>, bool), String> {
         self.expect(Token::LBracket)?;
         // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
         let mut params = Vec::with_capacity(4);
@@ -464,7 +464,7 @@ impl Parser {
                     self.advance();
                     is_variadic = true;
                     if let Some(Token::Symbol(vararg)) = self.current() {
-                        params.push(crate::value::FnParam::Simple(vararg.clone()));
+                        params.push(crate::value::Pattern::Var(vararg.clone()));
                         self.advance();
                     } else {
                         return Err(self.error_with_line(MsgKey::VarargNeedsName, &[]));
@@ -484,12 +484,12 @@ impl Parser {
 
     /// 束縛パターンのパース（let, fn, defn等で共通）
     /// シンボル、ベクタ分解、マップ分解をサポート
-    fn parse_binding_pattern(&mut self) -> Result<crate::value::FnParam, String> {
+    fn parse_binding_pattern(&mut self) -> Result<crate::value::Pattern, String> {
         match self.current() {
             Some(Token::Symbol(s)) => {
                 let name = s.clone();
                 self.advance();
-                Ok(crate::value::FnParam::Simple(name))
+                Ok(crate::value::Pattern::Var(name))
             }
             Some(Token::LBracket) => self.parse_fn_param_vector(),
             Some(Token::LBrace) => self.parse_fn_param_map(),
@@ -498,7 +498,7 @@ impl Parser {
     }
 
     /// ベクタの分解パターンをパース: [x y] or [[a b] c] or [x ...rest]
-    fn parse_fn_param_vector(&mut self) -> Result<crate::value::FnParam, String> {
+    fn parse_fn_param_vector(&mut self) -> Result<crate::value::Pattern, String> {
         self.expect(Token::LBracket)?;
 
         // 4: ベクタ分解パターンは通常2-4個の要素（例: [x y], [a b c]）
@@ -512,7 +512,7 @@ impl Parser {
                                 // 次は変数名でなければならない
                 match self.current() {
                     Some(Token::Symbol(s)) => {
-                        rest = Some(Box::new(crate::value::FnParam::Simple(s.clone())));
+                        rest = Some(Box::new(crate::value::Pattern::Var(s.clone())));
                         self.advance();
                         // ...rest の後に他のパターンがあってはならない
                         break;
@@ -526,7 +526,7 @@ impl Parser {
                                     // 次は変数名でなければならない
                     match self.current() {
                         Some(Token::Symbol(s)) => {
-                            rest = Some(Box::new(crate::value::FnParam::Simple(s.clone())));
+                            rest = Some(Box::new(crate::value::Pattern::Var(s.clone())));
                             self.advance();
                             // & rest の後に他のパターンがあってはならない
                             break;
@@ -535,7 +535,7 @@ impl Parser {
                     }
                 } else {
                     // 通常のシンボル
-                    params.push(crate::value::FnParam::Simple(s.clone()));
+                    params.push(crate::value::Pattern::Var(s.clone()));
                     self.advance();
                 }
             } else if let Some(Token::LBracket) = self.current() {
@@ -551,11 +551,11 @@ impl Parser {
 
         self.expect(Token::RBracket)?;
 
-        Ok(crate::value::FnParam::Vector(params, rest))
+        Ok(crate::value::Pattern::Vector(params, rest))
     }
 
     /// マップの分解パターンをパース: {:key var} or {:key var :as all}
-    fn parse_fn_param_map(&mut self) -> Result<crate::value::FnParam, String> {
+    fn parse_fn_param_map(&mut self) -> Result<crate::value::Pattern, String> {
         self.expect(Token::LBrace)?;
 
         // 4: マップ分解パターンは通常2-4個のキー（例: {:x a :y b}）
@@ -589,7 +589,7 @@ impl Parser {
             let pattern = if let Some(Token::Symbol(var)) = self.current() {
                 let var_name = var.clone();
                 self.advance();
-                crate::value::FnParam::Simple(var_name)
+                crate::value::Pattern::Var(var_name)
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
                 self.parse_fn_param_vector()?
@@ -605,7 +605,7 @@ impl Parser {
 
         self.expect(Token::RBrace)?;
 
-        Ok(crate::value::FnParam::Map(pairs, as_var))
+        Ok(crate::value::Pattern::Map(pairs, as_var))
     }
 
     fn parse_let(&mut self) -> Result<Expr, String> {
@@ -881,7 +881,7 @@ impl Parser {
 
             // ラムダでラップ
             Ok(Expr::Fn {
-                params: vec![crate::value::FnParam::Simple(var_name)],
+                params: vec![crate::value::Pattern::Var(var_name)],
                 body: Box::new(expr),
                 is_variadic: false,
             })
@@ -1101,7 +1101,7 @@ impl Parser {
         if rest.is_some() {
             Ok(Pattern::List(patterns, rest))
         } else {
-            Ok(Pattern::Vector(patterns))
+            Ok(Pattern::Vector(patterns, None))
         }
     }
 
@@ -1159,7 +1159,7 @@ impl Parser {
 
         self.expect(Token::RBrace)?;
 
-        let map_pattern = Pattern::Map(pairs);
+        let map_pattern = Pattern::Map(pairs, None);
 
         // :as があれば As パターンでラップ
         if let Some(var) = as_var {
@@ -1519,8 +1519,8 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Fn { params, .. } => {
                 assert_eq!(params.len(), 2);
-                assert_eq!(params[0], crate::value::FnParam::Simple("x".to_string()));
-                assert_eq!(params[1], crate::value::FnParam::Simple("y".to_string()));
+                assert_eq!(params[0], crate::value::Pattern::Var("x".to_string()));
+                assert_eq!(params[1], crate::value::Pattern::Var("y".to_string()));
             }
             _ => panic!("Expected Fn"),
         }

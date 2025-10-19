@@ -521,14 +521,14 @@ impl Evaluator {
                 bindings.insert(var.clone(), value.clone());
                 Ok(true)
             }
-            Pattern::Vector(patterns) => {
+            Pattern::Vector(patterns, rest) => {
                 // ネストされたTransformパターンを扱うため、再帰的に処理
                 let values = match value {
                     Value::Vector(v) | Value::List(v) => v,
                     _ => return Ok(false),
                 };
 
-                if patterns.len() != values.len() {
+                if patterns.len() > values.len() {
                     return Ok(false);
                 }
                 for (pat, val) in patterns.iter().zip(values.iter()) {
@@ -536,6 +536,21 @@ impl Evaluator {
                         return Ok(false);
                     }
                 }
+
+                // restパターンの処理
+                if let Some(rest_pattern) = rest {
+                    let rest_values: Vec<Value> =
+                        values.iter().skip(patterns.len()).cloned().collect();
+                    self.match_pattern_with_transforms(
+                        rest_pattern,
+                        &Value::Vector(rest_values.into()),
+                        bindings,
+                        transforms,
+                    )?;
+                } else if patterns.len() != values.len() {
+                    return Ok(false);
+                }
+
                 Ok(true)
             }
             Pattern::List(patterns, rest) => {
@@ -570,7 +585,7 @@ impl Evaluator {
 
                 Ok(true)
             }
-            Pattern::Map(pattern_pairs) => {
+            Pattern::Map(pattern_pairs, as_var) => {
                 // ネストされたTransformパターンを扱うため、再帰的に処理
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
@@ -584,6 +599,10 @@ impl Evaluator {
                         } else {
                             return Ok(false);
                         }
+                    }
+                    // :asパターンの処理
+                    if let Some(var) = as_var {
+                        bindings.insert(var.clone(), value.clone());
                     }
                     Ok(true)
                 } else {
@@ -641,7 +660,7 @@ impl Evaluator {
                 bindings.insert(name.clone(), value.clone());
                 Ok(true)
             }
-            Pattern::Vector(patterns) => {
+            Pattern::Vector(patterns, rest) => {
                 // VectorパターンはVectorとListの両方にマッチ（一貫性のため）
                 let values = match value {
                     Value::Vector(v) => v,
@@ -649,7 +668,7 @@ impl Evaluator {
                     _ => return Ok(false),
                 };
 
-                if patterns.len() != values.len() {
+                if patterns.len() > values.len() {
                     return Ok(false);
                 }
                 for (pat, val) in patterns.iter().zip(values.iter()) {
@@ -657,6 +676,17 @@ impl Evaluator {
                         return Ok(false);
                     }
                 }
+
+                // restパターンがある場合は残りの要素を束縛
+                if let Some(rest_pattern) = rest {
+                    let rest_values: Vec<Value> =
+                        values.iter().skip(patterns.len()).cloned().collect();
+                    self.match_pattern(rest_pattern, &Value::Vector(rest_values.into()), bindings)?;
+                } else if patterns.len() != values.len() {
+                    // restパターンがない場合は要素数が一致しなければマッチ失敗
+                    return Ok(false);
+                }
+
                 Ok(true)
             }
             Pattern::List(patterns, rest) => {
@@ -688,7 +718,7 @@ impl Evaluator {
 
                 Ok(true)
             }
-            Pattern::Map(pattern_pairs) => {
+            Pattern::Map(pattern_pairs, as_var) => {
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
                         // キーワードをマップキー形式に変換
@@ -700,6 +730,10 @@ impl Evaluator {
                         } else {
                             return Ok(false);
                         }
+                    }
+                    // :asパターンの処理
+                    if let Some(var) = as_var {
+                        bindings.insert(var.clone(), value.clone());
                     }
                     Ok(true)
                 } else {
@@ -915,22 +949,20 @@ impl Evaluator {
         None
     }
 
-    /// FnParamパターンを値にマッチさせて環境にバインド
+    /// Patternパターンを値にマッチさせて環境にバインド
     #[allow(clippy::only_used_in_recursion)]
     fn bind_fn_param(
         &self,
-        param: &crate::value::FnParam,
+        param: &crate::value::Pattern,
         value: &Value,
         env: &mut Env,
     ) -> Result<(), String> {
-        use crate::value::FnParam;
-
         match param {
-            FnParam::Simple(name) => {
+            Pattern::Var(name) => {
                 env.set(name.clone(), value.clone());
                 Ok(())
             }
-            FnParam::Vector(params, rest_param) => {
+            Pattern::List(params, rest_param) | Pattern::Vector(params, rest_param) => {
                 // 値がリストまたはベクタであることを確認
                 let values = match value {
                     Value::List(v) | Value::Vector(v) => v,
@@ -978,7 +1010,7 @@ impl Evaluator {
                 }
                 Ok(())
             }
-            FnParam::Map(pairs, as_var) => {
+            Pattern::Map(pairs, as_var) => {
                 // 値がマップであることを確認
                 let map = match value {
                     Value::Map(m) => m,
@@ -1007,6 +1039,19 @@ impl Evaluator {
                 }
 
                 Ok(())
+            }
+            Pattern::As(inner, var) => {
+                // 内側のパターンをバインド
+                self.bind_fn_param(inner, value, env)?;
+                // 値全体も変数にバインド
+                env.set(var.clone(), value.clone());
+                Ok(())
+            }
+            // match専用パターン（fn/letでは使用不可）
+            Pattern::Wildcard | Pattern::Nil | Pattern::Bool(_) | Pattern::Integer(_)
+            | Pattern::Float(_) | Pattern::String(_) | Pattern::Keyword(_)
+            | Pattern::Transform(_, _) | Pattern::Or(_) => {
+                Err("パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）".to_string())
             }
         }
     }
@@ -1112,7 +1157,7 @@ impl Evaluator {
                     let remaining_args: Vec<Value> =
                         args.iter().skip(fixed_param_count).cloned().collect();
 
-                    if let crate::value::FnParam::Simple(name) = variadic_param {
+                    if let crate::value::Pattern::Var(name) = variadic_param {
                         new_env.set(
                             name.clone(),
                             Value::List(remaining_args.into_iter().collect()),
@@ -2323,24 +2368,27 @@ impl Evaluator {
         }
     }
 
-    /// FnParamをValueに変換（マクロ展開/quote用）
+    /// PatternをValueに変換（マクロ展開/quote用）
     #[allow(clippy::only_used_in_recursion)]
-    fn fn_param_to_value(&self, param: &crate::value::FnParam) -> Value {
-        use crate::value::FnParam;
+    fn fn_param_to_value(&self, param: &crate::value::Pattern) -> Value {
         use std::collections::HashMap;
         match param {
-            FnParam::Simple(name) => Value::Symbol(name.clone()),
-            FnParam::Vector(params, rest) => {
+            Pattern::Var(name) => Value::Symbol(name.clone()),
+            Pattern::List(params, rest) | Pattern::Vector(params, rest) => {
                 let mut items: Vec<Value> =
                     params.iter().map(|p| self.fn_param_to_value(p)).collect();
-                // restがある場合は [..., "...", rest_name] の形式にする
+                // restがある場合は [..., "&", rest_name] の形式にする
                 if let Some(rest_param) = rest {
-                    items.push(Value::Symbol("...".to_string()));
+                    items.push(Value::Symbol("&".to_string()));
                     items.push(self.fn_param_to_value(rest_param));
                 }
-                Value::Vector(items.into())
+                // Listパターンの場合はList、Vectorパターンの場合はVectorとして返す
+                match param {
+                    Pattern::List(_, _) => Value::List(items.into()),
+                    _ => Value::Vector(items.into()),
+                }
             }
-            FnParam::Map(pairs, as_var) => {
+            Pattern::Map(pairs, as_var) => {
                 let mut map = HashMap::new();
                 for (key, pattern) in pairs {
                     map.insert(key.clone(), self.fn_param_to_value(pattern));
@@ -2350,6 +2398,42 @@ impl Evaluator {
                     map.insert("as".to_string(), Value::Symbol(var.clone()));
                 }
                 Value::Map(map.into())
+            }
+            Pattern::As(inner, var) => {
+                // (:as inner-pattern var) の形式で表現
+                Value::List(
+                    vec![
+                        Value::Symbol("as".to_string()),
+                        self.fn_param_to_value(inner),
+                        Value::Symbol(var.clone()),
+                    ]
+                    .into(),
+                )
+            }
+            // match専用パターン（quote/マクロでも表現）
+            Pattern::Wildcard => Value::Symbol("_".to_string()),
+            Pattern::Nil => Value::Nil,
+            Pattern::Bool(b) => Value::Bool(*b),
+            Pattern::Integer(n) => Value::Integer(*n),
+            Pattern::Float(f) => Value::Float(*f),
+            Pattern::String(s) => Value::String(s.clone()),
+            Pattern::Keyword(k) => Value::Keyword(k.clone()),
+            Pattern::Transform(var, expr) => {
+                // (:transform var expr) の形式で表現
+                Value::List(
+                    vec![
+                        Value::Symbol("transform".to_string()),
+                        Value::Symbol(var.clone()),
+                        self.expr_to_value(expr).unwrap_or(Value::Nil),
+                    ]
+                    .into(),
+                )
+            }
+            Pattern::Or(patterns) => {
+                // (:or pattern1 pattern2 ...) の形式で表現
+                let mut items = vec![Value::Symbol("or".to_string())];
+                items.extend(patterns.iter().map(|p| self.fn_param_to_value(p)));
+                Value::List(items.into())
             }
         }
     }

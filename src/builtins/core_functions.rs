@@ -23,7 +23,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
     let value = args[0].clone();
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("_".to_string())],
+        params: vec![crate::value::Pattern::Var("_".to_string())],
         body: crate::value::Expr::Symbol(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string()),
         env: {
             let mut env = crate::value::Env::new();
@@ -48,7 +48,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
     let partial_args: im::Vector<Value> = args[1..].iter().cloned().collect();
 
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("&rest".to_string())],
+        params: vec![crate::value::Pattern::Var("&rest".to_string())],
         body: crate::value::Expr::Symbol(crate::eval::hof_keys::PARTIAL_PLACEHOLDER.to_string()),
         env: {
             let mut env = crate::value::Env::new();
@@ -80,7 +80,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
     // 複数の関数の場合は合成された関数を返す
     let funcs: im::Vector<Value> = args.iter().cloned().collect();
     Ok(Value::Function(Arc::new(crate::value::Function {
-        params: vec![crate::value::FnParam::Simple("x".to_string())],
+        params: vec![crate::value::Pattern::Var("x".to_string())],
         body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
         env: {
             let mut env = crate::value::Env::new();

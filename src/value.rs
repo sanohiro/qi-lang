@@ -220,7 +220,8 @@ impl PartialEq for Value {
 /// 関数の定義
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub params: Vec<FnParam>,
+    /// 関数のパラメータパターン（Pattern型に統一）
+    pub params: Vec<Pattern>,
     pub body: Expr,
     pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool, // &argsに対応
@@ -437,17 +438,6 @@ impl Env {
     }
 }
 
-/// 関数のパラメータパターン
-#[derive(Debug, Clone, PartialEq)]
-pub enum FnParam {
-    /// シンプルなシンボル: x
-    Simple(String),
-    /// ベクタの分解: [x y] or [[a b] c] or [x ...rest]
-    Vector(Vec<FnParam>, Option<Box<FnParam>>), // (固定部, rest部)
-    /// マップの分解: {:key var} or {:key var :as all}
-    Map(Vec<(String, FnParam)>, Option<String>), // (キー・パターン対, :as変数)
-}
-
 /// AST（抽象構文木）の式
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -469,12 +459,12 @@ pub enum Expr {
     // 特殊形式
     Def(String, Box<Expr>, bool), // (name, value, is_private)
     Fn {
-        params: Vec<FnParam>,
+        params: Vec<Pattern>,
         body: Box<Expr>,
         is_variadic: bool,
     },
     Let {
-        bindings: Vec<(FnParam, Expr)>,
+        bindings: Vec<(Pattern, Expr)>,
         body: Box<Expr>,
     },
     If {
@@ -542,35 +532,59 @@ pub struct MatchArm {
 
 /// パターン
 #[derive(Debug, Clone, PartialEq)]
+/// パターンマッチング（分解束縛）の統一型
+///
+/// let/fn/matchすべてで共通のパターン構文を使用します。
+/// ただし、一部の機能はmatch専用です（実行時チェック）。
 pub enum Pattern {
-    /// ワイルドカード（_）
+    // ========================================
+    // match専用機能（let/fnでは使用不可）
+    // ========================================
+    /// ワイルドカード（_）- match専用
     Wildcard,
-    /// nil
+
+    /// nilリテラル - match専用
     Nil,
-    /// bool値
+    /// bool値リテラル - match専用
     Bool(bool),
-    /// 整数リテラル
+    /// 整数リテラル - match専用
     Integer(i64),
-    /// 浮動小数点リテラル
+    /// 浮動小数点リテラル - match専用
     Float(f64),
-    /// 文字列リテラル
+    /// 文字列リテラル - match専用
     String(String),
-    /// キーワードリテラル
+    /// キーワードリテラル - match専用
     Keyword(String),
+
+    /// 変換 var => expr (束縛後に変換を適用) - match専用
+    Transform(String, Box<Expr>),
+
+    /// Orパターン (p1 | p2 | p3) - match専用
+    Or(Vec<Pattern>),
+
+    // ========================================
+    // 共通機能（let/fn/matchすべてで使用可能）
+    // ========================================
     /// 変数（バインディング）
     Var(String),
-    /// リストパターン [x, ...rest]
-    List(Vec<Pattern>, Option<Box<Pattern>>), // (固定部, 可変部)
-    /// ベクタパターン [x, y]
-    Vector(Vec<Pattern>),
-    /// マップパターン {:key val}
-    Map(Vec<(String, Pattern)>),
+
+    /// リストパターン (x & rest)
+    /// 例: (let [[x & rest] '(1 2 3)] ...) => x=1, rest='(2 3)
+    List(Vec<Pattern>, Option<Box<Pattern>>), // (固定部, rest部)
+
+    /// ベクタパターン [x y] or [x & rest]
+    /// 例: (let [[x y & rest] [1 2 3 4]] ...) => x=1, y=2, rest='(3 4)
+    /// FnParamから統合：restパラメータ追加
+    Vector(Vec<Pattern>, Option<Box<Pattern>>), // (固定部, rest部)
+
+    /// マップパターン {:key val} or {:key val :as m}
+    /// 例: (let [{:x a :y b :as m} {:x 10 :y 20}] ...) => a=10, b=20, m={:x 10 :y 20}
+    /// FnParamから統合：:asパラメータ追加
+    Map(Vec<(String, Pattern)>, Option<String>), // (キー・パターン対, :as変数)
+
     /// As束縛 pattern :as var
+    /// 例: (match [1 2] [x y :as all] -> all) => [1 2]
     As(Box<Pattern>, String),
-    /// 変換 var => expr (束縛後に変換を適用)
-    Transform(String, Box<Expr>),
-    /// Orパターン (p1 | p2 | p3)
-    Or(Vec<Pattern>),
 }
 
 impl fmt::Display for Value {
