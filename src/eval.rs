@@ -346,6 +346,81 @@ impl Evaluator {
         }
     }
 
+    /// 特殊形式（高階関数、演算子など）のディスパッチ
+    ///
+    /// 特殊な評価が必要な関数をチェックし、該当する場合は評価結果を返す。
+    /// 該当しない場合はNoneを返す。
+    #[inline]
+    fn try_eval_special_form(
+        &self,
+        func: &Expr,
+        args: &[Expr],
+        env: Arc<RwLock<Env>>,
+    ) -> Option<Result<Value, String>> {
+        if let Expr::Symbol(name) = func {
+            match name.as_str() {
+                "_railway-pipe" => Some(self.eval_railway_pipe(args, env)),
+                "and" => Some(self.eval_and(args, env)),
+                "apply" => Some(self.eval_apply(args, env)),
+                "go/catch" => Some(self.eval_catch(args, env)),
+                "go/parallel-do" => Some(self.eval_parallel_do(args, env)),
+                "go/pfilter" => Some(self.eval_pfilter(args, env)),
+                "go/preduce" => Some(self.eval_preduce(args, env)),
+                "go/run" => Some(self.eval_run(args, env)),
+                "go/scope-go" => Some(self.eval_scope_go(args, env)),
+                "go/select!" => Some(self.eval_select(args, env)),
+                "go/then" => Some(self.eval_then(args, env)),
+                "go/with-scope" => Some(self.eval_with_scope(args, env)),
+                "branch" => Some(self.eval_branch(args, env)),
+                "comp" => Some(self.eval_comp(args, env)),
+                "drop-while" => Some(self.eval_drop_while(args, env)),
+                "eval" => Some(self.eval_eval(args, env)),
+                "list/every?" => Some(self.eval_every(args, env)),
+                "filter" => Some(self.eval_filter(args, env)),
+                "find" => Some(self.eval_find(args, env)),
+                "list/chunk" => Some(self.eval_chunk(args, env)),
+                "list/count-by" => Some(self.eval_count_by(args, env)),
+                "list/drop-last" => Some(self.eval_drop_last(args, env)),
+                "list/find-index" => Some(self.eval_find_index(args, env)),
+                "list/group-by" => Some(self.eval_group_by(args, env)),
+                "list/keep" => Some(self.eval_keep(args, env)),
+                "list/max-by" => Some(self.eval_max_by(args, env)),
+                "list/min-by" => Some(self.eval_min_by(args, env)),
+                "list/partition-by" => Some(self.eval_partition_by(args, env)),
+                "list/partition" => Some(self.eval_partition(args, env)),
+                "list/sort-by" => Some(self.eval_sort_by(args, env)),
+                "list/split-at" => Some(self.eval_split_at(args, env)),
+                "list/sum-by" => Some(self.eval_sum_by(args, env)),
+                "map-lines" => Some(self.eval_map_lines(args, env)),
+                "map" => Some(self.eval_map(args, env)),
+                "map/update-keys" => Some(self.eval_update_keys(args, env)),
+                "map/update-vals" => Some(self.eval_update_vals(args, env)),
+                "or" => Some(self.eval_or(args, env)),
+                "pipeline/filter" => Some(self.eval_pipeline_filter(args, env)),
+                "pipeline/map" => Some(self.eval_pipeline_map(args, env)),
+                "pipeline/pipeline" => Some(self.eval_pipeline(args, env)),
+                "pmap" => Some(self.eval_pmap(args, env)),
+                "quote" => Some(self.eval_quote(args)),
+                "reduce" => Some(self.eval_reduce(args, env)),
+                "list/some?" => Some(self.eval_some(args, env)),
+                "stream/filter" => Some(self.eval_stream_filter(args, env)),
+                "stream/iterate" => Some(self.eval_iterate(args, env)),
+                "stream/map" => Some(self.eval_stream_map(args, env)),
+                "swap!" => Some(self.eval_swap(args, env)),
+                "take-while" => Some(self.eval_take_while(args, env)),
+                "tap" => Some(self.eval_tap(args, env)),
+                "test/assert-throws" => Some(self.eval_test_assert_throws(args, env)),
+                "test/run" => Some(self.eval_test_run(args, env)),
+                "time" => Some(self.eval_time(args, env)),
+                "update-in" => Some(self.eval_update_in(args, env)),
+                "update" => Some(self.eval_update(args, env)),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     /// 関数呼び出しの評価
     ///
     /// 特別な関数（高階関数、論理演算子など）のディスパッチと、
@@ -356,66 +431,9 @@ impl Evaluator {
         args: &[Expr],
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
-        // 高階関数と論理演算子、quoteの特別処理
-        if let Expr::Symbol(name) = func {
-            match name.as_str() {
-                "_railway-pipe" => return self.eval_railway_pipe(args, env),
-                "and" => return self.eval_and(args, env),
-                "apply" => return self.eval_apply(args, env),
-                "go/catch" => return self.eval_catch(args, env),
-                "go/parallel-do" => return self.eval_parallel_do(args, env),
-                "go/pfilter" => return self.eval_pfilter(args, env),
-                "go/preduce" => return self.eval_preduce(args, env),
-                "go/run" => return self.eval_run(args, env),
-                "go/scope-go" => return self.eval_scope_go(args, env),
-                "go/select!" => return self.eval_select(args, env),
-                "go/then" => return self.eval_then(args, env),
-                "go/with-scope" => return self.eval_with_scope(args, env),
-                "branch" => return self.eval_branch(args, env),
-                "comp" => return self.eval_comp(args, env),
-                "drop-while" => return self.eval_drop_while(args, env),
-                "eval" => return self.eval_eval(args, env),
-                "list/every?" => return self.eval_every(args, env),
-                "filter" => return self.eval_filter(args, env),
-                "find" => return self.eval_find(args, env),
-                "list/chunk" => return self.eval_chunk(args, env),
-                "list/count-by" => return self.eval_count_by(args, env),
-                "list/drop-last" => return self.eval_drop_last(args, env),
-                "list/find-index" => return self.eval_find_index(args, env),
-                "list/group-by" => return self.eval_group_by(args, env),
-                "list/keep" => return self.eval_keep(args, env),
-                "list/max-by" => return self.eval_max_by(args, env),
-                "list/min-by" => return self.eval_min_by(args, env),
-                "list/partition-by" => return self.eval_partition_by(args, env),
-                "list/partition" => return self.eval_partition(args, env),
-                "list/sort-by" => return self.eval_sort_by(args, env),
-                "list/split-at" => return self.eval_split_at(args, env),
-                "list/sum-by" => return self.eval_sum_by(args, env),
-                "map-lines" => return self.eval_map_lines(args, env),
-                "map" => return self.eval_map(args, env),
-                "map/update-keys" => return self.eval_update_keys(args, env),
-                "map/update-vals" => return self.eval_update_vals(args, env),
-                "or" => return self.eval_or(args, env),
-                "pipeline/filter" => return self.eval_pipeline_filter(args, env),
-                "pipeline/map" => return self.eval_pipeline_map(args, env),
-                "pipeline/pipeline" => return self.eval_pipeline(args, env),
-                "pmap" => return self.eval_pmap(args, env),
-                "quote" => return self.eval_quote(args),
-                "reduce" => return self.eval_reduce(args, env),
-                "list/some?" => return self.eval_some(args, env),
-                "stream/filter" => return self.eval_stream_filter(args, env),
-                "stream/iterate" => return self.eval_iterate(args, env),
-                "stream/map" => return self.eval_stream_map(args, env),
-                "swap!" => return self.eval_swap(args, env),
-                "take-while" => return self.eval_take_while(args, env),
-                "tap" => return self.eval_tap(args, env),
-                "test/assert-throws" => return self.eval_test_assert_throws(args, env),
-                "test/run" => return self.eval_test_run(args, env),
-                "time" => return self.eval_time(args, env),
-                "update-in" => return self.eval_update_in(args, env),
-                "update" => return self.eval_update(args, env),
-                _ => {}
-            }
+        // 特殊形式のチェック
+        if let Some(result) = self.try_eval_special_form(func, args, Arc::clone(&env)) {
+            return result;
         }
 
         let func_val = self.eval_with_env(func, Arc::clone(&env))?;
@@ -465,7 +483,7 @@ impl Evaluator {
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         for arm in arms {
-            let mut bindings = HashMap::new();
+            let mut bindings: SmallVec<[(String, Value); 8]> = SmallVec::new();
             let mut transforms = Vec::new();
 
             if self.match_pattern_with_transforms(
@@ -511,14 +529,14 @@ impl Evaluator {
         &self,
         pattern: &Pattern,
         value: &Value,
-        bindings: &mut HashMap<String, Value>,
+        bindings: &mut SmallVec<[(String, Value); 8]>,
         transforms: &mut Vec<(String, Expr, Value)>,
     ) -> Result<bool, String> {
         match pattern {
             Pattern::Transform(var, transform) => {
                 // 変換情報を記録
                 transforms.push((var.clone(), (**transform).clone(), value.clone()));
-                bindings.insert(var.clone(), value.clone());
+                bindings.push((var.clone(), value.clone()));
                 Ok(true)
             }
             Pattern::Vector(patterns, rest) => {
@@ -602,7 +620,7 @@ impl Evaluator {
                     }
                     // :asパターンの処理
                     if let Some(var) = as_var {
-                        bindings.insert(var.clone(), value.clone());
+                        bindings.push((var.clone(), value.clone()));
                     }
                     Ok(true)
                 } else {
@@ -612,7 +630,7 @@ impl Evaluator {
             Pattern::As(inner_pattern, var) => {
                 // ネストされたTransformパターンを扱うため、再帰的に処理
                 if self.match_pattern_with_transforms(inner_pattern, value, bindings, transforms)? {
-                    bindings.insert(var.clone(), value.clone());
+                    bindings.push((var.clone(), value.clone()));
                     Ok(true)
                 } else {
                     Ok(false)
@@ -644,7 +662,7 @@ impl Evaluator {
         &self,
         pattern: &Pattern,
         value: &Value,
-        bindings: &mut HashMap<String, Value>,
+        bindings: &mut SmallVec<[(String, Value); 8]>,
     ) -> Result<bool, String> {
         match pattern {
             Pattern::Wildcard => Ok(true),
@@ -657,7 +675,7 @@ impl Evaluator {
             Pattern::String(s) => Ok(matches!(value, Value::String(vs) if vs == s)),
             Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if vk == k)),
             Pattern::Var(name) => {
-                bindings.insert(name.clone(), value.clone());
+                bindings.push((name.clone(), value.clone()));
                 Ok(true)
             }
             Pattern::Vector(patterns, rest) => {
@@ -733,7 +751,7 @@ impl Evaluator {
                     }
                     // :asパターンの処理
                     if let Some(var) = as_var {
-                        bindings.insert(var.clone(), value.clone());
+                        bindings.push((var.clone(), value.clone()));
                     }
                     Ok(true)
                 } else {
@@ -744,21 +762,22 @@ impl Evaluator {
                 // 内側のパターンをマッチ
                 if self.match_pattern(inner_pattern, value, bindings)? {
                     // マッチ成功したら、値全体も変数に束縛
-                    bindings.insert(var.clone(), value.clone());
+                    bindings.push((var.clone(), value.clone()));
                     Ok(true)
                 } else {
                     Ok(false)
                 }
             }
             Pattern::Or(patterns) => {
-                // 各パターンを順番に試す
+                // 各パターンを順番に試す（cloneせずにロールバック）
                 for pat in patterns {
-                    let mut temp_bindings = bindings.clone();
-                    if self.match_pattern(pat, value, &mut temp_bindings)? {
-                        // 最初にマッチしたパターンのバインディングを使う
-                        *bindings = temp_bindings;
+                    let start_len = bindings.len();
+                    if self.match_pattern(pat, value, bindings)? {
+                        // 最初にマッチしたパターンを使う
                         return Ok(true);
                     }
+                    // 失敗時はロールバック
+                    bindings.truncate(start_len);
                 }
                 // どれもマッチしなかった
                 Ok(false)
