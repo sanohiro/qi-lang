@@ -232,6 +232,68 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 - 複雑な処理のまとめてキャッチ
 - **例外的な状況の処理**
 
+---
+
+## 標準ライブラリの返却形式
+
+Qiの組み込み関数は、エラーの性質に応じて異なる形式を返します。
+
+### Result型マップを返す関数（`{:ok ...}` / `{:error ...}`）
+
+**データフォーマット系** - パースエラーは予期されるため、明示的なハンドリングが必要：
+
+- `json/parse`, `json/stringify`, `json/pretty` - JSON処理
+- `yaml/parse`, `yaml/stringify` - YAML処理
+- `csv/parse`, `csv/stringify` - CSV処理（予定）
+
+```qi
+;; パースエラーを明示的に処理
+(match (json/parse user-input)
+  {:ok data} -> (process data)
+  {:error msg} -> (show-error-to-user msg))
+
+;; パイプラインでの使用
+(user-input
+ |> json/parse
+ |>? (fn [data] {:ok (get data "name")})
+ |>? (fn [name] {:ok (str/upper name)}))
+```
+
+### 例外を投げる関数（`Ok(value)` / `Err(message)`）
+
+**I/O・ネットワーク系** - 失敗は例外的な状況として扱う：
+
+- `http/get`, `http/post`, `http/put`, `http/delete` - HTTP操作
+- `io/read-file`, `io/write-file` - ファイルI/O
+- `io/open`, `io/close` - ファイル操作
+- `db/*` - データベース操作（予定）
+
+```qi
+;; 失敗時は例外として伝播
+(def content (io/read-file "config.json"))
+
+;; tryでキャッチして処理
+(match (try (http/get "https://api.example.com/data"))
+  {:ok response} -> (process response)
+  {:error e} -> (log-error e))
+```
+
+### 設計方針
+
+この区別は以下の理由に基づきます：
+
+1. **データフォーマット系はResult型**
+   - パースエラーは**予期される失敗**（不正なJSON文字列など）
+   - ユーザー入力の検証など、エラーケースが正常なフロー
+   - matchやパイプライン（`|>?`）で明示的にハンドリング
+
+2. **I/O・ネットワーク系は例外**
+   - ファイルが存在しない、ネットワークエラーは**例外的な状況**
+   - 正常系のコードを簡潔に保つ
+   - 必要に応じてtry/catchでキャッチ
+
+この方針により、ユーザーは「予期されるエラー」と「例外的な状況」を自然に区別できます。
+
 ### deferを使うべきケース
 
 - ファイルのクローズ
