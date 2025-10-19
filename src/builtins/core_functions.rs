@@ -24,10 +24,10 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::FnParam::Simple("_".to_string())],
-        body: crate::value::Expr::Symbol("__constantly_value__".to_string()),
+        body: crate::value::Expr::Symbol(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__constantly_value__".to_string(), value);
+            env.set(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string(), value);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
@@ -49,11 +49,14 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::FnParam::Simple("&rest".to_string())],
-        body: crate::value::Expr::Symbol("__partial_placeholder__".to_string()),
+        body: crate::value::Expr::Symbol(crate::eval::hof_keys::PARTIAL_PLACEHOLDER.to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__partial_func__".to_string(), func);
-            env.set("__partial_args__".to_string(), Value::List(partial_args));
+            env.set(crate::eval::hof_keys::PARTIAL_FUNC.to_string(), func);
+            env.set(
+                crate::eval::hof_keys::PARTIAL_ARGS.to_string(),
+                Value::List(partial_args),
+            );
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: true,
@@ -81,7 +84,10 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
         body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__comp_funcs__".to_string(), Value::List(funcs));
+            env.set(
+                crate::eval::hof_keys::COMP_FUNCS.to_string(),
+                Value::List(funcs),
+            );
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,

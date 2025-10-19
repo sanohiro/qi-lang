@@ -701,8 +701,8 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 // - LANG=en: __doc__name_en → __doc__name
                 // - LANG=fr: __doc__name_fr → __doc__name → __doc__name_en
                 let lang = std::env::var("QI_LANG").unwrap_or_else(|_| "en".to_string());
-                let doc_key_lang = format!("__doc__{}_{}", name, lang);
-                let doc_key = format!("__doc__{}", name);
+                let doc_key_lang = format!("{}{}_{}", qi_lang::eval::DOC_PREFIX, name, lang);
+                let doc_key = format!("{}{}", qi_lang::eval::DOC_PREFIX, name);
 
                 let doc = env
                     .get(&doc_key_lang)
@@ -710,7 +710,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                     .or_else(|| {
                         // enの場合はenフォールバックをスキップ（既にチェック済み）
                         if lang != "en" {
-                            env.get(&format!("__doc__{}_en", name))
+                            env.get(&format!("{}{}_en", qi_lang::eval::DOC_PREFIX, name))
                         } else {
                             None
                         }

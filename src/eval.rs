@@ -9,6 +9,28 @@ use smallvec::{smallvec, SmallVec};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+// ========================================
+// マジック文字列定数
+// ========================================
+
+/// Recur特殊エラーのプレフィックス
+const RECUR_SENTINEL: &str = "__RECUR__:";
+
+/// ドキュメント文字列のキープレフィックス
+pub const DOC_PREFIX: &str = "__doc__";
+
+/// 高階関数の内部状態キー
+pub mod hof_keys {
+    pub const COMPLEMENT_FUNC: &str = "__complement_func__";
+    pub const JUXT_FUNCS: &str = "__juxt_funcs__";
+    pub const TAP_FUNC: &str = "__tap_func__";
+    pub const PARTIAL_FUNC: &str = "__partial_func__";
+    pub const PARTIAL_ARGS: &str = "__partial_args__";
+    pub const COMP_FUNCS: &str = "__comp_funcs__";
+    pub const CONSTANTLY_VALUE: &str = "__constantly_value__";
+    pub const PARTIAL_PLACEHOLDER: &str = "__partial_placeholder__";
+}
+
 /// 環境から変数名の候補を取得
 fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize) -> Vec<String> {
     // limit.max(8): 通常limit=3だが、フィルタ前の候補は8個程度と推定
@@ -194,7 +216,7 @@ impl Evaluator {
 
             Expr::Def(name, value, is_private) => {
                 // 名前衝突チェック（ただし__doc__で始まる変数は除外）
-                if !name.starts_with("__doc__") {
+                if !name.starts_with(DOC_PREFIX) {
                     if let Some(existing) = env.read().get(name) {
                         match existing {
                             Value::NativeFunc(nf) => {
@@ -997,13 +1019,13 @@ impl Evaluator {
                 // 特殊処理フラグがtrueの場合のみ環境ルックアップ（99.9%の通常関数で高速化）
                 if f.has_special_processing {
                     // complement特殊処理 - 実行前にチェック
-                    if let Some(complement_func) = f.env.read().get("__complement_func__") {
+                    if let Some(complement_func) = f.env.read().get(hof_keys::COMPLEMENT_FUNC) {
                         let result = self.apply_func(&complement_func, args)?;
                         return Ok(Value::Bool(!result.is_truthy()));
                     }
 
                     // juxt特殊処理 - 実行前にチェック
-                    if let Some(Value::List(juxt_funcs)) = f.env.read().get("__juxt_funcs__") {
+                    if let Some(Value::List(juxt_funcs)) = f.env.read().get(hof_keys::JUXT_FUNCS) {
                         let mut results = Vec::with_capacity(juxt_funcs.len());
                         for jfunc in &juxt_funcs {
                             let result = self.apply_func(jfunc, args.clone())?;
@@ -1013,7 +1035,7 @@ impl Evaluator {
                     }
 
                     // tap>特殊処理 - 副作用を実行してから値を返す
-                    if let Some(tap_func) = f.env.read().get("__tap_func__") {
+                    if let Some(tap_func) = f.env.read().get(hof_keys::TAP_FUNC) {
                         if args.len() == 1 {
                             let value = args[0].clone();
                             // 副作用関数を実行（結果は無視）
@@ -1024,9 +1046,9 @@ impl Evaluator {
                     }
 
                     // partial特殊処理 - 部分適用された引数と新しい引数を結合
-                    if let Some(partial_func) = f.env.read().get("__partial_func__") {
+                    if let Some(partial_func) = f.env.read().get(hof_keys::PARTIAL_FUNC) {
                         if let Some(Value::List(partial_args)) =
-                            f.env.read().get("__partial_args__")
+                            f.env.read().get(hof_keys::PARTIAL_ARGS)
                         {
                             // 部分適用された引数と新しい引数を結合
                             let mut combined_args: SmallVec<[Value; 4]> =
@@ -1038,7 +1060,7 @@ impl Evaluator {
                     }
 
                     // comp特殊処理 - 関数合成（右から左に適用）
-                    if let Some(Value::List(comp_funcs)) = f.env.read().get("__comp_funcs__") {
+                    if let Some(Value::List(comp_funcs)) = f.env.read().get(hof_keys::COMP_FUNCS) {
                         if args.len() != 1 {
                             return Err(fmt_msg(
                                 MsgKey::ArgCountMismatch,
@@ -2010,7 +2032,7 @@ impl Evaluator {
         let values = values?;
 
         // Recurは特別なエラーとして扱う
-        Err(format!("__RECUR__:{}", values.len()))
+        Err(format!("{}{}", RECUR_SENTINEL, values.len()))
     }
 
     /// macroを評価
@@ -2062,7 +2084,7 @@ impl Evaluator {
         loop {
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
-                Err(e) if e.starts_with("__RECUR__:") => {
+                Err(e) if e.starts_with(RECUR_SENTINEL) => {
                     // Recurエラーを検出 - 評価し直す必要がある
                     // 実際のrecur呼び出しを見つけて引数を評価
                     if let Some(args) = Self::find_recur(body) {
@@ -2579,14 +2601,14 @@ impl Evaluator {
                                 if items.len() == 4 {
                                     // items[2]がドキュメント文字列
                                     if let Value::String(doc) = &items[2] {
-                                        let doc_key = format!("__doc__{}", name);
+                                        let doc_key = format!("{}{}", DOC_PREFIX, name);
                                         self.global_env
                                             .write()
                                             .set(doc_key, Value::String(doc.clone()));
                                     } else if let Value::Map(doc_map) = &items[2] {
                                         // 構造化ドキュメント（マップ）
                                         if let Some(Value::String(desc)) = doc_map.get("desc") {
-                                            let doc_key = format!("__doc__{}", name);
+                                            let doc_key = format!("{}{}", DOC_PREFIX, name);
                                             self.global_env
                                                 .write()
                                                 .set(doc_key, Value::String(desc.clone()));
@@ -2638,7 +2660,7 @@ impl Evaluator {
                                 {
                                     // ドキュメント文字列を保存
                                     if let Some(doc) = doc_string {
-                                        let doc_key = format!("__doc__{}", name);
+                                        let doc_key = format!("{}{}", DOC_PREFIX, name);
                                         self.global_env.write().set(doc_key, Value::String(doc));
                                     }
 

@@ -412,7 +412,7 @@ impl Parser {
         // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...)))
         // ない場合は (def name (fn ...))
         if let Some(doc) = doc_expr {
-            let doc_key = format!("__doc__{}", name);
+            let doc_key = format!("{}{}", crate::eval::DOC_PREFIX, name);
             let doc_def = Expr::Def(doc_key, Box::new(doc), is_private);
             let fn_def = Expr::Def(name, Box::new(fn_expr), is_private);
             Ok(Expr::Do(vec![doc_def, fn_def]))
@@ -1532,7 +1532,7 @@ mod tests {
                 // 最初はドキュメント
                 match &exprs[0] {
                     Expr::Def(name, _, is_private) => {
-                        assert!(name.starts_with("__doc__"));
+                        assert!(name.starts_with(crate::eval::DOC_PREFIX));
                         assert!(*is_private);
                     }
                     _ => panic!("Expected doc Def"),

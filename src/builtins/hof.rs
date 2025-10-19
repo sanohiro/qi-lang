@@ -507,7 +507,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__complement_func__".to_string(), func);
+            env.set(crate::eval::hof_keys::COMPLEMENT_FUNC.to_string(), func);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
@@ -531,7 +531,10 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__juxt_funcs__".to_string(), Value::List(funcs.into()));
+            env.set(
+                crate::eval::hof_keys::JUXT_FUNCS.to_string(),
+                Value::List(funcs.into()),
+            );
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
@@ -567,7 +570,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::Symbol("x".to_string()),
         env: {
             let mut env = crate::value::Env::new();
-            env.set("__tap_func__".to_string(), func);
+            env.set(crate::eval::hof_keys::TAP_FUNC.to_string(), func);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
