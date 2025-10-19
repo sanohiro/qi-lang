@@ -168,7 +168,7 @@ impl Evaluator {
             Expr::Integer(n) => Ok(Value::Integer(*n)),
             Expr::Float(f) => Ok(Value::Float(*f)),
             Expr::String(s) => Ok(Value::String(s.clone())),
-            Expr::FString(parts) => self.eval_fstring(parts, env.clone()),
+            Expr::FString(parts) => self.eval_fstring(parts, Arc::clone(&env)),
             Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
 
             Expr::Symbol(name) => {
@@ -190,7 +190,7 @@ impl Evaluator {
             Expr::List(items) => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
-                    values.push(self.eval_with_env(item, env.clone())?);
+                    values.push(self.eval_with_env(item, Arc::clone(&env))?);
                 }
                 Ok(Value::List(values.into()))
             }
@@ -198,7 +198,7 @@ impl Evaluator {
             Expr::Vector(items) => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
-                    values.push(self.eval_with_env(item, env.clone())?);
+                    values.push(self.eval_with_env(item, Arc::clone(&env))?);
                 }
                 Ok(Value::Vector(values.into()))
             }
@@ -206,9 +206,9 @@ impl Evaluator {
             Expr::Map(pairs) => {
                 let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
-                    let key_value = self.eval_with_env(k, env.clone())?;
+                    let key_value = self.eval_with_env(k, Arc::clone(&env))?;
                     let key = key_value.to_map_key()?;
-                    let value = self.eval_with_env(v, env.clone())?;
+                    let value = self.eval_with_env(v, Arc::clone(&env))?;
                     map.insert(key, value);
                 }
                 Ok(Value::Map(map.into()))
@@ -232,7 +232,7 @@ impl Evaluator {
                     }
                 }
 
-                let val = self.eval_with_env(value, env.clone())?;
+                let val = self.eval_with_env(value, Arc::clone(&env))?;
                 // 現在の環境に定義（プライベートフラグに応じて）
                 if *is_private {
                     env.write().set_private(name.clone(), val.clone());
@@ -256,7 +256,7 @@ impl Evaluator {
 
             Expr::Let { bindings, body } => {
                 // let環境を一度だけArc<RwLock<Env>>として作成（cloneとヒープ確保を削減）
-                let new_env = Arc::new(RwLock::new(Env::with_parent(env.clone())));
+                let new_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&env))));
                 for (pattern, expr) in bindings {
                     let value = self.eval_with_env(expr, new_env.clone())?;
                     self.bind_fn_param(pattern, &value, &mut new_env.write())?;
@@ -269,7 +269,7 @@ impl Evaluator {
                 then,
                 otherwise,
             } => {
-                let test_val = self.eval_with_env(test, env.clone())?;
+                let test_val = self.eval_with_env(test, Arc::clone(&env))?;
                 if test_val.is_truthy() {
                     self.eval_with_env(then, env)
                 } else if let Some(otherwise) = otherwise {
@@ -282,7 +282,7 @@ impl Evaluator {
             Expr::Do(exprs) => self.eval_do(exprs, env),
 
             Expr::Match { expr, arms } => {
-                let value = self.eval_with_env(expr, env.clone())?;
+                let value = self.eval_with_env(expr, Arc::clone(&env))?;
                 self.eval_match(&value, arms, env)
             }
 
@@ -332,7 +332,7 @@ impl Evaluator {
                 let module = Module {
                     name: module_name.clone(),
                     file_path: None,
-                    env: env.clone(),
+                    env: Arc::clone(&env),
                     exports: Some(symbols.clone()),
                 };
                 self.modules.write().insert(module_name, Arc::new(module));
@@ -476,7 +476,7 @@ impl Evaluator {
             )? {
                 // ガード条件のチェック
                 if let Some(guard) = &arm.guard {
-                    let mut guard_env = Env::with_parent(env.clone());
+                    let mut guard_env = Env::with_parent(Arc::clone(&env));
                     for (name, val) in &bindings {
                         guard_env.set(name.clone(), val.clone());
                     }
@@ -487,7 +487,7 @@ impl Evaluator {
                 }
 
                 // 変換を適用
-                let mut match_env = Env::with_parent(env.clone());
+                let mut match_env = Env::with_parent(Arc::clone(&env));
                 for (name, val) in bindings {
                     match_env.set(name.clone(), val.clone());
                 }
@@ -635,7 +635,7 @@ impl Evaluator {
         // 変換式を評価して値に適用
         // transform が関数の場合: (transform value)
         // transform がシンボルの場合: (symbol value)
-        let transform_val = self.eval_with_env(transform, env.clone())?;
+        let transform_val = self.eval_with_env(transform, Arc::clone(&env))?;
         self.apply_function(&transform_val, std::slice::from_ref(value))
     }
 
@@ -772,53 +772,53 @@ impl Evaluator {
 
     /// map関数の実装: (map f coll)
     fn eval_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::map(&[func, coll], self)
     }
 
     /// filter関数の実装: (filter pred coll)
     fn eval_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let pred = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::filter(&[pred, coll], self)
     }
 
     /// reduce関数の実装: (reduce f init coll) または (reduce f coll)
     fn eval_reduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
 
         if args.len() == 3 {
-            let init = self.eval_with_env(&args[1], env.clone())?;
-            let coll = self.eval_with_env(&args[2], env.clone())?;
+            let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
+            let coll = self.eval_with_env(&args[2], Arc::clone(&env))?;
             builtins::reduce(&[func, coll, init], self)
         } else {
-            let coll = self.eval_with_env(&args[1], env.clone())?;
+            let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
             builtins::reduce(&[func, coll], self)
         }
     }
 
     /// swap!関数の実装: (swap! atom f args...)
     fn eval_swap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let atom = self.eval_with_env(&args[0], env.clone())?;
-        let func = self.eval_with_env(&args[1], env.clone())?;
+        let atom = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let func = self.eval_with_env(&args[1], Arc::clone(&env))?;
         let mut swap_args = vec![atom, func];
         for arg in &args[2..] {
-            swap_args.push(self.eval_with_env(arg, env.clone())?);
+            swap_args.push(self.eval_with_env(arg, Arc::clone(&env))?);
         }
         builtins::swap(&swap_args, self)
     }
 
     /// eval関数の実装: (eval expr)
     fn eval_eval(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let expr = self.eval_with_env(&args[0], env.clone())?;
+        let expr = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::eval(&[expr], self)
     }
 
     /// pmap関数の実装: (pmap f coll)
     fn eval_pmap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::pmap(&[func, coll], self)
     }
 
@@ -827,8 +827,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["go/pfilter"]));
         }
-        let pred = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::pfilter(&[pred, coll], self)
     }
 
@@ -837,67 +837,67 @@ impl Evaluator {
         if args.len() != 3 {
             return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["go/preduce", "3", ""]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let init = self.eval_with_env(&args[1], env.clone())?;
-        let coll = self.eval_with_env(&args[2], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[2], Arc::clone(&env))?;
         builtins::preduce(&[func, init, coll], self)
     }
 
     fn eval_partition(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::partition(&[func, coll], self)
     }
 
     fn eval_group_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::group_by(&[func, coll], self)
     }
 
     fn eval_map_lines(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let text = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let text = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::map_lines(&[func, text], self)
     }
 
     fn eval_update(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let map = self.eval_with_env(&args[0], env.clone())?;
-        let key = self.eval_with_env(&args[1], env.clone())?;
-        let func = self.eval_with_env(&args[2], env.clone())?;
+        let map = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let key = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        let func = self.eval_with_env(&args[2], Arc::clone(&env))?;
         builtins::update(&[map, key, func], self)
     }
 
     fn eval_update_in(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let map = self.eval_with_env(&args[0], env.clone())?;
-        let path = self.eval_with_env(&args[1], env.clone())?;
-        let func = self.eval_with_env(&args[2], env.clone())?;
+        let map = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let path = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        let func = self.eval_with_env(&args[2], Arc::clone(&env))?;
         builtins::update_in(&[map, path, func], self)
     }
 
     fn eval_comp(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let funcs: Result<Vec<_>, _> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect();
         builtins::comp(&funcs?, self)
     }
 
     fn eval_apply(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let list = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let list = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::apply(&[func, list], self)
     }
 
     fn eval_take_while(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let pred = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::take_while(&[pred, coll], self)
     }
 
     fn eval_drop_while(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let pred = self.eval_with_env(&args[0], env.clone())?;
-        let coll = self.eval_with_env(&args[1], env.clone())?;
+        let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::drop_while(&[pred, coll], self)
     }
 
@@ -906,8 +906,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["test/run"]));
         }
-        let name = self.eval_with_env(&args[0], env.clone())?;
-        let body = self.eval_with_env(&args[1], env.clone())?;
+        let name = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let body = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::test_run(&[name, body], self)
     }
 
@@ -920,7 +920,7 @@ impl Evaluator {
         if args.len() != 1 {
             return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::test_assert_throws(&[func], self)
     }
 
@@ -1210,7 +1210,7 @@ impl Evaluator {
         }
         let mut last = Value::Bool(true);
         for arg in args {
-            last = self.eval_with_env(arg, env.clone())?;
+            last = self.eval_with_env(arg, Arc::clone(&env))?;
             if !last.is_truthy() {
                 return Ok(last);
             }
@@ -1224,7 +1224,7 @@ impl Evaluator {
             return Ok(Value::Nil);
         }
         for arg in args {
-            let val = self.eval_with_env(arg, env.clone())?;
+            let val = self.eval_with_env(arg, Arc::clone(&env))?;
             if val.is_truthy() {
                 return Ok(val);
             }
@@ -1240,17 +1240,47 @@ impl Evaluator {
         self.expr_to_value(&args[0])
     }
 
+    /// 2引数のbuiltin関数を評価する共通ヘルパー
+    #[inline]
+    fn eval_builtin_2_args(
+        &self,
+        args: &[Expr],
+        env: Arc<RwLock<Env>>,
+        func_name: &str,
+        builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
+    ) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err(fmt_msg(MsgKey::Need2Args, &[func_name]));
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtin(&vals, self)
+    }
+
+    /// 3引数のbuiltin関数を評価する共通ヘルパー
+    #[inline]
+    fn eval_builtin_3_args(
+        &self,
+        args: &[Expr],
+        env: Arc<RwLock<Env>>,
+        func_name: &str,
+        builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
+    ) -> Result<Value, String> {
+        if args.len() != 3 {
+            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &[func_name, "3", ""]));
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtin(&vals, self)
+    }
+
     /// sort-by - キー関数でソート
     fn eval_sort_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["sort-by"]));
-        }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
-        builtins::sort_by(&vals, self)
+        self.eval_builtin_2_args(args, env, "sort-by", builtins::sort_by)
     }
 
     /// chunk - 固定サイズでリストを分割
@@ -1258,111 +1288,47 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["chunk"]));
         }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
+            .collect::<Result<Vec<_>, _>>()?;
         builtins::list::native_chunk(&vals)
     }
 
     /// count-by - 述語でカウント
     fn eval_count_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["count-by"]));
-        }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
-        builtins::count_by(&vals, self)
+        self.eval_builtin_2_args(args, env, "count-by", builtins::count_by)
     }
 
     /// max-by - キー関数で最大値を取得
     fn eval_max_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["max-by"]));
-        }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
-        builtins::max_by(&vals, self)
+        self.eval_builtin_2_args(args, env, "max-by", builtins::max_by)
     }
 
     /// min-by - キー関数で最小値を取得
     fn eval_min_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["min-by"]));
-        }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
-        builtins::min_by(&vals, self)
+        self.eval_builtin_2_args(args, env, "min-by", builtins::min_by)
     }
 
     /// sum-by - キー関数で合計
     fn eval_sum_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["sum-by"]));
-        }
-        // 2: 引数の数が固定なのでwith_capacityで事前確保
-        let mut vals = Vec::with_capacity(args.len());
-        for arg in args {
-            vals.push(self.eval_with_env(arg, env.clone())?);
-        }
-        builtins::sum_by(&vals, self)
+        self.eval_builtin_2_args(args, env, "sum-by", builtins::sum_by)
     }
 
     fn eval_pipeline(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline", "3", ""]));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtins::pipeline(&vals, self)
+        self.eval_builtin_3_args(args, env, "pipeline", builtins::pipeline)
     }
 
     fn eval_pipeline_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["pipeline-map", "3", ""]));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtins::pipeline_map(&vals, self)
+        self.eval_builtin_3_args(args, env, "pipeline-map", builtins::pipeline_map)
     }
 
     fn eval_pipeline_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 3 {
-            return Err(fmt_msg(
-                MsgKey::NeedNArgsDesc,
-                &["pipeline-filter", "3", ""],
-            ));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtins::pipeline_filter(&vals, self)
+        self.eval_builtin_3_args(args, env, "pipeline-filter", builtins::pipeline_filter)
     }
 
     fn eval_railway_pipe(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["_railway-pipe"]));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtins::railway_pipe(&vals, self)
+        self.eval_builtin_2_args(args, env, "_railway-pipe", builtins::railway_pipe)
     }
 
     fn eval_time(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -1371,7 +1337,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::time(&vals, self)
     }
@@ -1380,15 +1346,15 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["tap"]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let value = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let value = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::tap(&[func, value], self)
     }
 
     fn eval_branch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::branch(&vals, self)
     }
@@ -1399,7 +1365,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::then(&vals, self)
     }
@@ -1410,7 +1376,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::catch(&vals, self)
     }
@@ -1419,7 +1385,7 @@ impl Evaluator {
         if args.len() != 1 {
             return Err(fmt_msg(MsgKey::Need1Arg, &["go/select!"]));
         }
-        let val = self.eval_with_env(&args[0], env.clone())?;
+        let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::select(&[val], self)
     }
 
@@ -1427,8 +1393,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["go/scope-go"]));
         }
-        let scope = self.eval_with_env(&args[0], env.clone())?;
-        let func = self.eval_with_env(&args[1], env.clone())?;
+        let scope = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let func = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::scope_go(&[scope, func], self)
     }
 
@@ -1436,7 +1402,7 @@ impl Evaluator {
         if args.len() != 1 {
             return Err(fmt_msg(MsgKey::Need1Arg, &["go/with-scope"]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::with_scope(&[func], self)
     }
 
@@ -1444,7 +1410,7 @@ impl Evaluator {
         if args.len() != 1 {
             return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
         }
-        let val = self.eval_with_env(&args[0], env.clone())?;
+        let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::run(&[val], self)
     }
 
@@ -1475,8 +1441,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["iterate"]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let init = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::iterate(&[func, init], self)
     }
 
@@ -1484,8 +1450,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["stream-map"]));
         }
-        let func = self.eval_with_env(&args[0], env.clone())?;
-        let stream = self.eval_with_env(&args[1], env.clone())?;
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::stream_map(&[func, stream], self)
     }
 
@@ -1493,8 +1459,8 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(fmt_msg(MsgKey::Need2Args, &["stream-filter"]));
         }
-        let pred = self.eval_with_env(&args[0], env.clone())?;
-        let stream = self.eval_with_env(&args[1], env.clone())?;
+        let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::stream_filter(&[pred, stream], self)
     }
 
@@ -1504,7 +1470,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::find(&vals, self)
     }
@@ -1515,7 +1481,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::find_index(&vals, self)
     }
@@ -1526,7 +1492,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::every(&vals, self)
     }
@@ -1537,7 +1503,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::some(&vals, self)
     }
@@ -1548,7 +1514,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::update_keys(&vals, self)
     }
@@ -1559,7 +1525,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::update_vals(&vals, self)
     }
@@ -1570,7 +1536,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::partition_by(&vals, self)
     }
@@ -1581,7 +1547,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::keep(&vals, self)
     }
@@ -1592,7 +1558,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::list::native_drop_last(&vals)
     }
@@ -1603,7 +1569,7 @@ impl Evaluator {
         }
         let vals: Vec<Value> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
         builtins::list::native_split_at(&vals)
     }
@@ -1972,7 +1938,7 @@ impl Evaluator {
                     let expr = parser.parse().map_err(|e| {
                         crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e])
                     })?;
-                    let value = self.eval_with_env(&expr, env.clone())?;
+                    let value = self.eval_with_env(&expr, Arc::clone(&env))?;
 
                     // 値を文字列に変換
                     let s = match value {
@@ -2020,14 +1986,14 @@ impl Evaluator {
 
         let mut result = Value::Nil;
         for expr in exprs {
-            result = self.eval_with_env(expr, env.clone())?;
+            result = self.eval_with_env(expr, Arc::clone(&env))?;
         }
 
         // deferを実行（LIFO順）
         let defers = self.defer_stack.write().pop();
         if let Some(defers) = defers {
             for defer_expr in defers.iter().rev() {
-                let _ = self.eval_with_env(defer_expr, env.clone());
+                let _ = self.eval_with_env(defer_expr, Arc::clone(&env));
             }
         }
 
@@ -2039,7 +2005,7 @@ impl Evaluator {
         // Tryもdeferスコープを作成
         self.defer_stack.write().push(Vec::new());
 
-        let result = match self.eval_with_env(expr, env.clone()) {
+        let result = match self.eval_with_env(expr, Arc::clone(&env)) {
             Ok(value) => Ok(ok_map(value)),
             Err(e) => Ok(err_map(e)),
         };
@@ -2048,7 +2014,7 @@ impl Evaluator {
         let defers = self.defer_stack.write().pop();
         if let Some(defers) = defers {
             for defer_expr in defers.iter().rev() {
-                let _ = self.eval_with_env(defer_expr, env.clone());
+                let _ = self.eval_with_env(defer_expr, Arc::clone(&env));
             }
         }
 
@@ -2072,7 +2038,7 @@ impl Evaluator {
         // 引数を評価
         let values: Result<Vec<_>, _> = args
             .iter()
-            .map(|e| self.eval_with_env(e, env.clone()))
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect();
         let values = values?;
 
@@ -2109,12 +2075,12 @@ impl Evaluator {
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         // ループ用の環境を作成
-        let mut loop_env = Env::with_parent(env.clone());
+        let mut loop_env = Env::with_parent(Arc::clone(&env));
 
         // 初期値で環境を設定
         let mut current_values = Vec::with_capacity(bindings.len());
         for (_name, expr) in bindings {
-            let value = self.eval_with_env(expr, env.clone())?;
+            let value = self.eval_with_env(expr, Arc::clone(&env))?;
             current_values.push(value);
         }
 
@@ -2199,7 +2165,7 @@ impl Evaluator {
                     if let Expr::UnquoteSplice(e) = item {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
-                            let val = self.eval_with_env(e, env.clone())?;
+                            let val = self.eval_with_env(e, Arc::clone(&env))?;
                             match val {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
@@ -2211,11 +2177,11 @@ impl Evaluator {
                                 }
                             }
                         } else {
-                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            let val = self.eval_quasiquote(e, Arc::clone(&env), depth - 1)?;
                             result.push(val);
                         }
                     } else {
-                        let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                        let val = self.eval_quasiquote(item, Arc::clone(&env), depth)?;
                         result.push(val);
                     }
                 }
@@ -2227,7 +2193,7 @@ impl Evaluator {
                     if let Expr::UnquoteSplice(e) = item {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
-                            let val = self.eval_with_env(e, env.clone())?;
+                            let val = self.eval_with_env(e, Arc::clone(&env))?;
                             match val {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
@@ -2239,11 +2205,11 @@ impl Evaluator {
                                 }
                             }
                         } else {
-                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            let val = self.eval_quasiquote(e, Arc::clone(&env), depth - 1)?;
                             result.push(val);
                         }
                     } else {
-                        let val = self.eval_quasiquote(item, env.clone(), depth)?;
+                        let val = self.eval_quasiquote(item, Arc::clone(&env), depth)?;
                         result.push(val);
                     }
                 }
@@ -2251,12 +2217,12 @@ impl Evaluator {
             }
             Expr::Call { func, args } => {
                 // Callもリストとして扱う
-                let mut result = vec![self.eval_quasiquote(func, env.clone(), depth)?];
+                let mut result = vec![self.eval_quasiquote(func, Arc::clone(&env), depth)?];
                 for arg in args {
                     if let Expr::UnquoteSplice(e) = arg {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
-                            let val = self.eval_with_env(e, env.clone())?;
+                            let val = self.eval_with_env(e, Arc::clone(&env))?;
                             match val {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
@@ -2268,11 +2234,11 @@ impl Evaluator {
                                 }
                             }
                         } else {
-                            let val = self.eval_quasiquote(e, env.clone(), depth - 1)?;
+                            let val = self.eval_quasiquote(e, Arc::clone(&env), depth - 1)?;
                             result.push(val);
                         }
                     } else {
-                        let val = self.eval_quasiquote(arg, env.clone(), depth)?;
+                        let val = self.eval_quasiquote(arg, Arc::clone(&env), depth)?;
                         result.push(val);
                     }
                 }
@@ -2285,10 +2251,10 @@ impl Evaluator {
                 otherwise,
             } => {
                 let mut result = vec![Value::Symbol("if".to_string())];
-                result.push(self.eval_quasiquote(test, env.clone(), depth)?);
-                result.push(self.eval_quasiquote(then, env.clone(), depth)?);
+                result.push(self.eval_quasiquote(test, Arc::clone(&env), depth)?);
+                result.push(self.eval_quasiquote(then, Arc::clone(&env), depth)?);
                 if let Some(o) = otherwise {
-                    result.push(self.eval_quasiquote(o, env.clone(), depth)?);
+                    result.push(self.eval_quasiquote(o, Arc::clone(&env), depth)?);
                 }
                 Ok(Value::List(result.into()))
             }
@@ -2298,7 +2264,7 @@ impl Evaluator {
                     if let Expr::UnquoteSplice(us) = e {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
-                            let val = self.eval_with_env(us, env.clone())?;
+                            let val = self.eval_with_env(us, Arc::clone(&env))?;
                             match val {
                                 Value::List(v) | Value::Vector(v) => {
                                     result.extend(v);
@@ -2310,10 +2276,10 @@ impl Evaluator {
                                 }
                             }
                         } else {
-                            result.push(self.eval_quasiquote(us, env.clone(), depth - 1)?);
+                            result.push(self.eval_quasiquote(us, Arc::clone(&env), depth - 1)?);
                         }
                     } else {
-                        result.push(self.eval_quasiquote(e, env.clone(), depth)?);
+                        result.push(self.eval_quasiquote(e, Arc::clone(&env), depth)?);
                     }
                 }
                 Ok(Value::List(result.into()))
@@ -2349,7 +2315,7 @@ impl Evaluator {
                 let mut binding_vec = Vec::new();
                 for (pattern, expr) in bindings {
                     binding_vec.push(self.fn_param_to_value(pattern));
-                    binding_vec.push(self.eval_quasiquote(expr, env.clone(), depth)?);
+                    binding_vec.push(self.eval_quasiquote(expr, Arc::clone(&env), depth)?);
                 }
                 items.push(Value::Vector(binding_vec.into()));
                 items.push(self.eval_quasiquote(body, env, depth)?);
