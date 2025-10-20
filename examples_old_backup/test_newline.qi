@@ -1,7 +1,0 @@
-(def msg "hello\nworld")
-
-(println msg)
-
-(def multi "line1\nline2\nline3")
-
-(println multi)
