@@ -136,8 +136,8 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 ([1 2 3 4 5 6] |> (go/pfilter (fn [x] (= (% x 2) 0))))
 ;; => (2 4 6)
 
-;; go/preduce - 並列reduce
-([1 2 3 4 5] |> (go/preduce + 0))
+;; go/preduce - 並列reduce (fn collection init)
+([1 2 3 4 5] |> (fn [data] (go/preduce + data 0)))
 ;; => 15
 
 ;; go/parallel-do - 複数式の並列実行

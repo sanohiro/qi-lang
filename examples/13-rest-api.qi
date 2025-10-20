@@ -1,0 +1,258 @@
+;; 13-rest-api.qi - RESTful API実装
+;;
+;; Qiでフル機能のREST APIを構築
+;; 実行: qi examples/13-rest-api.qi
+
+(println "=== RESTful API実装 ===\n")
+
+;; データストア（Atomでスレッドセーフ）
+(def todos (atom {}))
+(def next-id (atom 1))
+
+;; CRUD操作
+(println "=== CRUD操作 ===")
+
+;; Create
+(defn create-todo [title]
+  (let [id @next-id
+        todo {:id id :title title :completed false :created_at (get (cmd/exec "date") "stdout")}]
+    (do
+      (swap! next-id inc)
+      (swap! todos assoc id todo)
+      todo)))
+
+;; Read All
+(defn get-all-todos []
+  (vals @todos))
+
+;; Read One
+(defn get-todo [id]
+  (get @todos id))
+
+;; Update
+(defn update-todo [id updates]
+  (let [todo (get @todos id)]
+    (if (nil? todo)
+      nil
+      (let [updated (merge todo updates)]
+        (do
+          (swap! todos assoc id updated)
+          updated)))))
+
+;; Delete
+(defn delete-todo [id]
+  (let [todo (get @todos id)]
+    (if (nil? todo)
+      nil
+      (do
+        (swap! todos dissoc id)
+        todo))))
+
+;; テスト
+(println "Create todo 1:")
+(println (create-todo "Learn Qi"))
+
+(println "\nCreate todo 2:")
+(println (create-todo "Build API"))
+
+(println "\nCreate todo 3:")
+(println (create-todo "Deploy app"))
+
+(println "\nGet all todos:")
+(println (get-all-todos))
+
+(println "\nGet todo 1:")
+(println (get-todo 1))
+
+(println "\nUpdate todo 1:")
+(println (update-todo 1 {:completed true}))
+
+(println "\nDelete todo 2:")
+(println (delete-todo 2))
+
+(println "\nGet all todos after delete:")
+(println (get-all-todos))
+
+;; RESTful ハンドラー
+(println "\n=== RESTful ハンドラー ===")
+
+(defn todos-handler [req]
+  (match [(get req :method) (get req :path)]
+    ;; GET /api/todos - 全取得
+    ["GET" "/api/todos"] ->
+      (server/json {:todos (get-all-todos)})
+
+    ;; POST /api/todos - 新規作成
+    ["POST" "/api/todos"] ->
+      (let [body (json/parse (get req :body))]
+        (if (error? body)
+          (server/response 400 "Invalid JSON")
+          (let [title (get body "title")]
+            (if (nil? title)
+              (server/response 400 "Title required")
+              (server/json (create-todo title))))))
+
+    ;; GET /api/todos/:id - 個別取得
+    ["GET" path] when (str/starts-with? path "/api/todos/") ->
+      (let [id-str (str/replace path "/api/todos/" "")
+            id (try (string/to-int id-str))]
+        (if (error? id)
+          (server/response 400 "Invalid ID")
+          (let [todo (get-todo id)]
+            (if (nil? todo)
+              (server/response 404 "Todo not found")
+              (server/json todo)))))
+
+    ;; PUT /api/todos/:id - 更新
+    ["PUT" path] when (str/starts-with? path "/api/todos/") ->
+      (let [id-str (str/replace path "/api/todos/" "")
+            id (try (string/to-int id-str))
+            body (json/parse (get req :body))]
+        (if (or (error? id) (error? body))
+          (server/response 400 "Invalid request")
+          (let [updated (update-todo id body)]
+            (if (nil? updated)
+              (server/response 404 "Todo not found")
+              (server/json updated)))))
+
+    ;; DELETE /api/todos/:id - 削除
+    ["DELETE" path] when (str/starts-with? path "/api/todos/") ->
+      (let [id-str (str/replace path "/api/todos/" "")
+            id (try (string/to-int id-str))]
+        (if (error? id)
+          (server/response 400 "Invalid ID")
+          (let [deleted (delete-todo id)]
+            (if (nil? deleted)
+              (server/response 404 "Todo not found")
+              (server/json {:message "Deleted" :todo deleted})))))
+
+    _ -> (server/response 404 "Not Found")))
+
+;; テスト
+(println "GET /api/todos:")
+(println (todos-handler {:method "GET" :path "/api/todos"}))
+
+(println "\nGET /api/todos/1:")
+(println (todos-handler {:method "GET" :path "/api/todos/1"}))
+
+(println "\nPUT /api/todos/1:")
+(println (todos-handler {:method "PUT" :path "/api/todos/1"
+                         :body "{\"completed\":true}"}))
+
+;; フィルタリングとソート
+(println "\n=== フィルタリングとソート ===")
+
+(defn filter-todos-handler [req]
+  (let [query (get req :query)
+        completed-str (get query "completed")
+        all-todos (get-all-todos)]
+    (server/json
+      {:todos
+       (if (nil? completed-str)
+         all-todos
+         (let [completed (= completed-str "true")]
+           (filter (fn [t] (= (get t :completed) completed)) all-todos)))})))
+
+(println "Filter completed todos:")
+(println (filter-todos-handler {:query {"completed" "true"}}))
+
+(println "\nFilter incomplete todos:")
+(println (filter-todos-handler {:query {"completed" "false"}}))
+
+;; ページネーション
+(println "\n=== ページネーション ===")
+
+(defn paginate [items page limit]
+  (let [offset (* (- page 1) limit)]
+    (items
+     |> (drop offset)
+     |> (take limit))))
+
+(defn paginated-todos-handler [req]
+  (let [query (get req :query)
+        page-str (get query "page" "1")
+        limit-str (get query "limit" "10")
+        page (try (string/to-int page-str))
+        limit (try (string/to-int limit-str))
+        all-todos (get-all-todos)]
+    (if (or (error? page) (error? limit))
+      (server/response 400 "Invalid pagination params")
+      (server/json
+        {:todos (paginate all-todos page limit)
+         :page page
+         :limit limit
+         :total (len all-todos)}))))
+
+;; さらにTodoを追加
+(create-todo "Task 4")
+(create-todo "Task 5")
+(create-todo "Task 6")
+
+(println "Page 1 (limit 2):")
+(println (paginated-todos-handler {:query {"page" "1" "limit" "2"}}))
+
+(println "\nPage 2 (limit 2):")
+(println (paginated-todos-handler {:query {"page" "2" "limit" "2"}}))
+
+;; バリデーション
+(println "\n=== バリデーション ===")
+
+(defn validate-todo [data]
+  (data
+   |>? (fn [d]
+         (let [title (get d "title")]
+           (if (and (some? title) (> (len title) 0))
+             d
+             {:error "Title is required"})))
+   |>? (fn [d]
+         (let [title (get d "title")]
+           (if (<= (len title) 100)
+             d
+             {:error "Title too long (max 100 chars)"})))))
+
+(defn create-todo-validated [req]
+  (let [body (json/parse (get req :body))]
+    (match (validate-todo body)
+      {:error e} -> (server/response 400 e)
+      data -> (server/json (create-todo (get data "title"))))))
+
+(println "Valid todo:")
+(println (create-todo-validated {:body "{\"title\":\"Valid task\"}"}))
+
+(println "\nInvalid todo (empty title):")
+(println (create-todo-validated {:body "{\"title\":\"\"}"}))
+
+;; 統計エンドポイント
+(println "\n=== 統計エンドポイント ===")
+
+(defn stats-handler [req]
+  (let [all-todos (get-all-todos)
+        completed (filter (fn [t] (get t :completed)) all-todos)
+        incomplete (filter (fn [t] (not (get t :completed))) all-todos)]
+    (server/json
+      {:total (len all-todos)
+       :completed (len completed)
+       :incomplete (len incomplete)
+       :completion_rate (if (> (len all-todos) 0)
+                          (/ (* (len completed) 100) (len all-todos))
+                          0)})))
+
+(println "Todo statistics:")
+(println (stats-handler {}))
+
+;; 完全なAPIルーター
+(println "\n=== 完全なAPIルーター ===")
+
+(defn api-router [req]
+  (match [(get req :method) (get req :path)]
+    ["GET" "/api/todos"] -> (filter-todos-handler req)
+    ["POST" "/api/todos"] -> (create-todo-validated req)
+    ["GET" "/api/todos/stats"] -> (stats-handler req)
+    ["GET" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    ["PUT" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    ["DELETE" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    _ -> (server/response 404 "API endpoint not found")))
+
+(println "\n=== 完全なREST APIが構築できました！ ===")
+(println "実際のサーバーとして起動する場合:")
+(println "(server/serve 3000 api-router)")

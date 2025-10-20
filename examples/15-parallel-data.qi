@@ -1,0 +1,250 @@
+;; 15-parallel-data.qi - 並列データ処理
+;;
+;; Qiの並列処理で大量データを高速処理
+;; 実行: qi examples/15-parallel-data.qi
+
+(println "=== 並列データ処理 ===\n")
+
+;; 大きなデータセット
+(def large-dataset (range 1 101))  ; 1..100
+
+(println "=== 基本的な並列処理 ===")
+
+(println "逐次処理:")
+(println (large-dataset
+          |> (map (fn [x] (* x x)))
+          |> (take 10)))
+
+(println "\n並列処理:")
+(println (large-dataset
+          ||> (fn [x] (* x x))
+          |> (take 10)))
+
+;; pmap - 並列map
+(println "\n=== pmap - 並列map ===")
+
+(println (pmap (fn [x] (* x 2)) (range 1 21)))
+
+;; pfilter - 並列filter
+(println "\n=== pfilter - 並列filter ===")
+
+(println (go/pfilter even? (range 1 51)))
+
+;; preduce - 並列reduce
+(println "\n=== preduce - 並列reduce ===")
+
+(println f"Sum 1-100: {(go/preduce + (range 1 101) 0)}")
+(println f"Product 1-10: {(go/preduce * (range 1 11) 1)}")
+
+;; MapFilterReduce パイプライン
+(println "\n=== 並列MapFilterReduce ===")
+
+(println "偶数の2乗の合計:")
+(println ((range 1 101)
+          |> (go/pfilter even?)
+          ||> (fn [x] (* x x))
+          |> (fn [data] (go/preduce + data 0))))
+
+;; 複雑なデータ処理
+(println "\n=== 複雑なデータ処理 ===")
+
+(def users
+  ((range 1 101)
+   |> (map (fn [id]
+             {:id id
+              :score (+ 50 (math/rand-int 50))
+              :active (> (math/rand) 0.3)}))))
+
+(println "アクティブユーザーの平均スコア:")
+(println (users
+          ||> (fn [u] (if (get u :active) u nil))
+          |> (filter some?)
+          |> (map (fn [u] (get u :score)))
+          |> (fn [scores] (/ (reduce + 0 scores) (len scores)))))
+
+;; 並列ファイル処理（模擬）
+(println "\n=== 並列ファイル処理 ===")
+
+(defn process-file [filename]
+  {:file filename
+   :lines (+ 10 (math/rand-int 90))
+   :size (* (+ 100 (math/rand-int 900)) 1024)})
+
+(def files
+  ["file1.txt" "file2.txt" "file3.txt" "file4.txt" "file5.txt"
+   "file6.txt" "file7.txt" "file8.txt" "file9.txt" "file10.txt"])
+
+(println "並列でファイルを処理:")
+(println (files
+          ||> process-file
+          |> (take 5)))
+
+;; 並列HTTP取得（模擬）
+(println "\n=== 並列HTTP取得（模擬） ===")
+
+(defn mock-fetch [url]
+  {:url url
+   :status 200
+   :body f"Content from {url}"
+   :size (+ 1000 (math/rand-int 9000))})
+
+(def urls
+  ((range 1 11)
+   |> (map (fn [i] f"https://api.example.com/data/{i}"))))
+
+(println "並列でURLを取得:")
+(println (urls
+          ||> mock-fetch
+          |> (map (fn [r] {:url (get r :url) :size (get r :size)}))
+          |> (take 5)))
+
+;; データパーティショニング
+(println "\n=== データパーティショニング ===")
+
+(defn partition-data [data partition-size]
+  (data
+   |> (fn [d] (loop [remaining d result []]
+                (if (empty? remaining)
+                  result
+                  (recur (drop partition-size remaining)
+                         (conj result (take partition-size remaining))))))))
+
+(def partitions (partition-data (range 1 21) 5))
+(println "パーティション:")
+(println partitions)
+
+;; 各パーティションを並列処理
+(println "\n並列でパーティションを処理:")
+(println (partitions
+          ||> (fn [part] (reduce + 0 part))))
+
+;; 並列集計
+(println "\n=== 並列集計 ===")
+
+(def sales-data
+  ((range 1 101)
+   |> (map (fn [id]
+             {:product (str "Product-" (math/rand-int 10))
+              :amount (+ 10 (math/rand-int 90))}))))
+
+(println "商品ごとの売上合計:")
+(println (sales-data
+          |> (group-by (fn [s] (get s :product)))
+          |> (map (fn [[product sales]]
+                    [product (reduce + 0 (map (fn [s] (get s :amount)) sales))]))
+          |> (take 5)))
+
+;; 並列ソート（模擬マージソート）
+(println "\n=== 並列ソート風 ===")
+
+(defn parallel-sort [data]
+  (if (<= (len data) 1)
+    data
+    (let [mid (/ (len data) 2)
+          left (take mid data)
+          right (drop mid data)]
+      ; 実際の並列ソートでは左右を並列処理
+      (concat (sort left) (sort right)))))
+
+(def unsorted [5 2 8 1 9 3 7 4 6 10])
+(println "並列ソート:")
+(println (parallel-sort unsorted))
+
+;; ワーカープール風
+(println "\n=== ワーカープール風 ===")
+
+(defn process-task [task]
+  {:task task
+   :result (* task task)
+   :worker (str "worker-" (math/rand-int 4))})
+
+(def tasks (range 1 21))
+
+(println "ワーカープールでタスク処理:")
+(println (tasks
+          ||> process-task
+          |> (take 10)))
+
+;; バッチ処理
+(println "\n=== バッチ処理 ===")
+
+(defn batch-process [items batch-size process-fn]
+  (items
+   |> (partition-data batch-size)
+   ||> (fn [batch] (map process-fn batch))
+   |> flatten))
+
+(println "バッチ処理（バッチサイズ5）:")
+(println (batch-process
+          (range 1 21)
+          5
+          (fn [x] (* x 2)))
+         |> (take 15))
+
+;; 並列データ検証
+(println "\n=== 並列データ検証 ===")
+
+(defn validate-item [item]
+  (if (and (> item 0) (< item 100))
+    {:valid true :item item}
+    {:valid false :item item :error "Out of range"}))
+
+(def test-data [10 20 -5 150 30 40 200 50])
+
+(println "並列で検証:")
+(println (test-data
+          ||> validate-item))
+
+;; リアルタイム風のストリーム処理
+(println "\n=== ストリーム処理風 ===")
+
+(defn process-stream [events]
+  (events
+   ||> (fn [event]
+         {:event event
+          :timestamp (get (cmd/exec "date +%s") "stdout")
+          :processed true})))
+
+(def events ["event1" "event2" "event3" "event4" "event5"])
+
+(println "イベントストリーム処理:")
+(println (process-stream events |> (take 3)))
+
+;; パフォーマンス比較（デモ）
+(println "\n=== パフォーマンス比較 ===")
+
+(def heavy-data (range 1 51))
+
+(defn heavy-computation [x]
+  (* x x x))  ; 3乗
+
+(println "逐次処理（1-50の3乗）:")
+(println (heavy-data
+          |> (map heavy-computation)
+          |> (reduce + 0)))
+
+(println "\n並列処理（1-50の3乗）:")
+(println (heavy-data
+          ||> heavy-computation
+          |> (reduce + 0)))
+
+;; データ集約パターン
+(println "\n=== データ集約パターン ===")
+
+(def metrics-data
+  ((range 1 101)
+   |> (map (fn [i]
+             {:hour (math/rand-int 24)
+              :value (+ 10 (math/rand-int 90))}))))
+
+(println "時間帯別の平均値:")
+(println (metrics-data
+          |> (group-by (fn [m] (get m :hour)))
+          |> (map (fn [[hour values]]
+                    [f"{hour}時"
+                     (/ (reduce + 0 (map (fn [v] (get v :value)) values))
+                        (len values))]))
+          |> (take 5)))
+
+(println "\n=== Qiの並列処理で大量データを高速処理！ ===")
+(println "これでexamplesの全ての学習が完了しました！")

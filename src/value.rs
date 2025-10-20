@@ -572,6 +572,33 @@ pub enum Expr {
         args: Vec<Expr>,
         span: Span,
     },
+    When {
+        condition: Box<Expr>,
+        body: Vec<Expr>,
+        span: Span,
+    },
+    While {
+        condition: Box<Expr>,
+        body: Vec<Expr>,
+        span: Span,
+    },
+    Until {
+        condition: Box<Expr>,
+        body: Vec<Expr>,
+        span: Span,
+    },
+    WhileSome {
+        binding: String,
+        expr: Box<Expr>,
+        body: Vec<Expr>,
+        span: Span,
+    },
+    UntilError {
+        binding: String,
+        expr: Box<Expr>,
+        body: Vec<Expr>,
+        span: Span,
+    },
 
     // マクロ
     Mac {
@@ -642,6 +669,11 @@ impl Expr {
             Expr::Defer { span, .. } => *span,
             Expr::Loop { span, .. } => *span,
             Expr::Recur { span, .. } => *span,
+            Expr::When { span, .. } => *span,
+            Expr::While { span, .. } => *span,
+            Expr::Until { span, .. } => *span,
+            Expr::WhileSome { span, .. } => *span,
+            Expr::UntilError { span, .. } => *span,
             Expr::Mac { span, .. } => *span,
             Expr::Quasiquote { span, .. } => *span,
             Expr::Unquote { span, .. } => *span,

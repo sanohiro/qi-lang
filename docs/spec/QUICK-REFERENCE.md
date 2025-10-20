@@ -104,7 +104,7 @@ nil               ;; nil
 ```qi
 (pmap (fn [x] (* x 2)) [1 2 3 4])     ;; 並列map
 (pfilter even? [1 2 3 4])              ;; 並列filter
-(preduce + 0 [1 2 3 4])                ;; 並列reduce
+(preduce + [1 2 3 4] 0)                ;; 並列reduce (fn collection init)
 ```
 
 ### Atom（スレッドセーフな状態管理）

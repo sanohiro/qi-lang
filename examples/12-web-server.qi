@@ -1,0 +1,244 @@
+;; 12-web-server.qi - Webサーバー（★必須！）
+;;
+;; QiでWebサーバーを簡単に構築
+;; 実行: qi examples/12-web-server.qi
+;;
+;; 注意: このファイルはサーバーの例を示すコードです。
+;;       実際のサーバー起動は server/serve でブロックするため、
+;;       各ハンドラーの動作確認のみを行います。
+
+(println "=== Webサーバーの構築 ===\n")
+
+;; 基本的なハンドラー
+(println "=== 基本的なハンドラー ===")
+
+(defn hello-handler [req]
+  (server/text "Hello, World!"))
+
+(println "hello-handler:")
+(println (hello-handler {}))
+
+;; ルーティング
+(println "\n=== ルーティング ===")
+
+(defn router [req]
+  (match (get req :path)
+    "/" -> (server/text "Home Page")
+    "/about" -> (server/text "About Page")
+    "/api/status" -> (server/json {:status "ok" :version "1.0.0"})
+    _ -> (server/response 404 "Not Found")))
+
+(println "router /:")
+(println (router {:path "/"}))
+
+(println "\nrouter /api/status:")
+(println (router {:path "/api/status"}))
+
+(println "\nrouter /unknown:")
+(println (router {:path "/unknown"}))
+
+;; メソッドとパスの組み合わせ
+(println "\n=== メソッド + パス ルーティング ===")
+
+(defn api-router [req]
+  (match [(get req :method) (get req :path)]
+    ["GET" "/"] -> (server/text "Home")
+    ["GET" "/users"] -> (server/json {:users []})
+    ["POST" "/users"] -> (server/json {:message "User created"})
+    ["GET" "/api/health"] -> (server/json {:status "healthy"})
+    _ -> (server/response 404 "Not Found")))
+
+(println "GET /:")
+(println (api-router {:method "GET" :path "/"}))
+
+(println "\nGET /users:")
+(println (api-router {:method "GET" :path "/users"}))
+
+(println "\nPOST /users:")
+(println (api-router {:method "POST" :path "/users"}))
+
+;; JSONデータの処理
+(println "\n=== JSONデータの処理 ===")
+
+(defn json-echo-handler [req]
+  (let [body (get req :body)]
+    (match (json/parse body)
+      {:error e} -> (server/response 400 f"Invalid JSON: {e}")
+      data -> (server/json {:received data}))))
+
+(println "JSON echo:")
+(println (json-echo-handler {:body "{\"name\":\"Alice\",\"age\":25}"}))
+
+;; ユーザー管理API（模擬）
+(println "\n=== ユーザー管理API ===")
+
+(def users (atom {}))
+(def next-id (atom 1))
+
+(defn create-user [req]
+  (let [body (get req :body)
+        user-data (json/parse body)]
+    (if (error? user-data)
+      (server/response 400 "Invalid JSON")
+      (let [id @next-id
+            user (assoc user-data "id" id)]
+        (do
+          (swap! next-id inc)
+          (swap! users assoc id user)
+          (server/json user))))))
+
+(defn get-user [req id]
+  (let [user (get @users id)]
+    (if (nil? user)
+      (server/response 404 "User not found")
+      (server/json user))))
+
+(defn list-users [req]
+  (server/json {:users (vals @users)}))
+
+(println "Create user:")
+(println (create-user {:body "{\"name\":\"Alice\",\"age\":25}"}))
+
+(println "\nCreate another user:")
+(println (create-user {:body "{\"name\":\"Bob\",\"age\":30}"}))
+
+(println "\nGet user 1:")
+(println (get-user {} 1))
+
+(println "\nList all users:")
+(println (list-users {}))
+
+(println "\nGet non-existent user:")
+(println (get-user {} 999))
+
+;; RESTful ルーティング
+(println "\n=== RESTful ルーティング ===")
+
+(defn users-api [req]
+  (match [(get req :method) (get req :path)]
+    ["GET" "/api/users"] -> (list-users req)
+    ["POST" "/api/users"] -> (create-user req)
+    ["GET" path] when (str/starts-with? path "/api/users/") ->
+      (let [id-str (str/replace path "/api/users/" "")
+            id (try (string/to-int id-str))]
+        (if (error? id)
+          (server/response 400 "Invalid user ID")
+          (get-user req id)))
+    _ -> (server/response 404 "Not Found")))
+
+(println "GET /api/users:")
+(println (users-api {:method "GET" :path "/api/users"}))
+
+(println "\nGET /api/users/1:")
+(println (users-api {:method "GET" :path "/api/users/1"}))
+
+;; ミドルウェア風の処理
+(println "\n=== ミドルウェア風の処理 ===")
+
+(defn logging-middleware [handler]
+  (fn [req]
+    (do
+      (println f"[LOG] {(get req :method)} {(get req :path)}")
+      (handler req))))
+
+(defn auth-middleware [handler]
+  (fn [req]
+    (let [token (get req :headers "Authorization")]
+      (if (= token "Bearer secret-token")
+        (handler req)
+        (server/response 401 "Unauthorized")))))
+
+(def protected-handler
+  (auth-middleware
+    (logging-middleware
+      (fn [req] (server/json {:message "Protected resource"})))))
+
+(println "Without auth:")
+(println (protected-handler {:method "GET" :path "/protected" :headers {}}))
+
+(println "\nWith auth:")
+(println (protected-handler {:method "GET" :path "/protected"
+                             :headers {"Authorization" "Bearer secret-token"}}))
+
+;; エラーハンドリング
+(println "\n=== エラーハンドリング ===")
+
+(defn safe-handler [req]
+  (try
+    (let [result (do-something-risky)]
+      (server/json {:result result}))
+    |>? (fn [r] r)
+    |> (fn [r]
+         (if (error? r)
+           (server/response 500 "Internal Server Error")
+           r))))
+
+(defn do-something-risky []
+  (if (> (math/rand) 0.5)
+    {:data "success"}
+    {:error "Something went wrong"}))
+
+(println "Safe handler:")
+(println (safe-handler {}))
+
+;; クエリパラメータの処理
+(println "\n=== クエリパラメータ ===")
+
+(defn search-handler [req]
+  (let [query (get req :query)]
+    (server/json {:query query :results []})))
+
+(println "Search with query:")
+(println (search-handler {:query {"q" "qi language" "limit" "10"}}))
+
+;; ファイルアップロード風
+(println "\n=== ファイルアップロード風 ===")
+
+(defn upload-handler [req]
+  (let [body (get req :body)
+        filename (get req :headers "X-Filename")]
+    (if (some? filename)
+      (do
+        (println f"Uploading file: {filename}")
+        (server/json {:message f"File {filename} uploaded" :size (len body)}))
+      (server/response 400 "Filename required"))))
+
+(println "Upload file:")
+(println (upload-handler {:body "file content here..."
+                          :headers {"X-Filename" "test.txt"}}))
+
+;; CORS対応
+(println "\n=== CORS対応 ===")
+
+(defn cors-middleware [handler]
+  (fn [req]
+    (let [response (handler req)]
+      (assoc response :headers
+             (merge (get response :headers {})
+                    {"Access-Control-Allow-Origin" "*"
+                     "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE"
+                     "Access-Control-Allow-Headers" "Content-Type"})))))
+
+(def cors-handler
+  (cors-middleware
+    (fn [req] (server/json {:message "CORS enabled"}))))
+
+(println "CORS response:")
+(println (cors-handler {}))
+
+;; 実際のサーバー起動例（コメント）
+(println "\n=== 実際のサーバー起動 ===")
+(println "以下のコードで実際のWebサーバーを起動できます:")
+(println "")
+(println "(defn main-handler [req]")
+(println "  (match [(get req :method) (get req :path)]")
+(println "    [\"GET\" \"/\"] -> (server/text \"Hello, Qi!\")")
+(println "    [\"GET\" \"/api/status\"] -> (server/json {:status \"ok\"})")
+(println "    _ -> (server/response 404 \"Not Found\")))")
+(println "")
+(println "(server/serve 3000 main-handler)")
+(println "")
+(println "ブラウザで http://localhost:3000 を開くとアクセスできます")
+
+(println "\n=== QiでWebサーバーが簡単に構築できます！ ===")
+(println "次は 13-rest-api.qi で完全なREST APIを学びましょう")

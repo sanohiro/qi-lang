@@ -1,0 +1,221 @@
+;; 07-concurrency.qi - 並行・並列処理（★Qiのキモ！）
+;;
+;; Qiの最大の強み - 並行・並列を簡単に
+;; goroutine風、pmap、Atom、チャネル
+;; 実行: qi examples/07-concurrency.qi
+
+(println "=== 並行・並列処理 - Qiのキモ！ ===")
+(println "並列、並行を簡単にできるのはQiの最大の強み\n")
+
+;; ||> - 並列パイプライン（最も簡単）
+(println "=== ||> 並列パイプライン ===")
+
+(println "逐次処理（|>）:")
+(println ([1 2 3 4 5] |> (map (fn [x] (* x x)))))
+
+(println "\n並列処理（||>）:")
+(println ([1 2 3 4 5] ||> (fn [x] (* x x))))
+
+;; 重い処理を並列化
+(defn heavy-computation [n]
+  (* n n))
+
+(println "\n並列で計算:")
+(println ([1 2 3 4 5 6 7 8 9 10] ||> heavy-computation))
+
+;; pmap - 並列map
+(println "\n=== pmap - 並列map ===")
+
+(println (pmap (fn [x] (* x 2)) [1 2 3 4 5]))
+
+;; Atom - スレッドセーフな状態管理
+(println "\n=== Atom - スレッドセーフな状態管理 ===")
+
+(def counter (atom 0))
+(println f"Initial: {(deref counter)}")
+(println f"Initial: {@counter}")  ; @はderefの糖衣構文
+
+;; swap! - 状態を更新
+(swap! counter inc)
+(println f"After inc: {@counter}")
+
+(swap! counter (fn [x] (+ x 10)))
+(println f"After +10: {@counter}")
+
+;; reset! - 状態をリセット
+(reset! counter 0)
+(println f"After reset: {@counter}")
+
+;; 実用例: アクセスカウンタ
+(println "\n=== 実用例: アクセスカウンタ ===")
+
+(def access-count (atom 0))
+
+(defn record-access []
+  (swap! access-count inc))
+
+(record-access)
+(record-access)
+(record-access)
+
+(println f"Total accesses: {@access-count}")
+
+;; goroutineとチャネル
+(println "\n=== goroutine風の並行処理 ===")
+
+(def ch (go/chan))
+
+;; 送信
+(go/send! ch 42)
+(println f"Sent: 42")
+
+;; 受信
+(println f"Received: {(go/recv! ch)}")
+
+;; 複数のメッセージ
+(println "\n複数メッセージ:")
+(go/send! ch "Hello")
+(go/send! ch "World")
+(println (go/recv! ch))
+(println (go/recv! ch))
+
+;; pfilter - 並列フィルタ
+(println "\n=== pfilter - 並列フィルタ ===")
+
+(println (go/pfilter even? [1 2 3 4 5 6 7 8 9 10]))
+
+;; preduce - 並列reduce
+(println "\n=== preduce - 並列reduce ===")
+
+;; 100要素以上で並列処理が有効になる
+(println (go/preduce + (range 1 101) 0))
+
+;; 並列パイプラインの組み合わせ
+(println "\n=== 並列パイプラインの組み合わせ ===")
+
+(println ((range 1 101)
+          |> (go/pfilter even?)        ; 並列フィルタ
+          ||> (fn [x] (* x x))         ; 並列変換
+          |> (fn [data] (go/preduce + data 0))))        ; 並列集約
+
+;; 実用例: URLリストの並列取得（模擬）
+(println "\n=== 実用例: 並列データ取得 ===")
+
+(defn fetch-data [id]
+  (do
+    (println f"Fetching {id}...")
+    {:id id :data f"Data for {id}"}))
+
+(def ids [1 2 3 4 5])
+
+(println "逐次取得:")
+(println (ids |> fetch-data))
+
+(println "\n並列取得:")
+(println (ids ||> fetch-data))
+
+;; Atomでの複雑な状態管理
+(println "\n=== Atomでの複雑な状態管理 ===")
+
+(def app-state (atom {:users [] :count 0}))
+
+(defn add-user [name]
+  (swap! app-state (fn [state]
+                     {:users (conj (get state :users) name)
+                      :count (+ (get state :count) 1)})))
+
+(add-user "Alice")
+(add-user "Bob")
+(add-user "Charlie")
+
+(println f"State: {@app-state}")
+(println f"User count: {(get @app-state :count)}")
+
+;; 並列処理のパフォーマンス比較
+(println "\n=== パフォーマンス比較（デモ） ===")
+
+(def large-dataset [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20])
+
+(println "逐次処理:")
+(println (large-dataset
+          |> (map (fn [x] (* x x)))
+          |> (reduce + 0)))
+
+(println "\n並列処理:")
+(println (large-dataset
+          ||> (fn [x] (* x x))
+          |> (reduce + 0)))
+
+;; チャネルを使った生産者・消費者パターン
+(println "\n=== 生産者・消費者パターン ===")
+
+(def queue (go/chan))
+
+;; 生産者
+(defn producer [n]
+  (do
+    (println f"Producing {n}")
+    (go/send! queue n)))
+
+;; 消費者
+(defn consumer []
+  (let [item (go/recv! queue)]
+    (do
+      (println f"Consumed {item}")
+      item)))
+
+;; 生産と消費
+(producer 100)
+(consumer)
+
+(producer 200)
+(producer 300)
+(consumer)
+(consumer)
+
+;; 並列マップ・フィルタ・リデュースパイプライン
+(println "\n=== 並列MapFilterReduce ===")
+
+(def numbers (range 1 201))  ; 1..200 (100要素以上で並列処理有効)
+
+(println "偶数の2乗の合計（並列）:")
+(println (numbers
+          |> (go/pfilter even?)                ; 並列フィルタ
+          ||> (fn [x] (* x x))                 ; 並列マップ
+          |> (fn [data] (go/preduce + data 0))))                ; 並列リデュース
+
+;; Atomでキャッシュ管理
+(println "\n=== Atomでキャッシュ管理 ===")
+
+(def cache (atom {}))
+
+(defn get-cached [key compute-fn]
+  (let [cached (get @cache key)]
+    (if (some? cached)
+      (do
+        (println f"Cache hit: {key}")
+        cached)
+      (do
+        (println f"Cache miss: {key}")
+        (let [result (compute-fn)]
+          (do
+            (swap! cache assoc key result)
+            result))))))
+
+(println (get-cached :user1 (fn [] {:name "Alice" :age 25})))
+(println (get-cached :user1 (fn [] {:name "Alice" :age 25})))  ; Cache hit
+(println (get-cached :user2 (fn [] {:name "Bob" :age 30})))
+
+(println f"\nCache state: {@cache}")
+
+;; 並列処理のベストプラクティス
+(println "\n=== 並列処理のベストプラクティス ===")
+
+(println "1. ||> で自動並列化")
+(println "2. Atomでスレッドセーフな状態管理")
+(println "3. チャネルで非同期通信")
+(println "4. pmap/pfilter/preduceで並列コレクション操作")
+(println "5. 小さなタスクは逐次、大きなタスクは並列")
+
+(println "\n=== Qiは並行・並列を簡単にします！ ===")
+(println "次は 08-command-pipelines.qi でUnixコマンド統合を学びましょう")

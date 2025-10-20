@@ -1,0 +1,187 @@
+;; 09-log-analysis.qi - ログ解析パイプライン
+;;
+;; Unixコマンド + Qiパイプライン = 強力なログ解析ツール
+;; 実行: qi examples/09-log-analysis.qi
+
+(println "=== ログ解析パイプライン ===\n")
+
+;; サンプルログデータを作成
+(println "=== サンプルログデータ作成 ===")
+
+(def sample-log "
+2025-01-20 10:00:01 INFO User login: alice
+2025-01-20 10:00:15 ERROR Database connection failed
+2025-01-20 10:00:30 INFO User login: bob
+2025-01-20 10:01:00 WARN Slow query detected: SELECT * FROM users
+2025-01-20 10:01:15 ERROR API timeout: /api/users
+2025-01-20 10:02:00 INFO User logout: alice
+2025-01-20 10:02:30 INFO User login: charlie
+2025-01-20 10:03:00 ERROR Database connection failed
+2025-01-20 10:03:15 WARN Memory usage: 85%
+2025-01-20 10:04:00 INFO User logout: bob
+")
+
+;; ログファイルに書き込み
+(io/write-file "/tmp/app.log" sample-log)
+(println "サンプルログを /tmp/app.log に作成しました")
+
+;; ログレベルごとの集計
+(println "\n=== ログレベルごとの集計 ===")
+
+(def log-content (io/read-file "/tmp/app.log"))
+
+(defn extract-log-level [line]
+  (let [parts (str/split line " ")]
+    (if (>= (len parts) 3)
+      (nth parts 2)
+      "UNKNOWN")))
+
+(println (log-content
+          |> (str/split "\n")
+          |> (filter (fn [s] (> (len s) 0)))
+          |> (map extract-log-level)
+          |> (group-by identity)
+          |> (map (fn [[level lines]] [level (len lines)]))))
+
+;; エラーログだけ抽出
+(println "\n=== エラーログ抽出 ===")
+
+(println (log-content
+          |> (str/split "\n")
+          |> (filter (fn [line] (str/includes? line "ERROR")))
+          |> (str/join "\n")))
+
+;; 時間帯別の統計
+(println "\n=== 時間帯別アクティビティ ===")
+
+(defn extract-hour [line]
+  (let [parts (str/split line " ")]
+    (if (>= (len parts) 2)
+      (let [time (nth parts 1)]
+        (first (str/split time ":")))
+      "00")))
+
+(println (log-content
+          |> (str/split "\n")
+          |> (filter (fn [s] (> (len s) 0)))
+          |> (map extract-hour)
+          |> (group-by identity)
+          |> (map (fn [[hour lines]] [f"{hour}時" (len lines)]))))
+
+;; ユーザーアクティビティ追跡
+(println "\n=== ユーザーアクティビティ ===")
+
+(println (log-content
+          |> (str/split "\n")
+          |> (filter (fn [line] (or (str/includes? line "login")
+                                     (str/includes? line "logout"))))
+          |> (map (fn [line]
+                    (let [parts (str/split line " ")]
+                      {:time (str (nth parts 0) " " (nth parts 1))
+                       :action (nth parts 3)
+                       :user (if (>= (len parts) 5) (nth parts 4) "unknown")})))
+          |> (take 10)))
+
+;; エラー率の計算
+(println "\n=== エラー率 ===")
+
+(def total-logs
+  (len (filter (fn [s] (> (len s) 0))
+               (str/split log-content "\n"))))
+
+(def error-logs
+  (len (filter (fn [line] (str/includes? line "ERROR"))
+               (str/split log-content "\n"))))
+
+(println f"総ログ数: {total-logs}")
+(println f"エラー数: {error-logs}")
+(println f"エラー率: {(/ (* error-logs 100) total-logs)}%")
+
+;; パターンマッチングでログパース
+(println "\n=== パターンマッチングでログ解析 ===")
+
+(defn parse-log-line [line]
+  (match (str/split line " ")
+    [date time level & rest] ->
+      {:date date
+       :time time
+       :level level
+       :message (str/join " " rest)}
+    _ -> {:error "Invalid log format"}))
+
+(println (log-content
+          |> (str/split "\n")
+          |> (filter (fn [s] (> (len s) 0)))
+          |> (map parse-log-line)
+          |> (take 3)))
+
+;; Unixコマンドとの統合
+(println "\n=== Unixコマンドとの統合 ===")
+
+; tail風の処理（最後のN行）
+(defn tail-n [filename n]
+  (let [content (io/read-file filename)]
+    (content
+     |> (str/split "\n")
+     |> (filter (fn [s] (> (len s) 0)))
+     |> reverse
+     |> (take n)
+     |> reverse
+     |> (str/join "\n"))))
+
+(println "最後の3行:")
+(println (tail-n "/tmp/app.log" 3))
+
+;; grep風の処理
+(println "\n=== grep風の処理 ===")
+
+(defn grep-file [filename pattern]
+  (let [content (io/read-file filename)]
+    (content
+     |> (str/split "\n")
+     |> (filter (fn [line] (str/includes? line pattern)))
+     |> (str/join "\n"))))
+
+(println "ERRORを含む行:")
+(println (grep-file "/tmp/app.log" "ERROR"))
+
+;; 複雑なログ分析パイプライン
+(println "\n=== 複雑なログ分析パイプライン ===")
+
+(defn analyze-logs [filename]
+  (let [content (io/read-file filename)]
+    (content
+     |> (str/split "\n")
+     |> (filter (fn [s] (> (len s) 0)))
+     |> (map parse-log-line)
+     |> (filter (fn [log] (not (error? log))))
+     |> (group-by (fn [log] (get log :level)))
+     |> (map (fn [[level logs]]
+               {:level level
+                :count (len logs)
+                :samples (take 2 logs)})))))
+
+(println (analyze-logs "/tmp/app.log"))
+
+;; リアルタイム風のログ監視（模擬）
+(println "\n=== ログ監視（模擬） ===")
+
+(defn monitor-errors [content]
+  (content
+   |> (str/split "\n")
+   |> (filter (fn [line] (or (str/includes? line "ERROR")
+                              (str/includes? line "WARN"))))
+   |> (map (fn [line]
+             (match (extract-log-level line)
+               "ERROR" -> f"🔴 {line}"
+               "WARN" -> f"🟡 {line}"
+               _ -> line)))))
+
+(println (monitor-errors log-content |> (str/join "\n")))
+
+(println "\n=== クリーンアップ ===")
+(cmd/exec ["rm" "/tmp/app.log"])
+(println "サンプルログを削除しました")
+
+(println "\n=== Qiでログ解析が簡単に！ ===")
+(println "次は 10-file-processing.qi でファイル処理を学びましょう")

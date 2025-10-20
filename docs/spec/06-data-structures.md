@@ -437,6 +437,68 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 ([1 2 3 4 5] |> (reduce + 0)) ;; => 15
 ```
 
+### each - 各要素に関数を適用（副作用用）
+
+`map`と異なり、戻り値を収集せず`nil`を返します。副作用（println、ファイル書き込みなど）を目的とする場合に使用します。
+
+```qi
+;; 基本的な使い方
+(each println [1 2 3])
+;; 出力:
+;; 1
+;; 2
+;; 3
+;; => nil
+
+;; Vector、List両方に対応
+(each println (list "a" "b" "c"))
+;; 出力:
+;; a
+;; b
+;; c
+;; => nil
+
+;; ラムダ式と組み合わせ
+(each (fn [x] (println f"値: {x}")) [10 20 30])
+;; 出力:
+;; 値: 10
+;; 値: 20
+;; 値: 30
+;; => nil
+
+;; パイプラインで使う
+(lines
+ |> (map str/trim)
+ |> (map str/upper)
+ |> (each println))
+;; 各行を大文字に変換して出力
+
+;; when と組み合わせた条件付き処理
+(data
+ |> (each (fn [item]
+            (when (> (len item) 0)
+              (println f"処理: {item}")))))
+
+;; 統計情報の集計
+(def count (atom 0))
+(data
+ |> (each (fn [item]
+            (when (valid? item)
+              (swap! count inc)))))
+```
+
+**map との使い分け**:
+- `map`: 戻り値が必要な場合（データ変換）
+- `each`: 戻り値が不要な場合（副作用のみ）
+
+```qi
+;; map - 変換結果を返す
+(map inc [1 2 3])  ;; => [2 3 4]
+
+;; each - 副作用のみ、nilを返す
+(each println [1 2 3])  ;; => nil（ただし各要素が出力される）
+```
+
 ### find - 条件を満たす最初の要素
 
 ```qi

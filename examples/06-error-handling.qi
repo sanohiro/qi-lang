@@ -1,0 +1,205 @@
+;; 06-error-handling.qi - Railway Pipeline（★Qiのウリ！）
+;;
+;; エラーを優雅に扱う - Railway Oriented Programming
+;; |>? 演算子でエラー処理をシンプルに
+;; 実行: qi examples/06-error-handling.qi
+
+(println "=== Railway Pipeline - エラーを優雅に扱う ===\n")
+
+;; try - 基本的なエラー処理
+(println "=== try - 基本 ===")
+
+(println (try (+ 1 2)))         ; 成功時は生の値
+(println (try (/ 1 0)))         ; エラー時は{:error ...}
+
+;; error? - エラーチェック
+(println "\n=== error? 述語 ===")
+
+(println (error? {:error "Something went wrong"}))  ; => true
+(println (error? 42))                               ; => false
+(println (error? {:ok 10}))                         ; => false
+
+;; Railway Pipeline |>? - エラー処理の本命
+(println "\n=== |>? Railway Pipeline ===")
+(println "{:error}以外は全て成功として扱う\n")
+
+;; 検証関数
+(defn validate-positive [x]
+  (if (> x 0)
+    x
+    {:error "Must be positive"}))
+
+(defn double [x]
+  (* x 2))
+
+(defn add-ten [x]
+  (+ x 10))
+
+;; 成功ケース - エラーがなければ値がそのまま流れる
+(println "成功ケース:")
+(println (10
+          |>? validate-positive
+          |>? double
+          |>? add-ten))  ; => 30
+
+;; エラーケース - エラーが発生したらそこで止まる
+(println "\nエラーケース:")
+(println (-5
+          |>? validate-positive  ; ここでエラー
+          |>? double             ; スキップ
+          |>? add-ten))          ; スキップ
+; => {:error "Must be positive"}
+
+;; 実用例: 数値バリデーションパイプライン
+(println "\n=== 実用例: バリデーションパイプライン ===")
+
+(defn parse-int [s]
+  (if (= s "42")
+    42
+    (if (= s "100")
+      100
+      {:error "Parse error"})))
+
+(defn validate-range [n]
+  (if (and (>= n 0) (<= n 100))
+    n
+    {:error "Range error: must be 0-100"}))
+
+(defn validate-score [input]
+  (input
+   |>? parse-int
+   |>? validate-range))
+
+(println (validate-score "42"))   ; => 42
+(println (validate-score "abc"))  ; => {:error "Parse error"}
+(println (validate-score "150"))  ; => {:error "Range error: must be 0-100"}
+
+;; 複数のバリデーション
+(println "\n=== 複数バリデーション ===")
+
+(defn validate-user [user]
+  (user
+   |>? (fn [u]
+         (if (> (len (get u :name)) 0)
+           u
+           {:error "Name cannot be empty"}))
+   |>? (fn [u]
+         (if (and (>= (get u :age) 0) (<= (get u :age) 150))
+           u
+           {:error "Invalid age"}))))
+
+(println (validate-user {:name "Alice" :age 25}))   ; => {:name "Alice" :age 25}
+(println (validate-user {:name "" :age 25}))        ; => {:error "Name cannot be empty"}
+(println (validate-user {:name "Bob" :age 200}))    ; => {:error "Invalid age"}
+
+;; matchとの組み合わせ
+(println "\n=== match + Railway Pipeline ===")
+
+(defn process-with-error-handling [x]
+  (match (x
+          |>? validate-positive
+          |>? double
+          |>? add-ten)
+    {:error e} -> f"Failed: {e}"
+    result -> f"Success: {result}"))
+
+(println (process-with-error-handling 10))   ; => "Success: 30"
+(println (process-with-error-handling -5))   ; => "Failed: Must be positive"
+
+;; 安全な除算
+(println "\n=== 安全な除算 ===")
+
+(defn safe-divide [a b]
+  (if (= b 0)
+    {:error "Division by zero"}
+    (/ a b)))
+
+(println (10 |>? (fn [x] (safe-divide x 2))))   ; => 5
+(println (10 |>? (fn [x] (safe-divide x 0))))   ; => {:error "Division by zero"}
+
+;; チェーン処理
+(println "\n=== チェーン処理 ===")
+
+(defn step1 [x]
+  (do
+    (println f"Step 1: {x}")
+    (if (> x 0) (* x 2) {:error "Step 1 failed"})))
+
+(defn step2 [x]
+  (do
+    (println f"Step 2: {x}")
+    (if (< x 100) (+ x 10) {:error "Step 2 failed"})))
+
+(defn step3 [x]
+  (do
+    (println f"Step 3: {x}")
+    (* x 3)))
+
+(println "\n成功する場合:")
+(println (5
+          |>? step1
+          |>? step2
+          |>? step3))
+
+(println "\n途中で失敗する場合:")
+(println (-5
+          |>? step1
+          |>? step2
+          |>? step3))
+
+;; defer - リソース管理
+(println "\n=== defer - リソース管理 ===")
+
+(defn process-file []
+  (do
+    (println "Opening file...")
+    (defer (println "Closing file..."))  ; 最後に必ず実行
+    (println "Processing file...")
+    (if true
+      "Done"
+      {:error "Failed"})))
+
+(println (process-file))
+
+;; try/catchパターン
+(println "\n=== try を使った安全な操作 ===")
+
+(defn safe-operation [x y]
+  (match (try (/ x y))
+    {:error e} -> f"Error: {e}"
+    result -> f"Result: {result}"))
+
+(println (safe-operation 10 2))   ; => "Result: 5"
+(println (safe-operation 10 0))   ; => "Error: ..."
+
+;; 複雑な業務ロジック
+(println "\n=== 実用例: ユーザー登録処理 ===")
+
+(defn validate-email [user]
+  (if (str/includes? (get user :email) "@")
+    user
+    {:error "Invalid email"}))
+
+(defn validate-password [user]
+  (if (> (len (get user :password)) 8)
+    user
+    {:error "Password too short"}))
+
+(defn save-user [user]
+  (do
+    (println f"Saving user: {(get user :name)}")
+    user))
+
+(defn register-user [user]
+  (user
+   |>? validate-user
+   |>? validate-email
+   |>? validate-password
+   |>? save-user))
+
+(println (register-user {:name "Alice" :age 25 :email "alice@example.com" :password "secret123"}))
+(println (register-user {:name "" :age 25 :email "alice@example.com" :password "secret123"}))
+(println (register-user {:name "Bob" :age 30 :email "invalid" :password "secret123"}))
+
+(println "\n=== Railway Pipelineでエラーを優雅に扱いましょう！ ===")
+(println "次は 07-concurrency.qi で並行・並列処理を学びましょう")

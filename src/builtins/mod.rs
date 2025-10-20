@@ -270,6 +270,11 @@ pub fn pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     hof::native_pmap(args, evaluator)
 }
 
+/// each - コレクションの各要素に関数を適用（副作用用）
+pub fn each(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    hof::native_each(args, evaluator)
+}
+
 /// comp - 関数合成
 pub fn comp(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_functions::native_comp(args, evaluator)

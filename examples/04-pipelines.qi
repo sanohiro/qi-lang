@@ -1,0 +1,158 @@
+;; 04-pipelines.qi - パイプライン演算子（★Qiのウリ！）
+;;
+;; QiのFlow-Oriented Programming - データの流れを設計する
+;; パイプライン演算子: |>, ||>, |>?, tap>, ~>
+;; 実行: qi examples/04-pipelines.qi
+
+(println "=== パイプライン演算子 - Qiのキモ！ ===")
+(println "データは流れ、プログラムは流れを設計する\n")
+
+;; |> - 逐次パイプライン
+(println "=== |> 逐次パイプライン ===")
+
+;; 従来の書き方（ネスト地獄）
+(println "従来の書き方:")
+(println (reduce + 0 (map (fn [x] (* x x)) (filter even? [1 2 3 4 5 6 7 8 9 10]))))
+
+;; パイプラインで読みやすく
+(println "\nパイプラインで:")
+(println ([1 2 3 4 5 6 7 8 9 10]
+          |> (filter even?)
+          |> (map (fn [x] (* x x)))
+          |> (reduce + 0)))
+
+;; データの流れが明確！
+(println "\n別の例:")
+(println (10
+          |> (+ 5)      ; 10 + 5 = 15
+          |> (* 2)      ; 15 * 2 = 30
+          |> (- 10)))   ; 30 - 10 = 20
+
+;; 文字列処理もパイプラインで
+(println "\n文字列処理:")
+(println ("  hello world  "
+          |> str/trim
+          |> str/upper
+          |> (str/replace " " "-")))
+
+;; tap> - 副作用タップ（デバッグに超便利！）
+;; 注意: tap> 演算子は現在未実装です。代わりにdoブロックを使用できます。
+(println "\n=== デバッグ用の関数（tap>の代替） ===")
+
+(defn log-and-pass [label data]
+  (do
+    (println f"{label}: {data}")
+    data))
+
+(println "デバッグ用に途中の値を確認:")
+([1 2 3 4 5]
+ |> (map (fn [x] (* x 2)))
+ |> (log-and-pass "After map")
+ |> (filter (fn [x] (> x 5)))
+ |> (log-and-pass "After filter")
+ |> (reduce + 0))
+
+;; ||> - 並列パイプライン（★超強力！）
+(println "\n=== ||> 並列パイプライン（自動並列化） ===")
+
+;; リストの各要素を並列処理
+(def numbers [1 2 3 4 5 6 7 8 9 10])
+
+(println "並列で2乗を計算:")
+(println (numbers ||> (fn [x] (* x x))))
+
+;; URLリストを並列取得（模擬）
+(defn slow-process [n]
+  (do
+    (println f"Processing {n}...")
+    (* n n)))
+
+(println "\n並列処理のデモ:")
+(println ([1 2 3 4 5] ||> slow-process))
+
+;; 複雑なパイプライン - 実用例
+(println "\n=== 実用例: データ変換パイプライン ===")
+
+(def raw-data
+  ["  Alice  " "  bob  " "CHARLIE" "  dave  "])
+
+(println "生データ:")
+(println raw-data)
+
+(println "\n変換後:")
+(println (raw-data
+          |> (map str/trim)                    ; 空白削除
+          |> (map str/lower)                   ; 小文字化
+          |> (filter (fn [s] (> (len s) 3)))   ; 3文字超のみ
+          |> sort))                            ; ソート
+
+;; 関数定義でもパイプライン
+(println "\n=== 関数定義でパイプライン ===")
+
+(defn process-text [text]
+  (text
+   |> str/trim
+   |> str/lower
+   |> (str/replace " " "-")))
+
+(println (process-text "  Hello World  "))
+
+;; ネストしたデータの処理
+(println "\n=== ネストしたデータのパイプライン ===")
+
+(def users
+  [{:name "Alice" :score 85}
+   {:name "Bob" :score 92}
+   {:name "Charlie" :score 78}
+   {:name "Dave" :score 88}])
+
+(println "合格者（80点以上）の平均点:")
+(println (users
+          |> (filter (fn [u] (>= (get u :score) 80)))  ; 80点以上
+          |> (map (fn [u] (get u :score)))             ; スコア抽出
+          |> (reduce + 0)                              ; 合計
+          |> (fn [sum] (/ sum 3))))                    ; 平均
+
+;; チェーン処理 - Unix哲学「Do One Thing Well」
+(println "\n=== Unixパイプライン風 ===")
+
+;; 小さな関数を組み合わせる
+(defn only-positive [xs]
+  (filter (fn [x] (> x 0)) xs))
+
+(defn square-all [xs]
+  (map (fn [x] (* x x)) xs))
+
+(defn sum-all [xs]
+  (reduce + 0 xs))
+
+(println ([-2 -1 0 1 2 3 4 5]
+          |> only-positive
+          |> square-all
+          |> sum-all))
+
+;; マルチステージパイプライン
+(println "\n=== マルチステージパイプライン ===")
+
+(defn stage1 [data]
+  (do
+    (println "Stage 1: Filter")
+    (filter even? data)))
+
+(defn stage2 [data]
+  (do
+    (println "Stage 2: Transform")
+    (map (fn [x] (* x 2)) data)))
+
+(defn stage3 [data]
+  (do
+    (println "Stage 3: Aggregate")
+    (reduce + 0 data)))
+
+(println ([1 2 3 4 5 6 7 8 9 10]
+          |> stage1
+          |> stage2
+          |> stage3))
+
+(println "\n=== Qiのパイプラインはコードを読みやすく、保守しやすくします！ ===")
+(println "次は 05-pattern-matching.qi でパターンマッチングを学びましょう")

@@ -1,0 +1,99 @@
+;; 02-functions.qi - 関数の基本
+;;
+;; Qiの関数定義、クロージャ、高階関数を学びます。
+;; 実行: qi examples/02-functions.qi
+
+(println "=== 関数の基本 ===")
+
+;; 関数定義 - defn
+(defn greet [name]
+  f"Hello, {name}!")
+
+(println (greet "World"))
+(println (greet "Qi"))
+
+;; 複数引数
+(defn add [a b]
+  (+ a b))
+
+(println f"add(10, 20) = {(add 10 20)}")
+
+;; 関数は式を返す
+(defn max2 [a b]
+  (if (> a b) a b))
+
+(println f"max(15, 10) = {(max2 15 10)}")
+
+;; 無名関数（ラムダ） - fn
+(println "\n=== 無名関数（fn） ===")
+(def double (fn [x] (* x 2)))
+(println f"double(5) = {(double 5)}")
+
+;; 高階関数 - 関数を引数に取る
+(println "\n=== 高階関数 ===")
+(defn apply-twice [f x]
+  (f (f x)))
+
+(println f"apply-twice(inc, 10) = {(apply-twice inc 10)}")  ; => 12
+(println f"apply-twice(double, 3) = {(apply-twice double 3)}")  ; => 12
+
+;; map - リストの各要素に関数を適用
+(println "\n=== map（変換） ===")
+(def numbers [1 2 3 4 5])
+(println (map (fn [x] (* x 2)) numbers))
+(println (map inc numbers))
+
+;; filter - 条件に合う要素だけ抽出
+(println "\n=== filter（抽出） ===")
+(println (filter even? numbers))
+(println (filter (fn [x] (> x 3)) numbers))
+
+;; reduce - リストを1つの値に集約
+(println "\n=== reduce（集約） ===")
+(println f"sum = {(reduce + 0 numbers)}")
+(println f"product = {(reduce * 1 numbers)}")
+
+;; クロージャ - 外側の変数を捕捉
+(println "\n=== クロージャ ===")
+(defn make-adder [n]
+  (fn [x] (+ x n)))
+
+(def add10 (make-adder 10))
+(def add100 (make-adder 100))
+
+(println f"add10(5) = {(add10 5)}")      ; => 15
+(println f"add100(5) = {(add100 5)}")    ; => 105
+
+;; 関数合成 - comp
+(println "\n=== 関数合成（comp） ===")
+(def double-then-inc (comp inc double))
+(println f"double-then-inc(5) = {(double-then-inc 5)}")  ; => 11
+
+;; 部分適用 - partial
+(println "\n=== 部分適用（partial） ===")
+(defn multiply [a b c]
+  (* a b c))
+
+(def mul-by-2 (partial multiply 2))
+(println f"mul-by-2(3, 4) = {(mul-by-2 3 4)}")  ; => 24
+
+;; 再帰関数
+(println "\n=== 再帰関数 ===")
+(defn factorial [n]
+  (if (<= n 1)
+    1
+    (* n (factorial (- n 1)))))
+
+(println f"factorial(5) = {(factorial 5)}")  ; => 120
+
+;; loop/recur（末尾再帰最適化）
+(println "\n=== loop/recur（末尾再帰） ===")
+(defn factorial-loop [n]
+  (loop [i n acc 1]
+    (if (<= i 1)
+      acc
+      (recur (- i 1) (* acc i)))))
+
+(println f"factorial-loop(5) = {(factorial-loop 5)}")  ; => 120
+
+(println "\n=== 次は 03-data-structures.qi でデータ構造を学びましょう ===")

@@ -49,6 +49,47 @@
 (abs 3)              ; => 3
 ```
 
+## when - 条件が真のときのみ実行
+
+`if`のelse節が不要な場合の簡潔な記法です。
+
+### 基本的なwhen
+
+```lisp
+(when condition
+  expr1
+  expr2
+  ...)
+
+; 例
+(when (> x 10)
+  (println "大きい値です")
+  (process x))
+
+; ifと比較
+(if (> x 10)
+  (do
+    (println "大きい値です")
+    (process x))
+  nil)  ; whenはこれと同じ
+```
+
+### 実践例
+
+```lisp
+; バリデーション
+(when (valid? data)
+  (println "データが有効です")
+  (save-to-db data))
+
+; 条件付き統計
+(def count (atom 0))
+(each (fn [item]
+        (when (> (len item) 0)
+          (swap! count inc)))
+  items)
+```
+
 ## match - パターンマッチ
 
 強力なパターンマッチングです。
@@ -241,6 +282,105 @@
       (recur b (+ a b) (+ i 1)))))
 
 (fib 10)             ; => 55
+```
+
+## while - 条件が真の間ループ
+
+条件式が真の間、ボディを繰り返し実行します。
+
+### 基本的なwhile
+
+```lisp
+(while condition
+  body...)
+
+; 例
+(def counter (atom 0))
+(while (< @counter 5)
+  (println f"カウント: {@counter}")
+  (swap! counter inc))
+```
+
+### 実践例
+
+```lisp
+; ファイル読み込み
+(def lines (atom (io/stdin-lines)))
+(while (some? (first @lines))
+  (println (first @lines))
+  (swap! lines rest))
+```
+
+## until - 条件が真になるまでループ
+
+条件式が真になる**まで**ボディを繰り返し実行します（`while`の逆）。
+
+### 基本的なuntil
+
+```lisp
+(until condition
+  body...)
+
+; 例
+(def counter (atom 0))
+(until (>= @counter 5)
+  (println f"カウント: {@counter}")
+  (swap! counter inc))
+```
+
+## while-some - nilになるまでループ（束縛付き）
+
+式を評価し、結果が`nil`になるまで繰り返します。各反復で結果を変数に束縛します。
+
+### 基本的なwhile-some
+
+```lisp
+(while-some [binding expr]
+  body...)
+
+; 例
+(def remaining (atom [1 2 3 4 5]))
+(while-some [item (first @remaining)]
+  (println f"処理: {item}")
+  (swap! remaining rest))
+```
+
+### パイプラインとの組み合わせ
+
+```lisp
+(while-some [line (io/read-line)]
+  (line
+   |> str/trim
+   |> (when (> (len line) 0)
+        (process-line line))))
+```
+
+## until-error - エラーになるまでループ（束縛付き）
+
+式を評価し、結果が`{:error ...}`になるまで繰り返します。各反復で結果を変数に束縛します。
+
+### 基本的なuntil-error
+
+```lisp
+(until-error [binding expr]
+  body...)
+
+; 例
+(until-error [result (fetch-next)]
+  (println f"取得成功: {result}")
+  (process result))
+```
+
+### Railway Oriented Programmingとの統合
+
+```lisp
+(def page (atom 1))
+(until-error [data (api/fetch-page @page)]
+  (data
+   |>? validate
+   |>? transform
+   |>? save-to-db)
+  (swap! page inc))
 ```
 
 ## do - 複数の式
@@ -449,16 +589,21 @@
 制御構造：
 
 - **if**: 条件分岐（then/else）
+- **when**: 条件が真のときのみ実行（else不要）
 - **match**: パターンマッチ
   - リテラル、ベクタ、マップ
   - Orパターン、ガード、:as
-- **loop/recur**: 効率的なループ
+- **loop/recur**: 効率的なループ（末尾再帰最適化）
+- **while**: 条件が真の間ループ
+- **until**: 条件が真になるまでループ
+- **while-some**: nilになるまでループ（束縛付き）
+- **until-error**: エラーになるまでループ（束縛付き）
 - **do**: 複数の式を順番に実行
 - **try**: エラーハンドリング
 - **defer**: 遅延実行
 - **and/or**: 短絡評価
 
-matchが最も強力で柔軟！
+matchが最も強力で柔軟！新しいループ構文でより簡潔なコードが書けます！
 
 ## 次のステップ
 

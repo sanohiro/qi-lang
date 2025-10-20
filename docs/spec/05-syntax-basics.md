@@ -443,6 +443,274 @@ fn、let、defなどの特殊形式内でもunquoteは正しく動作します�
 - `recur`は特別なエラーとして扱い、`loop`でキャッチして変数を更新
 - 通常の再帰と異なり、スタックを消費しない（末尾再帰最適化）
 
+### `when` - 条件が真のときのみ実行
+
+`if`のelse節が不要な場合の簡潔な記法です。複数の式を順次実行できます。
+
+```qi
+;; 基本形
+(when test
+  expr1
+  expr2
+  ...)
+
+;; 実用例
+(when (> x 10)
+  (println "大きい値です")
+  (process x))
+
+;; ifと比較
+(if (> x 10)
+  (do
+    (println "大きい値です")
+    (process x))
+  nil)  ;; これと同じ
+
+;; パイプラインとの組み合わせ
+(data
+ |> (when (valid? data)
+      (println "処理開始")
+      (process data)))
+```
+
+**戻り値**:
+- 条件が真の場合: 最後の式の値
+- 条件が偽の場合: `nil`
+
+### `while` - 条件が真の間ループ
+
+条件式が真（truthyな値）の間、ボディを繰り返し実行します。
+
+```qi
+;; 基本形
+(while test
+  body...)
+
+;; カウンタ例
+(def counter (atom 0))
+(while (< @counter 5)
+  (println f"カウント: {@counter}")
+  (swap! counter inc))
+
+;; ファイル処理の例
+(def lines (atom (io/stdin-lines)))
+(while (some? (first @lines))
+  (println (first @lines))
+  (swap! lines rest))
+```
+
+**戻り値**: 常に`nil`
+
+**注意**: 無限ループを避けるため、ボディ内で条件を変更すること。
+
+### `until` - 条件が真になるまでループ
+
+条件式が真になる**まで**ボディを繰り返し実行します（`while`の逆）。
+
+```qi
+;; 基本形
+(until test
+  body...)
+
+;; カウンタ例（whileの逆）
+(def counter (atom 0))
+(until (>= @counter 5)
+  (println f"カウント: {@counter}")
+  (swap! counter inc))
+
+;; リトライ例
+(def success (atom false))
+(until @success
+  (println "リトライ中...")
+  (reset! success (try-operation)))
+```
+
+**戻り値**: 常に`nil`
+
+### `while-some` - nilになるまでループ（束縛付き）
+
+式を評価し、結果が`nil`になるまで繰り返します。各反復で結果を変数に束縛します。
+
+```qi
+;; 基本形
+(while-some [binding expr]
+  body...)
+
+;; リスト処理
+(def remaining (atom [1 2 3 4 5]))
+(while-some [item (first @remaining)]
+  (println f"処理: {item}")
+  (swap! remaining rest))
+
+;; ファイル読み込み（行単位）
+(while-some [line (io/read-line)]
+  (line
+   |> str/trim
+   |> (when (> (len line) 0)
+        (process-line line))))
+
+;; パイプラインとの組み合わせ
+(while-some [val (get-next-value)]
+  (val
+   |> transform
+   |> validate
+   |> save))
+```
+
+**動作**:
+- `expr`を評価
+- 結果が`nil`なら終了
+- 結果が`nil`以外なら、その値を`binding`に束縛してボディを実行
+- 次の反復へ
+
+**戻り値**: 常に`nil`
+
+### `until-error` - エラーになるまでループ（束縛付き）
+
+式を評価し、結果が`{:error ...}`になるまで繰り返します。各反復で結果を変数に束縛します。
+
+```qi
+;; 基本形
+(until-error [binding expr]
+  body...)
+
+;; Result型との統合
+(until-error [result (fetch-next)]
+  (println f"取得成功: {result}")
+  (process result))
+
+;; HTTPリクエストの例
+(until-error [response (http/get next-url)]
+  (println f"ステータス: {(:status response)}")
+  (when (= (:status response) 200)
+    (process-response response)))
+
+;; ページネーション処理
+(def page (atom 1))
+(until-error [data (api/fetch-page @page)]
+  (data
+   |> process-items
+   |> save-to-db)
+  (swap! page inc))
+```
+
+**動作**:
+- `expr`を評価
+- 結果が`{:error ...}`なら、その値を返して終了
+- 結果が`{:error ...}`以外なら、その値を`binding`に束縛してボディを実行
+- 次の反復へ
+
+**戻り値**: エラーマップ `{:error ...}`、またはループが実行されなかった場合は`nil`
+
+**Railway Oriented Programming**:
+`|>?`パイプラインとの組み合わせで強力なエラー処理が可能です：
+
+```qi
+(until-error [result (fetch-data)]
+  (result
+   |>? validate
+   |>? transform
+   |>? save))
+```
+
+---
+
+## ループ構文の使い分け
+
+Qiには複数のループ構文があります。それぞれ適切な用途があるため、状況に応じて使い分けましょう。
+
+### コレクション処理
+
+**コレクション全体を処理する場合** → 高階関数を使用
+
+```qi
+;; ✅ 推奨
+(map transform data)
+(filter valid? data)
+(each println data)
+
+;; ❌ 非推奨（冗長）
+(def items (atom data))
+(while (some? (first @items))
+  (process (first @items))
+  (swap! items rest))
+```
+
+**用途**: データ変換、フィルタリング、副作用の適用
+
+### 条件付きループ（関数型的）
+
+**nilチェック付きループ** → `while-some`
+
+```qi
+;; ✅ 推奨（関数型的、パイプラインと相性良い）
+(while-some [line (io/read-line)]
+  (line
+   |> str/trim
+   |> process
+   |> save))
+```
+
+**エラーチェック付きループ** → `until-error`
+
+```qi
+;; ✅ 推奨（Result型統合、Railway Oriented Programming）
+(until-error [result (fetch-next)]
+  (result
+   |>? validate
+   |>? save))
+```
+
+**用途**: ストリーム処理、ページネーション、API呼び出し
+
+### 単純なループ（副作用ベース）
+
+**カウンタベースのループ** → `while` / `until`
+
+```qi
+;; ✅ 推奨（シンプルで直感的）
+(def count (atom 0))
+(while (< @count 100)
+  (do-something)
+  (swap! count inc))
+
+;; リトライロジック
+(def success (atom false))
+(until @success
+  (reset! success (try-operation)))
+```
+
+**用途**: カウンタ処理、リトライロジック、外部リソースのポーリング
+
+**注意**: 無限ループを避けるため、ボディ内で条件を必ず変更すること。
+
+### 末尾再帰最適化
+
+**スタックを消費しない再帰** → `loop` / `recur`
+
+```qi
+;; ✅ 推奨（大量の反復、再帰的アルゴリズム）
+(defn factorial [n]
+  (loop [i n acc 1]
+    (if (<= i 1)
+      acc
+      (recur (dec i) (* acc i)))))
+```
+
+**用途**: 再帰的アルゴリズム、大量の反復が必要な処理
+
+### クイックリファレンス
+
+| 用途 | 構文 | 特徴 |
+|------|------|------|
+| コレクション処理 | `map`, `filter`, `each` | 簡潔、パイプライン対応 |
+| nilまでループ | `while-some` | 関数型的、束縛付き |
+| エラーまでループ | `until-error` | Result型統合 |
+| カウンタループ | `while`, `until` | シンプル、副作用ベース |
+| 末尾再帰 | `loop/recur` | スタック消費なし |
+
+**原則**: 最も簡潔で意図が明確な構文を選ぶこと。迷ったら高階関数（`map`, `filter`, `each`）から検討する。
+
 ---
 
 ## 名前空間

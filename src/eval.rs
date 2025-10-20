@@ -339,6 +339,85 @@ impl Evaluator {
 
             Expr::Do { exprs, .. } => self.eval_do(exprs, env),
 
+            Expr::When {
+                condition, body, ..
+            } => {
+                let cond_val = self.eval_with_env(condition, Arc::clone(&env))?;
+                if cond_val.is_truthy() {
+                    self.eval_do(body, env)
+                } else {
+                    Ok(Value::Nil)
+                }
+            }
+
+            Expr::While {
+                condition, body, ..
+            } => {
+                loop {
+                    let cond_val = self.eval_with_env(condition, Arc::clone(&env))?;
+                    if !cond_val.is_truthy() {
+                        break;
+                    }
+                    self.eval_do(body, Arc::clone(&env))?;
+                }
+                Ok(Value::Nil)
+            }
+
+            Expr::Until {
+                condition, body, ..
+            } => {
+                loop {
+                    let cond_val = self.eval_with_env(condition, Arc::clone(&env))?;
+                    if cond_val.is_truthy() {
+                        break;
+                    }
+                    self.eval_do(body, Arc::clone(&env))?;
+                }
+                Ok(Value::Nil)
+            }
+
+            Expr::WhileSome {
+                binding,
+                expr,
+                body,
+                ..
+            } => {
+                loop {
+                    let val = self.eval_with_env(expr, Arc::clone(&env))?;
+                    if matches!(val, Value::Nil) {
+                        break;
+                    }
+                    {
+                        env.write().set(binding.clone(), val);
+                    }
+                    self.eval_do(body, Arc::clone(&env))?;
+                }
+                Ok(Value::Nil)
+            }
+
+            Expr::UntilError {
+                binding,
+                expr,
+                body,
+                ..
+            } => {
+                loop {
+                    let val = self.eval_with_env(expr, Arc::clone(&env))?;
+
+                    // {:error ...} の場合は終了して値を返す
+                    if let Value::Map(ref m) = val {
+                        if m.contains_key(":error") {
+                            return Ok(val);
+                        }
+                    }
+
+                    {
+                        env.write().set(binding.clone(), val);
+                    }
+                    self.eval_do(body, Arc::clone(&env))?;
+                }
+            }
+
             Expr::Match { expr, arms, .. } => {
                 let value = self.eval_with_env(expr, Arc::clone(&env))?;
                 self.eval_match(&value, arms, env)
@@ -461,6 +540,7 @@ impl Evaluator {
                 "pipeline/map" => Some(self.eval_pipeline_map(args, env)),
                 "pipeline/pipeline" => Some(self.eval_pipeline(args, env)),
                 "pmap" => Some(self.eval_pmap(args, env)),
+                "each" => Some(self.eval_each(args, env)),
                 "quote" => Some(self.eval_quote(args)),
                 "reduce" => Some(self.eval_reduce(args, env)),
                 "list/some?" => Some(self.eval_some(args, env)),
@@ -902,6 +982,13 @@ impl Evaluator {
         builtins::pmap(&[func, coll], self)
     }
 
+    /// each関数の実装: (each func coll)
+    fn eval_each(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        builtins::each(&[func, coll], self)
+    }
+
     /// pfilter関数の実装: (pfilter pred coll)
     fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
@@ -912,15 +999,15 @@ impl Evaluator {
         builtins::pfilter(&[pred, coll], self)
     }
 
-    /// preduce関数の実装: (preduce f init coll)
+    /// preduce関数の実装: (preduce f coll init) - reduceと同じ順序
     fn eval_preduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
             return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["go/preduce", "3", ""]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
-        let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
-        let coll = self.eval_with_env(&args[2], Arc::clone(&env))?;
-        builtins::preduce(&[func, init, coll], self)
+        let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        let init = self.eval_with_env(&args[2], Arc::clone(&env))?;
+        builtins::preduce(&[func, coll, init], self)
     }
 
     fn eval_partition(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
@@ -2096,7 +2183,7 @@ impl Evaluator {
         self.defer_stack.write().push(Vec::new());
 
         let result = match self.eval_with_env(expr, Arc::clone(&env)) {
-            Ok(value) => Ok(value),  // :okラップなし！
+            Ok(value) => Ok(value), // :okラップなし！
             Err(e) => Ok(Value::error(e)),
         };
 
@@ -2640,10 +2727,15 @@ impl Evaluator {
             | Expr::Defer { .. }
             | Expr::Loop { .. }
             | Expr::Recur { .. }
+            | Expr::When { .. }
+            | Expr::While { .. }
+            | Expr::Until { .. }
+            | Expr::WhileSome { .. }
+            | Expr::UntilError { .. }
             | Expr::Match { .. }
             | Expr::Mac { .. } => Err(fmt_msg(
                 MsgKey::CannotQuote,
-                &["module/export/use/try/defer/loop/recur/match/mac"],
+                &["module/export/use/try/defer/loop/recur/when/while/until/while-some/until-error/match/mac"],
             )),
             Expr::FString { .. } => Err(msg(MsgKey::FStringCannotBeQuoted).to_string()),
         }

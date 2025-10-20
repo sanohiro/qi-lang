@@ -1,0 +1,188 @@
+;; 05-pattern-matching.qi - パターンマッチング（★Qiのウリ！）
+;;
+;; データ構造の分解、ガード条件、orパターン
+;; 実行: qi examples/05-pattern-matching.qi
+
+(println "=== パターンマッチング - データの流れを分岐・変換 ===\n")
+
+;; 基本的なマッチング
+(println "=== 基本的なマッチング ===")
+
+(println (match 42
+           42 -> "The answer!"
+           0 -> "Zero"
+           _ -> "Something else"))
+
+(println (match "hello"
+           "hello" -> "Hi!"
+           "bye" -> "Goodbye!"
+           _ -> "Unknown"))
+
+;; リストのパターンマッチング
+(println "\n=== リストのパターンマッチング ===")
+
+(defn describe-list [lst]
+  (match lst
+    [] -> "Empty list"
+    [x] -> f"Single element: {x}"
+    [a b] -> f"Pair: {a}, {b}"
+    [first & rest] -> f"First: {first}, Rest: {rest}"))
+
+(println (describe-list []))
+(println (describe-list [1]))
+(println (describe-list [1 2]))
+(println (describe-list [1 2 3 4 5]))
+
+;; マップのパターンマッチング
+(println "\n=== マップのパターンマッチング ===")
+
+(def person {:name "Alice" :age 25 :city "Tokyo"})
+
+(println (match person
+           {:name n :age a} -> f"{n} is {a} years old"))
+
+;; HTTPレスポンス処理（実用例）
+(println "\n=== HTTPレスポンス処理 ===")
+
+(defn handle-response [resp]
+  (match resp
+    {:status 200 :body body} -> f"Success: {body}"
+    {:status 404} -> "Not Found"
+    {:status 500 :message msg} -> f"Server Error: {msg}"
+    _ -> "Unknown response"))
+
+(println (handle-response {:status 200 :body "OK"}))
+(println (handle-response {:status 404}))
+(println (handle-response {:status 500 :message "Database error"}))
+
+;; ガード条件（when）
+(println "\n=== ガード条件 ===")
+
+(defn classify-number [n]
+  (match n
+    x when (> x 0) -> "Positive"
+    x when (< x 0) -> "Negative"
+    _ -> "Zero"))
+
+(println (classify-number 10))
+(println (classify-number -5))
+(println (classify-number 0))
+
+;; より複雑なガード
+(defn grade [score]
+  (match score
+    s when (>= s 90) -> "A"
+    s when (>= s 80) -> "B"
+    s when (>= s 70) -> "C"
+    s when (>= s 60) -> "D"
+    _ -> "F"))
+
+(println f"Grade 95: {(grade 95)}")
+(println f"Grade 85: {(grade 85)}")
+(println f"Grade 75: {(grade 75)}")
+(println f"Grade 50: {(grade 50)}")
+
+;; orパターン
+(println "\n=== orパターン ===")
+
+(defn weekday-or-weekend [day]
+  (match day
+    "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" -> "Weekday"
+    "Saturday" | "Sunday" -> "Weekend"
+    _ -> "Unknown"))
+
+(println (weekday-or-weekend "Monday"))
+(println (weekday-or-weekend "Saturday"))
+(println (weekday-or-weekend "Holiday"))
+
+;; コマンド処理パターン
+(println "\n=== コマンド処理パターン ===")
+
+(defn handle-command [cmd]
+  (match cmd
+    {:type "add" :a a :b b} -> (+ a b)
+    {:type "sub" :a a :b b} -> (- a b)
+    {:type "mul" :a a :b b} -> (* a b)
+    {:type "div" :a a :b b} -> (/ a b)
+    _ -> {:error "Unknown command"}))
+
+(println (handle-command {:type "add" :a 10 :b 20}))
+(println (handle-command {:type "mul" :a 5 :b 6}))
+(println (handle-command {:type "unknown"}))
+
+;; ネストしたパターン
+(println "\n=== ネストしたパターンマッチング ===")
+
+(defn process-user [user]
+  (match user
+    {:type "admin" :permissions perms} -> f"Admin with {perms}"
+    {:type "user" :name name :premium true} -> f"Premium user: {name}"
+    {:type "user" :name name} -> f"Regular user: {name}"
+    _ -> "Unknown user type"))
+
+(println (process-user {:type "admin" :permissions ["read" "write" "delete"]}))
+(println (process-user {:type "user" :name "Alice" :premium true}))
+(println (process-user {:type "user" :name "Bob"}))
+
+;; API結果の処理（Result型パターン）
+(println "\n=== Result型のパターンマッチング ===")
+
+(defn process-result [result]
+  (match result
+    {:error e} -> f"Error: {e}"
+    value -> f"Success: {value}"))
+
+(println (process-result 42))
+(println (process-result {:error "File not found"}))
+
+;; パイプラインとmatchの組み合わせ
+(println "\n=== パイプライン + match ===")
+
+(def api-results
+  [{:status 200 :data "OK"}
+   {:status 404 :data "Not Found"}
+   {:status 200 :data "Success"}
+   {:status 500 :data "Error"}])
+
+(println "成功したリクエストのデータ:")
+(println (api-results
+          |> (map (fn [r]
+                    (match r
+                      {:status 200 :data d} -> d
+                      _ -> nil)))
+          |> (filter some?)))
+
+;; matchでの変換パイプライン
+(println "\n=== matchによるデータ変換 ===")
+
+(defn transform-event [event]
+  (match event
+    {:type "click" :x x :y y} -> {:action "clicked" :pos [x y]}
+    {:type "key" :key k} -> {:action "pressed" :key k}
+    {:type "scroll" :delta d} -> {:action "scrolled" :amount d}
+    _ -> {:action "unknown"}))
+
+(println (transform-event {:type "click" :x 100 :y 200}))
+(println (transform-event {:type "key" :key "Enter"}))
+(println (transform-event {:type "scroll" :delta 10}))
+
+;; matchは式なので、どこでも使える
+(println "\n=== matchは式 ===")
+
+(def result
+  (match (+ 1 2)
+    3 -> "Correct!"
+    _ -> "Wrong!"))
+
+(println result)
+
+;; letとmatchの組み合わせ
+(println "\n=== let + match ===")
+
+(let [response {:status 200 :body {:name "Alice" :age 25}}]
+  (println (match response
+             {:status 200 :body {:name n :age a}} -> f"User {n}, age {a}"
+             {:status s} -> f"Status: {s}")))
+
+(println "\n=== パターンマッチングでデータフローを制御しましょう！ ===")
+(println "次は 06-error-handling.qi でRailway Pipelineを学びましょう")

@@ -162,6 +162,30 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     }
 }
 
+/// each - コレクションの各要素に関数を適用（副作用用）
+/// mapと異なり、戻り値は収集せずnilを返します
+pub fn native_each(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["each"]));
+    }
+
+    let func = &args[0];
+    let collection = &args[1];
+
+    match collection {
+        Value::List(items) | Value::Vector(items) => {
+            for item in items {
+                evaluator.apply_function(func, std::slice::from_ref(item))?;
+            }
+            Ok(Value::Nil)
+        }
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["each (2nd arg)", "lists or vectors"],
+        )),
+    }
+}
+
 /// pfilter - 並列filter
 ///
 /// コレクションから条件を満たす要素を並列抽出します。
@@ -217,6 +241,8 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 ///
 /// コレクションを並列畳み込みします。
 /// 結合法則を満たす演算（+, *, max等）でのみ正しい結果が得られます。
+///
+/// 引数順序: (preduce fn collection init) - reduceと同じ
 pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use rayon::prelude::*;
 
@@ -225,8 +251,8 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
     }
 
     let func = &args[0];
-    let init = args[1].clone();
-    let collection = &args[2];
+    let collection = &args[1];
+    let init = args[2].clone();
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
@@ -259,7 +285,7 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
-            &["preduce (3rd arg)", "lists or vectors"],
+            &["preduce (2nd arg)", "lists or vectors"],
         )),
     }
 }

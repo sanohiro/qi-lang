@@ -1,0 +1,119 @@
+;; 03-data-structures.qi - データ構造の基本
+;;
+;; Qiのベクター、リスト、マップ、セットを学びます。
+;; 実行: qi examples/03-data-structures.qi
+
+(println "=== ベクター（Vector） ===")
+
+;; ベクター - インデックスアクセスが速い
+(def vec [1 2 3 4 5])
+(println vec)
+(println f"first: {(first vec)}")
+(println f"last: {(last vec)}")
+(println f"nth 2: {(nth vec 2)}")  ; 0-indexed
+
+;; ベクターの操作
+(println (conj vec 6))       ; 末尾に追加
+(println (take 3 vec))       ; 最初の3つ
+(println (drop 2 vec))       ; 最初の2つをスキップ
+
+(println "\n=== リスト（List） ===")
+
+;; リスト - 先頭アクセスが速い
+(def lst '(1 2 3 4 5))
+(println lst)
+(println f"first: {(first lst)}")
+(println f"rest: {(rest lst)}")
+
+;; リストの構築
+(println (cons 0 lst))       ; 先頭に追加
+
+(println "\n=== マップ（Map） ===")
+
+;; マップ - キー・バリューのペア
+(def person {:name "Alice" :age 25 :city "Tokyo"})
+(println person)
+
+;; マップのアクセス
+(println f"name: {(get person :name)}")
+(println f"age: {(get person :age)}")
+
+;; マップの更新（イミュータブル）
+(def updated-person (assoc person :age 26))
+(println f"updated: {updated-person}")
+(println f"original: {person}")  ; 元は変わらない
+
+;; マップのマージ
+(def extra {:hobby "Programming" :lang "Qi"})
+(println (merge person extra))
+
+;; マップから削除
+(println (dissoc person :city))
+
+(println "\n=== セット（Set） ===")
+
+;; セット - 重複のない集合
+(def nums #{1 2 3 4 5})
+(println nums)
+
+;; セット操作
+(println (conj nums 6))      ; 追加
+(println (conj nums 3))      ; 既存の要素は無視
+(println (disj nums 3))      ; 削除
+
+(println "\n=== コレクション操作 ===")
+
+;; map - 全要素に関数適用
+(def numbers [1 2 3 4 5])
+(println f"map *2: {(map (fn [x] (* x 2)) numbers)}")
+
+;; filter - 条件で絞り込み
+(println f"filter even?: {(filter even? numbers)}")
+
+;; reduce - 集約
+(println f"sum: {(reduce + 0 numbers)}")
+
+;; ソート
+(def unsorted [5 2 8 1 9])
+(println f"sort: {(sort unsorted)}")
+(println f"sort desc: {(sort (fn [a b] (> a b)) unsorted)}")
+
+;; グループ化
+(println f"group by even?: {(group-by even? numbers)}")
+
+;; 重複削除
+(def duplicated [1 2 2 3 3 3 4 5])
+(println f"distinct: {(distinct duplicated)}")
+
+;; リバース
+(println f"reverse: {(reverse numbers)}")
+
+;; 平坦化
+(def nested [[1 2] [3 4] [5 6]])
+(println f"flatten: {(flatten nested)}")
+
+;; zip - 2つのリストを組み合わせ
+(def keys [:a :b :c])
+(def vals [1 2 3])
+(println f"zip: {(zipmap keys vals)}")
+
+(println "\n=== ネストしたデータ構造 ===")
+
+;; 複雑なデータ構造
+(def users
+  [{:name "Alice" :age 25 :skills ["Qi" "Rust"]}
+   {:name "Bob" :age 30 :skills ["Go" "Python"]}
+   {:name "Charlie" :age 28 :skills ["JavaScript" "TypeScript"]}])
+
+(println "Users:")
+(println users)
+
+;; ネストしたデータの抽出
+(println "\nNames:")
+(println (map (fn [u] (get u :name)) users))
+
+;; 条件で絞り込み
+(println "\nUsers over 26:")
+(println (filter (fn [u] (> (get u :age) 26)) users))
+
+(println "\n=== 次は 04-pipelines.qi でQiのウリであるパイプラインを学びましょう！ ===")

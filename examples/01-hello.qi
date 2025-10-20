@@ -1,0 +1,59 @@
+;; 01-hello.qi - Qiの基本（Hello World）
+;;
+;; Qiの最も基本的な構文を学びます。
+;; 実行: qi examples/01-hello.qi
+
+(println "=== Hello, World! ===")
+
+;; 基本的な出力
+(println "Hello, World!")
+(print "Hello, ")
+(println "Qi!")
+
+;; 数値と演算
+(println "\n=== 数値演算 ===")
+(println (+ 1 2))           ; => 3
+(println (* 3 4))           ; => 12
+(println (/ 10 3))          ; => 3 (整数除算)
+(println (% 10 3))          ; => 1 (剰余)
+
+;; 文字列
+(println "\n=== 文字列 ===")
+(def name "Qi")
+(println (str "Hello, " name "!"))
+
+;; f-string（フォーマット文字列） - Qiの便利機能
+(println "\n=== f-string（超便利！） ===")
+(def age 1)
+(def version "0.1.0")
+(println f"Qi is {age} year old, version {version}")
+
+;; 変数定義
+(println "\n=== 変数 ===")
+(def x 10)
+(def y 20)
+(println f"x = {x}, y = {y}")
+(println f"x + y = {(+ x y)}")
+
+;; データ構造
+(println "\n=== データ構造 ===")
+(def my-list [1 2 3 4 5])
+(def my-map {:name "Alice" :age 25})
+(println my-list)
+(println my-map)
+
+;; if式
+(println "\n=== 条件分岐 ===")
+(def score 85)
+(println (if (>= score 80)
+           "合格！"
+           "もう少し頑張りましょう"))
+
+;; コメント
+(println "\n=== コメント ===")
+; セミコロン1つ - 行コメント
+;; セミコロン2つ - コードコメント（推奨）
+(println "コメントは ; または ;; で始まります")
+
+(println "\n=== Qiへようこそ！ ===")
+(println "次は 02-functions.qi で関数を学びましょう")

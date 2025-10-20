@@ -16,6 +16,38 @@
 (println "Hello")                   ;; Hello\n
 ```
 
+### 標準入力
+
+```qi
+;; io/read-line - 標準入力から1行読む（EOF時はnil）
+(io/read-line)                      ;; => "user input"
+(io/read-line)                      ;; => nil（EOF）
+
+;; 使用例: 1行ずつ処理
+(defn process []
+  (let [line (io/read-line)]
+    (if (some? line)
+      (do
+        (line |> str/trim |> str/upper |> println)
+        (process))
+      nil)))
+
+(process)
+
+;; io/stdin-lines - 標準入力から全行読む（パイプライン処理向き）
+(io/stdin-lines)                    ;; => ["line1" "line2" "line3"]
+
+;; 使用例: パイプライン処理（最もQiらしい書き方）
+(io/stdin-lines
+ |> (map str/trim)
+ |> (filter (fn [s] (not (str/empty? s))))
+ |> (map str/upper)
+ |> (map println))
+
+;; Unixパイプとの組み合わせ
+;; $ cat data.txt | qi process.qi
+```
+
 ### ファイル読み込み
 
 ```qi

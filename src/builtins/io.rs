@@ -4,7 +4,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use parking_lot::RwLock;
 use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -959,12 +959,77 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 }
 
 // ========================================
+// 標準入力関数
+// ========================================
+
+/// read-line - 標準入力から1行読み込む
+/// 引数: なし
+/// 戻り値: 文字列 または nil（EOF）
+///
+/// 使用例:
+/// ```qi
+/// (loop []
+///   (let [line (io/read-line)]
+///     (when (some? line)
+///       (println line)
+///       (recur))))
+/// ```
+pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
+    let stdin = io::stdin();
+    let mut handle = stdin.lock();
+    let mut line = String::new();
+
+    match handle.read_line(&mut line) {
+        Ok(0) => Ok(Value::Nil), // EOF
+        Ok(_) => {
+            // 末尾の改行を削除
+            if line.ends_with('\n') {
+                line.pop();
+                if line.ends_with('\r') {
+                    line.pop();
+                }
+            }
+            Ok(Value::String(line))
+        }
+        Err(e) => Err(fmt_msg(
+            MsgKey::IoReadLinesFailedToRead,
+            &["stdin", &e.to_string()],
+        )),
+    }
+}
+
+/// read-lines - 標準入力から全行を読み込む
+/// 引数: なし
+/// 戻り値: 行の配列（Vector）
+///
+/// 使用例:
+/// ```qi
+/// (io/read-lines
+///  |> (map str/trim)
+///  |> (filter (fn [s] (not (str/empty? s))))
+///  |> (each println))
+/// ```
+pub fn native_stdin_read_lines(_args: &[Value]) -> Result<Value, String> {
+    let stdin = io::stdin();
+    let handle = stdin.lock();
+    let reader = BufReader::new(handle);
+
+    let lines: Vec<Value> = reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .map(|line| Value::String(line))
+        .collect();
+
+    Ok(Value::Vector(lines.into()))
+}
+
+// ========================================
 // 関数登録テーブル
 // ========================================
 
 /// 登録すべき関数のリスト
 /// @qi-doc:category io
-/// @qi-doc:functions read-file, write-file, append-file, read-lines, file-exists?, file-stream, write-stream, list-dir, create-dir, delete-file, delete-dir, copy-file, move-file, file-info, is-file?, is-dir?
+/// @qi-doc:functions read-file, write-file, append-file, read-lines, file-exists?, file-stream, write-stream, list-dir, create-dir, delete-file, delete-dir, copy-file, move-file, file-info, is-file?, is-dir?, read-line, stdin-lines
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/read-file", native_read_file),
     ("io/write-file", native_write_file),
@@ -982,4 +1047,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/file-info", native_file_info),
     ("io/is-file?", native_is_file),
     ("io/is-dir?", native_is_dir),
+    // 標準入力
+    ("io/read-line", native_stdin_read_line),
+    ("io/stdin-lines", native_stdin_read_lines),
 ];

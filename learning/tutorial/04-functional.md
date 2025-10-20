@@ -136,6 +136,74 @@
 ; => {1 2 2 4 3 6}
 ```
 
+## each - 副作用のための反復
+
+`map`と異なり、戻り値を収集せず`nil`を返します。副作用（println、ファイル書き込みなど）を目的とする場合に使用します。
+
+```lisp
+(each function collection)
+
+; 例
+(each println [1 2 3])
+; 出力:
+; 1
+; 2
+; 3
+; => nil
+
+(each (fn [x] (println f"値: {x}")) [10 20 30])
+; 出力:
+; 値: 10
+; 値: 20
+; 値: 30
+; => nil
+```
+
+### mapとの使い分け
+
+```lisp
+; map - 変換結果を返す
+(map inc [1 2 3])
+; => [2 3 4]
+
+; each - 副作用のみ、nilを返す
+(each println [1 2 3])
+; => nil（ただし各要素が出力される）
+```
+
+### whenとの組み合わせ
+
+```lisp
+; 条件付き処理
+(def count (atom 0))
+(each (fn [item]
+        (when (> (len item) 0)
+          (swap! count inc)))
+      ["" "hello" "" "world" "test"])
+
+@count  ; => 3
+```
+
+### 実用例
+
+```lisp
+; ファイル処理
+(each (fn [line]
+        (when (> (len line) 0)
+          (io/write-line output line)))
+      (io/stdin-lines))
+
+; データベース保存
+(each (fn [user]
+        (db/save "users" user))
+      users)
+
+; ログ出力
+(each (fn [error]
+        (println f"[ERROR] {(:message error)}"))
+      errors)
+```
+
 ## map/filter/reduceの組み合わせ
 
 ```lisp

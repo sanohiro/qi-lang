@@ -1,0 +1,183 @@
+;; 10-file-processing.qi - ファイル処理パイプライン
+;;
+;; ファイルI/O + パイプライン = 強力なテキスト処理
+;; 実行: qi examples/10-file-processing.qi
+
+(println "=== ファイル処理パイプライン ===\n")
+
+;; サンプルデータの作成
+(println "=== サンプルデータ作成 ===")
+
+(def users-csv "id,name,age,city
+1,Alice,25,Tokyo
+2,Bob,30,Osaka
+3,Charlie,28,Kyoto
+4,Dave,35,Tokyo
+5,Eve,22,Osaka
+")
+
+(io/write-file "/tmp/users.csv" users-csv)
+(println "CSVファイルを /tmp/users.csv に作成しました")
+
+;; CSVパーサー
+(println "\n=== CSVパーサー ===")
+
+(defn parse-csv [content]
+  (let [lines (str/split content "\n")
+        headers (str/split (first lines) ",")
+        data-lines (rest lines)]
+    (data-lines
+     |> (filter (fn [s] (> (len s) 0)))
+     |> (map (fn [line]
+               (let [values (str/split line ",")]
+                 (zipmap headers values)))))))
+
+(def users (parse-csv users-csv))
+(println users)
+
+;; データフィルタリング
+(println "\n=== データフィルタリング ===")
+
+(println "25歳以上のユーザー:")
+(println (users
+          |> (filter (fn [u]
+                       (let [age (get u "age")]
+                         (>= (if (= age "age") 0
+                                  (try (string/to-int age))
+                                  (if (error? (try (string/to-int age))) 0
+                                       (string/to-int age)))
+                             25))))))
+
+;; 都市ごとのグループ化
+(println "\n=== 都市ごとのグループ化 ===")
+
+(println (users
+          |> (group-by (fn [u] (get u "city")))
+          |> (map (fn [[city users]]
+                    [city (len users)]))))
+
+;; データ変換パイプライン
+(println "\n=== データ変換パイプライン ===")
+
+(defn transform-user [user]
+  {:id (get user "id")
+   :name (str/upper (get user "name"))
+   :age (get user "age")
+   :location (get user "city")})
+
+(println (users
+          |> (map transform-user)
+          |> (take 3)))
+
+;; ファイル読み込み -> 処理 -> 書き込み
+(println "\n=== ファイル読み込み -> 処理 -> 書き込み ===")
+
+(defn process-csv-file [input-file output-file]
+  (let [content (io/read-file input-file)]
+    (content
+     |> parse-csv
+     |> (map transform-user)
+     |> (map (fn [u] (str (get u :id) "," (get u :name) "," (get u :age) "," (get u :location))))
+     |> (fn [lines] (str "id,name,age,location\n" (str/join "\n" lines)))
+     |> (fn [output] (io/write-file output-file output)))))
+
+(process-csv-file "/tmp/users.csv" "/tmp/users_processed.csv")
+(println "処理済みファイルを /tmp/users_processed.csv に書き込みました")
+
+(println "\n処理済みファイルの内容:")
+(println (io/read-file "/tmp/users_processed.csv"))
+
+;; 複数ファイルの処理
+(println "\n=== 複数ファイルの処理 ===")
+
+(def file1 "File 1 content: Hello from file 1")
+(def file2 "File 2 content: Hello from file 2")
+(def file3 "File 3 content: Hello from file 3")
+
+(io/write-file "/tmp/file1.txt" file1)
+(io/write-file "/tmp/file2.txt" file2)
+(io/write-file "/tmp/file3.txt" file3)
+
+(println "3つのファイルを作成しました")
+
+;; 並列でファイルを読み込む
+(println "\n並列ファイル読み込み:")
+(println (["/tmp/file1.txt" "/tmp/file2.txt" "/tmp/file3.txt"]
+          ||> io/read-file
+          ||> str/trim))
+
+;; ディレクトリ内のファイルを処理
+(println "\n=== ディレクトリ内のファイル処理 ===")
+
+(def tmp-files (cmd/exec ["ls" "/tmp"]))
+
+(println "tmpディレクトリのファイル数:")
+(println ((get tmp-files "stdout")
+          |> (str/split "\n")
+          |> (filter (fn [s] (> (len s) 0)))
+          |> len))
+
+;; テキストファイルの統計
+(println "\n=== テキストファイル統計 ===")
+
+(defn file-stats [content]
+  {:lines (len (str/split content "\n"))
+   :words (len (flatten (map (fn [line] (str/split line " ")) (str/split content "\n"))))
+   :chars (len content)
+   :non-empty-lines (len (filter (fn [s] (> (len s) 0)) (str/split content "\n")))})
+
+(println "users.csvの統計:")
+(println (file-stats users-csv))
+
+;; バッチ処理
+(println "\n=== バッチ処理 ===")
+
+(defn batch-process [files transform-fn]
+  (files
+   ||> io/read-file
+   ||> transform-fn))
+
+(println (batch-process
+  ["/tmp/file1.txt" "/tmp/file2.txt" "/tmp/file3.txt"]
+  str/upper))
+
+;; ログファイルのローテーション風
+(println "\n=== ログローテーション風 ===")
+
+(defn rotate-log [log-content max-lines]
+  (let [lines (str/split log-content "\n")]
+    (if (> (len lines) max-lines)
+      (lines
+       |> reverse
+       |> (take max-lines)
+       |> reverse
+       |> (str/join "\n"))
+      log-content)))
+
+(def long-log "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10")
+(println "ローテーション前（10行）→ 後（5行）:")
+(println (rotate-log long-log 5))
+
+;; マージソート風のファイルマージ
+(println "\n=== ファイルマージ ===")
+
+(defn merge-files [files]
+  (files
+   |> (map io/read-file)
+   |> (str/join "\n---\n")))
+
+(println (merge-files ["/tmp/file1.txt" "/tmp/file2.txt" "/tmp/file3.txt"]))
+
+;; クリーンアップ
+(println "\n=== クリーンアップ ===")
+
+(cmd/exec ["rm" "/tmp/users.csv"])
+(cmd/exec ["rm" "/tmp/users_processed.csv"])
+(cmd/exec ["rm" "/tmp/file1.txt"])
+(cmd/exec ["rm" "/tmp/file2.txt"])
+(cmd/exec ["rm" "/tmp/file3.txt"])
+
+(println "サンプルファイルを削除しました")
+
+(println "\n=== Qiでファイル処理が簡単に！ ===")
+(println "次は 11-http-client.qi でHTTPクライアントを学びましょう")

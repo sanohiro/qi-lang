@@ -1,0 +1,78 @@
+;; 16. 標準入力処理
+;;
+;; 標準入力からデータを読み込んで処理する例
+;;
+;; 実行例:
+;;   echo -e "hello\nworld\ntest" | qi examples/16-stdin-processing.qi
+;;   cat data.txt | qi examples/16-stdin-processing.qi
+
+(println "=== 標準入力処理のデモ ===\n")
+
+;; ============================================
+;; パターン1: io/stdin-lines + each（推奨・最もQiらしい）
+;; ============================================
+
+(println "--- パターン1: パイプライン処理 with each ---")
+
+;; 標準入力から全行読んで処理
+(def lines (io/stdin-lines))
+
+;; each を使った副作用処理
+(lines
+ |> (map str/trim)
+ |> (map str/upper)
+ |> (each (fn [line] (println f"処理: {line}"))))
+
+;; ============================================
+;; パターン2: while-some で1行ずつ処理
+;; ============================================
+
+(println "\n--- パターン2: while-some で1行ずつ処理 ---")
+(println "（実際の入力ストリームがある場合）")
+
+;; while-someを使った例（デモ用に既に読み込んだ行を使用）
+(def remaining (atom lines))
+(while-some [line (first @remaining)]
+  (line
+   |> str/trim
+   |> str/lower
+   |> (fn [s] (println f"> {s}")))
+  (swap! remaining rest))
+
+;; ============================================
+;; パターン3: when で条件付き処理
+;; ============================================
+
+(println "\n--- パターン3: when で条件付き処理 ---")
+
+(lines
+ |> (each (fn [line]
+            (when (> (len line) 3)
+              (println f"長い行: {line}")))))
+
+;; ============================================
+;; 実用例: 統計情報
+;; ============================================
+
+(println "\n--- 実用例: 統計情報 ---")
+
+(println f"総行数: {(count lines)}")
+
+(def non-empty-count (atom 0))
+(lines
+ |> (each (fn [line]
+            (when (> (len line) 0)
+              (swap! non-empty-count inc)))))
+
+(println f"非空行数: {@non-empty-count}")
+
+;; ============================================
+;; ヘルプメッセージ
+;; ============================================
+
+(println "\n=== 使い方 ===")
+(println "# 標準入力から読む:")
+(println "echo -e \"hello\\nworld\" | qi examples/16-stdin-processing.qi")
+(println "")
+(println "# ファイルから読む:")
+(println "cat data.txt | qi examples/16-stdin-processing.qi")

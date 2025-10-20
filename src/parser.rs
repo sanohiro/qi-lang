@@ -9,14 +9,15 @@ use std::sync::LazyLock;
 /// @qi-doc:definition def, defn, defn-
 /// @qi-doc:function fn
 /// @qi-doc:binding let
-/// @qi-doc:control-flow if, do, loop, recur
+/// @qi-doc:control-flow if, do, when, while, until, while-some, until-error, loop, recur
 /// @qi-doc:pattern-matching match
 /// @qi-doc:error-handling try, defer
 /// @qi-doc:macro mac
 /// @qi-doc:module module, export, use, flow
 static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     HashSet::from([
-        "def", "defn", "defn-", "fn", "let", "if", "do", "match", "try", "defer", "loop", "recur",
+        "def", "defn", "defn-", "fn", "let", "if", "do", "when", "while", "until",
+        "while-some", "until-error", "match", "try", "defer", "loop", "recur",
         "mac", "flow", "module", "export", "use",
     ])
 });
@@ -357,6 +358,11 @@ impl Parser {
                     "let" => self.parse_let(),
                     "if" => self.parse_if(),
                     "do" => self.parse_do(),
+                    "when" => self.parse_when(),
+                    "while" => self.parse_while(),
+                    "until" => self.parse_until(),
+                    "while-some" => self.parse_while_some(),
+                    "until-error" => self.parse_until_error(),
                     "match" => self.parse_match(),
                     "try" => self.parse_try(),
                     "defer" => self.parse_defer(),
@@ -1024,6 +1030,138 @@ impl Parser {
 
         Ok(Expr::Recur {
             args,
+            span: start_span,
+        })
+    }
+
+    /// whenをパース: (when condition expr1 expr2 ...)
+    fn parse_when(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'when'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::When {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// whileをパース: (while condition expr1 expr2 ...)
+    fn parse_while(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'while'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::While {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// untilをパース: (until condition expr1 expr2 ...)
+    fn parse_until(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'until'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Until {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// while-someをパース: (while-some [binding expr] body...)
+    fn parse_while_some(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'while-some'をスキップ
+
+        // 束縛のパース [var expr]
+        self.expect(Token::LBracket)?;
+
+        let binding = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["while-some"])),
+        };
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::WhileSome {
+            binding,
+            expr,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// until-errorをパース: (until-error [binding expr] body...)
+    fn parse_until_error(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'until-error'をスキップ
+
+        // 束縛のパース [var expr]
+        self.expect(Token::LBracket)?;
+
+        let binding = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["until-error"])),
+        };
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::UntilError {
+            binding,
+            expr,
+            body,
             span: start_span,
         })
     }

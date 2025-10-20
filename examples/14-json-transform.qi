@@ -1,0 +1,230 @@
+;; 14-json-transform.qi - JSONデータ変換パイプライン
+;;
+;; QiでJSON/YAMLを自在に操る
+;; 実行: qi examples/14-json-transform.qi
+
+(println "=== JSONデータ変換パイプライン ===\n")
+
+;; サンプルJSONデータ
+(def users-json "{
+  \"users\": [
+    {\"id\": 1, \"name\": \"Alice\", \"age\": 25, \"role\": \"admin\", \"active\": true},
+    {\"id\": 2, \"name\": \"Bob\", \"age\": 30, \"role\": \"user\", \"active\": true},
+    {\"id\": 3, \"name\": \"Charlie\", \"age\": 28, \"role\": \"user\", \"active\": false},
+    {\"id\": 4, \"name\": \"Dave\", \"age\": 35, \"role\": \"moderator\", \"active\": true},
+    {\"id\": 5, \"name\": \"Eve\", \"age\": 22, \"role\": \"user\", \"active\": true}
+  ]
+}")
+
+;; JSONパース
+(println "=== JSONパース ===")
+
+(def data (json/parse users-json))
+(println "Parsed data:")
+(println data)
+
+;; パイプラインでデータ抽出
+(println "\n=== データ抽出パイプライン ===")
+
+(println "アクティブユーザーの名前:")
+(println (data
+          |> (fn [d] (get d "users"))
+          |> (filter (fn [u] (get u "active")))
+          |> (map (fn [u] (get u "name")))))
+
+;; データ変換
+(println "\n=== データ変換 ===")
+
+(println "ユーザーをシンプルな形式に変換:")
+(println (data
+          |> (fn [d] (get d "users"))
+          |> (map (fn [u]
+                    {:id (get u "id")
+                     :name (str/upper (get u "name"))
+                     :is_admin (= (get u "role") "admin")}))))
+
+;; フィルタリングと集計
+(println "\n=== フィルタリングと集計 ===")
+
+(println "ロールごとのユーザー数:")
+(println (data
+          |> (fn [d] (get d "users"))
+          |> (group-by (fn [u] (get u "role")))
+          |> (map (fn [[role users]] [role (len users)]))))
+
+(println "\n平均年齢:")
+(println (data
+          |> (fn [d] (get d "users"))
+          |> (map (fn [u] (get u "age")))
+          |> (reduce + 0)
+          |> (fn [sum] (/ sum 5))))
+
+;; 複雑な変換パイプライン
+(println "\n=== 複雑な変換パイプライン ===")
+
+(defn transform-user [user]
+  {:user_id (get user "id")
+   :display_name (str/upper (get user "name"))
+   :age_group (if (< (get user "age") 30) "young" "senior")
+   :permissions (match (get user "role")
+                  "admin" -> ["read" "write" "delete"]
+                  "moderator" -> ["read" "write"]
+                  _ -> ["read"])
+   :status (if (get user "active") "active" "inactive")})
+
+(println "変換されたユーザー:")
+(println (data
+          |> (fn [d] (get d "users"))
+          |> (map transform-user)
+          |> (take 3)))
+
+;; JSONからJSONへの変換
+(println "\n=== JSON to JSON 変換 ===")
+
+(def transformed
+  (data
+   |> (fn [d] (get d "users"))
+   |> (filter (fn [u] (get u "active")))
+   |> (map transform-user)
+   |> (fn [users] {"active_users" users "count" (len users)})))
+
+(println "変換後のJSON:")
+(println (json/stringify transformed))
+
+;; ネストしたデータの処理
+(println "\n=== ネストしたデータ ===")
+
+(def nested-json "{
+  \"company\": {
+    \"name\": \"TechCorp\",
+    \"departments\": [
+      {\"name\": \"Engineering\", \"employees\": 50},
+      {\"name\": \"Sales\", \"employees\": 30},
+      {\"name\": \"HR\", \"employees\": 10}
+    ]
+  }
+}")
+
+(println "部門ごとの従業員数:")
+(println (nested-json
+          |> json/parse
+          |> (fn [d] (get (get d "company") "departments"))
+          |> (map (fn [dept]
+                    [(get dept "name") (get dept "employees")]))))
+
+;; マージとマッピング
+(println "\n=== データマージ ===")
+
+(def users-data (data |> (fn [d] (get d "users"))))
+
+(def extra-info
+  [{:user_id 1 :email "alice@example.com"}
+   {:user_id 2 :email "bob@example.com"}
+   {:user_id 3 :email "charlie@example.com"}])
+
+(println "ユーザーデータにメール情報をマージ:")
+(println (users-data
+          |> (map (fn [user]
+                    (let [id (get user "id")
+                          email-info (first (filter (fn [e] (= (get e :user_id) id)) extra-info))]
+                      (if (some? email-info)
+                        (assoc user "email" (get email-info :email))
+                        user))))
+          |> (take 3)))
+
+;; Railway Pipeline でエラーハンドリング
+(println "\n=== エラーハンドリング ===")
+
+(defn safe-parse-and-transform [json-str]
+  (json-str
+   |> json/parse
+   |>? (fn [data]
+         (if (map? data)
+           data
+           {:error "Not a map"}))
+   |>? (fn [data]
+         (let [users (get data "users")]
+           (if (some? users)
+             users
+             {:error "No users field"})))
+   |>? (fn [users]
+         (map (fn [u] (get u "name")) users))))
+
+(println "Valid JSON:")
+(println (safe-parse-and-transform users-json))
+
+(println "\nInvalid JSON:")
+(println (safe-parse-and-transform "{invalid}"))
+
+;; 並列JSON処理
+(println "\n=== 並列JSON処理 ===")
+
+(def json-files-content
+  ["{\"name\":\"file1\",\"value\":10}"
+   "{\"name\":\"file2\",\"value\":20}"
+   "{\"name\":\"file3\",\"value\":30}"])
+
+(println "並列でJSONをパース:")
+(println (json-files-content
+          ||> json/parse
+          ||> (fn [data] {:name (get data "name") :doubled (* (get data "value") 2)})))
+
+;; データの検証
+(println "\n=== データ検証 ===")
+
+(defn validate-user-data [user]
+  (user
+   |>? (fn [u]
+         (if (and (some? (get u "id")) (> (get u "id") 0))
+           u
+           {:error "Invalid ID"}))
+   |>? (fn [u]
+         (if (and (some? (get u "name")) (> (len (get u "name")) 0))
+           u
+           {:error "Invalid name"}))
+   |>? (fn [u]
+         (if (and (some? (get u "age")) (>= (get u "age") 0))
+           u
+           {:error "Invalid age"}))))
+
+(println "Valid user:")
+(println (validate-user-data {"id" 1 "name" "Alice" "age" 25}))
+
+(println "\nInvalid user:")
+(println (validate-user-data {"id" 0 "name" "" "age" -1}))
+
+;; JSON配列の集約
+(println "\n=== JSON配列の集約 ===")
+
+(def stats
+  (data
+   |> (fn [d] (get d "users"))
+   |> (reduce (fn [acc user]
+                {:total_users (+ (get acc :total_users) 1)
+                 :total_age (+ (get acc :total_age) (get user "age"))
+                 :active_count (+ (get acc :active_count)
+                                   (if (get user "active") 1 0))})
+              {:total_users 0 :total_age 0 :active_count 0})))
+
+(println "統計:")
+(println stats)
+(println f"平均年齢: {(/ (get stats :total_age) (get stats :total_users))}")
+
+;; 実用例: API レスポンスの変換
+(println "\n=== API レスポンス変換 ===")
+
+(defn transform-api-response [response-json]
+  (response-json
+   |> json/parse
+   |> (fn [data] (get data "users"))
+   |> (filter (fn [u] (get u "active")))
+   |> (map (fn [u]
+             {:id (get u "id")
+              :name (get u "name")
+              :role (get u "role")}))
+   |> (fn [users] {"data" users "meta" {"count" (len users)}})))
+
+(println (users-json |> transform-api-response |> json/stringify))
+
+(println "\n=== QiでJSONデータを自在に操作！ ===")
+(println "次は 15-parallel-data.qi で並列データ処理を学びましょう")

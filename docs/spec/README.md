@@ -36,12 +36,12 @@
 
 - **[05-syntax-basics.md](05-syntax-basics.md)** - 基本構文
   - データ型、リテラル、コメント
-  - 特殊形式（def、fn、let、do、if、match、loop/recur）
+  - 特殊形式（def、fn、let、do、if、match、loop/recur、when、while、until、while-some、until-error）
   - 演算子
 
 - **[06-data-structures.md](06-data-structures.md)** - データ構造
   - ベクター、リスト、マップ、セット
-  - 高階関数（map、filter、reduce）
+  - 高階関数（map、filter、reduce、each）
   - ソート、グループ化
 
 - **[07-functions.md](07-functions.md)** - 関数
@@ -148,12 +148,17 @@
 
 ## 🔍 関数・演算子索引
 
-### 特殊形式（9個）
+### 特殊形式（14個）
 
 - `def`, `defn`, `defn-` - 定義 → [05-syntax-basics.md](05-syntax-basics.md)
 - `fn` - 関数定義 → [05-syntax-basics.md](05-syntax-basics.md), [07-functions.md](07-functions.md)
 - `let` - ローカル束縛 → [05-syntax-basics.md](05-syntax-basics.md)
 - `if`, `do` - 制御構造 → [05-syntax-basics.md](05-syntax-basics.md)
+- `when` - 条件が真のときのみ実行 → [05-syntax-basics.md](05-syntax-basics.md)
+- `while` - 条件が真の間ループ → [05-syntax-basics.md](05-syntax-basics.md)
+- `until` - 条件が真になるまでループ → [05-syntax-basics.md](05-syntax-basics.md)
+- `while-some` - nilになるまでループ（束縛付き） → [05-syntax-basics.md](05-syntax-basics.md)
+- `until-error` - エラーになるまでループ（束縛付き） → [05-syntax-basics.md](05-syntax-basics.md)
 - `loop`, `recur` - ループ → [05-syntax-basics.md](05-syntax-basics.md)
 - `match` - パターンマッチング → [04-match.md](04-match.md)
 - `try`, `defer` - エラー処理 → [08-error-handling.md](08-error-handling.md)
@@ -178,7 +183,7 @@
 **コレクション**:
 - `first`, `rest`, `last`, `nth` - アクセス → [06-data-structures.md](06-data-structures.md)
 - `cons`, `conj`, `concat` - 連結 → [06-data-structures.md](06-data-structures.md)
-- `take`, `drop`, `filter`, `map`, `reduce` - 変換 → [06-data-structures.md](06-data-structures.md)
+- `take`, `drop`, `filter`, `map`, `reduce`, `each` - 変換 → [06-data-structures.md](06-data-structures.md)
 - `sort`, `reverse`, `distinct` - ソート・重複削除 → [06-data-structures.md](06-data-structures.md)
 
 **文字列**:
