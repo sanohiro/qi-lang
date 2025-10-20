@@ -187,16 +187,16 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 ```qi
 ;; 基本的な非同期パイプライン
 (def result (data ~> transform ~> process))  ; 即座にチャネルを返す
-(recv! result)  ; 結果を受信
+(go/recv! result)  ; 結果を受信
 
 ;; 複数の非同期処理
-(def r1 (10 ~> inc ~> double))
-(def r2 (20 ~> double ~> inc))
-(println (recv! r1) (recv! r2))  ; 並行実行
+(def r1 (10 ~> inc ~> (fn [x] (* x 2))))
+(def r2 (20 ~> (fn [x] (* x 2)) ~> inc))
+(println (go/recv! r1) (go/recv! r2))  ; 並行実行
 
 ;; goブロック内でも利用可能
-(go
-  (data ~> transform ~> (send! output-chan)))
+(go/run
+  (go/send! output-chan (data ~> transform)))
 ```
 
 ---

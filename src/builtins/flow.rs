@@ -1,6 +1,10 @@
 //! Flow制御関数
 //!
 //! パイプラインの分岐・合流をサポートする関数
+//!
+//! @qi-doc:category flow/control
+//! @qi-doc:functions branch
+//! @qi-doc:note パイプライン内での条件分岐を提供
 
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
