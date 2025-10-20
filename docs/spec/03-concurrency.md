@@ -4,6 +4,8 @@
 
 「並列、並行を簡単にできるのはQiのキモ」- これがQiの設計哲学の核心です。
 
+> **実装**: `src/builtins/concurrency.rs`, `src/builtins/fn.rs`
+
 ---
 
 ## 設計哲学

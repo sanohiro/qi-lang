@@ -144,6 +144,72 @@
 
 ---
 
+## 🔍 関数・演算子索引
+
+### 特殊形式（9個）
+
+- `def`, `defn`, `defn-` - 定義 → [05-syntax-basics.md](05-syntax-basics.md)
+- `fn` - 関数定義 → [05-syntax-basics.md](05-syntax-basics.md), [07-functions.md](07-functions.md)
+- `let` - ローカル束縛 → [05-syntax-basics.md](05-syntax-basics.md)
+- `if`, `do` - 制御構造 → [05-syntax-basics.md](05-syntax-basics.md)
+- `loop`, `recur` - ループ → [05-syntax-basics.md](05-syntax-basics.md)
+- `match` - パターンマッチング → [04-match.md](04-match.md)
+- `try`, `defer` - エラー処理 → [08-error-handling.md](08-error-handling.md)
+- `mac` - マクロ → [05-syntax-basics.md](05-syntax-basics.md)
+- `module`, `export`, `use` - モジュール → [09-modules.md](09-modules.md)
+
+### パイプライン演算子（5個） ⭐
+
+- `|>` - 逐次パイプ → [02-flow-pipes.md](02-flow-pipes.md)
+- `|>?` - Railway Pipeline（エラー処理） → [02-flow-pipes.md](02-flow-pipes.md), [08-error-handling.md](08-error-handling.md)
+- `||>` - 並列パイプ → [02-flow-pipes.md](02-flow-pipes.md)
+- `~>` - 非同期パイプ → [02-flow-pipes.md](02-flow-pipes.md), [03-concurrency.md](03-concurrency.md)
+- `tap>` - 副作用タップ → [02-flow-pipes.md](02-flow-pipes.md)
+
+### コア関数（よく使う）
+
+**数値演算**:
+- `+`, `-`, `*`, `/`, `%` - 算術演算 → [05-syntax-basics.md](05-syntax-basics.md)
+- `abs`, `min`, `max`, `inc`, `dec`, `sum` - 数値関数 → [06-data-structures.md](06-data-structures.md)
+- `=`, `<`, `>`, `<=`, `>=` - 比較演算 → [05-syntax-basics.md](05-syntax-basics.md)
+
+**コレクション**:
+- `first`, `rest`, `last`, `nth` - アクセス → [06-data-structures.md](06-data-structures.md)
+- `cons`, `conj`, `concat` - 連結 → [06-data-structures.md](06-data-structures.md)
+- `take`, `drop`, `filter`, `map`, `reduce` - 変換 → [06-data-structures.md](06-data-structures.md)
+- `sort`, `reverse`, `distinct` - ソート・重複削除 → [06-data-structures.md](06-data-structures.md)
+
+**文字列**:
+- `str`, `split`, `join` - 基本操作 → [05-syntax-basics.md](05-syntax-basics.md)
+- 60以上の文字列関数 → [10-stdlib-string.md](10-stdlib-string.md)
+
+**述語（23個）**:
+- `nil?`, `some?`, `empty?` - nil/存在チェック → [05-syntax-basics.md](05-syntax-basics.md)
+- `number?`, `string?`, `list?`, `vector?`, `map?` - 型チェック → [05-syntax-basics.md](05-syntax-basics.md)
+- `even?`, `odd?`, `positive?`, `negative?`, `zero?` - 数値述語 → [05-syntax-basics.md](05-syntax-basics.md)
+- `error?` - エラー判定 → [05-syntax-basics.md](05-syntax-basics.md), [08-error-handling.md](08-error-handling.md)
+
+**I/O**:
+- `print`, `println` - 出力 → [05-syntax-basics.md](05-syntax-basics.md)
+- ファイルI/O → [13-stdlib-io.md](13-stdlib-io.md)
+
+**並行処理** ⭐:
+- `go/chan`, `go/send!`, `go/recv!` - goroutine風 → [03-concurrency.md](03-concurrency.md)
+- `pmap`, `pfilter`, `preduce` - 並列map/filter/reduce → [03-concurrency.md](03-concurrency.md)
+- `atom`, `swap!`, `reset!`, `deref` - スレッドセーフな状態管理 → [03-concurrency.md](03-concurrency.md)
+
+### 標準ライブラリ関数
+
+- **HTTP**: `http/get`, `http/post`, `server/serve` → [11-stdlib-http.md](11-stdlib-http.md)
+- **JSON/YAML**: `json/parse`, `json/stringify`, `yaml/parse` → [12-stdlib-json.md](12-stdlib-json.md)
+- **Math**: `math/pow`, `math/sqrt`, `math/round`, `math/rand` → [15-stdlib-math.md](15-stdlib-math.md)
+- **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
+- **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
+
+**完全な関数一覧は `./scripts/list_qi_functions.sh` で自動生成できます**
+
+---
+
 ## 🚀 未実装機能について
 
 未実装機能やロードマップについては、プロジェクトルートの`ROADMAP.md`を参照してください。
