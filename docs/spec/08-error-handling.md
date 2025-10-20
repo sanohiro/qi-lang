@@ -14,21 +14,27 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 **用途**: API、ファイルIO、パース等の失敗が予想される処理
 
-### 新仕様：自動的な`:ok`ラップ
+### 新仕様：`{:error}`以外は全て成功
 
-**普通の値を返すだけで自動的に`{:ok value}`扱い！**
+**`{:error}`以外は全て成功扱い！`:ok`ラップなし**
 
 ```qi
 ;; シンプル！普通の値を返すだけ
 (defn divide [x y]
   (if (= y 0)
     {:error "division by zero"}  ;; エラーだけ明示的に
-    (/ x y)))                     ;; 普通の値 → 自動で{:ok ...}
+    (/ x y)))                     ;; 普通の値 → 成功
 
-;; matchで処理
+;; matchで処理（必要なら）
 (match (divide 10 2)
-  {:ok result} -> result
-  {:error e} -> (log e))
+  {:error e} -> (log e)
+  result -> result)
+
+;; error?述語で判定（シンプル）
+(def result (divide 10 2))
+(if (error? result)
+  (log "エラーが発生しました")
+  (process result))
 
 ;; パイプラインでのエラー処理（詳細は02-flow-pipes.mdを参照）
 (user-input
@@ -36,7 +42,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
  |>? parse-number      ;; 普通の値を返すだけでOK
  |>? (fn [n] (divide 100 n))
  |>? format-result)
-;; エラーは自動的に伝播
+;; 成功時 => 結果の値、エラー時 => {:error ...}
 ```
 
 ### Railway Pipelineとの統合
@@ -46,35 +52,34 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; HTTPリクエスト + エラーハンドリング（シンプル！）
 ("https://api.example.com/users/123"
- |> http/get                      ;; => {:ok {:status 200 :body "..."}}
+ |> http/get                      ;; => {:status 200 :body "..."}
  |>? (fn [resp] (get resp :body))  ;; 値を返すだけ！
- |>? json/parse                   ;; => {:ok {...}}
+ |>? json/parse                   ;; => パース結果（値そのまま）
  |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
-;; エラー時は自動的に伝播 => {:ok {...}}
+;; 成功時 => ユーザーデータ、エラー時 => {:error ...}
 
 ;; JSONパース + データ変換
 ("{\"name\":\"Alice\",\"age\":30}"
- |> json/parse                    ;; => {:ok {...}}
+ |> json/parse                    ;; => パース結果（値そのまま）
  |>? (fn [data] (get data "name"))  ;; 値を返すだけ！
  |>? str/upper)                   ;; 関数を直接渡すだけ！
-;; => {:ok "ALICE"}
+;; => "ALICE"
 ```
 
 ### 動作ルール
 
 **入力値の処理**:
 1. `{:error ...}` → ショートサーキット
-2. `{:ok value}` → `value`を取り出して関数に渡す
+2. `{:ok value}` → `value`を取り出して関数に渡す（後方互換性）
 3. その他 → そのまま関数に渡す
 
 **出力値の処理**:
-1. `{:error ...}` → そのまま返す
-2. `{:ok value}` → そのまま返す
-3. その他 → `{:ok 戻り値}`でラップ
+1. `{:error ...}` → そのまま返す（エラー伝播）
+2. その他 → **そのまま返す**（`:ok`ラップなし！）
 
 ### 設計哲学
 
-エラーをデータとして扱い、パイプラインの中で流す。try-catchのネストを避け、データフローが明確になる。普通の値を返すだけで自動的に`:ok`扱いになるため、より自然な書き方が可能。
+エラーをデータとして扱い、パイプラインの中で流す。try-catchのネストを避け、データフローが明確になる。`{:error}`以外は全て成功として扱い、Lispの「nil以外は真」と同じ哲学でシンプルに。
 
 ---
 
@@ -87,15 +92,15 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; try-catchブロック
 (match (try (risky-operation))
-  {:ok result} -> result
-  {:error e} -> (handle-error e))
+  {:error e} -> (handle-error e)
+  result -> result)
 
 ;; ネスト可能
 (match (try
          (let [data (parse-data input)]
            (process data)))
-  {:ok result} -> result
-  {:error e} -> {:error (str "Failed: " e)})
+  {:error e} -> {:error (str "Failed: " e)}
+  result -> result)
 ```
 
 ### 実用例
@@ -103,10 +108,10 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; ファイル読み込みのエラー処理
 (match (try (io/read-file "config.json"))
-  {:ok content} -> (json/parse content)
   {:error e} -> (do
                   (log/error "Failed to read config:" e)
-                  {:error e}))
+                  {:error e})
+  content -> (json/parse content))
 
 ;; パイプラインでの使用
 (match (try
@@ -114,8 +119,8 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
           |> http-get
           |> parse
           |> process))
-  {:ok data} -> data
-  {:error e} -> [])
+  {:error e} -> []
+  data -> data)
 ```
 
 **注意**: Qiには`finally`がありません。代わりに`defer`を使います（下記参照）。
@@ -223,8 +228,8 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; errorをキャッチして処理
 (match (try (factorial -5))
-  {:ok result} -> result
-  {:error e} -> (log (str "Error: " e)))
+  {:error e} -> (log (str "Error: " e))
+  result -> result)
 ```
 
 ---
@@ -252,7 +257,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 Qiの組み込み関数は、エラーの性質に応じて異なる形式を返します。
 
-### Result型マップを返す関数（`{:ok ...}` / `{:error ...}`）
+### Result型を返す関数（値 / `{:error ...}`）
 
 **データフォーマット系** - パースエラーは予期されるため、明示的なハンドリングが必要：
 
@@ -263,14 +268,14 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
 ```qi
 ;; パースエラーを明示的に処理
 (match (json/parse user-input)
-  {:ok data} -> (process data)
-  {:error msg} -> (show-error-to-user msg))
+  {:error msg} -> (show-error-to-user msg)
+  data -> (process data))
 
 ;; パイプラインでの使用
 (user-input
  |> json/parse
- |>? (fn [data] {:ok (get data "name")})
- |>? (fn [name] {:ok (str/upper name)}))
+ |>? (fn [data] (get data "name"))
+ |>? str/upper)
 ```
 
 ### 例外を投げる関数（`Ok(value)` / `Err(message)`）
@@ -288,18 +293,19 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
 
 ;; tryでキャッチして処理
 (match (try (http/get "https://api.example.com/data"))
-  {:ok response} -> (process response)
-  {:error e} -> (log-error e))
+  {:error e} -> (log-error e)
+  response -> (process response))
 ```
 
 ### 設計方針
 
 この区別は以下の理由に基づきます：
 
-1. **データフォーマット系はResult型**
+1. **データフォーマット系は値/`{:error}`を返す**
    - パースエラーは**予期される失敗**（不正なJSON文字列など）
    - ユーザー入力の検証など、エラーケースが正常なフロー
    - matchやパイプライン（`|>?`）で明示的にハンドリング
+   - 成功時は値を直接返す（`:ok`ラップなし）
 
 2. **I/O・ネットワーク系は例外**
    - ファイルが存在しない、ネットワークエラーは**例外的な状況**
@@ -336,15 +342,15 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
    |> http/get
    |>? (fn [resp]
          (if (= (get resp "status") 200)
-           {:ok (get resp "body")}
+           (get resp "body")
            {:error "Failed to fetch"}))
    |>? json/parse
    |>? validate-user))
 
 ;; 使用例
 (match (fetch-user "123")
-  {:ok user} -> (process-user user)
-  {:error e} -> (log/error "Failed:" e))
+  {:error e} -> (log/error "Failed:" e)
+  user -> (process-user user))
 ```
 
 ### ファイル処理with defer
@@ -370,9 +376,9 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
             |>? parse-data
             |>? transform
             |>? save-to-db))
-    {:ok result} -> {:success result}
     {:error e} -> (do
                     (log/error "Operation failed:" e)
                     (send-alert e)
-                    {:failure e})))
+                    {:failure e})
+    result -> {:success result}))
 ```

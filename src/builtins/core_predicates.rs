@@ -1,10 +1,10 @@
 //! Core述語・型判定関数
 //!
-//! 型チェック（9個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?
+//! 型チェック（11個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?
 //! コレクション（3個）: coll?, sequential?, empty?
-//! 状態（3個）: some?, true?, false?
+//! 状態（4個）: some?, true?, false?, error?
 //! 数値（5個）: even?, odd?, positive?, negative?, zero?
-//! 合計20個のCore関数
+//! 合計23個のCore関数
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -151,7 +151,7 @@ pub fn native_empty(args: &[Value]) -> Result<Value, String> {
 }
 
 // ========================================
-// 状態（3個）
+// 状態（4個）
 // ========================================
 
 /// some? - nilでないかどうか判定
@@ -176,6 +176,14 @@ pub fn native_false_q(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["false?"]));
     }
     Ok(Value::Bool(matches!(args[0], Value::Bool(false))))
+}
+
+/// error? - 値が{:error ...}形式かどうか判定
+pub fn native_error_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["error?"]));
+    }
+    Ok(Value::Bool(args[0].is_error()))
 }
 
 // ========================================
@@ -246,7 +254,7 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
 
 /// 登録すべき関数のリスト
 /// @qi-doc:category core/predicates
-/// @qi-doc:functions nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, coll?, sequential?, empty?, some?, true?, false?, even?, odd?, positive?, negative?, zero?
+/// @qi-doc:functions nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, coll?, sequential?, empty?, some?, true?, false?, error?, even?, odd?, positive?, negative?, zero?
 pub const FUNCTIONS: super::NativeFunctions = &[
     // 型チェック
     ("nil?", native_nil),
@@ -268,6 +276,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("some?", native_some_q),
     ("true?", native_true_q),
     ("false?", native_false_q),
+    ("error?", native_error_q),
     // 数値
     ("even?", native_even_q),
     ("odd?", native_odd_q),

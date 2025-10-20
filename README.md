@@ -46,24 +46,24 @@
 
 ### Railway Pipeline - エラーハンドリング
 ```lisp
-;; 普通の値を返すだけで自動的に{:ok}扱い
+;; {:error}以外は全て成功扱い（:okラップなし！）
 (defn validate-positive [x]
   (if (> x 0)
-    x                          ;; 普通の値 → 自動で{:ok x}扱い
+    x                          ;; 普通の値 → 成功
     {:error "Must be positive"}))
 
 (defn double [x]
-  (* x 2))                     ;; 普通の値 → 自動で{:ok ...}扱い
+  (* x 2))                     ;; 普通の値 → 成功
 
 (defn format-result [x]
-  f"Result: {x}")              ;; 普通の値 → 自動で{:ok ...}扱い
+  f"Result: {x}")              ;; 普通の値 → 成功
 
-;; 成功ケース - 普通の値から開始できる！
+;; 成功ケース - 値がそのまま流れる
 (10
  |>? validate-positive
  |>? double
  |>? format-result)
-;; => {:ok "Result: 20"}
+;; => "Result: 20"
 
 ;; エラーケース - エラーは自動的に伝播
 (-5

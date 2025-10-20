@@ -186,6 +186,38 @@ impl Value {
             _ => None,
         }
     }
+
+    /// エラー値を生成（{:error "message"}）
+    ///
+    /// # 例
+    /// ```ignore
+    /// return Ok(Value::error("file not found"));
+    /// ```
+    pub fn error(message: impl Into<String>) -> Value {
+        let mut map = im::HashMap::new();
+        map.insert(":error".to_string(), Value::String(message.into()));
+        Value::Map(map)
+    }
+
+    /// 詳細情報付きエラー値を生成（{:error {:type "network" :message "..."}}）
+    ///
+    /// # 例
+    /// ```ignore
+    /// return Ok(Value::error_with_details(im::hashmap!{
+    ///     "type".to_string() => Value::String("network".to_string()),
+    ///     "code".to_string() => Value::Integer(404),
+    /// }));
+    /// ```
+    pub fn error_with_details(details: im::HashMap<String, Value>) -> Value {
+        let mut map = im::HashMap::new();
+        map.insert(":error".to_string(), Value::Map(details));
+        Value::Map(map)
+    }
+
+    /// 値がエラーかチェック（{:error ...}形式）
+    pub fn is_error(&self) -> bool {
+        matches!(self, Value::Map(m) if m.contains_key(":error"))
+    }
 }
 
 /// ValueのPartialEq実装（関数やマクロなどはポインタ比較）

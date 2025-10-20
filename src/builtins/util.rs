@@ -4,25 +4,15 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 // ========================================
-// Result型マップ生成ヘルパー
+// Result型マップ生成ヘルパー（後方互換性のため残存）
 // ========================================
-
-/// {:ok value} 形式のマップを生成
-///
-/// データフォーマット系関数（json/yaml/csv等）で使用する成功結果マップを生成
-pub fn ok_map(value: Value) -> Value {
-    Value::Map([(":ok".to_string(), value)].into_iter().collect())
-}
 
 /// {:error message} 形式のマップを生成
 ///
-/// データフォーマット系関数（json/yaml/csv等）で使用するエラー結果マップを生成
+/// **非推奨**: 新しいコードでは `Value::error(message)` を使用してください
+#[deprecated(note = "Use Value::error(message) instead")]
 pub fn err_map(message: String) -> Value {
-    Value::Map(
-        [(":error".to_string(), Value::String(message))]
-            .into_iter()
-            .collect(),
-    )
+    Value::error(message)
 }
 
 /// キーワード形式のマップキーを生成
@@ -38,16 +28,22 @@ pub fn to_map_key(key: &str) -> String {
 
 /// _railway-pipe - Railway Oriented Programming用の内部関数
 ///
+/// **新仕様: {:error}以外は全て成功**
+///
 /// 入力値の処理:
 /// - {:error ...} → ショートサーキット（関数を実行しない）
-/// - {:ok value} → valueを取り出して関数に渡す
+/// - {:ok value} → valueを取り出して関数に渡す（後方互換性）
 /// - その他 → そのまま関数に渡す
 ///
 /// 出力値の処理:
-/// - {:error ...} → そのまま返す
-/// - {:ok value} → そのまま返す
-/// - マップで:okも:errorもない → {:ok 戻り値}でラップ
-/// - マップ以外 → {:ok 戻り値}でラップ
+/// - {:error ...} → そのまま返す（エラー伝播）
+/// - その他 → そのまま返す（値そのまま！:okラップなし）
+///
+/// # 例
+/// ```ignore
+/// (10 |>? (fn [x] (* x 2)))  ;; => 20
+/// (10 |>? (fn [x] {:error "fail"}))  ;; => {:error "fail"}
+/// ```
 pub fn native_railway_pipe(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
@@ -66,7 +62,7 @@ pub fn native_railway_pipe(
             if m.contains_key(":error") {
                 return Ok(input.clone());
             }
-            // {:ok value}なら値を取り出す
+            // {:ok value}なら値を取り出す（後方互換性）
             else if let Some(ok_val) = m.get(":ok") {
                 ok_val
             }
@@ -79,30 +75,9 @@ pub fn native_railway_pipe(
         _ => input,
     };
 
-    // 関数を実行
-    let result = evaluator.apply_function(func, std::slice::from_ref(value_to_pass))?;
-
-    // 出力値の処理
-    match &result {
-        Value::Map(m) => {
-            // {:ok ...}または{:error ...}ならそのまま返す
-            if m.contains_key(":ok") || m.contains_key(":error") {
-                Ok(result)
-            }
-            // その他のマップは{:ok ...}でラップ
-            else {
-                let mut wrapped = im::HashMap::new();
-                wrapped.insert(":ok".to_string(), result);
-                Ok(Value::Map(wrapped))
-            }
-        }
-        // マップ以外は{:ok ...}でラップ
-        _ => {
-            let mut wrapped = im::HashMap::new();
-            wrapped.insert(":ok".to_string(), result);
-            Ok(Value::Map(wrapped))
-        }
-    }
+    // 関数を実行して結果をそのまま返す
+    // {:error}以外は全て成功なので、ラップしない
+    evaluator.apply_function(func, std::slice::from_ref(value_to_pass))
 }
 
 /// inspect - 値を整形して表示（デバッグ用）

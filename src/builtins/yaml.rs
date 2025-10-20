@@ -5,7 +5,6 @@
 //! - stringify: 値をYAML文字列に変換
 //! - pretty: 値をYAML文字列に変換（整形済み、json/prettyとの互換性）
 
-use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_yaml;
@@ -16,7 +15,7 @@ use serde_yaml;
 /// - args[0]: YAML文字列
 ///
 /// # 戻り値
-/// - 成功時: {:ok パース結果}
+/// - 成功時: パース結果（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
@@ -29,8 +28,8 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     };
 
     match serde_yaml::from_str::<serde_yaml::Value>(yaml_str) {
-        Ok(yaml) => Ok(ok_map(yaml_to_value(yaml))),
-        Err(e) => Ok(err_map(format!("YAMLパースエラー: {}", e))),
+        Ok(yaml) => Ok(yaml_to_value(yaml)),
+        Err(e) => Ok(Value::error(format!("YAMLパースエラー: {}", e))),
     }
 }
 
@@ -40,7 +39,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 /// - args[0]: 変換する値
 ///
 /// # 戻り値
-/// - 成功時: {:ok YAML文字列}
+/// - 成功時: YAML文字列（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
@@ -48,8 +47,8 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
-        Ok(s) => Ok(ok_map(Value::String(s))),
-        Err(e) => Ok(err_map(format!("YAML変換エラー: {}", e))),
+        Ok(s) => Ok(Value::String(s)),
+        Err(e) => Ok(Value::error(format!("YAML変換エラー: {}", e))),
     }
 }
 
@@ -59,7 +58,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 /// - args[0]: 変換する値
 ///
 /// # 戻り値
-/// - 成功時: {:ok YAML文字列（整形済み）}
+/// - 成功時: YAML文字列（整形済み、値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 ///
 /// # 注意

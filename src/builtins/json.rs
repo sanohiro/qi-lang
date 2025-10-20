@@ -5,7 +5,6 @@
 //! - stringify: 値をJSON文字列に変換（コンパクト）
 //! - pretty: 値をJSON文字列に変換（整形済み）
 
-use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_json;
@@ -16,7 +15,7 @@ use serde_json;
 /// - args[0]: JSON文字列
 ///
 /// # 戻り値
-/// - 成功時: {:ok パース結果}
+/// - 成功時: パース結果（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
@@ -29,8 +28,8 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
     };
 
     match serde_json::from_str::<serde_json::Value>(json_str) {
-        Ok(json) => Ok(ok_map(json_to_value(json))),
-        Err(e) => Ok(err_map(format!("JSONパースエラー: {}", e))),
+        Ok(json) => Ok(json_to_value(json)),
+        Err(e) => Ok(Value::error(format!("JSONパースエラー: {}", e))),
     }
 }
 
@@ -40,7 +39,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 /// - args[0]: 変換する値
 ///
 /// # 戻り値
-/// - 成功時: {:ok JSON文字列}
+/// - 成功時: JSON文字列（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
@@ -48,8 +47,8 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_json::to_string(&value_to_json(&args[0])) {
-        Ok(s) => Ok(ok_map(Value::String(s))),
-        Err(e) => Ok(err_map(format!("JSON変換エラー: {}", e))),
+        Ok(s) => Ok(Value::String(s)),
+        Err(e) => Ok(Value::error(format!("JSON変換エラー: {}", e))),
     }
 }
 
@@ -59,7 +58,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 /// - args[0]: 変換する値
 ///
 /// # 戻り値
-/// - 成功時: {:ok JSON文字列（整形済み）}
+/// - 成功時: JSON文字列（整形済み、値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
@@ -67,8 +66,8 @@ pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
     }
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {
-        Ok(s) => Ok(ok_map(Value::String(s))),
-        Err(e) => Ok(err_map(format!("JSON変換エラー: {}", e))),
+        Ok(s) => Ok(Value::String(s)),
+        Err(e) => Ok(Value::error(format!("JSON変換エラー: {}", e))),
     }
 }
 

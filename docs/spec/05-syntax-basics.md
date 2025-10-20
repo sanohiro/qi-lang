@@ -577,7 +577,7 @@ Qiは型チェックや条件判定のための述語関数（`?`で終わる関
 (empty? nil)              ;; => true
 ```
 
-### 状態述語（3個）
+### 状態述語（4個）
 
 ```qi
 ;; nilでない判定
@@ -591,6 +591,11 @@ Qiは型チェックや条件判定のための述語関数（`?`で終わる関
 
 (false? false)      ;; => true
 (false? nil)        ;; => false  (falsyだがfalseではない)
+
+;; エラー判定
+(error? {:error "failed"})  ;; => true
+(error? 42)                 ;; => false
+(error? nil)                ;; => false
 ```
 
 ### 数値述語（5個）

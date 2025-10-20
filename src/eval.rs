@@ -1,5 +1,4 @@
 use crate::builtins;
-use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
 use crate::value::{
@@ -2082,13 +2081,23 @@ impl Evaluator {
     }
 
     /// tryを評価
+    ///
+    /// **新仕様: {:error}以外は全て成功**
+    /// - 成功 → 値そのまま（:okラップなし！）
+    /// - エラー → {:error message}
+    ///
+    /// # 例
+    /// ```ignore
+    /// (try (+ 1 2))  ;; => 3
+    /// (try (/ 1 0))  ;; => {:error "ゼロ除算エラー"}
+    /// ```
     fn eval_try(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
         // Tryもdeferスコープを作成
         self.defer_stack.write().push(Vec::new());
 
         let result = match self.eval_with_env(expr, Arc::clone(&env)) {
-            Ok(value) => Ok(ok_map(value)),
-            Err(e) => Ok(err_map(e)),
+            Ok(value) => Ok(value),  // :okラップなし！
+            Err(e) => Ok(Value::error(e)),
         };
 
         // deferを実行（LIFO順、エラーでも必ず実行）

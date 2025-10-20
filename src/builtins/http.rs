@@ -8,7 +8,6 @@
 //!
 //! このモジュールは `http-client` feature でコンパイルされます。
 
-use crate::builtins::util::ok_map;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
@@ -326,22 +325,21 @@ fn http_request(
             _ => {
                 // JSON自動変換
                 let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
-                if let Value::Map(m) = json_str {
-                    if let Some(Value::String(s)) = m.get("ok") {
-                        if should_compress {
-                            // JSON を圧縮して送信
-                            let compressed = compress_gzip(s.as_bytes()).map_err(|e| {
-                                fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
-                            })?;
-                            request = request
-                                .header("Content-Type", "application/json")
-                                .header("Content-Encoding", "gzip")
-                                .body(compressed);
-                        } else {
-                            request = request
-                                .header("Content-Type", "application/json")
-                                .body(s.clone());
-                        }
+                // 新仕様: json/stringifyは値を直接返す（{:ok}ラップなし）
+                if let Value::String(s) = json_str {
+                    if should_compress {
+                        // JSON を圧縮して送信
+                        let compressed = compress_gzip(s.as_bytes()).map_err(|e| {
+                            fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
+                        })?;
+                        request = request
+                            .header("Content-Type", "application/json")
+                            .header("Content-Encoding", "gzip")
+                            .body(compressed);
+                    } else {
+                        request = request
+                            .header("Content-Type", "application/json")
+                            .body(s.clone());
                     }
                 }
             }
@@ -368,7 +366,7 @@ fn http_request(
             // ボディを取得
             let body = response.text().unwrap_or_else(|_| String::new());
 
-            Ok(ok_map(Value::Map(
+            Ok(Value::Map(
                 [
                     ("status".to_string(), Value::Integer(status)),
                     ("headers".to_string(), Value::Map(headers)),
@@ -376,7 +374,7 @@ fn http_request(
                 ]
                 .into_iter()
                 .collect(),
-            )))
+            ))
         }
         Err(e) => {
             let error_type = if e.is_timeout() {
@@ -509,12 +507,11 @@ fn http_stream(
             _ => {
                 // JSON自動変換
                 let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
-                if let Value::Map(m) = json_str {
-                    if let Some(Value::String(s)) = m.get("ok") {
-                        request = request
-                            .header("Content-Type", "application/json")
-                            .body(s.clone());
-                    }
+                // 新仕様: json/stringifyは値を直接返す（{:ok}ラップなし）
+                if let Value::String(s) = json_str {
+                    request = request
+                        .header("Content-Type", "application/json")
+                        .body(s.clone());
                 }
             }
         }
