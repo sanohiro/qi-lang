@@ -24,13 +24,25 @@ static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 pub struct Parser {
     tokens: Vec<LocatedToken>,
     pos: usize,
+    source: String,
+    source_name: Option<String>,
 }
 
 impl Parser {
     pub fn new(input: &str) -> Result<Self, String> {
         let mut lexer = Lexer::new(input);
         let tokens = lexer.tokenize()?;
-        Ok(Parser { tokens, pos: 0 })
+        Ok(Parser {
+            tokens,
+            pos: 0,
+            source: input.to_string(),
+            source_name: None,
+        })
+    }
+
+    /// ソース名を設定（エラーメッセージに使用）
+    pub fn set_source_name(&mut self, name: String) {
+        self.source_name = Some(name);
     }
 
     fn current(&self) -> Option<&Token> {
@@ -45,6 +57,9 @@ impl Parser {
     fn current_span(&self) -> Option<&crate::lexer::Span> {
         if self.pos < self.tokens.len() {
             Some(&self.tokens[self.pos].span)
+        } else if !self.tokens.is_empty() {
+            // EOF時は最後のトークンのspanを返す
+            Some(&self.tokens[self.tokens.len() - 1].span)
         } else {
             None
         }
@@ -53,8 +68,39 @@ impl Parser {
     /// 行番号付きエラーメッセージを生成
     fn error_with_line(&self, key: MsgKey, args: &[&str]) -> String {
         let base_msg = fmt_msg(key, args);
+
         if let Some(span) = self.current_span() {
-            format!("{} (line {})", base_msg, span.line)
+            // span.line, span.column が 0, 0 の場合は位置情報なし
+            if span.line == 0 && span.column == 0 {
+                return base_msg;
+            }
+
+            let mut result = base_msg;
+
+            // ファイル名と位置情報を追加
+            if let Some(name) = &self.source_name {
+                result.push_str(&format!("\n  --> {}:{}:{}", name, span.line, span.column));
+            } else {
+                result.push_str(&format!(
+                    "\n  --> line {}, column {}",
+                    span.line, span.column
+                ));
+            }
+
+            // ソースコードの該当行を表示
+            let lines: Vec<&str> = self.source.lines().collect();
+            if span.line > 0 && span.line <= lines.len() {
+                let line_idx = span.line - 1;
+                result.push_str(&format!("\n  |\n{:3} | {}", span.line, lines[line_idx]));
+
+                // エラー位置にキャレット（^）を表示
+                if span.column > 0 {
+                    let spaces = " ".repeat(span.column - 1);
+                    result.push_str(&format!("\n  | {spaces}^"));
+                }
+            }
+
+            result
         } else {
             base_msg
         }
@@ -144,12 +190,14 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Expr, String> {
+        let _start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         let mut expr = self.parse_primary()?;
 
         // パイプライン演算子を処理
         loop {
             match self.current() {
                 Some(Token::Pipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
 
@@ -161,36 +209,51 @@ impl Parser {
                     } else {
                         match right {
                             // 右辺が関数呼び出しの場合、最後の引数に追加
-                            Expr::Call { func, mut args } => {
+                            Expr::Call {
+                                func,
+                                mut args,
+                                span,
+                            } => {
                                 args.push(expr);
-                                Expr::Call { func, args }
+                                Expr::Call { func, args, span }
                             }
                             // それ以外は通常の呼び出し
                             _ => Expr::Call {
                                 func: Box::new(right),
                                 args: vec![expr],
+                                span: pipe_span,
                             },
                         }
                     };
                 }
                 Some(Token::PipeRailway) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
 
                     // x |>? f を (_railway-pipe f x) に変換
                     expr = Expr::Call {
-                        func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                        func: Box::new(Expr::Symbol {
+                            name: "_railway-pipe".to_string(),
+                            span: pipe_span,
+                        }),
                         args: vec![right, expr],
+                        span: pipe_span,
                     };
                 }
                 Some(Token::ParallelPipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
 
                     // x ||> f を (pmap f x) に変換
                     expr = Expr::Call {
-                        func: Box::new(Expr::Symbol("pmap".to_string())),
+                        func: Box::new(Expr::Symbol {
+                            name: "pmap".to_string(),
+                            span: pipe_span,
+                        }),
                         args: vec![right, expr],
+                        span: pipe_span,
                     };
                 }
                 _ => break,
@@ -203,43 +266,52 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expr, String> {
         match self.current() {
             Some(Token::Nil) => {
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::Nil)
+                Ok(Expr::Nil { span })
             }
             Some(Token::True) => {
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::Bool(true))
+                Ok(Expr::Bool { value: true, span })
             }
             Some(Token::False) => {
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::Bool(false))
+                Ok(Expr::Bool { value: false, span })
             }
             Some(Token::Integer(n)) => {
-                let n = *n;
+                let value = *n;
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::Integer(n))
+                Ok(Expr::Integer { value, span })
             }
             Some(Token::Float(f)) => {
-                let f = *f;
+                let value = *f;
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::Float(f))
+                Ok(Expr::Float { value, span })
             }
             Some(Token::String(_)) => {
-                let s = self.take_string().unwrap();
-                Ok(Expr::String(s))
+                let span = self.current_span().copied().unwrap();
+                let value = self.take_string().unwrap();
+                Ok(Expr::String { value, span })
             }
             Some(Token::FString(parts)) => {
                 let parts = parts.clone();
+                let span = self.current_span().copied().unwrap();
                 self.advance();
-                Ok(Expr::FString(parts))
+                Ok(Expr::FString { parts, span })
             }
             Some(Token::Symbol(_)) => {
-                let s = self.take_symbol().unwrap();
-                Ok(Expr::Symbol(s))
+                let span = self.current_span().copied().unwrap();
+                let name = self.take_symbol().unwrap();
+                Ok(Expr::Symbol { name, span })
             }
             Some(Token::Keyword(_)) => {
-                let k = self.take_keyword().unwrap();
-                Ok(Expr::Keyword(k))
+                let span = self.current_span().copied().unwrap();
+                let name = self.take_keyword().unwrap();
+                Ok(Expr::Keyword { name, span })
             }
             Some(Token::LParen) => self.parse_list(),
             Some(Token::LBracket) => self.parse_vector(),
@@ -257,12 +329,19 @@ impl Parser {
     }
 
     fn parse_list(&mut self) -> Result<Expr, String> {
+        let start_span = self
+            .current_span()
+            .copied()
+            .unwrap_or(crate::lexer::Span::new(0, 0, 0));
         self.expect(Token::LParen)?;
 
         // 空リスト
         if self.current() == Some(&Token::RParen) {
             self.advance();
-            return Ok(Expr::List(vec![]));
+            return Ok(Expr::List {
+                items: vec![],
+                span: start_span,
+            });
         }
 
         // 特殊形式のチェック
@@ -315,35 +394,50 @@ impl Parser {
                             Self::replace_placeholder(right, expr)
                         } else {
                             match right {
-                                Expr::Call { func, mut args } => {
+                                Expr::Call {
+                                    func,
+                                    mut args,
+                                    span,
+                                } => {
                                     args.push(expr);
-                                    Expr::Call { func, args }
+                                    Expr::Call { func, args, span }
                                 }
                                 _ => Expr::Call {
                                     func: Box::new(right),
                                     args: vec![expr],
+                                    span: start_span,
                                 },
                             }
                         };
                     }
                     Some(Token::PipeRailway) => {
+                        let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                         self.advance();
                         let right = self.parse_primary()?;
 
                         // x |>? f を (_railway-pipe f x) に変換
                         expr = Expr::Call {
-                            func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                            func: Box::new(Expr::Symbol {
+                                name: "_railway-pipe".to_string(),
+                                span: pipe_span,
+                            }),
                             args: vec![right, expr],
+                            span: pipe_span,
                         };
                     }
                     Some(Token::ParallelPipe) => {
+                        let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                         self.advance();
                         let right = self.parse_primary()?;
 
                         // x ||> f を (pmap f x) に変換
                         expr = Expr::Call {
-                            func: Box::new(Expr::Symbol("pmap".to_string())),
+                            func: Box::new(Expr::Symbol {
+                                name: "pmap".to_string(),
+                                span: pipe_span,
+                            }),
                             args: vec![right, expr],
+                            span: pipe_span,
                         };
                     }
                     Some(Token::AsyncPipe) => {
@@ -356,13 +450,18 @@ impl Parser {
                             Self::replace_placeholder(right, expr)
                         } else {
                             match right {
-                                Expr::Call { func, mut args } => {
+                                Expr::Call {
+                                    func,
+                                    mut args,
+                                    span,
+                                } => {
                                     args.push(expr);
-                                    Expr::Call { func, args }
+                                    Expr::Call { func, args, span }
                                 }
                                 _ => Expr::Call {
                                     func: Box::new(right),
                                     args: vec![expr],
+                                    span: start_span,
                                 },
                             }
                         };
@@ -379,12 +478,17 @@ impl Parser {
                     params: vec![],
                     body: Box::new(expr),
                     is_variadic: false,
+                    span: start_span,
                 };
 
                 // (go lambda) を作成
                 expr = Expr::Call {
-                    func: Box::new(Expr::Symbol("go".to_string())),
+                    func: Box::new(Expr::Symbol {
+                        name: "go".to_string(),
+                        span: start_span,
+                    }),
                     args: vec![lambda],
+                    span: start_span,
                 };
             }
 
@@ -402,10 +506,15 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Call { func, args })
+        Ok(Expr::Call {
+            func,
+            args,
+            span: start_span,
+        })
     }
 
     fn parse_def(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'def'をスキップ
 
         let name = match self.current() {
@@ -416,13 +525,19 @@ impl Parser {
         let value = Box::new(self.parse_expr()?);
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Def(name, value, false))
+        Ok(Expr::Def {
+            name,
+            value,
+            is_private: false,
+            span: start_span,
+        })
     }
 
     /// defn/defn- 共通の内部実装
     /// is_private: プライベート定義かどうか
     /// keyword: エラーメッセージ用のキーワード名
     fn parse_defn_internal(&mut self, is_private: bool, keyword: &str) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // キーワードをスキップ
 
         let name = match self.current() {
@@ -450,17 +565,36 @@ impl Parser {
             params,
             body,
             is_variadic,
+            span: start_span,
         };
 
         // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...)))
         // ない場合は (def name (fn ...))
         if let Some(doc) = doc_expr {
             let doc_key = format!("{}{}", crate::eval::DOC_PREFIX, name);
-            let doc_def = Expr::Def(doc_key, Box::new(doc), is_private);
-            let fn_def = Expr::Def(name, Box::new(fn_expr), is_private);
-            Ok(Expr::Do(vec![doc_def, fn_def]))
+            let doc_def = Expr::Def {
+                name: doc_key,
+                value: Box::new(doc),
+                is_private,
+                span: start_span,
+            };
+            let fn_def = Expr::Def {
+                name,
+                value: Box::new(fn_expr),
+                is_private,
+                span: start_span,
+            };
+            Ok(Expr::Do {
+                exprs: vec![doc_def, fn_def],
+                span: start_span,
+            })
         } else {
-            Ok(Expr::Def(name, Box::new(fn_expr), is_private))
+            Ok(Expr::Def {
+                name,
+                value: Box::new(fn_expr),
+                is_private,
+                span: start_span,
+            })
         }
     }
 
@@ -479,6 +613,7 @@ impl Parser {
     }
 
     fn parse_fn(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'fn'をスキップ
 
         let (params, is_variadic) = self.parse_fn_params()?;
@@ -491,6 +626,7 @@ impl Parser {
             params,
             body,
             is_variadic,
+            span: start_span,
         })
     }
 
@@ -648,6 +784,7 @@ impl Parser {
     }
 
     fn parse_let(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'let'をスキップ
 
         // 束縛のパース
@@ -668,10 +805,15 @@ impl Parser {
         let body = Box::new(self.parse_expr()?);
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Let { bindings, body })
+        Ok(Expr::Let {
+            bindings,
+            body,
+            span: start_span,
+        })
     }
 
     fn parse_if(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'if'をスキップ
 
         let test = Box::new(self.parse_expr()?);
@@ -689,10 +831,12 @@ impl Parser {
             test,
             then,
             otherwise,
+            span: start_span,
         })
     }
 
     fn parse_do(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'do'をスキップ
 
         // 16: do式は副作用処理で長くなりがち（I/O、デバッグ等）
@@ -703,10 +847,14 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Do(exprs))
+        Ok(Expr::Do {
+            exprs,
+            span: start_span,
+        })
     }
 
     fn parse_vector(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.expect(Token::LBracket)?;
 
         // 8: ベクタリテラルは通常4-8個の要素（例: [1 2 3 4 5]）
@@ -717,10 +865,14 @@ impl Parser {
 
         self.expect(Token::RBracket)?;
 
-        Ok(Expr::Vector(items))
+        Ok(Expr::Vector {
+            items,
+            span: start_span,
+        })
     }
 
     fn parse_map(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.expect(Token::LBrace)?;
 
         // 8: マップリテラルは通常2-8ペア（例: {:x 1 :y 2 :z 3}）
@@ -733,19 +885,28 @@ impl Parser {
 
         self.expect(Token::RBrace)?;
 
-        Ok(Expr::Map(pairs))
+        Ok(Expr::Map {
+            pairs,
+            span: start_span,
+        })
     }
 
     fn parse_quote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'をスキップ
         let expr = self.parse_expr()?;
         Ok(Expr::Call {
-            func: Box::new(Expr::Symbol("quote".to_string())),
+            func: Box::new(Expr::Symbol {
+                name: "quote".to_string(),
+                span: start_span,
+            }),
             args: vec![expr],
+            span: start_span,
         })
     }
 
     fn parse_match(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'match'をスキップ
 
         // マッチする式
@@ -780,32 +941,45 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Match { expr, arms })
+        Ok(Expr::Match {
+            expr,
+            arms,
+            span: start_span,
+        })
     }
 
     /// (try expr)
     fn parse_try(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'try'をスキップ
 
         let expr = Box::new(self.parse_expr()?);
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Try(expr))
+        Ok(Expr::Try {
+            expr,
+            span: start_span,
+        })
     }
 
     /// (defer expr)
     fn parse_defer(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'defer'をスキップ
 
         let expr = Box::new(self.parse_expr()?);
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Defer(expr))
+        Ok(Expr::Defer {
+            expr,
+            span: start_span,
+        })
     }
 
     fn parse_loop(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'loop'をスキップ
 
         // 束縛のパース [var1 val1 var2 val2 ...]
@@ -829,10 +1003,15 @@ impl Parser {
         let body = Box::new(self.parse_expr()?);
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Loop { bindings, body })
+        Ok(Expr::Loop {
+            bindings,
+            body,
+            span: start_span,
+        })
     }
 
     fn parse_recur(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'recur'をスキップ
 
         // 4: recur引数はloop束縛と同数（通常2-4個）
@@ -843,11 +1022,15 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Recur(args))
+        Ok(Expr::Recur {
+            args,
+            span: start_span,
+        })
     }
 
     /// macをパース
     fn parse_mac(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'mac'をスキップ
 
         // マクロ名
@@ -894,6 +1077,7 @@ impl Parser {
             params,
             is_variadic,
             body,
+            span: start_span,
         })
     }
 
@@ -901,13 +1085,17 @@ impl Parser {
     /// (flow data |> fn1 |> fn2) → (data |> fn1 |> fn2)
     /// (flow |> fn1 |> fn2) → (fn [x] (x |> fn1 |> fn2))
     fn parse_flow(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'flow'をスキップ
 
         // 最初が|>の場合、ラムダを生成
         if self.current() == Some(&Token::Pipe) {
             // (flow |> fn1 |> fn2) → (fn [__flow_x] (__flow_x |> fn1 |> fn2))
             let var_name = "__flow_x".to_string();
-            let expr = Expr::Symbol(var_name.clone());
+            let expr = Expr::Symbol {
+                name: var_name.clone(),
+                span: start_span,
+            };
 
             // パイプラインをパース（共通ヘルパー使用）
             let expr = self.parse_pipeline_chain(expr)?;
@@ -919,6 +1107,7 @@ impl Parser {
                 params: vec![crate::value::Pattern::Var(var_name)],
                 body: Box::new(expr),
                 is_variadic: false,
+                span: start_span,
             })
         } else {
             // (flow data |> fn1 |> fn2) → 通常のパイプラインとしてパース
@@ -950,37 +1139,53 @@ impl Parser {
         {
             match self.current() {
                 Some(Token::Pipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
                     expr = if Self::has_placeholder(&right) {
                         Self::replace_placeholder(right, expr)
                     } else {
                         match right {
-                            Expr::Call { func, mut args } => {
+                            Expr::Call {
+                                func,
+                                mut args,
+                                span,
+                            } => {
                                 args.push(expr);
-                                Expr::Call { func, args }
+                                Expr::Call { func, args, span }
                             }
                             _ => Expr::Call {
                                 func: Box::new(right),
                                 args: vec![expr],
+                                span: pipe_span,
                             },
                         }
                     };
                 }
                 Some(Token::PipeRailway) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
                     expr = Expr::Call {
-                        func: Box::new(Expr::Symbol("_railway-pipe".to_string())),
+                        func: Box::new(Expr::Symbol {
+                            name: "_railway-pipe".to_string(),
+                            span: pipe_span,
+                        }),
                         args: vec![right, expr],
+                        span: pipe_span,
                     };
                 }
                 Some(Token::ParallelPipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
                     self.advance();
                     let right = self.parse_primary()?;
                     expr = Expr::Call {
-                        func: Box::new(Expr::Symbol("pmap".to_string())),
+                        func: Box::new(Expr::Symbol {
+                            name: "pmap".to_string(),
+                            span: pipe_span,
+                        }),
                         args: vec![right, expr],
+                        span: pipe_span,
                     };
                 }
                 _ => break,
@@ -991,32 +1196,49 @@ impl Parser {
 
     /// quasiquoteをパース
     fn parse_quasiquote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // `をスキップ
         let expr = Box::new(self.parse_expr()?);
-        Ok(Expr::Quasiquote(expr))
+        Ok(Expr::Quasiquote {
+            expr,
+            span: start_span,
+        })
     }
 
     /// unquoteをパース
     fn parse_unquote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // ,をスキップ
         let expr = Box::new(self.parse_expr()?);
-        Ok(Expr::Unquote(expr))
+        Ok(Expr::Unquote {
+            expr,
+            span: start_span,
+        })
     }
 
     /// unquote-spliceをパース
     fn parse_unquote_splice(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // ,@をスキップ
         let expr = Box::new(self.parse_expr()?);
-        Ok(Expr::UnquoteSplice(expr))
+        Ok(Expr::UnquoteSplice {
+            expr,
+            span: start_span,
+        })
     }
 
     /// @構文: @expr => (deref expr)
     fn parse_at(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // @をスキップ
         let expr = self.parse_primary()?;
         Ok(Expr::Call {
-            func: Box::new(Expr::Symbol("deref".to_string())),
+            func: Box::new(Expr::Symbol {
+                name: "deref".to_string(),
+                span: start_span,
+            }),
             args: vec![expr],
+            span: start_span,
         })
     }
 
@@ -1198,6 +1420,7 @@ impl Parser {
 
     /// (module name)
     fn parse_module(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'module'をスキップ
 
         let name = match self.current() {
@@ -1207,11 +1430,15 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Module(name))
+        Ok(Expr::Module {
+            name,
+            span: start_span,
+        })
     }
 
     /// (export sym1 sym2 ...)
     fn parse_export(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'export'をスキップ
 
         // 8: エクスポートシンボルは通常2-8個（モジュールの公開関数）
@@ -1227,11 +1454,15 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Export(symbols))
+        Ok(Expr::Export {
+            symbols,
+            span: start_span,
+        })
     }
 
     /// (use module :only [syms] | :as alias | :all)
     fn parse_use(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
         self.advance(); // 'use'をスキップ
 
         // モジュール名（シンボルまたは文字列）
@@ -1281,20 +1512,24 @@ impl Parser {
 
         self.expect(Token::RParen)?;
 
-        Ok(Expr::Use { module, mode })
+        Ok(Expr::Use {
+            module,
+            mode,
+            span: start_span,
+        })
     }
 
     /// 式の中に_プレースホルダーがあるかチェック
     fn has_placeholder(expr: &Expr) -> bool {
         match expr {
-            Expr::Symbol(s) if s == "_" => true,
+            Expr::Symbol { name, .. } if name == "_" => true,
             Expr::Call { args, .. } => args.iter().any(Self::has_placeholder),
-            Expr::Vector(items) => items.iter().any(Self::has_placeholder),
-            Expr::List(items) => items.iter().any(Self::has_placeholder),
-            Expr::Map(pairs) => pairs
+            Expr::Vector { items, .. } => items.iter().any(Self::has_placeholder),
+            Expr::List { items, .. } => items.iter().any(Self::has_placeholder),
+            Expr::Map { pairs, .. } => pairs
                 .iter()
                 .any(|(k, v)| Self::has_placeholder(k) || Self::has_placeholder(v)),
-            Expr::Match { expr, arms } => {
+            Expr::Match { expr, arms, .. } => {
                 Self::has_placeholder(expr)
                     || arms
                         .iter()
@@ -1304,24 +1539,28 @@ impl Parser {
                 test,
                 then,
                 otherwise,
+                ..
             } => {
                 Self::has_placeholder(test)
                     || Self::has_placeholder(then)
                     || otherwise.as_ref().is_some_and(|e| Self::has_placeholder(e))
             }
-            Expr::Let { bindings, body } => {
+            Expr::Let { bindings, body, .. } => {
                 bindings.iter().any(|(_, v)| Self::has_placeholder(v))
                     || Self::has_placeholder(body)
             }
-            Expr::Do(exprs) => exprs.iter().any(Self::has_placeholder),
-            Expr::Try(expr) | Expr::Defer(expr) => Self::has_placeholder(expr),
-            Expr::Loop { bindings, body } => {
+            Expr::Do { exprs, .. } => exprs.iter().any(Self::has_placeholder),
+            Expr::Try { expr, .. } | Expr::Defer { expr, .. } => Self::has_placeholder(expr),
+            Expr::Loop { bindings, body, .. } => {
                 bindings.iter().any(|(_, v)| Self::has_placeholder(v))
                     || Self::has_placeholder(body)
             }
-            Expr::Recur(args) => args.iter().any(Self::has_placeholder),
+            Expr::Recur { args, .. } => args.iter().any(Self::has_placeholder),
             Expr::Fn { body, .. } => Self::has_placeholder(body),
-            Expr::Def(_, value, _) => Self::has_placeholder(value),
+            Expr::Def { value, .. } => Self::has_placeholder(value),
+            Expr::Quasiquote { expr, .. }
+            | Expr::Unquote { expr, .. }
+            | Expr::UnquoteSplice { expr, .. } => Self::has_placeholder(expr),
             _ => false,
         }
     }
@@ -1329,8 +1568,8 @@ impl Parser {
     /// 式の中の_プレースホルダーを値で置き換え
     fn replace_placeholder(expr: Expr, value: Expr) -> Expr {
         match expr {
-            Expr::Symbol(s) if s == "_" => value,
-            Expr::Call { func, args } => {
+            Expr::Symbol { name, .. } if name == "_" => value,
+            Expr::Call { func, args, span } => {
                 let new_args = args
                     .into_iter()
                     .map(|arg| Self::replace_placeholder(arg, value.clone()))
@@ -1338,23 +1577,30 @@ impl Parser {
                 Expr::Call {
                     func,
                     args: new_args,
+                    span,
                 }
             }
-            Expr::Vector(items) => {
+            Expr::Vector { items, span } => {
                 let new_items = items
                     .into_iter()
                     .map(|item| Self::replace_placeholder(item, value.clone()))
                     .collect();
-                Expr::Vector(new_items)
+                Expr::Vector {
+                    items: new_items,
+                    span,
+                }
             }
-            Expr::List(items) => {
+            Expr::List { items, span } => {
                 let new_items = items
                     .into_iter()
                     .map(|item| Self::replace_placeholder(item, value.clone()))
                     .collect();
-                Expr::List(new_items)
+                Expr::List {
+                    items: new_items,
+                    span,
+                }
             }
-            Expr::Map(pairs) => {
+            Expr::Map { pairs, span } => {
                 let new_pairs = pairs
                     .into_iter()
                     .map(|(k, v)| {
@@ -1364,11 +1610,15 @@ impl Parser {
                         )
                     })
                     .collect();
-                Expr::Map(new_pairs)
+                Expr::Map {
+                    pairs: new_pairs,
+                    span,
+                }
             }
             Expr::Match {
                 expr: match_expr,
                 arms,
+                span,
             } => {
                 let new_expr = Box::new(Self::replace_placeholder(*match_expr, value.clone()));
                 let new_arms = arms
@@ -1384,19 +1634,26 @@ impl Parser {
                 Expr::Match {
                     expr: new_expr,
                     arms: new_arms,
+                    span,
                 }
             }
             Expr::If {
                 test,
                 then,
                 otherwise,
+                span,
             } => Expr::If {
                 test: Box::new(Self::replace_placeholder(*test, value.clone())),
                 then: Box::new(Self::replace_placeholder(*then, value.clone())),
                 otherwise: otherwise
                     .map(|e| Box::new(Self::replace_placeholder(*e, value.clone()))),
+                span,
             },
-            Expr::Let { bindings, body } => {
+            Expr::Let {
+                bindings,
+                body,
+                span,
+            } => {
                 let new_bindings = bindings
                     .into_iter()
                     .map(|(pat, v)| (pat, Self::replace_placeholder(v, value.clone())))
@@ -1404,18 +1661,32 @@ impl Parser {
                 Expr::Let {
                     bindings: new_bindings,
                     body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                    span,
                 }
             }
-            Expr::Do(exprs) => {
+            Expr::Do { exprs, span } => {
                 let new_exprs = exprs
                     .into_iter()
                     .map(|e| Self::replace_placeholder(e, value.clone()))
                     .collect();
-                Expr::Do(new_exprs)
+                Expr::Do {
+                    exprs: new_exprs,
+                    span,
+                }
             }
-            Expr::Try(e) => Expr::Try(Box::new(Self::replace_placeholder(*e, value))),
-            Expr::Defer(e) => Expr::Defer(Box::new(Self::replace_placeholder(*e, value))),
-            Expr::Loop { bindings, body } => {
+            Expr::Try { expr, span } => Expr::Try {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Defer { expr, span } => Expr::Defer {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Loop {
+                bindings,
+                body,
+                span,
+            } => {
                 let new_bindings = bindings
                     .into_iter()
                     .map(|(name, v)| (name, Self::replace_placeholder(v, value.clone())))
@@ -1423,29 +1694,53 @@ impl Parser {
                 Expr::Loop {
                     bindings: new_bindings,
                     body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                    span,
                 }
             }
-            Expr::Recur(args) => {
+            Expr::Recur { args, span } => {
                 let new_args = args
                     .into_iter()
                     .map(|arg| Self::replace_placeholder(arg, value.clone()))
                     .collect();
-                Expr::Recur(new_args)
+                Expr::Recur {
+                    args: new_args,
+                    span,
+                }
             }
             Expr::Fn {
                 params,
                 body,
                 is_variadic,
+                span,
             } => Expr::Fn {
                 params,
                 body: Box::new(Self::replace_placeholder(*body, value)),
                 is_variadic,
+                span,
             },
-            Expr::Def(name, def_value, is_private) => Expr::Def(
+            Expr::Def {
                 name,
-                Box::new(Self::replace_placeholder(*def_value, value)),
+                value: def_value,
                 is_private,
-            ),
+                span,
+            } => Expr::Def {
+                name,
+                value: Box::new(Self::replace_placeholder(*def_value, value)),
+                is_private,
+                span,
+            },
+            Expr::Quasiquote { expr, span } => Expr::Quasiquote {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Unquote { expr, span } => Expr::Unquote {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::UnquoteSplice { expr, span } => Expr::UnquoteSplice {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
             _ => expr,
         }
     }
@@ -1458,21 +1753,30 @@ mod tests {
     #[test]
     fn test_parse_integer() {
         let mut parser = Parser::new("42").unwrap();
-        assert_eq!(parser.parse().unwrap(), Expr::Integer(42));
+        match parser.parse().unwrap() {
+            Expr::Integer { value, .. } => assert_eq!(value, 42),
+            _ => panic!("Expected Integer"),
+        }
     }
 
     #[test]
     fn test_parse_symbol() {
         let mut parser = Parser::new("foo").unwrap();
-        assert_eq!(parser.parse().unwrap(), Expr::Symbol("foo".to_string()));
+        match parser.parse().unwrap() {
+            Expr::Symbol { name, .. } => assert_eq!(name, "foo"),
+            _ => panic!("Expected Symbol"),
+        }
     }
 
     #[test]
     fn test_parse_list() {
         let mut parser = Parser::new("(+ 1 2)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Call { func, args } => {
-                assert_eq!(*func, Expr::Symbol("+".to_string()));
+            Expr::Call { func, args, .. } => {
+                match *func {
+                    Expr::Symbol { name, .. } => assert_eq!(name, "+"),
+                    _ => panic!("Expected Symbol"),
+                }
                 assert_eq!(args.len(), 2);
             }
             _ => panic!("Expected Call"),
@@ -1483,9 +1787,17 @@ mod tests {
     fn test_parse_def() {
         let mut parser = Parser::new("(def x 42)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Def(name, value, is_private) => {
+            Expr::Def {
+                name,
+                value,
+                is_private,
+                ..
+            } => {
                 assert_eq!(name, "x");
-                assert_eq!(*value, Expr::Integer(42));
+                match *value {
+                    Expr::Integer { value: v, .. } => assert_eq!(v, 42),
+                    _ => panic!("Expected Integer"),
+                }
                 assert!(!is_private);
             }
             _ => panic!("Expected Def"),
@@ -1496,7 +1808,12 @@ mod tests {
     fn test_parse_defn_private() {
         let mut parser = Parser::new("(defn- helper [x] (+ x 1))").unwrap();
         match parser.parse().unwrap() {
-            Expr::Def(name, value, is_private) => {
+            Expr::Def {
+                name,
+                value,
+                is_private,
+                ..
+            } => {
                 assert_eq!(name, "helper");
                 assert!(is_private);
                 match *value {
@@ -1512,11 +1829,13 @@ mod tests {
     fn test_parse_defn_private_with_doc() {
         let mut parser = Parser::new("(defn- helper \"Helper function\" [x] (+ x 1))").unwrap();
         match parser.parse().unwrap() {
-            Expr::Do(exprs) => {
+            Expr::Do { exprs, .. } => {
                 assert_eq!(exprs.len(), 2);
                 // 最初はドキュメント
                 match &exprs[0] {
-                    Expr::Def(name, _, is_private) => {
+                    Expr::Def {
+                        name, is_private, ..
+                    } => {
                         assert!(name.starts_with(crate::eval::DOC_PREFIX));
                         assert!(*is_private);
                     }
@@ -1524,7 +1843,9 @@ mod tests {
                 }
                 // 次は関数定義
                 match &exprs[1] {
-                    Expr::Def(name, _, is_private) => {
+                    Expr::Def {
+                        name, is_private, ..
+                    } => {
                         assert_eq!(name, "helper");
                         assert!(*is_private);
                     }
@@ -1552,7 +1873,7 @@ mod tests {
     fn test_parse_module() {
         let mut parser = Parser::new("(module http)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Module(name) => {
+            Expr::Module { name, .. } => {
                 assert_eq!(name, "http");
             }
             _ => panic!("Expected Module"),
@@ -1563,7 +1884,7 @@ mod tests {
     fn test_parse_export() {
         let mut parser = Parser::new("(export get post)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Export(symbols) => {
+            Expr::Export { symbols, .. } => {
                 assert_eq!(symbols, vec!["get", "post"]);
             }
             _ => panic!("Expected Export"),
@@ -1574,7 +1895,7 @@ mod tests {
     fn test_parse_use_only() {
         let mut parser = Parser::new("(use http :only [get post])").unwrap();
         match parser.parse().unwrap() {
-            Expr::Use { module, mode } => {
+            Expr::Use { module, mode, .. } => {
                 assert_eq!(module, "http");
                 assert_eq!(
                     mode,
@@ -1589,7 +1910,7 @@ mod tests {
     fn test_parse_use_as() {
         let mut parser = Parser::new("(use http :as h)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Use { module, mode } => {
+            Expr::Use { module, mode, .. } => {
                 assert_eq!(module, "http");
                 assert_eq!(mode, UseMode::As("h".to_string()));
             }
@@ -1601,7 +1922,7 @@ mod tests {
     fn test_parse_use_all() {
         let mut parser = Parser::new("(use http :all)").unwrap();
         match parser.parse().unwrap() {
-            Expr::Use { module, mode } => {
+            Expr::Use { module, mode, .. } => {
                 assert_eq!(module, "http");
                 assert_eq!(mode, UseMode::All);
             }
@@ -1613,7 +1934,7 @@ mod tests {
     fn test_parse_try() {
         let mut parser = Parser::new("(try (/ 1 0))").unwrap();
         match parser.parse().unwrap() {
-            Expr::Try(_) => {}
+            Expr::Try { .. } => {}
             _ => panic!("Expected Try"),
         }
     }
@@ -1622,7 +1943,7 @@ mod tests {
     fn test_parse_defer() {
         let mut parser = Parser::new("(defer (print \"cleanup\"))").unwrap();
         match parser.parse().unwrap() {
-            Expr::Defer(_) => {}
+            Expr::Defer { .. } => {}
             _ => panic!("Expected Defer"),
         }
     }

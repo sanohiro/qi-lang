@@ -1,3 +1,4 @@
+use crate::lexer::Span;
 use crossbeam_channel::{Receiver, Sender};
 use im::{HashMap, Vector};
 use parking_lot::RwLock;
@@ -439,51 +440,106 @@ impl Env {
 }
 
 /// AST（抽象構文木）の式
+/// すべてのvariantに位置情報（Span）を持つ
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     // リテラル
-    Nil,
-    Bool(bool),
-    Integer(i64),
-    Float(f64),
-    String(String),
-    FString(Vec<FStringPart>),
-    Symbol(String),
-    Keyword(String),
+    Nil {
+        span: Span,
+    },
+    Bool {
+        value: bool,
+        span: Span,
+    },
+    Integer {
+        value: i64,
+        span: Span,
+    },
+    Float {
+        value: f64,
+        span: Span,
+    },
+    String {
+        value: String,
+        span: Span,
+    },
+    FString {
+        parts: Vec<FStringPart>,
+        span: Span,
+    },
+    Symbol {
+        name: String,
+        span: Span,
+    },
+    Keyword {
+        name: String,
+        span: Span,
+    },
 
     // コレクション
-    List(Vec<Expr>),
-    Vector(Vec<Expr>),
-    Map(Vec<(Expr, Expr)>),
+    List {
+        items: Vec<Expr>,
+        span: Span,
+    },
+    Vector {
+        items: Vec<Expr>,
+        span: Span,
+    },
+    Map {
+        pairs: Vec<(Expr, Expr)>,
+        span: Span,
+    },
 
     // 特殊形式
-    Def(String, Box<Expr>, bool), // (name, value, is_private)
+    Def {
+        name: String,
+        value: Box<Expr>,
+        is_private: bool,
+        span: Span,
+    },
     Fn {
         params: Vec<Pattern>,
         body: Box<Expr>,
         is_variadic: bool,
+        span: Span,
     },
     Let {
         bindings: Vec<(Pattern, Expr)>,
         body: Box<Expr>,
+        span: Span,
     },
     If {
         test: Box<Expr>,
         then: Box<Expr>,
         otherwise: Option<Box<Expr>>,
+        span: Span,
     },
-    Do(Vec<Expr>),
+    Do {
+        exprs: Vec<Expr>,
+        span: Span,
+    },
     Match {
         expr: Box<Expr>,
         arms: Vec<MatchArm>,
+        span: Span,
     },
-    Try(Box<Expr>),
-    Defer(Box<Expr>),
+    Try {
+        expr: Box<Expr>,
+        span: Span,
+    },
+    Defer {
+        expr: Box<Expr>,
+        span: Span,
+    },
     Loop {
         bindings: Vec<(String, Expr)>,
         body: Box<Expr>,
+        span: Span,
     },
-    Recur(Vec<Expr>),
+    Recur {
+        args: Vec<Expr>,
+        span: Span,
+    },
 
     // マクロ
     Mac {
@@ -491,24 +547,93 @@ pub enum Expr {
         params: Vec<String>,
         is_variadic: bool,
         body: Box<Expr>,
+        span: Span,
     },
-    Quasiquote(Box<Expr>),
-    Unquote(Box<Expr>),
-    UnquoteSplice(Box<Expr>),
+    Quasiquote {
+        expr: Box<Expr>,
+        span: Span,
+    },
+    Unquote {
+        expr: Box<Expr>,
+        span: Span,
+    },
+    UnquoteSplice {
+        expr: Box<Expr>,
+        span: Span,
+    },
 
     // モジュール
-    Module(String),
-    Export(Vec<String>),
+    Module {
+        name: String,
+        span: Span,
+    },
+    Export {
+        symbols: Vec<String>,
+        span: Span,
+    },
     Use {
         module: String,
         mode: UseMode,
+        span: Span,
     },
 
     // 関数呼び出し
     Call {
         func: Box<Expr>,
         args: Vec<Expr>,
+        span: Span,
     },
+}
+
+impl Expr {
+    /// 式の位置情報を取得
+    pub fn span(&self) -> Span {
+        match self {
+            Expr::Nil { span } => *span,
+            Expr::Bool { span, .. } => *span,
+            Expr::Integer { span, .. } => *span,
+            Expr::Float { span, .. } => *span,
+            Expr::String { span, .. } => *span,
+            Expr::FString { span, .. } => *span,
+            Expr::Symbol { span, .. } => *span,
+            Expr::Keyword { span, .. } => *span,
+            Expr::List { span, .. } => *span,
+            Expr::Vector { span, .. } => *span,
+            Expr::Map { span, .. } => *span,
+            Expr::Def { span, .. } => *span,
+            Expr::Fn { span, .. } => *span,
+            Expr::Let { span, .. } => *span,
+            Expr::If { span, .. } => *span,
+            Expr::Do { span, .. } => *span,
+            Expr::Match { span, .. } => *span,
+            Expr::Try { span, .. } => *span,
+            Expr::Defer { span, .. } => *span,
+            Expr::Loop { span, .. } => *span,
+            Expr::Recur { span, .. } => *span,
+            Expr::Mac { span, .. } => *span,
+            Expr::Quasiquote { span, .. } => *span,
+            Expr::Unquote { span, .. } => *span,
+            Expr::UnquoteSplice { span, .. } => *span,
+            Expr::Module { span, .. } => *span,
+            Expr::Export { span, .. } => *span,
+            Expr::Use { span, .. } => *span,
+            Expr::Call { span, .. } => *span,
+        }
+    }
+
+    /// ダミーのSpan（位置情報なし）を返す
+    /// builtinsなどの動的生成コードで使用
+    pub fn dummy_span() -> Span {
+        Span::new(0, 0, 0)
+    }
+
+    /// シンボルを簡単に作成（ダミーSpan付き）
+    pub fn symbol_dummy(name: impl Into<String>) -> Self {
+        Expr::Symbol {
+            name: name.into(),
+            span: Self::dummy_span(),
+        }
+    }
 }
 
 /// useのインポートモード

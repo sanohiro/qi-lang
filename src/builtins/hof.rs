@@ -520,7 +520,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("x".to_string())],
-        body: crate::value::Expr::Symbol("x".to_string()),
+        body: crate::value::Expr::symbol_dummy("x"),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::COMPLEMENT_FUNC.to_string(), func);
@@ -544,7 +544,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("x".to_string())],
-        body: crate::value::Expr::Symbol("x".to_string()),
+        body: crate::value::Expr::symbol_dummy("x"),
         env: {
             let mut env = crate::value::Env::new();
             env.set(
@@ -583,7 +583,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
     // 実装はeval.rsのapply_funcで特殊処理される
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("x".to_string())],
-        body: crate::value::Expr::Symbol("x".to_string()),
+        body: crate::value::Expr::symbol_dummy("x"),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::TAP_FUNC.to_string(), func);

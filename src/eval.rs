@@ -1,6 +1,7 @@
 use crate::builtins;
 use crate::builtins::util::{err_map, ok_map};
 use crate::i18n::{fmt_msg, msg, MsgKey};
+use crate::lexer::Span;
 use crate::value::{
     Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value,
 };
@@ -63,6 +64,8 @@ pub struct Evaluator {
     loading_modules: Arc<RwLock<Vec<String>>>,          // 循環参照検出用
     #[allow(dead_code)]
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
+    source_name: Arc<RwLock<Option<String>>>,           // ソースファイル名または入力名
+    source_code: Arc<RwLock<Option<String>>>,           // ソースコード全体
 }
 
 impl Default for Evaluator {
@@ -139,6 +142,8 @@ impl Evaluator {
             current_module: Arc::new(RwLock::new(None)),
             loading_modules: Arc::new(RwLock::new(Vec::new())),
             call_stack: Arc::new(RwLock::new(Vec::new())),
+            source_name: Arc::new(RwLock::new(None)),
+            source_code: Arc::new(RwLock::new(None)),
         };
 
         // 標準マクロを定義
@@ -152,6 +157,52 @@ impl Evaluator {
         // tapは特別なEvaluator必要関数として別途登録済み
     }
 
+    /// ソース名とソースコードを設定
+    pub fn set_source(&self, name: String, code: String) {
+        *self.source_name.write() = Some(name);
+        *self.source_code.write() = Some(code);
+    }
+
+    /// Span情報を使ってエラーメッセージをフォーマット
+    fn format_error_with_span(&self, message: String, span: &Span) -> String {
+        // span.line, span.column が 0, 0 の場合は位置情報なし（dummy_span）
+        if span.line == 0 && span.column == 0 {
+            return message;
+        }
+
+        let source_name = self.source_name.read();
+        let source_code = self.source_code.read();
+
+        let mut result = message;
+
+        // ファイル名と位置情報を追加
+        if let Some(name) = source_name.as_ref() {
+            result.push_str(&format!("\n  --> {}:{}:{}", name, span.line, span.column));
+        } else {
+            result.push_str(&format!(
+                "\n  --> line {}, column {}",
+                span.line, span.column
+            ));
+        }
+
+        // ソースコードの該当行を表示
+        if let Some(code) = source_code.as_ref() {
+            let lines: Vec<&str> = code.lines().collect();
+            if span.line > 0 && span.line <= lines.len() {
+                let line_idx = span.line - 1;
+                result.push_str(&format!("\n  |\n{:3} | {}", span.line, lines[line_idx]));
+
+                // エラー位置にキャレット（^）を表示
+                if span.column > 0 {
+                    let spaces = " ".repeat(span.column - 1);
+                    result.push_str(&format!("\n  | {spaces}^"));
+                }
+            }
+        }
+
+        result
+    }
+
     pub fn eval(&self, expr: &Expr) -> Result<Value, String> {
         self.eval_with_env(expr, self.global_env.clone())
     }
@@ -163,31 +214,32 @@ impl Evaluator {
 
     fn eval_with_env(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
         match expr {
-            Expr::Nil => Ok(Value::Nil),
-            Expr::Bool(b) => Ok(Value::Bool(*b)),
-            Expr::Integer(n) => Ok(Value::Integer(*n)),
-            Expr::Float(f) => Ok(Value::Float(*f)),
-            Expr::String(s) => Ok(Value::String(s.clone())),
-            Expr::FString(parts) => self.eval_fstring(parts, Arc::clone(&env)),
-            Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
+            Expr::Nil { .. } => Ok(Value::Nil),
+            Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
+            Expr::Integer { value, .. } => Ok(Value::Integer(*value)),
+            Expr::Float { value, .. } => Ok(Value::Float(*value)),
+            Expr::String { value, .. } => Ok(Value::String(value.clone())),
+            Expr::FString { parts, .. } => self.eval_fstring(parts, Arc::clone(&env)),
+            Expr::Keyword { name, .. } => Ok(Value::Keyword(name.clone())),
 
-            Expr::Symbol(name) => {
+            Expr::Symbol { name, span } => {
                 let env_read = env.read();
                 env_read.get(name).ok_or_else(|| {
                     // 類似した変数名を検索（最大編集距離3、最大3件）
                     let suggestions = find_similar_names(&env_read, name, 3, 3);
-                    if suggestions.is_empty() {
+                    let msg = if suggestions.is_empty() {
                         fmt_msg(MsgKey::UndefinedVar, &[name])
                     } else {
                         fmt_msg(
                             MsgKey::UndefinedVarWithSuggestions,
                             &[name, &suggestions.join(", ")],
                         )
-                    }
+                    };
+                    self.format_error_with_span(msg, span)
                 })
             }
 
-            Expr::List(items) => {
+            Expr::List { items, .. } => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
                     values.push(self.eval_with_env(item, Arc::clone(&env))?);
@@ -195,7 +247,7 @@ impl Evaluator {
                 Ok(Value::List(values.into()))
             }
 
-            Expr::Vector(items) => {
+            Expr::Vector { items, .. } => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
                     values.push(self.eval_with_env(item, Arc::clone(&env))?);
@@ -203,7 +255,7 @@ impl Evaluator {
                 Ok(Value::Vector(values.into()))
             }
 
-            Expr::Map(pairs) => {
+            Expr::Map { pairs, .. } => {
                 let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
                     let key_value = self.eval_with_env(k, Arc::clone(&env))?;
@@ -214,7 +266,12 @@ impl Evaluator {
                 Ok(Value::Map(map.into()))
             }
 
-            Expr::Def(name, value, is_private) => {
+            Expr::Def {
+                name,
+                value,
+                is_private,
+                ..
+            } => {
                 // 名前衝突チェック（ただし__doc__で始まる変数は除外）
                 if !name.starts_with(DOC_PREFIX) {
                     if let Some(existing) = env.read().get(name) {
@@ -246,6 +303,7 @@ impl Evaluator {
                 params,
                 body,
                 is_variadic,
+                ..
             } => Ok(Value::Function(Arc::new(Function {
                 params: params.clone(),
                 body: (**body).clone(),
@@ -254,7 +312,7 @@ impl Evaluator {
                 has_special_processing: false,
             }))),
 
-            Expr::Let { bindings, body } => {
+            Expr::Let { bindings, body, .. } => {
                 // let環境を一度だけArc<RwLock<Env>>として作成（cloneとヒープ確保を削減）
                 let new_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&env))));
                 for (pattern, expr) in bindings {
@@ -268,6 +326,7 @@ impl Evaluator {
                 test,
                 then,
                 otherwise,
+                ..
             } => {
                 let test_val = self.eval_with_env(test, Arc::clone(&env))?;
                 if test_val.is_truthy() {
@@ -279,41 +338,44 @@ impl Evaluator {
                 }
             }
 
-            Expr::Do(exprs) => self.eval_do(exprs, env),
+            Expr::Do { exprs, .. } => self.eval_do(exprs, env),
 
-            Expr::Match { expr, arms } => {
+            Expr::Match { expr, arms, .. } => {
                 let value = self.eval_with_env(expr, Arc::clone(&env))?;
                 self.eval_match(&value, arms, env)
             }
 
-            Expr::Try(expr) => self.eval_try(expr, env),
+            Expr::Try { expr, .. } => self.eval_try(expr, env),
 
-            Expr::Defer(expr) => self.eval_defer(expr.as_ref()),
+            Expr::Defer { expr, .. } => self.eval_defer(expr.as_ref()),
 
-            Expr::Loop { bindings, body } => self.eval_loop(bindings, body, env),
+            Expr::Loop { bindings, body, .. } => self.eval_loop(bindings, body, env),
 
-            Expr::Recur(args) => self.eval_recur(args, env),
+            Expr::Recur { args, .. } => self.eval_recur(args, env),
 
             Expr::Mac {
                 name,
                 params,
                 is_variadic,
                 body,
+                ..
             } => self.eval_mac(name, params, *is_variadic, body.as_ref(), env),
 
-            Expr::Quasiquote(expr) => self.eval_quasiquote(expr, env, 0),
+            Expr::Quasiquote { expr, .. } => self.eval_quasiquote(expr, env, 0),
 
-            Expr::Unquote(_) => Err(msg(MsgKey::UnquoteOutsideQuasiquote).to_string()),
+            Expr::Unquote { .. } => Err(msg(MsgKey::UnquoteOutsideQuasiquote).to_string()),
 
-            Expr::UnquoteSplice(_) => Err(msg(MsgKey::UnquoteSpliceOutsideQuasiquote).to_string()),
+            Expr::UnquoteSplice { .. } => {
+                Err(msg(MsgKey::UnquoteSpliceOutsideQuasiquote).to_string())
+            }
 
             // モジュールシステム
-            Expr::Module(name) => {
+            Expr::Module { name, .. } => {
                 *self.current_module.write() = Some(name.clone());
                 Ok(Value::Nil)
             }
 
-            Expr::Export(symbols) => {
+            Expr::Export { symbols, .. } => {
                 // 現在のモジュール名を取得
                 let module_name = self
                     .current_module
@@ -340,9 +402,9 @@ impl Evaluator {
                 Ok(Value::Nil)
             }
 
-            Expr::Use { module, mode } => self.eval_use(module, mode, env),
+            Expr::Use { module, mode, .. } => self.eval_use(module, mode, env),
 
-            Expr::Call { func, args } => self.eval_call(func, args, env),
+            Expr::Call { func, args, .. } => self.eval_call(func, args, env),
         }
     }
 
@@ -357,7 +419,7 @@ impl Evaluator {
         args: &[Expr],
         env: Arc<RwLock<Env>>,
     ) -> Option<Result<Value, String>> {
-        if let Expr::Symbol(name) = func {
+        if let Expr::Symbol { name, .. } = func {
             match name.as_str() {
                 "_railway-pipe" => Some(self.eval_railway_pipe(args, env)),
                 "and" => Some(self.eval_and(args, env)),
@@ -2147,12 +2209,12 @@ impl Evaluator {
     /// Exprからrecurを見つける（簡易版）
     fn find_recur(expr: &Expr) -> Option<&Vec<Expr>> {
         match expr {
-            Expr::Recur(args) => Some(args),
+            Expr::Recur { args, .. } => Some(args),
             Expr::If {
                 then, otherwise, ..
             } => Self::find_recur(then)
                 .or_else(|| otherwise.as_ref().and_then(|e| Self::find_recur(e))),
-            Expr::Do(exprs) => exprs.iter().find_map(Self::find_recur),
+            Expr::Do { exprs, .. } => exprs.iter().find_map(Self::find_recur),
             _ => None,
         }
     }
@@ -2165,23 +2227,23 @@ impl Evaluator {
         depth: usize,
     ) -> Result<Value, String> {
         match expr {
-            Expr::Unquote(e) if depth == 0 => {
+            Expr::Unquote { expr: e, .. } if depth == 0 => {
                 // depth 0のunquoteは評価
                 self.eval_with_env(e, env)
             }
-            Expr::Unquote(e) => {
+            Expr::Unquote { expr: e, .. } => {
                 // ネストしたquasiquote内のunquote
                 let inner = self.eval_quasiquote(e, env, depth - 1)?;
                 Ok(inner)
             }
-            Expr::Quasiquote(e) => {
+            Expr::Quasiquote { expr: e, .. } => {
                 // ネストしたquasiquote
                 self.eval_quasiquote(e, env, depth + 1)
             }
-            Expr::List(items) => {
+            Expr::List { items, .. } => {
                 let mut result = Vec::with_capacity(items.len());
                 for item in items {
-                    if let Expr::UnquoteSplice(e) = item {
+                    if let Expr::UnquoteSplice { expr: e, .. } = item {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
                             let val = self.eval_with_env(e, Arc::clone(&env))?;
@@ -2206,10 +2268,10 @@ impl Evaluator {
                 }
                 Ok(Value::List(result.into()))
             }
-            Expr::Vector(items) => {
+            Expr::Vector { items, .. } => {
                 let mut result = Vec::with_capacity(items.len());
                 for item in items {
-                    if let Expr::UnquoteSplice(e) = item {
+                    if let Expr::UnquoteSplice { expr: e, .. } = item {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
                             let val = self.eval_with_env(e, Arc::clone(&env))?;
@@ -2234,11 +2296,11 @@ impl Evaluator {
                 }
                 Ok(Value::Vector(result.into()))
             }
-            Expr::Call { func, args } => {
+            Expr::Call { func, args, .. } => {
                 // Callもリストとして扱う
                 let mut result = vec![self.eval_quasiquote(func, Arc::clone(&env), depth)?];
                 for arg in args {
-                    if let Expr::UnquoteSplice(e) = arg {
+                    if let Expr::UnquoteSplice { expr: e, .. } = arg {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
                             let val = self.eval_with_env(e, Arc::clone(&env))?;
@@ -2268,6 +2330,7 @@ impl Evaluator {
                 test,
                 then,
                 otherwise,
+                ..
             } => {
                 let mut result = vec![Value::Symbol("if".to_string())];
                 result.push(self.eval_quasiquote(test, Arc::clone(&env), depth)?);
@@ -2277,10 +2340,10 @@ impl Evaluator {
                 }
                 Ok(Value::List(result.into()))
             }
-            Expr::Do(exprs) => {
+            Expr::Do { exprs, .. } => {
                 let mut result = vec![Value::Symbol("do".to_string())];
                 for e in exprs {
-                    if let Expr::UnquoteSplice(us) = e {
+                    if let Expr::UnquoteSplice { expr: us, .. } = e {
                         if depth == 0 {
                             // unquote-spliceは評価してリストを展開
                             let val = self.eval_with_env(us, Arc::clone(&env))?;
@@ -2307,6 +2370,7 @@ impl Evaluator {
                 params,
                 body,
                 is_variadic,
+                ..
             } => {
                 let mut items = vec![Value::Symbol("fn".to_string())];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
@@ -2329,7 +2393,7 @@ impl Evaluator {
                 items.push(self.eval_quasiquote(body, env, depth)?);
                 Ok(Value::List(items.into()))
             }
-            Expr::Let { bindings, body } => {
+            Expr::Let { bindings, body, .. } => {
                 let mut items = vec![Value::Symbol("let".to_string())];
                 let mut binding_vec = Vec::new();
                 for (pattern, expr) in bindings {
@@ -2340,7 +2404,12 @@ impl Evaluator {
                 items.push(self.eval_quasiquote(body, env, depth)?);
                 Ok(Value::List(items.into()))
             }
-            Expr::Def(name, value, _is_private) => {
+            Expr::Def {
+                name,
+                value,
+                is_private: _is_private,
+                ..
+            } => {
                 let mut items = vec![
                     Value::Symbol("def".to_string()),
                     Value::Symbol(name.clone()),
@@ -2426,28 +2495,28 @@ impl Evaluator {
     /// ExprをValueに変換（データとして扱う）
     fn expr_to_value(&self, expr: &Expr) -> Result<Value, String> {
         match expr {
-            Expr::Nil => Ok(Value::Nil),
-            Expr::Bool(b) => Ok(Value::Bool(*b)),
-            Expr::Integer(n) => Ok(Value::Integer(*n)),
-            Expr::Float(f) => Ok(Value::Float(*f)),
-            Expr::String(s) => Ok(Value::String(s.clone())),
-            Expr::Symbol(s) => Ok(Value::Symbol(s.clone())),
-            Expr::Keyword(k) => Ok(Value::Keyword(k.clone())),
-            Expr::List(items) => {
+            Expr::Nil { .. } => Ok(Value::Nil),
+            Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
+            Expr::Integer { value, .. } => Ok(Value::Integer(*value)),
+            Expr::Float { value, .. } => Ok(Value::Float(*value)),
+            Expr::String { value, .. } => Ok(Value::String(value.clone())),
+            Expr::Symbol { name, .. } => Ok(Value::Symbol(name.clone())),
+            Expr::Keyword { name, .. } => Ok(Value::Keyword(name.clone())),
+            Expr::List { items, .. } => {
                 let mut vals = Vec::with_capacity(items.len());
                 for item in items {
                     vals.push(self.expr_to_value(item)?);
                 }
                 Ok(Value::List(vals.into()))
             }
-            Expr::Vector(items) => {
+            Expr::Vector { items, .. } => {
                 let mut vals = Vec::with_capacity(items.len());
                 for item in items {
                     vals.push(self.expr_to_value(item)?);
                 }
                 Ok(Value::Vector(vals.into()))
             }
-            Expr::Map(pairs) => {
+            Expr::Map { pairs, .. } => {
                 let mut map = HashMap::with_capacity(pairs.len());
                 for (k, v) in pairs {
                     let key_value = self.expr_to_value(k)?;
@@ -2458,7 +2527,7 @@ impl Evaluator {
                 Ok(Value::Map(map.into()))
             }
             // 特殊形式やCallは評価せずにリストとして返す
-            Expr::Call { func, args } => {
+            Expr::Call { func, args, .. } => {
                 let mut items = vec![self.expr_to_value(func)?];
                 for arg in args {
                     items.push(self.expr_to_value(arg)?);
@@ -2469,6 +2538,7 @@ impl Evaluator {
                 test,
                 then,
                 otherwise,
+                ..
             } => {
                 let mut items = vec![Value::Symbol("if".to_string())];
                 items.push(self.expr_to_value(test)?);
@@ -2478,14 +2548,19 @@ impl Evaluator {
                 }
                 Ok(Value::List(items.into()))
             }
-            Expr::Do(exprs) => {
+            Expr::Do { exprs, .. } => {
                 let mut items = vec![Value::Symbol("do".to_string())];
                 for e in exprs {
                     items.push(self.expr_to_value(e)?);
                 }
                 Ok(Value::List(items.into()))
             }
-            Expr::Def(name, value, _is_private) => Ok(Value::List(
+            Expr::Def {
+                name,
+                value,
+                is_private: _is_private,
+                ..
+            } => Ok(Value::List(
                 vec![
                     Value::Symbol("def".to_string()),
                     Value::Symbol(name.clone()),
@@ -2493,7 +2568,7 @@ impl Evaluator {
                 ]
                 .into(),
             )),
-            Expr::Let { bindings, body } => {
+            Expr::Let { bindings, body, .. } => {
                 let mut items = vec![Value::Symbol("let".to_string())];
                 let mut binding_vec = Vec::new();
                 for (pattern, expr) in bindings {
@@ -2508,6 +2583,7 @@ impl Evaluator {
                 params,
                 body,
                 is_variadic,
+                ..
             } => {
                 let mut items = vec![Value::Symbol("fn".to_string())];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
@@ -2530,17 +2606,17 @@ impl Evaluator {
                 items.push(self.expr_to_value(body)?);
                 Ok(Value::List(items.into()))
             }
-            Expr::Quasiquote(e) => Ok(Value::List(
+            Expr::Quasiquote { expr: e, .. } => Ok(Value::List(
                 vec![
                     Value::Symbol("quasiquote".to_string()),
                     self.expr_to_value(e)?,
                 ]
                 .into(),
             )),
-            Expr::Unquote(e) => Ok(Value::List(
+            Expr::Unquote { expr: e, .. } => Ok(Value::List(
                 vec![Value::Symbol("unquote".to_string()), self.expr_to_value(e)?].into(),
             )),
-            Expr::UnquoteSplice(e) => Ok(Value::List(
+            Expr::UnquoteSplice { expr: e, .. } => Ok(Value::List(
                 vec![
                     Value::Symbol("unquote-splice".to_string()),
                     self.expr_to_value(e)?,
@@ -2548,19 +2624,19 @@ impl Evaluator {
                 .into(),
             )),
             // モジュール関連とtry、deferはquoteできない
-            Expr::Module(_)
-            | Expr::Export(_)
+            Expr::Module { .. }
+            | Expr::Export { .. }
             | Expr::Use { .. }
-            | Expr::Try(_)
-            | Expr::Defer(_)
+            | Expr::Try { .. }
+            | Expr::Defer { .. }
             | Expr::Loop { .. }
-            | Expr::Recur(_)
+            | Expr::Recur { .. }
             | Expr::Match { .. }
             | Expr::Mac { .. } => Err(fmt_msg(
                 MsgKey::CannotQuote,
                 &["module/export/use/try/defer/loop/recur/match/mac"],
             )),
-            Expr::FString(_) => Err(msg(MsgKey::FStringCannotBeQuoted).to_string()),
+            Expr::FString { .. } => Err(msg(MsgKey::FStringCannotBeQuoted).to_string()),
         }
     }
 
@@ -2633,14 +2709,37 @@ impl Evaluator {
     /// ValueをExprに変換（マクロ展開の結果をコードとして扱う）
     fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
         match val {
-            Value::Nil => Ok(Expr::Nil),
-            Value::Bool(b) => Ok(Expr::Bool(*b)),
-            Value::Integer(n) => Ok(Expr::Integer(*n)),
-            Value::Float(f) => Ok(Expr::Float(*f)),
-            Value::String(s) => Ok(Expr::String(s.clone())),
-            Value::Symbol(s) => Ok(Expr::Symbol(s.clone())),
-            Value::Keyword(k) => Ok(Expr::Keyword(k.clone())),
-            Value::List(items) if items.is_empty() => Ok(Expr::List(vec![])),
+            Value::Nil => Ok(Expr::Nil {
+                span: Expr::dummy_span(),
+            }),
+            Value::Bool(b) => Ok(Expr::Bool {
+                value: *b,
+                span: Expr::dummy_span(),
+            }),
+            Value::Integer(n) => Ok(Expr::Integer {
+                value: *n,
+                span: Expr::dummy_span(),
+            }),
+            Value::Float(f) => Ok(Expr::Float {
+                value: *f,
+                span: Expr::dummy_span(),
+            }),
+            Value::String(s) => Ok(Expr::String {
+                value: s.clone(),
+                span: Expr::dummy_span(),
+            }),
+            Value::Symbol(s) => Ok(Expr::Symbol {
+                name: s.clone(),
+                span: Expr::dummy_span(),
+            }),
+            Value::Keyword(k) => Ok(Expr::Keyword {
+                name: k.clone(),
+                span: Expr::dummy_span(),
+            }),
+            Value::List(items) if items.is_empty() => Ok(Expr::List {
+                items: vec![],
+                span: Expr::dummy_span(),
+            }),
             Value::List(items) => {
                 // 先頭がシンボルの場合、特殊形式かチェック
                 if let Some(Value::Symbol(s)) = items.head() {
@@ -2654,6 +2753,7 @@ impl Evaluator {
                                 } else {
                                     None
                                 },
+                                span: Expr::dummy_span(),
                             });
                         }
                         "do" => {
@@ -2662,7 +2762,10 @@ impl Evaluator {
                                 .skip(1)
                                 .map(|v| self.value_to_expr(v))
                                 .collect();
-                            return Ok(Expr::Do(exprs?));
+                            return Ok(Expr::Do {
+                                exprs: exprs?,
+                                span: Expr::dummy_span(),
+                            });
                         }
                         "def" if items.len() == 3 || items.len() == 4 => {
                             if let Value::Symbol(name) = &items[1] {
@@ -2684,18 +2787,20 @@ impl Evaluator {
                                         }
                                     }
                                     // 値はitems[3]
-                                    return Ok(Expr::Def(
-                                        name.clone(),
-                                        Box::new(self.value_to_expr(&items[3])?),
-                                        false,
-                                    ));
+                                    return Ok(Expr::Def {
+                                        name: name.clone(),
+                                        value: Box::new(self.value_to_expr(&items[3])?),
+                                        is_private: false,
+                                        span: Expr::dummy_span(),
+                                    });
                                 } else {
                                     // 3要素の場合: (def name value)
-                                    return Ok(Expr::Def(
-                                        name.clone(),
-                                        Box::new(self.value_to_expr(&items[2])?),
-                                        false,
-                                    ));
+                                    return Ok(Expr::Def {
+                                        name: name.clone(),
+                                        value: Box::new(self.value_to_expr(&items[2])?),
+                                        is_private: false,
+                                        span: Expr::dummy_span(),
+                                    });
                                 }
                             }
                         }
@@ -2766,25 +2871,35 @@ impl Evaluator {
                 let exprs = exprs?;
 
                 // 先頭がシンボルの場合はCallに変換（関数呼び出しとして扱う）
-                if let Some(Expr::Symbol(_)) = exprs.first() {
+                if let Some(Expr::Symbol { .. }) = exprs.first() {
                     if exprs.len() == 1 {
                         // 単一のシンボルはそのまま
-                        Ok(Expr::List(exprs))
+                        Ok(Expr::List {
+                            items: exprs,
+                            span: Expr::dummy_span(),
+                        })
                     } else {
                         // 関数呼び出し
                         Ok(Expr::Call {
                             func: Box::new(exprs[0].clone()),
                             args: exprs[1..].to_vec(),
+                            span: Expr::dummy_span(),
                         })
                     }
                 } else {
-                    Ok(Expr::List(exprs))
+                    Ok(Expr::List {
+                        items: exprs,
+                        span: Expr::dummy_span(),
+                    })
                 }
             }
             Value::Vector(items) => {
                 let exprs: Result<Vec<_>, _> =
                     items.iter().map(|v| self.value_to_expr(v)).collect();
-                Ok(Expr::Vector(exprs?))
+                Ok(Expr::Vector {
+                    items: exprs?,
+                    span: Expr::dummy_span(),
+                })
             }
             _ => Err(msg(MsgKey::ValueCannotBeConverted).to_string()),
         }

@@ -252,21 +252,25 @@ fn run_tests(args: &[String]) {
         };
 
         // テストファイルを評価（エラーが出ても続行）
+        evaluator.set_source(test_file.clone(), content.clone());
         match Parser::new(&content) {
-            Ok(mut parser) => match parser.parse_all() {
-                Ok(exprs) => {
-                    for expr in exprs.iter() {
-                        if let Err(e) = evaluator.eval(expr) {
-                            eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorRuntime), e);
+            Ok(mut parser) => {
+                parser.set_source_name(test_file.clone());
+                match parser.parse_all() {
+                    Ok(exprs) => {
+                        for expr in exprs.iter() {
+                            if let Err(e) = evaluator.eval(expr) {
+                                eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                            }
                         }
                     }
+                    Err(e) => {
+                        eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                    }
                 }
-                Err(e) => {
-                    eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorParse), e);
-                }
-            },
+            }
             Err(e) => {
-                eprintln!("{}:{}: {}", test_file, ui_msg(UiMsg::ErrorLexer), e);
+                eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
             }
         }
     }
@@ -316,43 +320,38 @@ fn run_stdin() {
 }
 
 fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename: Option<&str>) {
+    // ソース情報を設定
+    let source_name = filename.unwrap_or("<code>").to_string();
+    evaluator.set_source(source_name.clone(), code.to_string());
+
     match Parser::new(code) {
-        Ok(mut parser) => match parser.parse_all() {
-            Ok(exprs) => {
-                for (i, expr) in exprs.iter().enumerate() {
-                    match evaluator.eval(expr) {
-                        Ok(value) => {
-                            // ワンライナーの場合、最後の結果を表示
-                            if print_result && i == exprs.len() - 1 {
-                                println!("{}", value);
+        Ok(mut parser) => {
+            parser.set_source_name(source_name);
+            match parser.parse_all() {
+                Ok(exprs) => {
+                    for (i, expr) in exprs.iter().enumerate() {
+                        match evaluator.eval(expr) {
+                            Ok(value) => {
+                                // ワンライナーの場合、最後の結果を表示
+                                if print_result && i == exprs.len() - 1 {
+                                    println!("{}", value);
+                                }
                             }
-                        }
-                        Err(e) => {
-                            if let Some(file) = filename {
-                                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorRuntime), e);
-                            } else {
+                            Err(e) => {
                                 eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                                std::process::exit(1);
                             }
-                            std::process::exit(1);
                         }
                     }
                 }
-            }
-            Err(e) => {
-                if let Some(file) = filename {
-                    eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorParse), e);
-                } else {
+                Err(e) => {
                     eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                    std::process::exit(1);
                 }
-                std::process::exit(1);
             }
-        },
+        }
         Err(e) => {
-            if let Some(file) = filename {
-                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorLexer), e);
-            } else {
-                eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
-            }
+            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
             std::process::exit(1);
         }
     }
@@ -853,36 +852,31 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
 
 /// REPL用のコード評価（エラーで終了しない）
 fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
+    // ソース情報を設定
+    let source_name = filename.unwrap_or("<repl>").to_string();
+    evaluator.set_source(source_name.clone(), code.to_string());
+
     match Parser::new(code) {
-        Ok(mut parser) => match parser.parse_all() {
-            Ok(exprs) => {
-                for expr in exprs.iter() {
-                    match evaluator.eval(expr) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            if let Some(file) = filename {
-                                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorRuntime), e);
-                            } else {
+        Ok(mut parser) => {
+            parser.set_source_name(source_name);
+            match parser.parse_all() {
+                Ok(exprs) => {
+                    for expr in exprs.iter() {
+                        match evaluator.eval(expr) {
+                            Ok(_) => {}
+                            Err(e) => {
                                 eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
                             }
                         }
                     }
                 }
-            }
-            Err(e) => {
-                if let Some(file) = filename {
-                    eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorParse), e);
-                } else {
+                Err(e) => {
                     eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
                 }
             }
-        },
+        }
         Err(e) => {
-            if let Some(file) = filename {
-                eprintln!("{}:{}: {}", file, ui_msg(UiMsg::ErrorLexer), e);
-            } else {
-                eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
-            }
+            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
         }
     }
 }

@@ -806,7 +806,10 @@ mod tests {
     fn test_parens() {
         let mut lexer = Lexer::new("(+ 1 2)");
         assert_eq!(lexer.next_token().unwrap().token, Token::LParen);
-        assert_eq!(lexer.next_token().unwrap().token, Token::Symbol("+".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap().token,
+            Token::Symbol("+".to_string())
+        );
         assert_eq!(lexer.next_token().unwrap().token, Token::Integer(1));
         assert_eq!(lexer.next_token().unwrap().token, Token::Integer(2));
         assert_eq!(lexer.next_token().unwrap().token, Token::RParen);

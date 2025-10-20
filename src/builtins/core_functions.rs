@@ -24,7 +24,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("_".to_string())],
-        body: crate::value::Expr::Symbol(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string()),
+        body: crate::value::Expr::symbol_dummy(crate::eval::hof_keys::CONSTANTLY_VALUE),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string(), value);
@@ -49,7 +49,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("&rest".to_string())],
-        body: crate::value::Expr::Symbol(crate::eval::hof_keys::PARTIAL_PLACEHOLDER.to_string()),
+        body: crate::value::Expr::symbol_dummy(crate::eval::hof_keys::PARTIAL_PLACEHOLDER),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::PARTIAL_FUNC.to_string(), func);
@@ -81,7 +81,7 @@ pub fn native_comp(args: &[Value], _evaluator: &Evaluator) -> Result<Value, Stri
     let funcs: im::Vector<Value> = args.iter().cloned().collect();
     Ok(Value::Function(Arc::new(crate::value::Function {
         params: vec![crate::value::Pattern::Var("x".to_string())],
-        body: crate::value::Expr::Symbol("__comp_placeholder__".to_string()),
+        body: crate::value::Expr::symbol_dummy("__comp_placeholder__"),
         env: {
             let mut env = crate::value::Env::new();
             env.set(
