@@ -104,8 +104,11 @@ qi --help
 
 ## ドキュメント
 
-- **[docs/spec/](docs/spec/)** - Qi言語の完全な仕様書
-- **[docs/style-guide.md](docs/style-guide.md)** - コーディングスタイルガイド
+- **[チュートリアル](docs/tutorial/)** ⭐ 初心者向け - ゼロから学ぶQi言語（全6章、約2時間）
+- **[クイックリファレンス](docs/spec/QUICK-REFERENCE.md)** - 1ページで全機能を確認
+- **[言語仕様書](docs/spec/)** - Qiの完全な仕様とリファレンス
+- **[関数索引](docs/spec/FUNCTION-INDEX.md)** - 200+の関数リファレンス
+- **[スタイルガイド](docs/style-guide.md)** - コーディング規約
 
 ## ライセンス
 
