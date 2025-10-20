@@ -19,47 +19,68 @@
 ## Hello World
 
 ```lisp
-(def greet (fn [name]
-  f"Hello, {name}!"))
+(defn greet [name]
+  f"Hello, {name}!")
 
-(greet "World")
-;; "Hello, World!"
+(println (greet "World"))
+;; => Hello, World!
 ```
 
 ## パイプライン例
 
 ### 基本パイプライン
 ```lisp
-(data
- |> parse-json
- |> (filter active?)
- |> (map :email)
- |> (join ", ")
- |> log)
+;; 数値のフィルタリングと変換
+([1 2 3 4 5 6 7 8 9 10]
+ |> (filter (fn [x] (> x 5)))
+ |> (map (fn [x] (* x 2)))
+ |> (reduce + 0))
+;; => 90
+
+;; 文字列処理
+("hello world"
+ |> str/upper
+ |> str/reverse)
+;; => "DLROW OLLEH"
 ```
 
 ### Railway Pipeline - エラーハンドリング
 ```lisp
-;; Web APIからデータ取得 → 変換 → 保存
-("https://api.example.com/users/123"
- |> http/get              ;; {:ok {...}} または {:error ...}
- |>? (fn [resp] {:ok (get resp "body")})
- |>? json/parse
- |>? validate-user
- |>? save-to-db)
-;; エラーが起きたら自動的にショートサーキット！
+;; 数値の検証と計算
+(defn validate-positive [x]
+  (if (> x 0)
+    {:ok x}
+    {:error "Must be positive"}))
+
+(defn double [x]
+  {:ok (* x 2)})
+
+(defn format-result [x]
+  {:ok f"Result: {x}"})
+
+;; 成功ケース
+({:ok 10}
+ |>? validate-positive
+ |>? double
+ |>? format-result)
+;; => {:ok "Result: 20"}
+
+;; エラーケース（最初の検証で失敗）
+({:ok -5}
+ |>? validate-positive
+ |>? double
+ |>? format-result)
+;; => {:error "Must be positive"}
 ```
 
-### 非同期パイプライン - goroutine風の並行実行 ⭐ NEW
+### 並列パイプライン
 ```lisp
-;; 即座にチャネルを返し、バックグラウンドで実行
-(def result (data ~> transform ~> process))
-(recv! result)  ;; 結果を受信
-
-;; 複数の非同期処理を並行実行
-(def r1 (10 ~> inc ~> double))
-(def r2 (20 ~> double ~> inc))
-(println (recv! r1) (recv! r2))  ;; 両方並行実行
+;; ||> で複数の処理を並列実行
+([1 2 3 4 5]
+ ||> (fn [x] (* x 2))
+ ||> (fn [x] (+ x 10))
+ ||> (fn [x] (* x x)))
+;; => [144, 196, 256, 324, 400]
 ```
 
 ## 使い方
