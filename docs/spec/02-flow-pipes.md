@@ -87,61 +87,81 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 
 **エラーハンドリングを流れの中に組み込む** - Railway Oriented Programming
 
-```qi
-;; Result型: {:ok value} または {:error message}
-;; |>? は {:ok value} なら次の関数に値を渡し、{:error e} ならショートサーキット
+### 新仕様：自動的な`:ok`ラップ
 
-;; 基本的な使い方
+**普通の値を返すだけで自動的に`{:ok value}`扱い！**
+
+```qi
+;; シンプル！普通の値から開始できる
+(10
+ |>? (fn [x] (* x 2))     ;; 20 → 自動で{:ok 20}
+ |>? (fn [x] (+ x 5)))    ;; 25 → 自動で{:ok 25}
+;; => {:ok 25}
+
+;; エラーを返したい時だけ明示的に{:error}
+(10
+ |>? (fn [x] (if (> x 0) (* x 2) {:error "negative"}))
+ |>? (fn [x] (+ x 5)))
+;; => {:ok 25}
+
+(-5
+ |>? (fn [x] (if (> x 0) (* x 2) {:error "negative"}))
+ |>? (fn [x] (+ x 5)))    ;; 実行されない（ショートサーキット）
+;; => {:error "negative"}
+```
+
+### 動作ルール
+
+**入力値の処理**:
+1. `{:error ...}` → ショートサーキット（次の関数を実行しない）
+2. `{:ok value}` → `value`を取り出して次の関数に渡す
+3. その他 → そのまま次の関数に渡す
+
+**出力値の処理**:
+1. `{:error ...}` → そのまま返す（エラー伝播）
+2. `{:ok value}` → そのまま返す（成功伝播）
+3. マップで`:ok`も`:error`もない → `{:ok 戻り値}`でラップ
+4. マップ以外 → `{:ok 戻り値}`でラップ
+
+### 実用例
+
+```qi
+;; HTTPリクエスト + データ変換（シンプル！）
+("https://api.example.com/users/123"
+ |> http/get                 ;; => {:ok {:status 200 :body "..."}}
+ |>? (fn [resp] (get resp :body))  ;; 値を返すだけ！
+ |>? json/parse              ;; => {:ok {...}}
+ |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
+;; => {:ok {...}}
+
+;; 条件付きエラー
+(defn validate-age [age]
+  (if (>= age 18)
+    age                       ;; 普通の値 → {:ok age}扱い
+    {:error "Must be 18+"}))  ;; エラーだけ明示的に
+
+(20 |>? validate-age |>? (fn [x] (* x 2)))  ;; => {:ok 40}
+(15 |>? validate-age |>? (fn [x] (* x 2)))  ;; => {:error "Must be 18+"}
+```
+
+### 後方互換性
+
+明示的な`{:ok/:error}`形式も引き続き使えます：
+
+```qi
+;; 旧スタイル（明示的）も動作する
 ({:ok 10}
  |>? (fn [x] {:ok (* x 2)})
  |>? (fn [x] {:ok (+ x 5)}))
 ;; => {:ok 25}
-
-;; エラー時はショートサーキット
-({:ok 10}
- |>? (fn [x] {:error "Something went wrong"})
- |>? (fn [x] {:ok (* x 2)}))  ;; この関数は実行されない
-;; => {:error "Something went wrong"}
-
-;; JSONパース + データ変換
-("{\"name\":\"Alice\",\"age\":30}"
- |> json/parse                    ;; => {:ok {...}}
- |>? (fn [data] {:ok (get data "name")})
- |>? (fn [name] {:ok (str/upper name)}))
-;; => {:ok "ALICE"}
-
-;; HTTPリクエスト + エラーハンドリング
-("https://api.example.com/users/123"
- |> http/get                      ;; => {:ok {:status 200 :body "..."}}
- |>? (fn [resp] (get resp "body"))
- |>? json/parse
- |>? (fn [data] {:ok (get data "user")}))
-;; エラー時は自動的に伝播
-
-;; 複雑な処理チェーン
-(user-id
- |> (str "https://api.example.com/users/" _)
- |> http/get
- |>? (fn [resp]
-       (if (= (get resp "status") 200)
-         {:ok (get resp "body")}
-         {:error "Failed to fetch"}))
- |>? json/parse
- |>? validate-user
- |>? save-to-db)
 ```
 
 **使い分け**:
 - `|>`: 通常のデータ変換（エラーなし）
 - `|>?`: エラーが起こりうる処理（API、ファイルIO、パース）
 
-**実装**:
-- lexer: `|>?`を`Token::PipeRailway`として認識
-- parser: `x |>? f` → `(_railway-pipe f x)`に展開
-- `_railway-pipe`: Result型マップを検査し、`:ok`なら関数適用、`:error`ならそのまま返す
-
 **設計哲学**:
-エラーハンドリングを流れの一部として表現。try-catchのネストを避け、データフローが明確になる。JSONやHTTPなどのWeb開発機能と完璧に統合。
+エラーハンドリングを流れの一部として表現。try-catchのネストを避け、データフローが明確になる。JSONやHTTPなどのWeb開発機能と完璧に統合。普通の値を返すだけで自動的に`:ok`扱いになるため、より自然な書き方が可能。
 
 ---
 

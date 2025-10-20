@@ -14,14 +14,16 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 
 **用途**: API、ファイルIO、パース等の失敗が予想される処理
 
-### 基本的な使い方
+### 新仕様：自動的な`:ok`ラップ
+
+**普通の値を返すだけで自動的に`{:ok value}`扱い！**
 
 ```qi
-;; Result型を返す関数
+;; シンプル！普通の値を返すだけ
 (defn divide [x y]
   (if (= y 0)
-    {:error "division by zero"}
-    {:ok (/ x y)}))
+    {:error "division by zero"}  ;; エラーだけ明示的に
+    (/ x y)))                     ;; 普通の値 → 自動で{:ok ...}
 
 ;; matchで処理
 (match (divide 10 2)
@@ -31,7 +33,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ;; パイプラインでのエラー処理（詳細は02-flow-pipes.mdを参照）
 (user-input
  |> validate
- |>? parse-number
+ |>? parse-number      ;; 普通の値を返すだけでOK
  |>? (fn [n] (divide 100 n))
  |>? format-result)
 ;; エラーは自動的に伝播
@@ -42,25 +44,37 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 `|>?` 演算子を使うことで、エラーハンドリングをパイプラインに統合できます。
 
 ```qi
-;; HTTPリクエスト + エラーハンドリング
+;; HTTPリクエスト + エラーハンドリング（シンプル！）
 ("https://api.example.com/users/123"
  |> http/get                      ;; => {:ok {:status 200 :body "..."}}
- |>? (fn [resp] (get resp "body"))
- |>? json/parse
- |>? (fn [data] {:ok (get data "user")}))
-;; エラー時は自動的に伝播
+ |>? (fn [resp] (get resp :body))  ;; 値を返すだけ！
+ |>? json/parse                   ;; => {:ok {...}}
+ |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
+;; エラー時は自動的に伝播 => {:ok {...}}
 
 ;; JSONパース + データ変換
 ("{\"name\":\"Alice\",\"age\":30}"
  |> json/parse                    ;; => {:ok {...}}
- |>? (fn [data] {:ok (get data "name")})
- |>? (fn [name] {:ok (str/upper name)}))
+ |>? (fn [data] (get data "name"))  ;; 値を返すだけ！
+ |>? str/upper)                   ;; 関数を直接渡すだけ！
 ;; => {:ok "ALICE"}
 ```
 
+### 動作ルール
+
+**入力値の処理**:
+1. `{:error ...}` → ショートサーキット
+2. `{:ok value}` → `value`を取り出して関数に渡す
+3. その他 → そのまま関数に渡す
+
+**出力値の処理**:
+1. `{:error ...}` → そのまま返す
+2. `{:ok value}` → そのまま返す
+3. その他 → `{:ok 戻り値}`でラップ
+
 ### 設計哲学
 
-エラーをデータとして扱い、パイプラインの中で流す。try-catchのネストを避け、データフローが明確になる。
+エラーをデータとして扱い、パイプラインの中で流す。try-catchのネストを避け、データフローが明確になる。普通の値を返すだけで自動的に`:ok`扱いになるため、より自然な書き方が可能。
 
 ---
 

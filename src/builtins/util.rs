@@ -38,7 +38,16 @@ pub fn to_map_key(key: &str) -> String {
 
 /// _railway-pipe - Railway Oriented Programming用の内部関数
 ///
-/// {:ok value}なら関数に渡し、{:error e}ならそのまま返す
+/// 入力値の処理:
+/// - {:error ...} → ショートサーキット（関数を実行しない）
+/// - {:ok value} → valueを取り出して関数に渡す
+/// - その他 → そのまま関数に渡す
+///
+/// 出力値の処理:
+/// - {:error ...} → そのまま返す
+/// - {:ok value} → そのまま返す
+/// - マップで:okも:errorもない → {:ok 戻り値}でラップ
+/// - マップ以外 → {:ok 戻り値}でラップ
 pub fn native_railway_pipe(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
@@ -48,23 +57,51 @@ pub fn native_railway_pipe(
     }
 
     let func = &args[0];
-    let result = &args[1];
+    let input = &args[1];
 
-    // resultが{:ok value}または{:error ...}の形式かチェック
-    match result {
+    // 入力値の処理
+    let value_to_pass = match input {
         Value::Map(m) => {
-            // {:ok value}の場合は値を取り出して関数に渡す
-            if let Some(ok_val) = m.get(":ok") {
-                evaluator.apply_function(func, std::slice::from_ref(ok_val))
+            // {:error ...}ならショートサーキット
+            if m.contains_key(":error") {
+                return Ok(input.clone());
             }
-            // {:error e}の場合はそのまま返す(ショートサーキット)
-            else if m.contains_key(":error") {
-                Ok(result.clone())
-            } else {
-                Err(fmt_msg(MsgKey::RailwayRequiresOkError, &[]))
+            // {:ok value}なら値を取り出す
+            else if let Some(ok_val) = m.get(":ok") {
+                ok_val
+            }
+            // その他のマップはそのまま渡す
+            else {
+                input
             }
         }
-        _ => Err(fmt_msg(MsgKey::RailwayRequiresOkError, &[])),
+        // マップ以外はそのまま渡す
+        _ => input,
+    };
+
+    // 関数を実行
+    let result = evaluator.apply_function(func, std::slice::from_ref(value_to_pass))?;
+
+    // 出力値の処理
+    match &result {
+        Value::Map(m) => {
+            // {:ok ...}または{:error ...}ならそのまま返す
+            if m.contains_key(":ok") || m.contains_key(":error") {
+                Ok(result)
+            }
+            // その他のマップは{:ok ...}でラップ
+            else {
+                let mut wrapped = im::HashMap::new();
+                wrapped.insert(":ok".to_string(), result);
+                Ok(Value::Map(wrapped))
+            }
+        }
+        // マップ以外は{:ok ...}でラップ
+        _ => {
+            let mut wrapped = im::HashMap::new();
+            wrapped.insert(":ok".to_string(), result);
+            Ok(Value::Map(wrapped))
+        }
     }
 }
 
