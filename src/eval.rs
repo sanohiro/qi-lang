@@ -3329,15 +3329,9 @@ mod tests {
 
     #[test]
     fn test_try_success() {
-        // 成功時は {:ok value}
+        // 成功時は生の値を返す（{:ok value}ではない）
         let result = eval_str("(try (+ 1 2))").unwrap();
-        match result {
-            Value::Map(m) => {
-                assert_eq!(m.get(":ok"), Some(&Value::Integer(3)));
-                assert_eq!(m.get(":error"), None);
-            }
-            _ => panic!("Expected map"),
-        }
+        assert_eq!(result, Value::Integer(3));
     }
 
     #[test]
@@ -3356,21 +3350,23 @@ mod tests {
     #[test]
     fn test_try_with_match() {
         // tryとmatchの組み合わせ
+        // 成功時は生の値が返される
         let result = eval_str(
             r#"
             (match (try (+ 1 2))
-              {:ok result} -> result
-              {:error e} -> 0)
+              {:error e} -> 0
+              result -> result)
             "#,
         )
         .unwrap();
         assert_eq!(result, Value::Integer(3));
 
+        // エラー時は {:error ...} が返される
         let result = eval_str(
             r#"
             (match (try (/ 1 0))
-              {:ok result} -> result
-              {:error e} -> -1)
+              {:error e} -> -1
+              result -> result)
             "#,
         )
         .unwrap();

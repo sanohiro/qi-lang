@@ -1,16 +1,17 @@
 ; try式のデモ
+; 新仕様: tryは成功時に生の値を返す（{:ok}ラップなし）
 
-; 成功するケース
+; 成功するケース - tryは生の値を返す
 (print "Success case:")
 (match (try (+ 10 20))
-  {:ok result} -> (print result)
-  {:error e} -> (print e))
+  {:error e} -> (print e)
+  result -> (print result))
 
-; エラーになるケース
+; エラーになるケース - エラーは{:error}形式
 (print "\nError case:")
 (match (try (/ 1 0))
-  {:ok result} -> (print result)
-  {:error e} -> (print (str "Error: " e)))
+  {:error e} -> (print (str "Error: " e))
+  result -> (print result))
 
 ; パイプラインと組み合わせ
 (print "\nWith pipeline:")
@@ -18,15 +19,15 @@
 (def increment (fn [x] (+ x 1)))
 
 (match (try (10 |> double |> increment))
-  {:ok result} -> (print (str "Result: " result))
-  {:error e} -> (print (str "Error: " e)))
+  {:error e} -> (print (str "Error: " e))
+  result -> (print (str "Result: " result)))
 
 ; デフォルト値を返す
 (print "\nDefault value:")
 (def safe-divide (fn [a b]
   (match (try (/ a b))
-    {:ok result} -> result
-    {:error e} -> 0)))
+    {:error e} -> 0
+    result -> result)))
 
 (print (safe-divide 10 2))  ; 5
 (print (safe-divide 10 0))  ; 0

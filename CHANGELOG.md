@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - TBD
+## [0.1.0] - 2025-01-20
 
 ### Added
 
@@ -44,6 +44,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test runner (`qi test`)
 - Code formatter (`qi fmt`)
 - Multi-language error messages (English/Japanese via `QI_LANG` env var)
+
+#### Documentation
+- Quick reference guide (`docs/spec/QUICK-REFERENCE.md`) - one-page cheat sheet
+- Complete function index (`docs/spec/FUNCTION-INDEX.md`) - 200+ functions organized by category
+- Usage guidelines for lists vs vectors and parallel pipelines
+- Implementation file references in all major chapters
+- Documented multilingual support (`QI_LANG` environment variable)
+
+### Changed
+
+#### Railway Pipeline (`|>?`) - Breaking Change
+- **New behavior**: `{:error}` is failure, everything else is success (no automatic `:ok` wrapping)
+- `try` now returns raw values on success (not `{:ok value}`)
+- Simplifies error handling patterns and HTTP/JSON integration
+- Added `error?` predicate to check for error values
+
+#### Error Messages
+- Added source location information (line number, column number, source code excerpt)
+
+### Performance
+
+- Optimized parser memory usage (reduced String cloning)
+- Optimized parallel collection functions for small datasets
+- Optimized pattern matching with SmallVec
+- Reduced Arc::clone overhead
+- Reduced code duplication (~350 lines)
 
 [Unreleased]: https://github.com/sanohiro/qi-lang/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/sanohiro/qi-lang/releases/tag/v0.1.0
