@@ -1,0 +1,27 @@
+;; example.qi - サンプルコード
+
+(println "=== {{ project_name }}のサンプル ===")
+
+;; 関数定義
+(defn greet [name]
+  (str "こんにちは、" name "さん！"))
+
+(defn add [a b]
+  (+ a b))
+
+;; 挨拶
+(println (greet "Qi"))
+
+;; 計算
+(println f"2 + 3 = {(add 2 3)}")
+
+;; パイプライン
+(println "パイプライン例:")
+(println ([1 2 3 4 5]
+          |> (map (fn [x] (* x x)))
+          |> (filter (fn [x] (> x 10)))))
+
+;; 並列処理
+(println "\n並列処理例:")
+(println ([1 2 3 4 5 6 7 8 9 10]
+          ||> (fn [x] (* x x))))

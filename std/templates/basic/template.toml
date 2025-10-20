@@ -1,0 +1,11 @@
+# Basic Template
+# 基本的なQiプロジェクトテンプレート
+
+[template]
+name = "basic"
+description = "基本的なプロジェクト構造"
+author = "Qi Team"
+version = "0.1.0"
+
+[features]
+required = []

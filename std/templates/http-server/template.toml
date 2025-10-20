@@ -1,0 +1,11 @@
+# HTTP Server Template
+# JSON APIサーバーテンプレート
+
+[template]
+name = "http-server"
+description = "JSON APIサーバー with ルーティング"
+author = "Qi Team"
+version = "0.1.0"
+
+[features]
+required = ["http-server", "format-json"]

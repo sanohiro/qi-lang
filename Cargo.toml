@@ -120,6 +120,8 @@ lazy_static = "1.5"  # 既存コード互換性のため残す（徐々にonce_c
 strsim = "0.11"  # 編集距離計算（エラーメッセージ生成用）
 im = "15.1"  # Persistent data structures（構造共有でclone()を高速化）
 smallvec = "1.13"  # スタック最適化ベクタ（少数要素時にヒープ確保回避）
+serde = { version = "1.0", features = ["derive"] }  # プロジェクトメタデータのシリアライズ用
+toml = "0.8"  # qi.tomlの読み書き用
 
 # Optional（feature-gated）
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }

@@ -1,0 +1,7 @@
+;; lib.qi - ライブラリコード
+
+(defn greet [name]
+  (str "こんにちは、" name "さん！"))
+
+(defn add [a b]
+  (+ a b))

@@ -1,6 +1,7 @@
 use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
 use qi_lang::parser::Parser;
+use qi_lang::project;
 use qi_lang::value::Value;
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
@@ -108,6 +109,66 @@ fn main() {
         "-v" | "--version" => {
             println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
         }
+        "new" => {
+            // プロジェクト作成
+            if args.len() < 3 {
+                eprintln!("エラー: プロジェクト名を指定してください");
+                eprintln!("使い方: qi new <project-name> [--template <template>]");
+                std::process::exit(1);
+            }
+            let project_name = args[2].clone();
+
+            // テンプレートオプションのパース
+            let mut template = None;
+            let mut i = 3;
+            while i < args.len() {
+                if (args[i] == "--template" || args[i] == "-t") && i + 1 < args.len() {
+                    template = Some(args[i + 1].clone());
+                    i += 2;
+                } else {
+                    eprintln!("エラー: 不明なオプション: {}", args[i]);
+                    std::process::exit(1);
+                }
+            }
+
+            if let Err(e) = project::new_project(project_name, template) {
+                eprintln!("エラー: {}", e);
+                std::process::exit(1);
+            }
+        }
+        "template" => {
+            // テンプレート管理
+            if args.len() < 3 {
+                eprintln!("エラー: サブコマンドを指定してください");
+                eprintln!("使い方: qi template <list|info>");
+                std::process::exit(1);
+            }
+
+            match args[2].as_str() {
+                "list" => {
+                    if let Err(e) = project::list_templates() {
+                        eprintln!("エラー: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+                "info" => {
+                    if args.len() < 4 {
+                        eprintln!("エラー: テンプレート名を指定してください");
+                        eprintln!("使い方: qi template info <name>");
+                        std::process::exit(1);
+                    }
+                    if let Err(e) = project::show_template_info(&args[3]) {
+                        eprintln!("エラー: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+                _ => {
+                    eprintln!("エラー: 不明なサブコマンド: {}", args[2]);
+                    eprintln!("使い方: qi template <list|info>");
+                    std::process::exit(1);
+                }
+            }
+        }
         "test" => {
             // テスト実行
             run_tests(&args[2..]);
@@ -151,6 +212,8 @@ fn print_help() {
     println!("    qi [OPTIONS] [FILE]");
     println!();
     println!("{}:", ui_msg(UiMsg::HelpOptions));
+    println!("    new <name> [-t <template>]  新しいQiプロジェクトを作成");
+    println!("    template <list|info>        テンプレート管理");
     println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
     println!("    -                   {}", ui_msg(UiMsg::OptStdin));
     println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
@@ -162,6 +225,9 @@ fn print_help() {
         "    qi                       {}",
         ui_msg(UiMsg::ExampleStartRepl)
     );
+    println!("    qi new my-project        新しいプロジェクトを作成");
+    println!("    qi new myapi -t http-server  HTTPサーバープロジェクトを作成");
+    println!("    qi template list         利用可能なテンプレート一覧");
     println!(
         "    qi script.qi             {}",
         ui_msg(UiMsg::ExampleRunScript)

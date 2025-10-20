@@ -1,0 +1,34 @@
+;; test.qi - テストコード
+
+(println "=== テスト実行 ===")
+
+;; テスト対象の関数
+(defn greet [name]
+  (str "こんにちは、" name "さん！"))
+
+(defn add [a b]
+  (+ a b))
+
+;; greet関数のテスト
+(def result (greet "Test"))
+(if (= result "こんにちは、Testさん！")
+  (println "✓ greet関数のテスト: 成功")
+  (println "✗ greet関数のテスト: 失敗"))
+
+;; add関数のテスト
+(def add-result (add 2 3))
+(if (= add-result 5)
+  (println "✓ add関数のテスト: 成功")
+  (println "✗ add関数のテスト: 失敗"))
+
+;; パイプライン処理のテスト
+(def pipeline-result
+  ([1 2 3 4 5]
+   |> (map (fn [x] (* x 2)))
+   |> (reduce + 0)))
+
+(if (= pipeline-result 30)
+  (println "✓ パイプライン処理のテスト: 成功")
+  (println "✗ パイプライン処理のテスト: 失敗"))
+
+(println "\nテスト完了")

@@ -1,0 +1,39 @@
+;; {{ project_name }} - HTTP Server
+;;
+;; JSON APIサーバー
+;; 実行: qi main.qi
+
+(println "=== {{ project_name }} HTTP Server ===")
+
+;; ルートハンドラー
+(defn handle-root [req]
+  (server/json {:message "Welcome to {{ project_name }}!"
+                :version "{{ version }}"
+                :endpoints ["/api/hello" "/api/users"]}))
+
+;; Hello APIハンドラー
+(defn handle-hello [req]
+  (let [name (get (get req :params) "name" "World")]
+    (server/json {:message (str "Hello, " name "!")})))
+
+;; Users APIハンドラー
+(defn handle-users [req]
+  (server/json {:users [{:id 1 :name "Alice"}
+                        {:id 2 :name "Bob"}
+                        {:id 3 :name "Charlie"}]}))
+
+;; メインハンドラー（ルーティング）
+(defn handler [req]
+  (let [path (get req :path)]
+    (match path
+      "/" -> (handle-root req)
+      "/api/hello" -> (handle-hello req)
+      "/api/users" -> (handle-users req)
+      _ -> (server/json {:error "Not Found"} 404))))
+
+;; サーバー起動
+(def port 3000)
+(println f"Starting server on http://localhost:{port}")
+(println "Press Ctrl+C to stop")
+
+(server/serve port handler)

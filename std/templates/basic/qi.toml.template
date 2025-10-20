@@ -1,0 +1,12 @@
+[project]
+name = "{{ project_name }}"
+version = "{{ version }}"
+{{ #if author }}authors = ["{{ author }}"]{{ /if }}
+{{ #if description }}description = "{{ description }}"{{ /if }}
+{{ #if license }}license = "{{ license }}"{{ /if }}
+qi-version = "0.1.0"
+
+[dependencies]
+
+[features]
+default = []

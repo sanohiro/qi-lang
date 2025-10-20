@@ -1,0 +1,15 @@
+;; main.qi - エントリーポイント
+
+(println "Hello, Qi!")
+
+;; 挨拶関数
+(defn greet [name]
+  (str "こんにちは、" name "さん！"))
+
+;; 関数を使用
+(println (greet "{{ project_name }}"))
+
+;; パイプライン例
+(println ([1 2 3 4 5]
+          |> (map (fn [x] (* x x)))
+          |> (filter (fn [x] (> x 10)))))
