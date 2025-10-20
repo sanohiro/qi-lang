@@ -95,7 +95,7 @@ qi examples/hello.qi
 
 ```bash
 qi -e '(println "Hello!")'
-qi -e '(range 1 10 |> (map (fn [x] (* x x))) |> sum)'
+qi -e '((range 1 10) |> (map (fn [x] (* x x))) |> sum)'
 ```
 
 ### 4. 標準入力から実行
