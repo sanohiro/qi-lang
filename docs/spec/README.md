@@ -8,6 +8,8 @@
 
 ## 📚 目次
 
+**⚡ クイックスタート**: [クイックリファレンス](QUICK-REFERENCE.md) - 1ページでQiの基本を学ぶ
+
 ### コア機能（★ウリ）
 
 - **[02-flow-pipes.md](02-flow-pipes.md)** - パイプライン演算子とデータフロー ⭐
@@ -206,7 +208,7 @@
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
 
-**完全な関数一覧は `./scripts/list_qi_functions.sh` で自動生成できます**
+**📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 
 ---
 
@@ -224,6 +226,42 @@
 - **Phase表記なし** - 全て実装済みのため、Phase表記は削除
 - **実用例重視** - 概念だけでなく、実際に使えるコード例を提供
 - **Flow-Oriented** - Qiの哲学に沿った説明
+
+---
+
+## 🌍 多言語対応
+
+Qiは**エラーメッセージの多言語対応**をサポートしています。
+
+### 使い方
+
+環境変数`QI_LANG`で言語を指定できます：
+
+```bash
+# 日本語でエラーメッセージを表示
+QI_LANG=ja qi script.qi
+
+# 英語でエラーメッセージを表示（デフォルト）
+QI_LANG=en qi script.qi
+```
+
+### 例
+
+```bash
+# 日本語エラー
+$ QI_LANG=ja qi -e '(+ 1 "abc")'
+エラー: 数値演算には数値のみを使用できます
+
+# 英語エラー
+$ QI_LANG=en qi -e '(+ 1 "abc")'
+Error: Numeric operations require numbers only
+```
+
+現在サポートされている言語：
+- **日本語** (`ja`) - デフォルト（日本人開発者向け）
+- **英語** (`en`) - 国際対応
+
+**実装**: `src/i18n.rs` でメッセージを一元管理しています。
 
 ---
 
