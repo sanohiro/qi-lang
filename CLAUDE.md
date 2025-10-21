@@ -182,6 +182,76 @@ db-sqlite = ["dep:rusqlite"]
 - 共通化できるものは共通化すること
 - プログラミング言語実装のセオリーはなるべく守り、実装の学習もしやすくすること
 
+### 新機能実装前の確認（重要）
+
+**新しい機能を実装する前に、必ず `docs/spec/` を確認すること。**
+
+#### なぜ重要か
+
+既存の設計パターンやインターフェースを無視して実装すると、以下の問題が発生します：
+
+- ✅ **統一インターフェースの破壊**: 既に統一インターフェースが存在するのに、専用関数を作ってしまう
+- ✅ **設計の重複**: 同じパターンを異なる方法で実装してしまう
+- ✅ **ドキュメントとの不整合**: 仕様と実装が乖離する
+
+#### 実装前のチェックリスト
+
+新しい機能を実装する前に、以下を確認すること：
+
+1. **既存の設計パターンを確認**
+   ```bash
+   # 関連する仕様ドキュメントを検索
+   rg "データベース\|database\|kvs\|redis" docs/spec/
+
+   # 類似機能の実装を検索
+   rg "統一インターフェース\|unified interface" docs/spec/
+   ```
+
+2. **docs/spec/ の該当セクションを読む**
+   - データベース関連 → `docs/spec/17-stdlib-database.md`
+   - HTTP関連 → `docs/spec/11-stdlib-http.md`
+   - 文字列操作 → `docs/spec/10-stdlib-string.md`
+   - エラー処理 → `docs/spec/08-error-handling.md`
+
+3. **既存の統一インターフェースがあるか確認**
+   - RDBMS → `db/*` 統一インターフェース（PostgreSQL/MySQL/SQLite）
+   - KVS → `kvs/*` 統一インターフェース（Redis/Memcached等）
+   - HTTP → `http/*` 統一インターフェース
+
+4. **専用関数が必要か検討**
+   - 統一インターフェースで表現できる場合 → 専用関数は作らない（内部ドライバーのみ）
+   - 統一インターフェースで表現できない場合のみ → 専用関数を追加（例: Redis Pub/Sub、PostgreSQL COPY）
+
+#### 実装例：データベース機能の追加
+
+❌ **悪い例**（既存設計を無視）:
+```rust
+// PostgreSQL専用関数を公開してしまう
+pub fn native_pg_query(args: &[Value]) -> Result<Value, String> { ... }
+
+// mod.rsで公開登録
+register_native!(env.write(), "db/pg-query" => postgres::native_pg_query);
+```
+
+✅ **良い例**（既存の統一インターフェースに統合）:
+```rust
+// PostgreSQLドライバーを実装（内部のみ）
+impl DbDriver for PostgresDriver { ... }
+impl DbConnection for PostgresConnection { ... }
+
+// db/connectで自動判別（公開インターフェース）
+let driver = if url.starts_with("postgresql://") {
+    Box::new(PostgresDriver::new())
+} else { ... }
+```
+
+#### 設計文書の参照順序
+
+1. **`docs/spec/README.md`** - 全体構造を把握
+2. **該当カテゴリのmdファイル** - 詳細な設計を確認
+3. **既存の実装** - `src/builtins/` で類似機能を検索
+4. **設計に従って実装** - 統一インターフェースを尊重
+
 ### 並行処理
 - 並列、並行をネイティブを第一級としているため、スレッドセーフは常に意識すること
 
