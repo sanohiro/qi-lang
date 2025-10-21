@@ -36,9 +36,10 @@
 
 (println "=== PostgreSQL サンプル ===\n")
 (println "1. テーブル作成:")
-(match (create-users-table)
-  {:ok _} -> (println "  ✓ usersテーブルを作成しました")
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [result (create-users-table)]
+  (if (error? result)
+    (println "  ✗ エラー:" (get result :error))
+    (println "  ✓ usersテーブルを作成しました (" result "行)")))
 
 ;; ========================================
 ;; 2. データ挿入
@@ -60,10 +61,11 @@
 (users-to-insert
  |> (map (fn [user]
            (let [name (first user)
-                 email (nth user 1)]
-             (match (insert-user name email)
-               {:ok n} -> (println "  ✓" name "を挿入しました（" n "行）")
-               {:error e} -> (println "  ✗" name "の挿入エラー:" e)))))
+                 email (nth user 1)
+                 result (insert-user name email)]
+             (if (error? result)
+               (println "  ✗" name "の挿入エラー:" (get result :error))
+               (println "  ✓" name "を挿入しました（" result "行）")))))
  |> (fn [_] nil))
 
 ;; ========================================
@@ -71,54 +73,59 @@
 ;; ========================================
 
 (println "\n3. 全ユーザーを取得:")
-(match (db/pg-query db-conn "SELECT * FROM users ORDER BY id" [])
-  {:ok rows} -> (do
-                  (println "  ユーザー数:" (count rows))
-                  (rows |> (each (fn [user]
-                                   (println "    -" (get user :name)
-                                           "(" (get user :email) ")")))))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn "SELECT * FROM users ORDER BY id" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (do
+      (println "  ユーザー数:" (count rows))
+      (rows |> (each (fn [user]
+                       (println "    -" (get user :name)
+                               "(" (get user :email) ")")))))))
 
 ;; ========================================
 ;; 4. パラメータ化クエリ
 ;; ========================================
 
 (println "\n4. パラメータ化クエリ（IDで検索）:")
-(match (db/pg-query db-conn "SELECT * FROM users WHERE id = $1" [1])
-  {:ok rows} -> (if (empty? rows)
-                  (println "  ユーザーが見つかりません")
-                  (let [user (first rows)]
-                    (println "  ✓ ユーザー:" (get user :name))))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn "SELECT * FROM users WHERE id = $1" [1])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (if (empty? rows)
+      (println "  ユーザーが見つかりません")
+      (let [user (first rows)]
+        (println "  ✓ ユーザー:" (get user :name))))))
 
 ;; ========================================
 ;; 5. データ更新
 ;; ========================================
 
 (println "\n5. ユーザー情報を更新:")
-(match (db/pg-exec db-conn
-         "UPDATE users SET email = $1 WHERE name = $2"
-         ["alice.new@example.com" "Alice"])
-  {:ok n} -> (println "  ✓" n "行を更新しました")
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [n (db/pg-exec db-conn
+          "UPDATE users SET email = $1 WHERE name = $2"
+          ["alice.new@example.com" "Alice"])]
+  (if (error? n)
+    (println "  ✗ エラー:" (get n :error))
+    (println "  ✓" n "行を更新しました")))
 
 ;; 更新確認
-(match (db/pg-query db-conn "SELECT * FROM users WHERE name = $1" ["Alice"])
-  {:ok rows} -> (if (empty? rows)
-                  (println "  ユーザーが見つかりません")
-                  (let [user (first rows)]
-                    (println "  更新後のメール:" (get user :email))))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn "SELECT * FROM users WHERE name = $1" ["Alice"])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (if (empty? rows)
+      (println "  ユーザーが見つかりません")
+      (let [user (first rows)]
+        (println "  更新後のメール:" (get user :email))))))
 
 ;; ========================================
 ;; 6. 集計クエリ
 ;; ========================================
 
 (println "\n6. ユーザー数を集計:")
-(match (db/pg-query db-conn "SELECT COUNT(*) as count FROM users" [])
-  {:ok rows} -> (let [count-val (get (first rows) :count)]
-                  (println "  総ユーザー数:" count-val))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn "SELECT COUNT(*) as count FROM users" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (let [count-val (get (first rows) :count)]
+      (println "  総ユーザー数:" count-val))))
 
 ;; ========================================
 ;; 7. トランザクション例（手動）
@@ -130,19 +137,21 @@
 (defn transfer-credits [from-user to-user amount]
   (do
     ;; BEGIN
-    (match (db/pg-exec db-conn "BEGIN" [])
-      {:ok _} -> (println "  トランザクション開始")
-      {:error e} -> (println "  ✗ BEGIN エラー:" e))
+    (let [result (db/pg-exec db-conn "BEGIN" [])]
+      (if (error? result)
+        (println "  ✗ BEGIN エラー:" (get result :error))
+        (println "  トランザクション開始")))
 
     ;; 架空の例（creditsテーブルがないため、実際には実行されません）
     (println "  （架空のクレジット移動処理）")
 
     ;; COMMIT
-    (match (db/pg-exec db-conn "COMMIT" [])
-      {:ok _} -> (println "  ✓ トランザクションをコミットしました")
-      {:error e} -> (do
-                      (println "  ✗ COMMIT エラー:" e)
-                      (db/pg-exec db-conn "ROLLBACK" [])))))
+    (let [result (db/pg-exec db-conn "COMMIT" [])]
+      (if (error? result)
+        (do
+          (println "  ✗ COMMIT エラー:" (get result :error))
+          (db/pg-exec db-conn "ROLLBACK" []))
+        (println "  ✓ トランザクションをコミットしました")))))
 
 (transfer-credits "Alice" "Bob" 100)
 
@@ -151,39 +160,43 @@
 ;; ========================================
 
 (println "\n8. LIKE検索（名前に'a'を含むユーザー）:")
-(match (db/pg-query db-conn
-         "SELECT name FROM users WHERE LOWER(name) LIKE $1"
-         ["%a%"])
-  {:ok rows} -> (do
-                  (println "  見つかったユーザー:")
-                  (rows |> (each (fn [user]
-                                   (println "    -" (get user :name))))))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn
+             "SELECT name FROM users WHERE LOWER(name) LIKE $1"
+             ["%a%"])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (do
+      (println "  見つかったユーザー:")
+      (rows |> (each (fn [user]
+                       (println "    -" (get user :name))))))))
 
 ;; ========================================
 ;; 9. データ削除
 ;; ========================================
 
 (println "\n9. ユーザー削除（Bobを削除）:")
-(match (db/pg-exec db-conn "DELETE FROM users WHERE name = $1" ["Bob"])
-  {:ok n} -> (println "  ✓" n "行を削除しました")
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [n (db/pg-exec db-conn "DELETE FROM users WHERE name = $1" ["Bob"])]
+  (if (error? n)
+    (println "  ✗ エラー:" (get n :error))
+    (println "  ✓" n "行を削除しました")))
 
 ;; 削除確認
 (println "\n削除後のユーザー一覧:")
-(match (db/pg-query db-conn "SELECT name FROM users ORDER BY id" [])
-  {:ok rows} -> (rows |> (each (fn [user]
-                                 (println "  -" (get user :name)))))
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [rows (db/pg-query db-conn "SELECT name FROM users ORDER BY id" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (rows |> (each (fn [user]
+                     (println "  -" (get user :name)))))))
 
 ;; ========================================
 ;; 10. クリーンアップ（オプション）
 ;; ========================================
 
 (println "\n10. テーブル削除（クリーンアップ）:")
-(match (db/pg-exec db-conn "DROP TABLE IF EXISTS users" [])
-  {:ok _} -> (println "  ✓ usersテーブルを削除しました")
-  {:error e} -> (println "  ✗ エラー:" e))
+(let [result (db/pg-exec db-conn "DROP TABLE IF EXISTS users" [])]
+  (if (error? result)
+    (println "  ✗ エラー:" (get result :error))
+    (println "  ✓ usersテーブルを削除しました")))
 
 ;; ========================================
 ;; まとめ
@@ -192,5 +205,5 @@
 (println "\n=== まとめ ===")
 (println "✓ PostgreSQLへの接続と基本的なCRUD操作")
 (println "✓ パラメータ化クエリでSQLインジェクション対策")
-(println "✓ Result型パターンでエラー処理")
+(println "✓ エラーハンドリング（{:error}パターン）")
 (println "✓ トランザクションのサポート（手動）")
