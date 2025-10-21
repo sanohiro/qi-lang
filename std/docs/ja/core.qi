@@ -1,5 +1,5 @@
 ;; 標準ライブラリドキュメント - Core関数
-;; コア機能（87関数）
+;; コア機能（88関数）
 
 ;; ========================================
 ;; 数値・算術演算（11関数）
@@ -421,6 +421,14 @@
    :examples ["(def a (atom 0))"
               "(atom? a) ;=> true"
               "(atom? [1 2 3]) ;=> false"]})
+
+(def __doc__stream?
+  {:desc "値がストリームかどうかを判定します。"
+   :params [{:name "value" :type "any" :desc "値"}]
+   :returns {:type "bool" :desc "ストリームの場合true"}
+   :examples ["(stream? (stream/range 0 10)) ;=> true"
+              "(stream? [1 2 3]) ;=> false"
+              "(stream? nil) ;=> false"]})
 
 (def __doc__coll?
   {:desc "値がコレクション（リスト、ベクター、マップ）かを判定します。"

@@ -174,11 +174,11 @@ Qi処理系で頻繁に使われるキーワードは、内部で最適化され
 - `inc`, `dec`, `sum` - 増減・合計
 - `=`, `<`, `>`, `<=`, `>=` - 比較
 
-### core/predicates - 述語関数（23個）
-**型チェック（11個）**:
+### core/predicates - 述語関数（24個）
+**型チェック（12個）**:
 - `nil?`, `list?`, `vector?`, `map?`, `string?`
 - `integer?`, `float?`, `number?`
-- `keyword?`, `function?`, `atom?`
+- `keyword?`, `function?`, `atom?`, `stream?`
 
 **コレクション（3個）**:
 - `coll?`, `sequential?`, `empty?`

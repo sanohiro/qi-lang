@@ -1,10 +1,10 @@
 //! Core述語・型判定関数
 //!
-//! 型チェック（11個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?
+//! 型チェック（12個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, stream?
 //! コレクション（3個）: coll?, sequential?, empty?
 //! 状態（4個）: some?, true?, false?, error?
 //! 数値（5個）: even?, odd?, positive?, negative?, zero?
-//! 合計23個のCore関数
+//! 合計24個のCore関数
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -105,6 +105,14 @@ pub fn native_atom_q(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["atom?"]));
     }
     Ok(Value::Bool(matches!(args[0], Value::Atom(_))))
+}
+
+/// stream? - ストリームかどうか判定
+pub fn native_stream_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["stream?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Stream(_))))
 }
 
 // ========================================
@@ -268,6 +276,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("keyword?", native_keyword_q),
     ("function?", native_function_q),
     ("atom?", native_atom_q),
+    ("stream?", native_stream_q),
     // コレクション
     ("coll?", native_coll_q),
     ("sequential?", native_sequential_q),

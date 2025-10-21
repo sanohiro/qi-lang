@@ -17,41 +17,46 @@ torture testの作成過程で発見した実装上の課題や改善点をま�
 
 ---
 
-## 未実装機能（実装検討）
+## 実装済み機能
 
-### 2. `stream?` 述語関数
-**問題**: ストリーム型を判定する述語関数が存在しない
+### 2. `stream?` 述語関数 → **実装済み** (2025-10-21)
+**実装内容**:
+- `src/builtins/core_predicates.rs`に`stream?`述語を追加
+- 型チェック述語が11個→12個に増加
+- ドキュメント更新:
+  - `std/docs/ja/core.qi` および `std/docs/en/core.qi`
+  - `docs/spec/FUNCTION-INDEX.md`
+  - `docs/spec/05-syntax-basics.md`
 
-**現状の回避策**:
+**使用例**:
 ```qi
-; stream?が使えないため、nil?で代用
-(def stream-read-pass (not (nil? stream-read-result)))
+(stream? (stream/range 0 10)) ;=> true
+(stream? [1 2 3])            ;=> false
+(stream? nil)                ;=> false
 ```
-
-**実装案**:
-- `src/builtins/core_basic.rs`に追加
-- `stream?` - ストリーム型かどうかを判定
-
-**優先度**: 中（ストリーム処理のtorture testで必要）
 
 ---
 
-### 3. `vec` 関数（リスト→ベクター変換）
-**問題**: リストをベクターに変換する関数が存在しない
+## 未実装機能（実装検討）
+
+### 3. `to-vector`/`to-list` 関数（リスト⇄ベクター変換）
+**問題**: リストをベクターに（またはその逆に）明示的に変換する関数が存在しない
 
 **現状の回避策**:
 ```qi
-; vecが使えないため、リストのまま処理
+; to-vectorが使えないため、リストのまま処理
 (def bulk-rows (map (fn [i] [...]) (range 0 100)))
 ; consを使うとListになるが、csv/stringifyはVector/List両方受け付ける
 ```
 
 **実装案**:
 - `src/builtins/core_collections.rs`に追加
-- `vec` - リストをベクターに変換
-- 逆変換の`list`関数も検討
+- `to-vector` - リストをベクターに変換
+- `to-list` - ベクターをリストに変換
 
-**優先度**: 低（多くの関数がList/Vector両方を受け付けるため）
+**優先度**: 低（多くの関数がList/Vector両方を受け付けるため、実用上の必要性は低い）
+
+**備考**: `vector`関数（可変長引数からベクタを作成）は既に実装済み
 
 ---
 

@@ -104,17 +104,30 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
     vars.insert("project_name".to_string(), metadata.name.clone());
     vars.insert("version".to_string(), metadata.version.clone());
     // 空の値も含めてすべての変数を追加（条件分岐の処理のため）
-    vars.insert("author".to_string(),
-        metadata.authors.as_ref().map(|a| a.join(", ")).unwrap_or_default());
-    vars.insert("description".to_string(),
-        metadata.description.as_ref().cloned().unwrap_or_default());
-    vars.insert("license".to_string(),
-        metadata.license.as_ref().cloned().unwrap_or_default());
+    vars.insert(
+        "author".to_string(),
+        metadata
+            .authors
+            .as_ref()
+            .map(|a| a.join(", "))
+            .unwrap_or_default(),
+    );
+    vars.insert(
+        "description".to_string(),
+        metadata.description.as_ref().cloned().unwrap_or_default(),
+    );
+    vars.insert(
+        "license".to_string(),
+        metadata.license.as_ref().cloned().unwrap_or_default(),
+    );
 
     // テンプレートからプロジェクトを生成（qi.tomlを含む）
     copy_template(&template_dir, &project_dir, &vars)?;
 
-    println!("\n新しいQiプロジェクトが作成されました: {}", project_dir.display());
+    println!(
+        "\n新しいQiプロジェクトが作成されました: {}",
+        project_dir.display()
+    );
     println!("\n次のステップ:");
     println!("  cd {}", project_dir.display());
     println!("  qi main.qi");
@@ -419,19 +432,28 @@ fn find_template(name: &str) -> Result<PathBuf, String> {
 }
 
 /// テンプレートをコピー＆変数置換
-fn copy_template(template_dir: &Path, dest_dir: &Path, vars: &HashMap<String, String>) -> Result<(), String> {
+fn copy_template(
+    template_dir: &Path,
+    dest_dir: &Path,
+    vars: &HashMap<String, String>,
+) -> Result<(), String> {
     // テンプレートディレクトリを再帰的にコピー
     copy_dir_recursive(template_dir, dest_dir, vars)
 }
 
 /// ディレクトリを再帰的にコピー
-fn copy_dir_recursive(src: &Path, dest: &Path, vars: &HashMap<String, String>) -> Result<(), String> {
-    for entry in fs::read_dir(src).map_err(|e| format!("ディレクトリの読み込みに失敗: {}", e))? {
+fn copy_dir_recursive(
+    src: &Path,
+    dest: &Path,
+    vars: &HashMap<String, String>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(src).map_err(|e| format!("ディレクトリの読み込みに失敗: {}", e))?
+    {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_type = entry.file_type().map_err(|e| e.to_string())?;
         let src_path = entry.path();
         let file_name = entry.file_name();
-        
+
         // template.tomlはスキップ
         if file_name == "template.toml" {
             continue;
@@ -451,7 +473,8 @@ fn copy_dir_recursive(src: &Path, dest: &Path, vars: &HashMap<String, String>) -
         let dest_path = dest.join(dest_file_name);
 
         if file_type.is_dir() {
-            fs::create_dir_all(&dest_path).map_err(|e| format!("ディレクトリの作成に失敗: {}", e))?;
+            fs::create_dir_all(&dest_path)
+                .map_err(|e| format!("ディレクトリの作成に失敗: {}", e))?;
             copy_dir_recursive(&src_path, &dest_path, vars)?;
         } else if file_type.is_file() {
             // ファイルを読み込んで変数置換
@@ -468,13 +491,13 @@ fn copy_dir_recursive(src: &Path, dest: &Path, vars: &HashMap<String, String>) -
 /// テンプレート変数を置換（シンプル実装）
 fn render_template(content: &str, vars: &HashMap<String, String>) -> String {
     let mut result = content.to_string();
-    
+
     // {{ variable }} を置換
     for (key, value) in vars {
         let placeholder = format!("{{{{ {} }}}}", key);
         result = result.replace(&placeholder, value);
     }
-    
+
     // 条件分岐の処理（簡易版）
     // {{ #if var }}...{{ /if }} のような行を削除または展開
     let lines: Vec<&str> = result.lines().collect();
@@ -508,9 +531,9 @@ fn render_template(content: &str, vars: &HashMap<String, String>) -> String {
             }
         } else if line.contains("{{ #if") {
             // 複数行にまたがる条件分岐の開始
-            let var_exists = vars.iter().any(|(k, v)| {
-                line.contains(&format!("#if {}", k)) && !v.is_empty()
-            });
+            let var_exists = vars
+                .iter()
+                .any(|(k, v)| line.contains(&format!("#if {}", k)) && !v.is_empty());
             if !var_exists {
                 skip_mode = true;
             }
@@ -557,7 +580,7 @@ struct FeatureInfo {
 /// テンプレート一覧を取得
 pub fn list_templates() -> Result<(), String> {
     let templates = find_all_templates()?;
-    
+
     if templates.is_empty() {
         println!("利用可能なテンプレートがありません");
         return Ok(());
@@ -566,12 +589,15 @@ pub fn list_templates() -> Result<(), String> {
     println!("利用可能なテンプレート:");
     for template in templates {
         if let Ok(info) = load_template_info(&template) {
-            println!("  {:16} - {}", info.template.name, info.template.description);
+            println!(
+                "  {:16} - {}",
+                info.template.name, info.template.description
+            );
         } else {
             println!("  {:16} - (情報なし)", template);
         }
     }
-    
+
     Ok(())
 }
 
@@ -579,7 +605,7 @@ pub fn list_templates() -> Result<(), String> {
 pub fn show_template_info(name: &str) -> Result<(), String> {
     let template_dir = find_template(name)?;
     let info = load_template_info(name)?;
-    
+
     println!("Template: {}", info.template.name);
     println!("Description: {}", info.template.description);
     if !info.template.author.is_empty() {
@@ -592,14 +618,14 @@ pub fn show_template_info(name: &str) -> Result<(), String> {
         println!("Required features: {}", info.features.required.join(", "));
     }
     println!("Location: {}", template_dir.display());
-    
+
     Ok(())
 }
 
 /// すべてのテンプレートを検索
 fn find_all_templates() -> Result<Vec<String>, String> {
     let mut templates = Vec::new();
-    
+
     // std/templates/ を探す
     let std_templates = PathBuf::from("std/templates");
     if std_templates.exists() {
@@ -613,7 +639,7 @@ fn find_all_templates() -> Result<Vec<String>, String> {
             }
         }
     }
-    
+
     Ok(templates)
 }
 
@@ -621,10 +647,9 @@ fn find_all_templates() -> Result<Vec<String>, String> {
 fn load_template_info(name: &str) -> Result<TemplateInfo, String> {
     let template_dir = find_template(name)?;
     let info_path = template_dir.join("template.toml");
-    
+
     let content = fs::read_to_string(&info_path)
         .map_err(|e| format!("template.tomlの読み込みに失敗: {}", e))?;
-    
-    toml::from_str(&content)
-        .map_err(|e| format!("template.tomlのパースに失敗: {}", e))
+
+    toml::from_str(&content).map_err(|e| format!("template.tomlのパースに失敗: {}", e))
 }

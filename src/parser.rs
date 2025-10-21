@@ -16,9 +16,28 @@ use std::sync::LazyLock;
 /// @qi-doc:module module, export, use, flow
 static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     HashSet::from([
-        "def", "defn", "defn-", "fn", "let", "if", "do", "when", "while", "until",
-        "while-some", "until-error", "match", "try", "defer", "loop", "recur",
-        "mac", "flow", "module", "export", "use",
+        "def",
+        "defn",
+        "defn-",
+        "fn",
+        "let",
+        "if",
+        "do",
+        "when",
+        "while",
+        "until",
+        "while-some",
+        "until-error",
+        "match",
+        "try",
+        "defer",
+        "loop",
+        "recur",
+        "mac",
+        "flow",
+        "module",
+        "export",
+        "use",
     ])
 });
 
