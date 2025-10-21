@@ -13,9 +13,10 @@ Qiは、リレーショナルデータベースとキーバリューストアへ
   - [kvs/connect - 接続](#kvsconnect---接続)
   - [基本操作](#基本操作)
   - [実用例](#kvs実用例)
-- [PostgreSQL](#postgresql)
-  - [db/pg-query - クエリ実行](#dbpg-query---クエリ実行)
-  - [db/pg-exec - コマンド実行](#dbpg-exec---コマンド実行)
+- [データベース統一インターフェース](#データベース統一インターフェース)
+  - [db/connect - 接続](#dbconnect---接続)
+  - [db/query - クエリ実行](#dbquery---クエリ実行)
+  - [db/exec - コマンド実行](#dbexec---コマンド実行)
 - [実用例](#実用例)
 - [エラー処理](#エラー処理)
 
@@ -32,17 +33,19 @@ Qiは、リレーショナルデータベースとキーバリューストアへ
   - バックエンド自動判別（URL解析）
 
 **データベース**:
-- **PostgreSQL**: 非同期PostgreSQL接続
-  - クエリ実行（SELECT）
-  - コマンド実行（INSERT/UPDATE/DELETE）
+- **統一インターフェース（db/*）**: PostgreSQL/MySQL/SQLite対応
+  - 接続管理（`db/connect`）
+  - クエリ実行（`db/query`）
+  - コマンド実行（`db/exec`）
+  - トランザクション（`db/begin`, `db/commit`, `db/rollback`）
   - パラメータ化クエリ対応
-  - Result型による統一されたエラー処理
+  - バックエンド透過的な切り替え（接続URLのみ変更）
 
 ### feature flag
 
 ```toml
 # Cargo.toml
-features = ["kvs-redis", "db-postgres"]
+features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ```
 
 デフォルトで有効です。
@@ -54,8 +57,10 @@ features = ["kvs-redis", "db-postgres"]
 - **tokio** - 非同期ランタイム
 
 **データベース**:
+- **rusqlite** (v0.32) - Pure Rust SQLiteクライアント
 - **tokio-postgres** (v0.7) - Pure Rust PostgreSQLクライアント
-- **tokio** - 非同期ランタイム（同期APIでラップ）
+- **mysql_async** (v0.34) - Pure Rust MySQLクライアント
+- **tokio** - 非同期ランタイム
 
 ---
 
@@ -385,133 +390,6 @@ features = ["kvs-redis", "db-postgres"]
 ;; 使用例
 (enqueue-task {:type "send-email" :to "user@example.com"})
 (dequeue-task)
-;; => {:type "send-email" :to "user@example.com"}
-```
-
----
-
-## PostgreSQL
-
-### db/pg-query - クエリ実行
-
-**PostgreSQLデータベースに接続してSELECTクエリを実行します。**
-
-```qi
-(db/pg-query connection-string query)
-(db/pg-query connection-string query params)
-```
-
-#### 引数
-
-- `connection-string`: 文字列（PostgreSQL接続文字列）
-  - 形式: `"postgresql://user:password@host:port/database"`
-- `query`: 文字列（SQLクエリ）
-- `params`: ベクタ（オプション、パラメータのリスト）
-
-#### 戻り値
-
-- 成功: `{:ok [行のベクタ]}`
-  - 各行はマップ形式（`{:カラム名 値}`）
-- 失敗: `{:error "エラーメッセージ"}`
-
-#### 使用例
-
-```qi
-;; 基本的なクエリ
-(def conn "postgresql://user:pass@localhost/mydb")
-(def result (db/pg-query conn "SELECT * FROM users" []))
-;; => {:ok [{:id 1 :name "Alice" :email "alice@example.com"}
-;;          {:id 2 :name "Bob" :email "bob@example.com"}]}
-
-;; パラメータ化クエリ
-(db/pg-query conn "SELECT * FROM users WHERE id = $1" [42])
-;; => {:ok [{:id 42 :name "Carol" :email "carol@example.com"}]}
-
-;; 複数パラメータ
-(db/pg-query conn
-  "SELECT * FROM posts WHERE user_id = $1 AND status = $2"
-  [5 "published"])
-
-;; パイプラインでの使用
-(conn
- |> (db/pg-query "SELECT name FROM users WHERE active = $1" [true])
- |>? (fn [rows] (map (fn [row] (get row :name)) rows)))
-;; => {:ok ["Alice" "Bob" "Carol"]}
-```
-
-#### サポートされるデータ型
-
-クエリ結果は以下のQi型に変換されます：
-
-| PostgreSQL型 | Qi型 |
-|-------------|------|
-| INTEGER, BIGINT | Integer |
-| REAL, DOUBLE PRECISION | Float |
-| TEXT, VARCHAR | String |
-| BOOLEAN | Bool |
-| NULL | Nil |
-| その他 | String (未サポート型) |
-
----
-
-### db/pg-exec - コマンド実行
-
-**PostgreSQLデータベースに接続してINSERT/UPDATE/DELETEコマンドを実行します。**
-
-```qi
-(db/pg-exec connection-string command)
-(db/pg-exec connection-string command params)
-```
-
-#### 引数
-
-- `connection-string`: 文字列（PostgreSQL接続文字列）
-- `command`: 文字列（SQLコマンド）
-- `params`: ベクタ（オプション、パラメータのリスト）
-
-#### 戻り値
-
-- 成功: `{:ok 影響を受けた行数}`
-- 失敗: `{:error "エラーメッセージ"}`
-
-#### 使用例
-
-```qi
-;; INSERT
-(def conn "postgresql://user:pass@localhost/mydb")
-(db/pg-exec conn
-  "INSERT INTO users (name, email) VALUES ($1, $2)"
-  ["Alice" "alice@example.com"])
-;; => {:ok 1}
-
-;; UPDATE
-(db/pg-exec conn
-  "UPDATE users SET email = $1 WHERE id = $2"
-  ["newemail@example.com" 42])
-;; => {:ok 1}
-
-;; DELETE
-(db/pg-exec conn
-  "DELETE FROM users WHERE id = $1"
-  [999])
-;; => {:ok 1}
-
-;; 複数行INSERT
-(db/pg-exec conn
-  "INSERT INTO logs (user_id, action, created_at)
-   VALUES ($1, $2, NOW()), ($3, $4, NOW())"
-  [1 "login" 2 "logout"])
-;; => {:ok 2}
-
-;; パイプラインでの使用
-([{:name "Alice" :email "a@example.com"}
-  {:name "Bob" :email "b@example.com"}]
- |> (map (fn [user]
-           (db/pg-exec conn
-             "INSERT INTO users (name, email) VALUES ($1, $2)"
-             [(get user :name) (get user :email)])))
- |> (filter (fn [r] (match r {:ok _} -> true _ -> false)))
- |> count)
 ;; => 2 (成功した挿入の数)
 ```
 

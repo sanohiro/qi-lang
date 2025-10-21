@@ -501,6 +501,30 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
                 &["sqlite (feature not enabled)"],
             ));
         }
+    } else if url.starts_with("postgres://") || url.starts_with("postgresql://") {
+        #[cfg(feature = "db-postgres")]
+        {
+            Box::new(super::postgres::PostgresDriver::new())
+        }
+        #[cfg(not(feature = "db-postgres"))]
+        {
+            return Err(fmt_msg(
+                MsgKey::DbUnsupportedUrl,
+                &["postgres (feature not enabled)"],
+            ));
+        }
+    } else if url.starts_with("mysql://") {
+        #[cfg(feature = "db-mysql")]
+        {
+            Box::new(super::mysql::MysqlDriver::new())
+        }
+        #[cfg(not(feature = "db-mysql"))]
+        {
+            return Err(fmt_msg(
+                MsgKey::DbUnsupportedUrl,
+                &["mysql (feature not enabled)"],
+            ));
+        }
     } else {
         return Err(fmt_msg(MsgKey::DbUnsupportedUrl, &[url]));
     };

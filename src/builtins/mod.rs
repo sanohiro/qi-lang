@@ -257,14 +257,10 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
     #[cfg(feature = "cmd-exec")]
     register_functions(&mut env_write, cmd::FUNCTIONS);
 
-    #[cfg(feature = "db-sqlite")]
+    // データベース統一インターフェース（db/*）のみ公開
+    // SQLite/PostgreSQL/MySQLドライバーは内部実装用
+    #[cfg(any(feature = "db-sqlite", feature = "db-postgres", feature = "db-mysql"))]
     register_functions(&mut env_write, db::FUNCTIONS);
-
-    #[cfg(feature = "db-postgres")]
-    register_functions(&mut env_write, postgres::FUNCTIONS);
-
-    #[cfg(feature = "db-mysql")]
-    register_functions(&mut env_write, mysql::FUNCTIONS);
 
     // KVS統一インターフェース（kvs/*）のみ公開
     // redis::FUNCTIONSは内部実装用で、統一インターフェースから外れたRedis固有機能が必要な場合のみ追加

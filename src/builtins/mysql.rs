@@ -1,253 +1,107 @@
-//! MySQL接続モジュール
+//! MySQLドライバー実装
+//!
+//! MySQLデータベース接続を提供。
+//! - リモート接続対応
+//! - ACID準拠のトランザクション
+//! - プリペアドステートメント
 //!
 //! このモジュールは `db-mysql` feature でコンパイルされます。
 
 #![cfg(feature = "db-mysql")]
 
+use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use mysql_async::prelude::*;
-use mysql_async::{Opts, Row};
+use mysql_async::{Conn as MyConn, Opts, Row as MyRow, Transaction as MyTransaction};
+use parking_lot::Mutex;
+use std::collections::HashMap;
+use std::sync::Arc;
 
-/// db/my-query - MySQL接続を確立してクエリを実行
-///
-/// 引数:
-/// - connection_string: 接続文字列（例: "mysql://user:pass@localhost/dbname"）
-/// - query: SQLクエリ
-/// - params: パラメータ（オプション、ベクタ）
-///
-/// 戻り値: rows（ベクタ）または {:error message}
-pub fn native_my_query(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 || args.len() > 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["db/my-query", "2-3"]));
+/// MySQLドライバー
+pub struct MysqlDriver;
+
+impl Default for MysqlDriver {
+    fn default() -> Self {
+        Self::new()
     }
-
-    // 接続文字列
-    let conn_str = match &args[0] {
-        Value::String(s) => s.as_str(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["db/my-query (connection_string)", "strings"],
-            ))
-        }
-    };
-
-    // クエリ
-    let query = match &args[1] {
-        Value::String(s) => s.clone(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["db/my-query (query)", "strings"],
-            ))
-        }
-    };
-
-    // パラメータ（オプション）
-    let params: Vec<mysql_async::Value> = if args.len() == 3 {
-        match &args[2] {
-            Value::Vector(items) | Value::List(items) => {
-                let mut params = Vec::new();
-                for item in items.iter() {
-                    let mysql_val = match item {
-                        Value::String(s) => mysql_async::Value::Bytes(s.as_bytes().to_vec()),
-                        Value::Integer(i) => mysql_async::Value::Int(*i),
-                        Value::Float(f) => mysql_async::Value::Double(*f),
-                        Value::Bool(b) => mysql_async::Value::Int(if *b { 1 } else { 0 }),
-                        Value::Nil => mysql_async::Value::NULL,
-                        _ => {
-                            return Err(fmt_msg(
-                                MsgKey::TypeOnly,
-                                &["db/my-query (params)", "primitives"],
-                            ))
-                        }
-                    };
-                    params.push(mysql_val);
-                }
-                params
-            }
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["db/my-query (params)", "vectors"],
-                ))
-            }
-        }
-    } else {
-        Vec::new()
-    };
-
-    // 非同期処理を同期的に実行
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
-        // 接続オプション
-        let opts = match Opts::from_url(conn_str) {
-            Ok(opts) => opts,
-            Err(e) => return Ok(Value::error(format!("Invalid connection string: {}", e))),
-        };
-
-        // 接続
-        let mut conn = match mysql_async::Conn::new(opts).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(format!("Connection error: {}", e))),
-        };
-
-        // クエリ実行
-        let rows: Vec<Row> = if params.is_empty() {
-            match conn.query(query).await {
-                Ok(rows) => rows,
-                Err(e) => return Ok(Value::error(format!("Query error: {}", e))),
-            }
-        } else {
-            match conn.exec(query, params).await {
-                Ok(rows) => rows,
-                Err(e) => return Ok(Value::error(format!("Query error: {}", e))),
-            }
-        };
-
-        // 接続をクローズ
-        let _ = conn.disconnect().await;
-
-        // 結果を変換
-        let result_rows = rows_to_value(&rows);
-
-        Ok(result_rows)
-    })
 }
 
-/// db/my-exec - MySQLコマンド実行（INSERT/UPDATE/DELETE）
-///
-/// 引数:
-/// - connection_string: 接続文字列
-/// - command: SQLコマンド
-/// - params: パラメータ（オプション、ベクタ）
-///
-/// 戻り値: affected_rows（整数）または {:error message}
-pub fn native_my_exec(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 || args.len() > 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["db/my-exec", "2-3"]));
+impl MysqlDriver {
+    pub fn new() -> Self {
+        Self
     }
-
-    // 接続文字列
-    let conn_str = match &args[0] {
-        Value::String(s) => s.as_str(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["db/my-exec (connection_string)", "strings"],
-            ))
-        }
-    };
-
-    // コマンド
-    let command = match &args[1] {
-        Value::String(s) => s.clone(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["db/my-exec (command)", "strings"],
-            ))
-        }
-    };
-
-    // パラメータ（オプション）
-    let params: Vec<mysql_async::Value> = if args.len() == 3 {
-        match &args[2] {
-            Value::Vector(items) | Value::List(items) => {
-                let mut params = Vec::new();
-                for item in items.iter() {
-                    let mysql_val = match item {
-                        Value::String(s) => mysql_async::Value::Bytes(s.as_bytes().to_vec()),
-                        Value::Integer(i) => mysql_async::Value::Int(*i),
-                        Value::Float(f) => mysql_async::Value::Double(*f),
-                        Value::Bool(b) => mysql_async::Value::Int(if *b { 1 } else { 0 }),
-                        Value::Nil => mysql_async::Value::NULL,
-                        _ => {
-                            return Err(fmt_msg(
-                                MsgKey::TypeOnly,
-                                &["db/my-exec (params)", "primitives"],
-                            ))
-                        }
-                    };
-                    params.push(mysql_val);
-                }
-                params
-            }
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["db/my-exec (params)", "vectors"],
-                ))
-            }
-        }
-    } else {
-        Vec::new()
-    };
-
-    // 非同期処理を同期的に実行
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
-        // 接続オプション
-        let opts = match Opts::from_url(conn_str) {
-            Ok(opts) => opts,
-            Err(e) => return Ok(Value::error(format!("Invalid connection string: {}", e))),
-        };
-
-        // 接続
-        let mut conn = match mysql_async::Conn::new(opts).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(format!("Connection error: {}", e))),
-        };
-
-        // コマンド実行
-        let result = if params.is_empty() {
-            match conn.query_drop(command).await {
-                Ok(_) => conn.affected_rows(),
-                Err(e) => return Ok(Value::error(format!("Execute error: {}", e))),
-            }
-        } else {
-            match conn.exec_drop(command, params).await {
-                Ok(_) => conn.affected_rows(),
-                Err(e) => return Ok(Value::error(format!("Execute error: {}", e))),
-            }
-        };
-
-        // 接続をクローズ
-        let _ = conn.disconnect().await;
-
-        Ok(Value::Integer(result as i64))
-    })
 }
 
-// ========================================
-// ヘルパー関数
-// ========================================
+impl DbDriver for MysqlDriver {
+    fn connect(&self, url: &str, _opts: &ConnectionOptions) -> DbResult<Arc<dyn DbConnection>> {
+        // URL形式: "mysql://user:pass@host:port/dbname"
+        let conn_str = if url.starts_with("mysql://") {
+            url
+        } else {
+            return Err(DbError::new(
+                "Invalid MySQL URL. Expected format: mysql://user:pass@host:port/dbname",
+            ));
+        };
 
-/// MySQL行をQi Valueに変換
-fn rows_to_value(rows: &[Row]) -> Value {
-    let mut result_rows = Vec::new();
+        // 接続オプションを解析
+        let opts = Opts::from_url(conn_str)
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::MysqlInvalidConnectionString, &[&e.to_string()])))?;
 
-    for row in rows {
-        let mut row_map = im::HashMap::new();
+        // tokioランタイムを作成
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| DbError::new(format!("Failed to create runtime: {}", e)))?;
 
+        // 接続を確立
+        let conn = rt
+            .block_on(async { MyConn::new(opts).await })
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::MysqlFailedToConnect, &[&e.to_string()])))?;
+
+        Ok(Arc::new(MysqlConnection {
+            conn: Arc::new(Mutex::new(conn)),
+            runtime: Arc::new(Mutex::new(rt)),
+        }))
+    }
+
+    fn name(&self) -> &str {
+        "mysql"
+    }
+}
+
+/// MySQL接続
+pub struct MysqlConnection {
+    conn: Arc<Mutex<MyConn>>,
+    runtime: Arc<Mutex<tokio::runtime::Runtime>>,
+}
+
+impl MysqlConnection {
+    /// Valueをmysql_asyncのパラメータに変換
+    fn value_to_mysql_value(value: &Value) -> mysql_async::Value {
+        match value {
+            Value::Nil => mysql_async::Value::NULL,
+            Value::Bool(b) => mysql_async::Value::Int(if *b { 1 } else { 0 }),
+            Value::Integer(i) => mysql_async::Value::Int(*i),
+            Value::Float(f) => mysql_async::Value::Double(*f),
+            Value::String(s) => mysql_async::Value::Bytes(s.as_bytes().to_vec()),
+            _ => mysql_async::Value::Bytes(value.to_string().as_bytes().to_vec()),
+        }
+    }
+
+    /// MySQL行をQi Valueに変換
+    fn row_to_hashmap(row: &MyRow) -> DbResult<Row> {
+        let mut map = Row::new();
         let columns = row.columns_ref();
-        for (idx, column) in columns.iter().enumerate() {
-            let col_name = format!(":{}", column.name_str());
 
-            // 型に応じて値を取得（Option<Option<T>>をflattenする）
+        for (idx, column) in columns.iter().enumerate() {
+            let column_name = column.name_str().to_string();
+
+            // 型に応じて値を取得
             let value = if let Some(Some(v)) = row.get::<Option<String>, _>(idx) {
                 Value::String(v)
             } else if let Some(Some(v)) = row.get::<Option<i64>, _>(idx) {
                 Value::Integer(v)
+            } else if let Some(Some(v)) = row.get::<Option<i32>, _>(idx) {
+                Value::Integer(v as i64)
             } else if let Some(Some(v)) = row.get::<Option<f64>, _>(idx) {
                 Value::Float(v)
             } else if let Some(Some(v)) = row.get::<Option<bool>, _>(idx) {
@@ -256,42 +110,363 @@ fn rows_to_value(rows: &[Row]) -> Value {
                 Value::Nil
             };
 
-            row_map.insert(col_name, value);
+            map.insert(column_name, value);
         }
 
-        result_rows.push(Value::Map(row_map));
+        Ok(map)
     }
-
-    Value::Vector(result_rows.into())
 }
 
-// ========================================
-// 関数登録テーブル
-// ========================================
+impl DbConnection for MysqlConnection {
+    fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
+        let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
 
-/// 登録すべき関数のリスト
-/// @qi-doc:category db/mysql
-/// @qi-doc:functions db/my-query, db/my-exec
-pub const FUNCTIONS: super::NativeFunctions = &[
-    ("db/my-query", native_my_query),
-    ("db/my-exec", native_my_exec),
-];
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> = params.iter().map(Self::value_to_mysql_value).collect();
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+        let rows: Vec<MyRow> = runtime
+            .block_on(async {
+                if mysql_params.is_empty() {
+                    conn.query(sql).await
+                } else {
+                    conn.exec(sql, mysql_params).await
+                }
+            })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::MysqlFailedToExecuteQuery,
+                    &[&e.to_string()],
+                ))
+            })?;
 
-    // 注: これらのテストはMySQLサーバーが必要なため、統合テストとして実装すべき
+        let mut results = Vec::new();
+        for row in &rows {
+            results.push(Self::row_to_hashmap(row)?);
+        }
 
-    #[test]
-    fn test_mysql_connection_string_validation() {
-        // 接続文字列のバリデーションのみテスト
-        let conn_str = Value::String("mysql://localhost/test".to_string());
-        let query = Value::String("SELECT 1".to_string());
+        Ok(results)
+    }
 
-        // 実際の接続は行わず、引数チェックのみ
-        let result = native_my_query(&[conn_str, query]);
-        // MySQLサーバーが無い場合はエラーになるが、それは正常
-        assert!(result.is_ok());
+    fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
+        let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
+
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> = params.iter().map(Self::value_to_mysql_value).collect();
+
+        let affected = runtime
+            .block_on(async {
+                if mysql_params.is_empty() {
+                    conn.query_drop(sql).await?;
+                } else {
+                    conn.exec_drop(sql, mysql_params).await?;
+                }
+                Ok::<_, mysql_async::Error>(conn.affected_rows())
+            })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::MysqlFailedToExecuteStatement,
+                    &[&e.to_string()],
+                ))
+            })?;
+
+        Ok(affected as i64)
+    }
+
+    fn begin(&self, _opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
+        let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
+
+        let transaction = runtime
+            .block_on(async { conn.start_transaction(Default::default()).await })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::MysqlFailedToBeginTransaction,
+                    &[&e.to_string()],
+                ))
+            })?;
+
+        Ok(Arc::new(MysqlTransaction {
+            transaction: Arc::new(Mutex::new(Some(transaction))),
+            runtime: self.runtime.clone(),
+        }))
+    }
+
+    fn close(&self) -> DbResult<()> {
+        let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
+
+        runtime
+            .block_on(async { conn.disconnect().await })
+            .map_err(|e| DbError::new(format!("Failed to close connection: {}", e)))?;
+
+        Ok(())
+    }
+
+    fn sanitize(&self, value: &str) -> String {
+        // シングルクォートをエスケープ
+        value.replace('\'', "''")
+    }
+
+    fn sanitize_identifier(&self, name: &str) -> String {
+        // バッククォートで囲む（MySQL識別子）
+        format!("`{}`", name.replace('`', "``"))
+    }
+
+    fn escape_like(&self, pattern: &str) -> String {
+        // LIKE句のメタキャラクタをエスケープ
+        pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    }
+
+    fn driver_name(&self) -> &str {
+        "mysql"
+    }
+
+    fn tables(&self) -> DbResult<Vec<String>> {
+        let sql = "SHOW TABLES";
+        let rows = self.query(sql, &[], &QueryOptions::default())?;
+
+        let tables = rows
+            .into_iter()
+            .filter_map(|row| {
+                row.values()
+                    .next()
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
+                    })
+            })
+            .collect();
+
+        Ok(tables)
+    }
+
+    fn columns(&self, table: &str) -> DbResult<Vec<ColumnInfo>> {
+        let sql = format!("DESCRIBE `{}`", table.replace('`', "``"));
+        let rows = self.query(&sql, &[], &QueryOptions::default())?;
+
+        let columns = rows
+            .into_iter()
+            .filter_map(|row| {
+                let name = row.get("Field")?.as_string()?;
+                let data_type = row.get("Type")?.as_string()?;
+                let nullable = row.get("Null")?.as_string()? == "YES";
+                let default_value = row.get("Default").and_then(|v| v.as_string());
+                let primary_key = row.get("Key")?.as_string()? == "PRI";
+
+                Some(ColumnInfo {
+                    name,
+                    data_type,
+                    nullable,
+                    default_value,
+                    primary_key,
+                })
+            })
+            .collect();
+
+        Ok(columns)
+    }
+
+    fn indexes(&self, table: &str) -> DbResult<Vec<IndexInfo>> {
+        let sql = format!("SHOW INDEX FROM `{}`", table.replace('`', "``"));
+        let rows = self.query(&sql, &[], &QueryOptions::default())?;
+
+        let mut indexes_map: HashMap<String, IndexInfo> = HashMap::new();
+
+        for row in rows {
+            if let (Some(name), Some(column)) = (
+                row.get("Key_name").and_then(|v| v.as_string()),
+                row.get("Column_name").and_then(|v| v.as_string()),
+            ) {
+                let unique = row
+                    .get("Non_unique")
+                    .and_then(|v| if let Value::Integer(i) = v { Some(*i) } else { None })
+                    .unwrap_or(1)
+                    == 0;
+
+                indexes_map
+                    .entry(name.clone())
+                    .or_insert_with(|| IndexInfo {
+                        name: name.clone(),
+                        table: table.to_string(),
+                        columns: vec![],
+                        unique,
+                    })
+                    .columns
+                    .push(column);
+            }
+        }
+
+        Ok(indexes_map.into_values().collect())
+    }
+
+    fn foreign_keys(&self, _table: &str) -> DbResult<Vec<ForeignKeyInfo>> {
+        // TODO: 外部キー情報の実装
+        Ok(vec![])
+    }
+
+    fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
+        Err(DbError::new("Stored procedures not yet implemented for MySQL"))
+    }
+
+    fn supports(&self, feature: &str) -> bool {
+        matches!(
+            feature,
+            "transactions" | "prepared_statements" | "stored_procedures"
+        )
+    }
+
+    fn driver_info(&self) -> DbResult<DriverInfo> {
+        let version_sql = "SELECT VERSION() as version";
+        let rows = self.query(version_sql, &[], &QueryOptions::default())?;
+
+        let db_version = rows
+            .first()
+            .and_then(|row| row.get("version"))
+            .and_then(|v| v.as_string())
+            .unwrap_or_else(|| "unknown".to_string());
+
+        Ok(DriverInfo {
+            name: "MySQL".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            database_version: db_version,
+        })
+    }
+
+    fn query_info(&self, _sql: &str) -> DbResult<QueryInfo> {
+        // TODO: PREPARE文を使ってカラム情報を取得
+        Err(DbError::new("Query info not yet implemented for MySQL"))
+    }
+}
+
+/// MySQLトランザクション
+pub struct MysqlTransaction {
+    transaction: Arc<Mutex<Option<MyTransaction<'static>>>>,
+    runtime: Arc<Mutex<tokio::runtime::Runtime>>,
+}
+
+impl DbTransaction for MysqlTransaction {
+    fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
+        let mut transaction_guard = self.transaction.lock();
+        let transaction = transaction_guard
+            .as_mut()
+            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+
+        let runtime = self.runtime.lock();
+
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> = params
+            .iter()
+            .map(MysqlConnection::value_to_mysql_value)
+            .collect();
+
+        let rows: Vec<MyRow> = runtime
+            .block_on(async {
+                if mysql_params.is_empty() {
+                    transaction.query(sql).await
+                } else {
+                    transaction.exec(sql, mysql_params).await
+                }
+            })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::MysqlFailedToExecuteQuery,
+                    &[&e.to_string()],
+                ))
+            })?;
+
+        let mut results = Vec::new();
+        for row in &rows {
+            results.push(MysqlConnection::row_to_hashmap(row)?);
+        }
+
+        Ok(results)
+    }
+
+    fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
+        let mut transaction_guard = self.transaction.lock();
+        let transaction = transaction_guard
+            .as_mut()
+            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+
+        let runtime = self.runtime.lock();
+
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> = params
+            .iter()
+            .map(MysqlConnection::value_to_mysql_value)
+            .collect();
+
+        let affected = runtime
+            .block_on(async {
+                if mysql_params.is_empty() {
+                    transaction.query_drop(sql).await?;
+                } else {
+                    transaction.exec_drop(sql, mysql_params).await?;
+                }
+                Ok::<_, mysql_async::Error>(transaction.affected_rows())
+            })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::MysqlFailedToExecuteStatement,
+                    &[&e.to_string()],
+                ))
+            })?;
+
+        Ok(affected as i64)
+    }
+
+    fn commit(self: Arc<Self>) -> DbResult<()> {
+        let mut transaction_guard = self.transaction.lock();
+        let transaction = transaction_guard
+            .take()
+            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+
+        let runtime = self.runtime.lock();
+
+        runtime.block_on(async { transaction.commit().await }).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::MysqlFailedToCommitTransaction,
+                &[&e.to_string()],
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    fn rollback(self: Arc<Self>) -> DbResult<()> {
+        let mut transaction_guard = self.transaction.lock();
+        let transaction = transaction_guard
+            .take()
+            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+
+        let runtime = self.runtime.lock();
+
+        runtime.block_on(async { transaction.rollback().await }).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::MysqlFailedToRollbackTransaction,
+                &[&e.to_string()],
+            ))
+        })?;
+
+        Ok(())
+    }
+}
+
+// ヘルパー拡張トレイト
+trait ValueExt {
+    fn as_string(&self) -> Option<String>;
+}
+
+impl ValueExt for Value {
+    fn as_string(&self) -> Option<String> {
+        match self {
+            Value::String(s) => Some(s.clone()),
+            _ => None,
+        }
     }
 }

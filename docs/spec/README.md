@@ -219,7 +219,7 @@
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
 - **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)
-- **Database**: `db/pg-query`, `db/pg-exec` → [17-stdlib-database.md](17-stdlib-database.md)
+- **Database**: `db/connect`, `db/query`, `db/exec` (PostgreSQL/MySQL/SQLite) → [17-stdlib-database.md](17-stdlib-database.md)
 
 **📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 
