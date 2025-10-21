@@ -72,9 +72,15 @@
 - **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐ NEW
   - test/run、アサーション（assert-eq、assert、assert-not、assert-throws）
   - qi testコマンド（自動検出、シンプルな出力）
-- **[15-stdlib-math.md](15-stdlib-math.md)** - 数学関数 ⭐ NEW
+- **[15-stdlib-math.md](15-stdlib-math.md)** - 数学関数
   - べき乗・平方根（pow、sqrt）、丸め（round、floor、ceil）、範囲制限（clamp）
   - 乱数生成（rand、rand-int、random-range、shuffle）
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証・認可 ⭐ NEW
+  - JWT（json web token）生成・検証・デコード
+  - パスワードハッシュ（Argon2）
+- **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐ NEW
+  - PostgreSQL接続（クエリ実行、コマンド実行）
+  - パラメータ化クエリ、Result型統合
 
 ---
 
@@ -212,6 +218,8 @@
 - **Math**: `math/pow`, `math/sqrt`, `math/round`, `math/rand` → [15-stdlib-math.md](15-stdlib-math.md)
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
+- **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)
+- **Database**: `db/pg-query`, `db/pg-exec` → [17-stdlib-database.md](17-stdlib-database.md)
 
 **📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 

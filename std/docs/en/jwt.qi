@@ -1,0 +1,35 @@
+;; Standard Library Documentation - JWT Authentication
+;; JWT Functions (3 functions - jwt/*)
+;; This module is compiled with the `auth-jwt` feature
+
+(def __doc__jwt/sign
+  {:desc "Generates a JWT token."
+   :params [{:name "payload" :type "map" :desc "Payload to include in the token (map)"}
+            {:name "secret" :type "string" :desc "Secret key for signing"}
+            {:name "algorithm" :type "string" :desc "Signing algorithm (optional, default: \"HS256\")"}
+            {:name "exp" :type "integer" :desc "Expiration time in seconds (optional)"}]
+   :returns {:type "map" :desc "Result map {:ok \"token\"} or {:error \"message\"}"}
+   :examples ["(jwt/sign {:user_id 123 :name \"Alice\"} \"my-secret\")"
+              "(jwt/sign {:role \"admin\"} \"secret\" \"HS384\")"
+              "(jwt/sign {:user_id 42} \"secret\" \"HS256\" 3600)"]
+   :note "Supported algorithms: HS256, HS384, HS512"})
+
+(def __doc__jwt/verify
+  {:desc "Verifies a JWT token and retrieves the payload."
+   :params [{:name "token" :type "string" :desc "JWT token to verify"}
+            {:name "secret" :type "string" :desc "Secret key for verification"}
+            {:name "algorithm" :type "string" :desc "Signing algorithm (optional, default: \"HS256\")"}]
+   :returns {:type "map" :desc "Result map {:ok payload} or {:error \"message\"}"}
+   :examples ["(jwt/verify token \"my-secret\")"
+              "(jwt/verify token \"secret\" \"HS384\")"
+              "(token |>? (jwt/verify \"my-secret\") |>? (fn [p] (get p :user_id)))"]
+   :note "Performs signature verification and expiration check."})
+
+(def __doc__jwt/decode
+  {:desc "Decodes a JWT token without verification."
+   :params [{:name "token" :type "string" :desc "JWT token to decode"}]
+   :returns {:type "map" :desc "Result map {:ok {:header ... :payload ...}} or {:error \"message\"}"}
+   :examples ["(jwt/decode token)"
+              "(jwt/decode token |>? (fn [d] (get d :header)))"
+              "(jwt/decode token |>? (fn [d] (get d :payload)))"]
+   :note "⚠️ Does NOT perform signature verification. Use only for debugging and testing."})

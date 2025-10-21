@@ -1,6 +1,6 @@
 ;; 標準ライブラリドキュメント - データベース統一API
-;; Database Functions (24 functions - db/*)
-;; このモジュールは `db-sqlite` feature でコンパイルされます
+;; Database Functions (26 functions - db/*)
+;; このモジュールは `db-sqlite` または `db-postgres` feature でコンパイルされます
 
 ;; ========== Phase 1: 基本操作・サニタイズ (8個) ==========
 
@@ -170,3 +170,27 @@
    :params [{:name "pool" :type "pool" :desc "コネクションプール"}]
    :returns {:type "map" :desc "統計情報 {:active 3 :idle 2 :total 5}"}
    :examples ["(db/pool-stats pool) ;=> {:active 2 :idle 3 :total 5}"]})
+
+;; ========== PostgreSQL専用関数 (2個) ==========
+
+(def __doc__db/pg-query
+  {:desc "PostgreSQLデータベースに接続してSELECTクエリを実行します。"
+   :params [{:name "connection-string" :type "string" :desc "PostgreSQL接続文字列（例: \"postgresql://user:pass@localhost/db\"）"}
+            {:name "query" :type "string" :desc "SQLクエリ"}
+            {:name "params" :type "vector" :desc "パラメータのベクタ（省略可）"}]
+   :returns {:type "map" :desc "Result型マップ {:ok [行のベクタ]} または {:error \"メッセージ\"}"}
+   :examples ["(db/pg-query \"postgresql://user:pass@localhost/mydb\" \"SELECT * FROM users\" [])"
+              "(db/pg-query conn \"SELECT * FROM users WHERE id = $1\" [42])"
+              "(db/pg-query conn \"SELECT name FROM users WHERE active = $1\" [true])"]
+   :note "このモジュールは `db-postgres` feature でコンパイルされます。"})
+
+(def __doc__db/pg-exec
+  {:desc "PostgreSQLデータベースに接続してINSERT/UPDATE/DELETEコマンドを実行します。"
+   :params [{:name "connection-string" :type "string" :desc "PostgreSQL接続文字列"}
+            {:name "command" :type "string" :desc "SQLコマンド"}
+            {:name "params" :type "vector" :desc "パラメータのベクタ（省略可）"}]
+   :returns {:type "map" :desc "Result型マップ {:ok 影響を受けた行数} または {:error \"メッセージ\"}"}
+   :examples ["(db/pg-exec \"postgresql://...\" \"INSERT INTO users (name, email) VALUES ($1, $2)\" [\"Alice\" \"alice@example.com\"])"
+              "(db/pg-exec conn \"UPDATE users SET email = $1 WHERE id = $2\" [\"new@example.com\" 42])"
+              "(db/pg-exec conn \"DELETE FROM users WHERE id = $1\" [999])"]
+   :note "このモジュールは `db-postgres` feature でコンパイルされます。"})
