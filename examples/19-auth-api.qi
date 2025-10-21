@@ -19,7 +19,9 @@
 ;; ========================================
 
 ;; データベースを初期化
-(defn init-db []
+(defn init-db
+  "usersテーブルを作成してデータベースを初期化する"
+  []
   (db/pg-exec db-conn
     "CREATE TABLE IF NOT EXISTS users (
        id SERIAL PRIMARY KEY,
@@ -34,20 +36,26 @@
 ;; ========================================
 
 ;; 新規ユーザーを作成
-(defn create-user [username email password]
+(defn create-user
+  "新規ユーザーを作成し、パスワードをハッシュ化して保存する"
+  [username email password]
   (let [hash (password/hash password)]
     (db/pg-exec db-conn
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)"
       [username email hash])))
 
 ;; ユーザー名でユーザーを検索
-(defn find-user-by-username [username]
+(defn find-user-by-username
+  "ユーザー名でユーザーを検索し、結果の行を返す"
+  [username]
   (db/pg-query db-conn
     "SELECT * FROM users WHERE username = $1"
     [username]))
 
 ;; ユーザー認証
-(defn verify-user [username password]
+(defn verify-user
+  "ユーザー名とパスワードを検証し、成功時はユーザーオブジェクトを返す"
+  [username password]
   (let [rows (find-user-by-username username)]
     (if (error? rows)
       rows
@@ -64,7 +72,9 @@
 ;; ========================================
 
 ;; JWTトークンを生成（有効期限1時間）
-(defn generate-token [user]
+(defn generate-token
+  "ユーザー情報からJWTトークンを生成する（有効期限1時間）"
+  [user]
   (jwt/sign
     {:user_id (get user :id)
      :username (get user :username)}
@@ -73,11 +83,15 @@
     3600))
 
 ;; JWTトークンを検証
-(defn verify-token [token]
+(defn verify-token
+  "JWTトークンを検証し、ペイロードを返す"
+  [token]
   (jwt/verify token jwt-secret))
 
 ;; Authorizationヘッダーからトークンを抽出
-(defn extract-auth-token [request]
+(defn extract-auth-token
+  "Authorizationヘッダーから Bearer トークンを抽出する"
+  [request]
   (let [auth-header (get-in request [:headers :authorization])]
     (if (nil? auth-header)
       nil
@@ -90,7 +104,9 @@
 ;; ========================================
 
 ;; 認証が必要なエンドポイント用ミドルウェア
-(defn require-auth [handler]
+(defn require-auth
+  "認証が必要なエンドポイントを保護するミドルウェア"
+  [handler]
   (fn [request]
     (let [token (extract-auth-token request)]
       (if (nil? token)
@@ -109,7 +125,9 @@
 ;; ========================================
 
 ;; POST /api/register - ユーザー登録
-(defn handle-register [request]
+(defn handle-register
+  "ユーザー登録エンドポイント - POST /api/register"
+  [request]
   (let [data (json/parse (get request :body))]
     (if (error? data)
       {:status 400
@@ -128,7 +146,9 @@
            :body (json/stringify {:message "User created"})})))))
 
 ;; POST /api/login - ログイン
-(defn handle-login [request]
+(defn handle-login
+  "ログインエンドポイント - POST /api/login"
+  [request]
   (let [data (json/parse (get request :body))]
     (if (error? data)
       {:status 400
@@ -151,7 +171,9 @@
                :body (json/stringify {:token token})})))))))
 
 ;; GET /api/profile - プロフィール取得（認証必要）
-(defn handle-profile [request]
+(defn handle-profile
+  "プロフィール取得エンドポイント - GET /api/profile（認証必要）"
+  [request]
   (let [user (get request :user)
         username (get user :username)
         rows (find-user-by-username username)]
@@ -176,7 +198,9 @@
 ;; 6. ルーティング
 ;; ========================================
 
-(defn app [request]
+(defn app
+  "APIルーティング関数 - リクエストを適切なハンドラーに振り分ける"
+  [request]
   (let [method (get request :method)
         path (get request :path)]
     (match [method path]

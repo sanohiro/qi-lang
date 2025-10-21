@@ -25,7 +25,9 @@
 ;; ========================================
 
 ;; usersテーブルを作成
-(defn create-users-table []
+(defn create-users-table
+  "usersテーブルを作成し、影響を受けた行数を返す"
+  []
   (db/pg-exec db-conn
     "CREATE TABLE IF NOT EXISTS users (
        id SERIAL PRIMARY KEY,
@@ -46,7 +48,9 @@
 ;; ========================================
 
 ;; ユーザーを挿入
-(defn insert-user [name email]
+(defn insert-user
+  "新しいユーザーをusersテーブルに挿入する"
+  [name email]
   (db/pg-exec db-conn
     "INSERT INTO users (name, email) VALUES ($1, $2)"
     [name email]))
@@ -134,7 +138,9 @@
 (println "\n7. トランザクション例:")
 
 ;; ユーザー間でクレジットを移動（トランザクション）
-(defn transfer-credits [from-user to-user amount]
+(defn transfer-credits
+  "トランザクションを使ってユーザー間でクレジットを移動する例"
+  [from-user to-user amount]
   (do
     ;; BEGIN
     (let [result (db/pg-exec db-conn "BEGIN" [])]

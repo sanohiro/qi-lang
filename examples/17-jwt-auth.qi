@@ -18,7 +18,9 @@
 ;; ========================================
 
 ;; ユーザー名でユーザーを検索
-(defn find-user [username]
+(defn find-user
+  "ユーザー名でユーザーを検索し、最初に見つかったユーザーを返す"
+  [username]
   (users
    |> (filter (fn [u] (= (get u :username) username)))
    |> first))
@@ -28,7 +30,9 @@
 ;; ========================================
 
 ;; ユーザー名とパスワードでログインし、JWTトークンを生成
-(defn login [username password]
+(defn login
+  "ユーザー名とパスワードで認証し、成功時はJWTトークンを返す"
+  [username password]
   (let [user (find-user username)]
     (if (nil? user)
       {:error "User not found"}
@@ -47,7 +51,9 @@
 ;; ========================================
 
 ;; JWTトークンを検証してユーザー情報を取得
-(defn authenticate [token]
+(defn authenticate
+  "JWTトークンを検証し、ペイロードを返す"
+  [token]
   (jwt/verify token "my-secret-key"))
 
 ;; ========================================
@@ -55,7 +61,9 @@
 ;; ========================================
 
 ;; 認証が必要なリソースにアクセス
-(defn get-protected-resource [token]
+(defn get-protected-resource
+  "認証が必要なリソースにアクセスし、HTTPレスポンスを返す"
+  [token]
   (let [result (authenticate token)]
     (if (map? result)
       (if (get result :error)
