@@ -379,6 +379,78 @@ ClaudeやCodexに以下のように依頼できます：
 
 **未タグ付け**: 残り29の関数ファイル（段階的に追加予定）
 
+### ドキュメント更新ルール
+
+関数の追加や既存のインターフェース変更時は、以下のルールに従ってドキュメントを更新すること。
+
+#### 新しい関数を追加した場合
+
+**必須更新項目**（絶対に更新すること）:
+- ✅ **`docs/spec/`** - 言語仕様ドキュメント
+  - 該当するカテゴリのファイル（例: `10-stdlib-string.md`, `05-syntax-basics.md`）
+  - `FUNCTION-INDEX.md` の関数一覧
+- ✅ **`std/docs/`** - 標準ライブラリドキュメント
+  - `std/docs/ja/*.qi` - 日本語ドキュメント
+  - `std/docs/en/*.qi` - 英語ドキュメント
+
+**更新例**:
+```qi
+;; std/docs/ja/string.qi に追加
+(def __doc__new-function
+  {:desc "新しい関数の説明"
+   :params [{:name "arg1" :type "string" :desc "引数1の説明"}]
+   :returns {:type "string" :desc "戻り値の説明"}
+   :examples ["(new-function \"test\") ;=> \"result\""]})
+```
+
+#### 既存の関数のインターフェースを変更した場合
+
+関数のシグネチャ（引数、戻り値、動作）を変更した場合は、以下の場所を**確認**し、必要に応じて更新すること:
+
+**確認・更新が必要な場所**:
+- 📄 **`README.md`** - 使用例やクイックスタートのコード
+- 📄 **`docs/spec/*.md`** - 該当する仕様ドキュメント
+- 📄 **`docs/style-guide/`** - スタイルガイド（存在する場合）
+- 📄 **`docs/tutorial/`** - チュートリアルのコード例
+- 📄 **`std/docs/ja/*.qi`** - 日本語ドキュメントの`:examples`
+- 📄 **`std/docs/en/*.qi`** - 英語ドキュメントの`:examples`
+- 📄 **`std/templates/`** - テンプレートファイル
+- 📄 **`examples/*.qi`** - サンプルコード
+- 📄 **ソースコード中のコメント** - Rustファイル内のドキュメントコメントやコード例
+
+**作業フロー**:
+1. 変更した関数名で全体を検索（`rg "function-name"`）
+2. 見つかった箇所をレビュー
+3. 古いインターフェースを使っている場合は更新
+4. 動作確認（特に`examples/*.qi`は実行して確認）
+
+**検索例**:
+```bash
+# 関数名で検索
+rg "stream/range" README.md docs/ examples/ std/
+
+# ドキュメントファイル内のコード例を検索
+rg "^\s*\(stream/range" docs/ std/docs/ examples/
+```
+
+#### チェックリスト
+
+新しい関数を追加したとき:
+- [ ] `docs/spec/` の該当カテゴリファイルに追加
+- [ ] `docs/spec/FUNCTION-INDEX.md` に追加
+- [ ] `std/docs/ja/*.qi` に `__doc__関数名` を追加
+- [ ] `std/docs/en/*.qi` に `__doc__関数名` を追加
+- [ ] ソースコードの `@qi-doc` タグを更新（該当する場合）
+
+既存の関数を変更したとき:
+- [ ] README.md を検索・更新
+- [ ] docs/spec/ を検索・更新
+- [ ] docs/tutorial/ を検索・更新
+- [ ] std/docs/ の `:examples` を更新
+- [ ] examples/ を検索・更新・動作確認
+- [ ] std/templates/ を検索・更新
+- [ ] ソースコード中のコメント例を更新
+
 ## チャット
 
 - 出力は日本語で行うこと
