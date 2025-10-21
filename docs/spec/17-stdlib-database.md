@@ -642,14 +642,84 @@ postgresql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
 
 ## 実装の詳細
 
+### 統一インターフェース設計
+
+#### 設計方針
+
+データベース（RDBMS）とKVS（Key-Value Store）は、**統一インターフェース**パターンで設計されています。
+これはGoの`database/sql`パッケージと同じアプローチで、バックエンド（ドライバー）を透過的に扱えます。
+
+```
+統一インターフェース（ユーザーが使う）:
+- db/connect, db/query, db/exec      ... RDBMS統一インターフェース
+- kvs/connect, kvs/get, kvs/set      ... KVS統一インターフェース
+
+内部ドライバー（公開しない）:
+- SqliteDriver, PostgresDriver, MysqlDriver
+- RedisDriver, MemcachedDriver（将来）
+```
+
+#### RDBMSの設計
+
+```qi
+;; 統一インターフェース（バックエンド自動判別）
+(def conn (db/connect "postgresql://localhost/mydb"))
+(def conn (db/connect "mysql://root:pass@localhost/mydb"))
+(def conn (db/connect "sqlite:path/to/db.db"))
+
+;; 以降のコードはバックエンド非依存
+(db/query conn "SELECT * FROM users" [])
+(db/exec conn "INSERT INTO users (name) VALUES (?)" ["Alice"])
+
+;; トランザクション
+(def tx (db/begin conn))
+(db/exec tx "UPDATE accounts SET balance = balance - 100 WHERE id = 1" [])
+(db/exec tx "UPDATE accounts SET balance = balance + 100 WHERE id = 2" [])
+(db/commit tx)
+```
+
+**バックエンド切り替え**: 接続URLを変更するだけでPostgreSQL↔MySQL↔SQLite間を移行できます。
+
+**専用関数は公開しない**: `db/pg-*`, `db/my-*`のような専用関数は内部実装用のみです。
+統一インターフェースで表現できない機能（PostgreSQLのCOPY、MySQLのLOAD DATA等）が必要になった場合のみ追加します。
+
+#### KVSの設計
+
+```qi
+;; 統一インターフェース（バックエンド自動判別）
+(def kvs (kvs/connect "redis://localhost:6379"))
+
+;; 以降のコードはバックエンド非依存
+(kvs/set kvs "key" "value")
+(kvs/get kvs "key")
+(kvs/delete kvs "key")
+
+;; データ構造操作
+(kvs/hset kvs "user:1" "name" "Alice")  ;; ハッシュ
+(kvs/lpush kvs "queue" "task1")         ;; リスト
+(kvs/sadd kvs "tags" "redis")           ;; セット
+```
+
+**バックエンド切り替え**: 接続URLを変更するだけでRedis↔Memcached等を切り替え可能（将来）。
+
+**専用関数は公開しない**: `kvs/redis-*`のような専用関数は内部実装用のみです。
+統一インターフェースで表現できない機能（Redis Pub/Sub、Lua scripting等）が必要になった場合のみ追加します。
+
 ### 使用クレート
 
+**RDBMS**:
+- **rusqlite** (v0.32) - Pure Rust SQLiteクライアント
 - **tokio-postgres** (v0.7) - Pure Rust PostgreSQLクライアント
+- **mysql_async** (v0.34) - Pure Rust MySQLクライアント
+- **tokio** - 非同期ランタイム
+
+**KVS**:
+- **redis** (v0.27) - Pure Rust Redisクライアント
 - **tokio** - 非同期ランタイム
 
 ### 非同期処理
 
-内部的にはtokio-postgresの非同期APIを使用していますが、Qiのユーザーには同期的なAPIとして公開されています。
+内部的には非同期APIを使用していますが、Qiのユーザーには同期的なAPIとして公開されています。
 
 ```rust
 // Rustでの実装（参考）
@@ -660,27 +730,81 @@ rt.block_on(async {
 })
 ```
 
+### ドライバーパターン
+
+```rust
+// 統一インターフェーストレイト
+pub trait DbDriver: Send + Sync {
+    fn connect(&self, url: &str, opts: &ConnectionOptions)
+        -> DbResult<Arc<dyn DbConnection>>;
+    fn name(&self) -> &str;
+}
+
+pub trait DbConnection: Send + Sync {
+    fn query(&self, sql: &str, params: &[Value], opts: &QueryOptions)
+        -> DbResult<Rows>;
+    fn exec(&self, sql: &str, params: &[Value], opts: &QueryOptions)
+        -> DbResult<i64>;
+    fn begin(&self, opts: &TransactionOptions)
+        -> DbResult<Arc<dyn DbTransaction>>;
+    // ...
+}
+
+// バックエンド実装（内部のみ）
+pub struct SqliteDriver;
+pub struct PostgresDriver;
+pub struct MysqlDriver;
+
+impl DbDriver for SqliteDriver { /* ... */ }
+impl DbConnection for SqliteConnection { /* ... */ }
+```
+
 ---
 
 ## ロードマップ
 
+### RDBMS
+
 将来的に実装予定の機能：
 
 - **コネクションプール**: 接続の再利用で高速化
-- **トランザクションAPI**: `db/transaction`マクロ
-- **プリペアドステートメント**: 繰り返しクエリの最適化
-- **MySQL対応**: `db/mysql-query`、`db/mysql-exec`
-- **SQLite対応**: 軽量DBとして`db/sqlite-query`、`db/sqlite-exec`
+- **ストリーミングクエリ**: 大量データの効率的な処理
+- **専用関数の追加**: 統一IFで表現できない場合のみ
+  - PostgreSQL: `COPY`、`LISTEN/NOTIFY`
+  - MySQL: `LOAD DATA`
+  - SQLite: カスタム関数、仮想テーブル
+
+### KVS
+
+将来的に実装予定の機能：
+
+- **Memcached対応**: `kvs/connect "memcached://..."`
+- **インメモリKVS**: `kvs/connect ":memory:"` （Pure Rust、依存なし）
+- **専用関数の追加**: 統一IFで表現できない場合のみ
+  - Redis: Pub/Sub、Lua scripting、Sorted Sets、Streams
 
 ---
 
 ## まとめ
 
-Qiのデータベースライブラリは、PostgreSQLへのシンプルで安全なアクセスを提供します。
+Qiのデータベース＆KVSライブラリは、統一インターフェースでシンプルかつ安全なアクセスを提供します。
 
+### RDBMS（db/*）
+
+- **db/connect**: PostgreSQL/MySQL/SQLite自動判別
 - **db/query**: SELECTクエリ実行
 - **db/exec**: INSERT/UPDATE/DELETE実行
-- **Result型**: 統一されたエラー処理
+- **db/begin/commit/rollback**: トランザクション
 - **パラメータ化クエリ**: SQLインジェクション対策
+- **バックエンド透過的切り替え**: 接続URLのみ変更
 
-これらの機能を組み合わせることで、データベース駆動のアプリケーションを簡単に構築できます。
+### KVS（kvs/*）
+
+- **kvs/connect**: Redis対応（将来Memcached等も）
+- **kvs/get/set/delete**: 基本操作
+- **kvs/hget/hset**: ハッシュ操作
+- **kvs/lpush/rpush**: リスト操作
+- **kvs/sadd/smembers**: セット操作
+- **バックエンド透過的切り替え**: 接続URLのみ変更
+
+これらの機能を組み合わせることで、データベース・キャッシュ駆動のアプリケーションを簡単に構築できます。
