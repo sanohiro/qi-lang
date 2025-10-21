@@ -194,3 +194,27 @@
               "(db/pg-exec conn \"UPDATE users SET email = $1 WHERE id = $2\" [\"new@example.com\" 42])"
               "(db/pg-exec conn \"DELETE FROM users WHERE id = $1\" [999])"]
    :note "このモジュールは `db-postgres` feature でコンパイルされます。"})
+
+;; ========== MySQL専用関数 (2個) ==========
+
+(def __doc__db/my-query
+  {:desc "MySQLデータベースに接続してSELECTクエリを実行します。"
+   :params [{:name "connection-string" :type "string" :desc "MySQL接続文字列（例: \"mysql://user:pass@localhost/db\"）"}
+            {:name "query" :type "string" :desc "SQLクエリ"}
+            {:name "params" :type "vector" :desc "パラメータのベクタ（省略可）"}]
+   :returns {:type "vector | map" :desc "成功時: 行のベクタ、エラー時: {:error \"メッセージ\"}"}
+   :examples ["(db/my-query \"mysql://user:pass@localhost/mydb\" \"SELECT * FROM users\" [])"
+              "(db/my-query conn \"SELECT * FROM users WHERE id = ?\" [42])"
+              "(db/my-query conn \"SELECT name FROM users WHERE active = ?\" [true])"]
+   :note "このモジュールは `db-mysql` feature でコンパイルされます。パラメータは ? プレースホルダーを使用します。"})
+
+(def __doc__db/my-exec
+  {:desc "MySQLデータベースに接続してINSERT/UPDATE/DELETEコマンドを実行します。"
+   :params [{:name "connection-string" :type "string" :desc "MySQL接続文字列"}
+            {:name "command" :type "string" :desc "SQLコマンド"}
+            {:name "params" :type "vector" :desc "パラメータのベクタ（省略可）"}]
+   :returns {:type "integer | map" :desc "成功時: 影響を受けた行数、エラー時: {:error \"メッセージ\"}"}
+   :examples ["(db/my-exec \"mysql://...\" \"INSERT INTO users (name, email) VALUES (?, ?)\" [\"Alice\" \"alice@example.com\"])"
+              "(db/my-exec conn \"UPDATE users SET email = ? WHERE id = ?\" [\"new@example.com\" 42])"
+              "(db/my-exec conn \"DELETE FROM users WHERE id = ?\" [999])"]
+   :note "このモジュールは `db-mysql` feature でコンパイルされます。パラメータは ? プレースホルダーを使用します。"})

@@ -1,0 +1,215 @@
+;; 20-mysql.qi - MySQL データベース接続の実用例
+;;
+;; このサンプルでは、MySQLデータベースへの接続とクエリ実行の例を示します。
+;; - データベース接続
+;; - テーブル作成
+;; - データ挿入・更新・削除
+;; - クエリ実行
+;; - エラー処理
+
+;; ========================================
+;; 注意: このサンプルを実行するには、MySQLサーバーが必要です
+;; ========================================
+;;
+;; MySQLのセットアップ:
+;; 1. MySQLをインストール
+;; 2. データベースを作成: CREATE DATABASE qi_test;
+;; 3. 接続文字列を更新（下記）
+;;
+
+;; MySQL接続文字列（環境に合わせて変更してください）
+(def db-conn "mysql://root:password@localhost/qi_test")
+
+;; ========================================
+;; 1. テーブル作成
+;; ========================================
+
+;; usersテーブルを作成
+(defn create-users-table
+  "usersテーブルを作成し、影響を受けた行数を返す"
+  []
+  (db/my-exec db-conn
+    "CREATE TABLE IF NOT EXISTS users (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       name VARCHAR(255) NOT NULL,
+       email VARCHAR(255) UNIQUE NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+     )" []))
+
+(println "=== MySQL サンプル ===\n")
+(println "1. テーブル作成:")
+(let [result (create-users-table)]
+  (if (error? result)
+    (println "  ✗ エラー:" (get result :error))
+    (println "  ✓ usersテーブルを作成しました (" result "行)")))
+
+;; ========================================
+;; 2. データ挿入
+;; ========================================
+
+;; ユーザーを挿入
+(defn insert-user
+  "新しいユーザーをusersテーブルに挿入する"
+  [name email]
+  (db/my-exec db-conn
+    "INSERT INTO users (name, email) VALUES (?, ?)"
+    [name email]))
+
+(println "\n2. ユーザー挿入:")
+
+(def users-to-insert
+  [["Alice" "alice@example.com"]
+   ["Bob" "bob@example.com"]
+   ["Carol" "carol@example.com"]])
+
+(users-to-insert
+ |> (map (fn [user]
+           (let [name (first user)
+                 email (nth user 1)
+                 result (insert-user name email)]
+             (if (error? result)
+               (println "  ✗" name "の挿入エラー:" (get result :error))
+               (println "  ✓" name "を挿入しました（" result "行）")))))
+ |> (fn [_] nil))
+
+;; ========================================
+;; 3. データ取得
+;; ========================================
+
+(println "\n3. 全ユーザーを取得:")
+(let [rows (db/my-query db-conn "SELECT * FROM users ORDER BY id" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (do
+      (println "  ユーザー数:" (count rows))
+      (rows |> (each (fn [user]
+                       (println "    -" (get user :name)
+                               "(" (get user :email) ")")))))))
+
+;; ========================================
+;; 4. パラメータ化クエリ
+;; ========================================
+
+(println "\n4. パラメータ化クエリ（IDで検索）:")
+(let [rows (db/my-query db-conn "SELECT * FROM users WHERE id = ?" [1])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (if (empty? rows)
+      (println "  ユーザーが見つかりません")
+      (let [user (first rows)]
+        (println "  ✓ ユーザー:" (get user :name))))))
+
+;; ========================================
+;; 5. データ更新
+;; ========================================
+
+(println "\n5. ユーザー情報を更新:")
+(let [n (db/my-exec db-conn
+          "UPDATE users SET email = ? WHERE name = ?"
+          ["alice.new@example.com" "Alice"])]
+  (if (error? n)
+    (println "  ✗ エラー:" (get n :error))
+    (println "  ✓" n "行を更新しました")))
+
+;; 更新確認
+(let [rows (db/my-query db-conn "SELECT * FROM users WHERE name = ?" ["Alice"])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (if (empty? rows)
+      (println "  ユーザーが見つかりません")
+      (let [user (first rows)]
+        (println "  更新後のメール:" (get user :email))))))
+
+;; ========================================
+;; 6. 集計クエリ
+;; ========================================
+
+(println "\n6. ユーザー数を集計:")
+(let [rows (db/my-query db-conn "SELECT COUNT(*) as count FROM users" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (let [count-val (get (first rows) :count)]
+      (println "  総ユーザー数:" count-val))))
+
+;; ========================================
+;; 7. トランザクション例（手動）
+;; ========================================
+
+(println "\n7. トランザクション例:")
+
+;; ユーザー間でクレジットを移動（トランザクション）
+(defn transfer-credits
+  "トランザクションを使ってユーザー間でクレジットを移動する例"
+  [from-user to-user amount]
+  (do
+    ;; START TRANSACTION
+    (let [result (db/my-exec db-conn "START TRANSACTION" [])]
+      (if (error? result)
+        (println "  ✗ START TRANSACTION エラー:" (get result :error))
+        (println "  トランザクション開始")))
+
+    ;; 架空の例（creditsテーブルがないため、実際には実行されません）
+    (println "  （架空のクレジット移動処理）")
+
+    ;; COMMIT
+    (let [result (db/my-exec db-conn "COMMIT" [])]
+      (if (error? result)
+        (do
+          (println "  ✗ COMMIT エラー:" (get result :error))
+          (db/my-exec db-conn "ROLLBACK" []))
+        (println "  ✓ トランザクションをコミットしました")))))
+
+(transfer-credits "Alice" "Bob" 100)
+
+;; ========================================
+;; 8. LIKE検索
+;; ========================================
+
+(println "\n8. LIKE検索（名前に'a'を含むユーザー）:")
+(let [rows (db/my-query db-conn
+             "SELECT name FROM users WHERE LOWER(name) LIKE ?"
+             ["%a%"])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (do
+      (println "  見つかったユーザー:")
+      (rows |> (each (fn [user]
+                       (println "    -" (get user :name))))))))
+
+;; ========================================
+;; 9. データ削除
+;; ========================================
+
+(println "\n9. ユーザー削除（Bobを削除）:")
+(let [n (db/my-exec db-conn "DELETE FROM users WHERE name = ?" ["Bob"])]
+  (if (error? n)
+    (println "  ✗ エラー:" (get n :error))
+    (println "  ✓" n "行を削除しました")))
+
+;; 削除確認
+(println "\n削除後のユーザー一覧:")
+(let [rows (db/my-query db-conn "SELECT name FROM users ORDER BY id" [])]
+  (if (error? rows)
+    (println "  ✗ エラー:" (get rows :error))
+    (rows |> (each (fn [user]
+                     (println "  -" (get user :name)))))))
+
+;; ========================================
+;; 10. クリーンアップ（オプション）
+;; ========================================
+
+(println "\n10. テーブル削除（クリーンアップ）:")
+(let [result (db/my-exec db-conn "DROP TABLE IF EXISTS users" [])]
+  (if (error? result)
+    (println "  ✗ エラー:" (get result :error))
+    (println "  ✓ usersテーブルを削除しました")))
+
+;; ========================================
+;; まとめ
+;; ========================================
+
+(println "\n=== まとめ ===")
+(println "✓ MySQLへの接続と基本的なCRUD操作")
+(println "✓ パラメータ化クエリでSQLインジェクション対策")
+(println "✓ エラーハンドリング（{:error}パターン）")
+(println "✓ トランザクションのサポート（手動）")

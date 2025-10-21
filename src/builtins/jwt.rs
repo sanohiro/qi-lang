@@ -54,12 +54,7 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     let exp_seconds = if args.len() == 4 {
         match &args[3] {
             Value::Integer(i) => Some(*i),
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["jwt/sign (exp)", "integers"],
-                ))
-            }
+            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["jwt/sign (exp)", "integers"])),
         }
     } else {
         None
@@ -371,7 +366,10 @@ mod tests {
                 assert!(data.contains_key(":header"));
                 assert!(data.contains_key(":payload"));
             }
-            _ => panic!("Expected map with :header and :payload, got {:?}", decode_result),
+            _ => panic!(
+                "Expected map with :header and :payload, got {:?}",
+                decode_result
+            ),
         }
     }
 

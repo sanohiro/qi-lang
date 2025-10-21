@@ -194,3 +194,27 @@
               "(db/pg-exec conn \"UPDATE users SET email = $1 WHERE id = $2\" [\"new@example.com\" 42])"
               "(db/pg-exec conn \"DELETE FROM users WHERE id = $1\" [999])"]
    :note "This module is compiled with the `db-postgres` feature."})
+
+;; ========== MySQL-Specific Functions (2 functions) ==========
+
+(def __doc__db/my-query
+  {:desc "Connects to a MySQL database and executes a SELECT query."
+   :params [{:name "connection-string" :type "string" :desc "MySQL connection string (e.g., \"mysql://user:pass@localhost/db\")"}
+            {:name "query" :type "string" :desc "SQL query"}
+            {:name "params" :type "vector" :desc "Parameter vector (optional)"}]
+   :returns {:type "vector | map" :desc "Success: vector of rows, Error: {:error \"message\"}"}
+   :examples ["(db/my-query \"mysql://user:pass@localhost/mydb\" \"SELECT * FROM users\" [])"
+              "(db/my-query conn \"SELECT * FROM users WHERE id = ?\" [42])"
+              "(db/my-query conn \"SELECT name FROM users WHERE active = ?\" [true])"]
+   :note "This module is compiled with the `db-mysql` feature. Parameters use ? placeholders."})
+
+(def __doc__db/my-exec
+  {:desc "Connects to a MySQL database and executes INSERT/UPDATE/DELETE commands."
+   :params [{:name "connection-string" :type "string" :desc "MySQL connection string"}
+            {:name "command" :type "string" :desc "SQL command"}
+            {:name "params" :type "vector" :desc "Parameter vector (optional)"}]
+   :returns {:type "integer | map" :desc "Success: number of affected rows, Error: {:error \"message\"}"}
+   :examples ["(db/my-exec \"mysql://...\" \"INSERT INTO users (name, email) VALUES (?, ?)\" [\"Alice\" \"alice@example.com\"])"
+              "(db/my-exec conn \"UPDATE users SET email = ? WHERE id = ?\" [\"new@example.com\" 42])"
+              "(db/my-exec conn \"DELETE FROM users WHERE id = ?\" [999])"]
+   :note "This module is compiled with the `db-mysql` feature. Parameters use ? placeholders."})
