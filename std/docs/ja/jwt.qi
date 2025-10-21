@@ -8,7 +8,7 @@
             {:name "secret" :type "string" :desc "署名用の秘密鍵"}
             {:name "algorithm" :type "string" :desc "署名アルゴリズム（省略可、デフォルト: \"HS256\"）"}
             {:name "exp" :type "integer" :desc "有効期限（秒数、省略可）"}]
-   :returns {:type "map" :desc "Result型マップ {:ok \"トークン\"} または {:error \"メッセージ\"}"}
+   :returns {:type "string | map" :desc "成功時: トークン文字列、エラー時: {:error \"メッセージ\"}"}
    :examples ["(jwt/sign {:user_id 123 :name \"Alice\"} \"my-secret\")"
               "(jwt/sign {:role \"admin\"} \"secret\" \"HS384\")"
               "(jwt/sign {:user_id 42} \"secret\" \"HS256\" 3600)"]
@@ -19,7 +19,7 @@
    :params [{:name "token" :type "string" :desc "検証するJWTトークン"}
             {:name "secret" :type "string" :desc "検証用の秘密鍵"}
             {:name "algorithm" :type "string" :desc "署名アルゴリズム（省略可、デフォルト: \"HS256\"）"}]
-   :returns {:type "map" :desc "Result型マップ {:ok ペイロード} または {:error \"メッセージ\"}"}
+   :returns {:type "map" :desc "成功時: ペイロードマップ、エラー時: {:error \"メッセージ\"}"}
    :examples ["(jwt/verify token \"my-secret\")"
               "(jwt/verify token \"secret\" \"HS384\")"
               "(token |>? (jwt/verify \"my-secret\") |>? (fn [p] (get p :user_id)))"]
@@ -28,7 +28,7 @@
 (def __doc__jwt/decode
   {:desc "JWTトークンをデコードします（署名検証なし）。"
    :params [{:name "token" :type "string" :desc "デコードするJWTトークン"}]
-   :returns {:type "map" :desc "Result型マップ {:ok {:header ... :payload ...}} または {:error \"メッセージ\"}"}
+   :returns {:type "map" :desc "成功時: {:header ... :payload ...}、エラー時: {:error \"メッセージ\"}"}
    :examples ["(jwt/decode token)"
               "(jwt/decode token |>? (fn [d] (get d :header)))"
               "(jwt/decode token |>? (fn [d] (get d :payload)))"]
