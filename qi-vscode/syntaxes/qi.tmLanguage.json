@@ -96,7 +96,7 @@
     "keywords": {
       "patterns": [
         {
-          "match": "\\b(def|defn|defn-|fn|let|if|do|match|try|defer|loop|recur|mac|flow|quote|quasiquote|unquote|unquote-splice|use|export|module)\\b",
+          "match": "\\b(def|defn|defn-|fn|let|if|do|when|while|until|while-some|until-error|each|match|try|defer|loop|recur|mac|flow|quote|quasiquote|unquote|unquote-splice|use|export|module)\\b",
           "name": "keyword.control.qi"
         }
       ]
@@ -148,7 +148,7 @@
     "functions": {
       "patterns": [
         {
-          "match": "\\b(go|chan|send!|recv!|close!|atom|deref|swap!|reset!|print|println|error|tap)\\b",
+          "match": "\\b(atom|deref|swap!|reset!|print|println|error|tap)\\b",
           "name": "support.function.builtin.qi"
         },
         {
@@ -160,7 +160,7 @@
     "modules": {
       "patterns": [
         {
-          "match": "\\b(str|list|map|set|math|time|stats|io|path|env|log|async|pipeline|stream|json|yaml|csv|markdown|http|server|db|cmd|args|test|profile|queue|stack|util|zip|temp|flow)(?=/)",
+          "match": "\\b(str|list|map|set|math|time|stats|io|path|env|log|go|async|stream|json|yaml|csv|markdown|http|server|db|cmd|args|test|profile|queue|stack|util|zip|temp|flow)(?=/)",
           "name": "support.module.name.qi"
         },
         {

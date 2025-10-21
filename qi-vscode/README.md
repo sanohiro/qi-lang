@@ -5,7 +5,7 @@ Complete language support for **Qi - A Lisp that flows**.
 ## Features
 
 ### Syntax Highlighting
-- **Keywords**: `def`, `defn`, `defn-`, `fn`, `let`, `if`, `do`, `match`, `try`, `defer`, `use`, `export`, `module`
+- **Keywords**: `def`, `defn`, `defn-`, `fn`, `let`, `if`, `do`, `when`, `while`, `until`, `while-some`, `until-error`, `each`, `match`, `try`, `defer`, `loop`, `recur`, `use`, `export`, `module`
 - **Keyword Literals**: `:keyword` syntax
 - **Operators**:
   - Pipeline operators: `|>`, `||>`, `|>?`, `~>`
@@ -21,8 +21,8 @@ Complete language support for **Qi - A Lisp that flows**.
 - **Numbers**: Integer and floating-point literals
 - **Constants**: `nil`, `true`, `false`
 - **Predicates**: `nil?`, `list?`, `map?`, `string?`, `integer?`, etc.
-- **Built-in Functions**: `go`, `chan`, `send!`, `recv!`, `atom`, `deref`, `swap!`, `reset!`, etc.
-- **Module System**: Highlighting for `str/`, `list/`, `map/`, `io/`, `http/`, `db/`, etc.
+- **Built-in Functions**: `atom`, `deref`, `swap!`, `reset!`, `print`, `println`, `error`, `tap`, etc.
+- **Module System**: Highlighting for `str/`, `list/`, `map/`, `go/`, `io/`, `http/`, `db/`, etc.
 
 ### Editor Features
 - Auto-closing pairs: `()`, `[]`, `{}`, `""`
