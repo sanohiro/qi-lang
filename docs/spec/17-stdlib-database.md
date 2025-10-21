@@ -400,32 +400,32 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ### ユーザー管理システム
 
 ```qi
-;; データベース接続文字列
-(def db-conn "postgresql://admin:secret@localhost:5432/myapp")
+;; データベース接続（統一インターフェース）
+(def db-conn (db/connect "postgresql://admin:secret@localhost:5432/myapp"))
 
 ;; ユーザー作成
 (defn create-user [name email password-hash]
-  (db/pg-exec db-conn
+  (db/exec db-conn
     "INSERT INTO users (name, email, password_hash, created_at)
      VALUES ($1, $2, $3, NOW()) RETURNING id"
     [name email password-hash]))
 
 ;; ユーザー検索
 (defn find-user-by-email [email]
-  (db/pg-query db-conn
+  (db/query db-conn
     "SELECT id, name, email, created_at FROM users WHERE email = $1"
     [email]))
 
 ;; ユーザー更新
 (defn update-user [user-id name email]
-  (db/pg-exec db-conn
+  (db/exec db-conn
     "UPDATE users SET name = $1, email = $2, updated_at = NOW()
      WHERE id = $3"
     [name email user-id]))
 
 ;; ユーザー削除
 (defn delete-user [user-id]
-  (db/pg-exec db-conn
+  (db/exec db-conn
     "DELETE FROM users WHERE id = $1"
     [user-id]))
 
@@ -443,7 +443,7 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ;; ページングされた結果を取得
 (defn get-users-page [page per-page]
   (let [offset (* (- page 1) per-page)]
-    (db/pg-query db-conn
+    (db/query db-conn
       "SELECT id, name, email FROM users
        ORDER BY created_at DESC
        LIMIT $1 OFFSET $2"
@@ -464,27 +464,27 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 (defn transfer-money [from-id to-id amount]
   (let [conn db-conn]
     ;; BEGIN
-    (db/pg-exec conn "BEGIN" [])
+    (db/exec conn "BEGIN" [])
 
     ;; 出金
     (def debit-result
-      (db/pg-exec conn
+      (db/exec conn
         "UPDATE accounts SET balance = balance - $1 WHERE id = $2"
         [amount from-id]))
 
     ;; 入金
     (def credit-result
-      (db/pg-exec conn
+      (db/exec conn
         "UPDATE accounts SET balance = balance + $1 WHERE id = $2"
         [amount to-id]))
 
     ;; コミットまたはロールバック
     (match [debit-result credit-result]
       [{:ok 1} {:ok 1}] -> (do
-                             (db/pg-exec conn "COMMIT" [])
+                             (db/exec conn "COMMIT" [])
                              {:ok "Transfer successful"})
       _ -> (do
-             (db/pg-exec conn "ROLLBACK" [])
+             (db/exec conn "ROLLBACK" [])
              {:error "Transfer failed"}))))
 ```
 
@@ -493,12 +493,12 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ```qi
 ;; ユーザー数を取得
 (defn count-users []
-  (db/pg-query db-conn "SELECT COUNT(*) as count FROM users" [])
+  (db/query db-conn "SELECT COUNT(*) as count FROM users" [])
   |>? (fn [rows] (get (first rows) :count)))
 
 ;; グループ化
 (defn count-users-by-status []
-  (db/pg-query db-conn
+  (db/query db-conn
     "SELECT status, COUNT(*) as count
      FROM users
      GROUP BY status"
@@ -517,47 +517,52 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
 ## エラー処理
 
-### Result型パターン
+### エラーハンドリング
 
-すべてのデータベース関数は`{:ok data}`または`{:error message}`を返します。
+データベース関数は成功時に生データ、失敗時に`{:error "message"}`を返します。
 
 ```qi
-;; パイプラインでのエラー処理
+;; 基本的なエラー処理
+(def result (db/query db-conn "SELECT * FROM users" []))
+(if (error? result)
+  (println "Error:" (get result :error))
+  (println "Found" (count result) "users"))
+
+;; パイプラインでのエラー処理（|>?でショートサーキット）
 (defn get-user-email [user-id]
-  (db-conn
-   |> (db/pg-query "SELECT email FROM users WHERE id = $1" [user-id])
-   |>? (fn [rows]
-         (if (empty? rows)
-           {:error "User not found"}
-           {:ok (get (first rows) :email)}))))
+  (db/query db-conn "SELECT email FROM users WHERE id = $1" [user-id])
+  |>? (fn [rows]
+        (if (empty? rows)
+          {:error "User not found"}
+          (get (first rows) "email"))))
 
 ;; matchでのエラー処理
-(match (db/pg-query db-conn "SELECT * FROM users" [])
-  {:ok rows} -> (println "Found" (count rows) "users")
-  {:error e} -> (println "Database error:" e))
+(match (db/query db-conn "SELECT * FROM users" [])
+  {:error e} -> (println "Database error:" e)
+  rows -> (println "Found" (count rows) "users"))
 ```
 
 ### 接続エラー
 
 ```qi
 ;; 不正な接続文字列
-(db/pg-query "invalid-connection-string" "SELECT 1" [])
-;; => {:error "Connection error: ..."}
+(def conn (db/connect "invalid-url"))
+;; => {:error "Unsupported database URL: invalid-url"}
 
 ;; 接続タイムアウト
-(db/pg-query "postgresql://localhost:9999/db" "SELECT 1" [])
-;; => {:error "Connection error: connection refused"}
+(def conn (db/connect "postgresql://localhost:9999/db"))
+;; => {:error "Connection failed: connection refused"}
 ```
 
 ### クエリエラー
 
 ```qi
 ;; 構文エラー
-(db/pg-query db-conn "SELEC * FROM users" [])
+(db/query db-conn "SELEC * FROM users" [])
 ;; => {:error "Query error: syntax error at or near \"SELEC\""}
 
 ;; テーブルが存在しない
-(db/pg-query db-conn "SELECT * FROM nonexistent_table" [])
+(db/query db-conn "SELECT * FROM nonexistent_table" [])
 ;; => {:error "Query error: relation \"nonexistent_table\" does not exist"}
 ```
 
@@ -575,7 +580,7 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ;; 将来の計画
 (def pool (db/create-pool "postgresql://..." {:max-connections 10}))
 (db/with-connection pool (fn [conn]
-  (db/pg-query conn "SELECT * FROM users" [])))
+  (db/query conn "SELECT * FROM users" [])))
 ```
 
 ### パラメータ化クエリ
@@ -585,10 +590,10 @@ SQLインジェクション攻撃を防ぐため、常にパラメータ化ク�
 ```qi
 ;; ❌ 危険: SQLインジェクションの脆弱性
 (def user-input "1 OR 1=1")
-(db/pg-query db-conn (str "SELECT * FROM users WHERE id = " user-input) [])
+(db/query db-conn (str "SELECT * FROM users WHERE id = " user-input) [])
 
 ;; ✅ 安全: パラメータ化クエリ
-(db/pg-query db-conn "SELECT * FROM users WHERE id = $1" [user-input])
+(db/query db-conn "SELECT * FROM users WHERE id = $1" [user-input])
 ```
 
 ---
@@ -673,8 +678,8 @@ rt.block_on(async {
 
 Qiのデータベースライブラリは、PostgreSQLへのシンプルで安全なアクセスを提供します。
 
-- **db/pg-query**: SELECTクエリ実行
-- **db/pg-exec**: INSERT/UPDATE/DELETE実行
+- **db/query**: SELECTクエリ実行
+- **db/exec**: INSERT/UPDATE/DELETE実行
 - **Result型**: 統一されたエラー処理
 - **パラメータ化クエリ**: SQLインジェクション対策
 

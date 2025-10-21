@@ -1,0 +1,179 @@
+;; Database Unified Interface
+;; PostgreSQL/MySQL/SQLite Support
+
+(def __doc__module
+  {:name "db"
+   :desc "Database unified interface (PostgreSQL/MySQL/SQLite)"
+   :note "Switch RDBMS by changing only connection URL"})
+
+;; ========================================
+;; Connection Management
+;; ========================================
+
+(def __doc__connect
+  {:desc "Connect to a database and return a connection object"
+   :params [{:name "url" :type "string" :desc "Connection URL"}
+            {:name "options" :type "map" :desc "Connection options (optional)"}]
+   :returns {:type "string" :desc "Connection ID (DbConnection:xxx)"}
+   :examples [
+     ";; PostgreSQL"
+     "(def conn (db/connect \"postgresql://user:pass@localhost/mydb\"))"
+     ""
+     ";; MySQL"
+     "(def conn (db/connect \"mysql://root:pass@localhost/mydb\"))"
+     ""
+     ";; SQLite"
+     "(def conn (db/connect \"sqlite:path/to/db.db\"))"
+     "(def conn (db/connect \"sqlite::memory:\"))  ;; In-memory"
+   ]})
+
+(def __doc__close
+  {:desc "Close a database connection"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(db/close conn)"
+   ]})
+
+;; ========================================
+;; Query Execution
+;; ========================================
+
+(def __doc__query
+  {:desc "Execute a SELECT query and return result rows"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "sql" :type "string" :desc "SQL query"}
+            {:name "params" :type "vector" :desc "Parameters (optional)"}]
+   :returns {:type "vector" :desc "Vector of result rows (each row is a map)"}
+   :examples [
+     ";; Basic query"
+     "(db/query conn \"SELECT * FROM users\" [])"
+     ";; => [{\"id\" 1 \"name\" \"Alice\"} {\"id\" 2 \"name\" \"Bob\"}]"
+     ""
+     ";; Parameterized query (PostgreSQL: $1, MySQL/SQLite: ?)"
+     "(db/query conn \"SELECT * FROM users WHERE id = $1\" [42])"
+     "(db/query conn \"SELECT * FROM users WHERE id = ?\" [42])"
+     ""
+     ";; Pipeline usage"
+     "(conn"
+     " |> (db/query \"SELECT name FROM users\" [])"
+     " |> (map (fn [row] (get row \"name\"))))"
+   ]})
+
+(def __doc__exec
+  {:desc "Execute INSERT/UPDATE/DELETE command and return affected rows count"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "sql" :type "string" :desc "SQL command"}
+            {:name "params" :type "vector" :desc "Parameters (optional)"}]
+   :returns {:type "integer" :desc "Number of affected rows"}
+   :examples [
+     ";; INSERT"
+     "(db/exec conn"
+     "  \"INSERT INTO users (name, email) VALUES ($1, $2)\""
+     "  [\"Alice\" \"alice@example.com\"])"
+     ";; => 1"
+     ""
+     ";; UPDATE"
+     "(db/exec conn"
+     "  \"UPDATE users SET email = $1 WHERE id = $2\""
+     "  [\"new@example.com\" 42])"
+     ";; => 1"
+     ""
+     ";; DELETE"
+     "(db/exec conn \"DELETE FROM users WHERE id = $1\" [42])"
+     ";; => 1"
+   ]})
+
+;; ========================================
+;; Transactions
+;; ========================================
+
+(def __doc__begin
+  {:desc "Begin a transaction and return a transaction object"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "options" :type "map" :desc "Transaction options (optional)"}]
+   :returns {:type "string" :desc "Transaction ID"}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"INSERT INTO users (name) VALUES ($1)\" [\"Alice\"])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__commit
+  {:desc "Commit a transaction"
+   :params [{:name "tx" :type "string" :desc "Transaction ID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"UPDATE accounts SET balance = balance - 100 WHERE id = 1\" [])"
+     "(db/exec tx \"UPDATE accounts SET balance = balance + 100 WHERE id = 2\" [])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__rollback
+  {:desc "Rollback a transaction"
+   :params [{:name "tx" :type "string" :desc "Transaction ID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"DELETE FROM users\" [])"
+     "(db/rollback tx)  ;; Cancel changes"
+   ]})
+
+;; ========================================
+;; Schema Information
+;; ========================================
+
+(def __doc__tables
+  {:desc "Get list of tables in the database"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}]
+   :returns {:type "vector" :desc "Vector of table names"}
+   :examples [
+     "(db/tables conn)"
+     ";; => [\"users\" \"posts\" \"comments\"]"
+   ]})
+
+(def __doc__columns
+  {:desc "Get column information for a table"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "vector" :desc "Vector of column information"}
+   :examples [
+     "(db/columns conn \"users\")"
+     ";; => [{\"name\" \"id\" \"type\" \"INTEGER\" \"nullable\" false}"
+     ";;     {\"name\" \"name\" \"type\" \"TEXT\" \"nullable\" false}]"
+   ]})
+
+;; ========================================
+;; Utilities
+;; ========================================
+
+(def __doc__sanitize
+  {:desc "Escape SQL string value"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "value" :type "string" :desc "Value to escape"}]
+   :returns {:type "string" :desc "Escaped value"}
+   :examples [
+     "(db/sanitize conn \"O'Reilly\")"
+     ";; => \"O''Reilly\""
+   ]
+   :note "Prefer parameterized queries. Use this helper only for dynamic SQL generation"})
+
+(def __doc__escape-like
+  {:desc "Escape LIKE clause pattern"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "pattern" :type "string" :desc "LIKE pattern"}]
+   :returns {:type "string" :desc "Escaped pattern"}
+   :examples [
+     "(def pattern (db/escape-like conn user-input))"
+     "(db/query conn \"SELECT * FROM users WHERE name LIKE $1\" [(str \"%\" pattern \"%\")])"
+   ]})
+
+(def __doc__driver-info
+  {:desc "Get database driver and version information"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}]
+   :returns {:type "map" :desc "Driver information"}
+   :examples [
+     "(db/driver-info conn)"
+     ";; => {\"name\" \"PostgreSQL\" \"version\" \"0.1.0\" \"database_version\" \"15.3\"}"
+   ]})

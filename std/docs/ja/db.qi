@@ -1,0 +1,179 @@
+;; データベース統一インターフェース
+;; PostgreSQL/MySQL/SQLite対応
+
+(def __doc__module
+  {:name "db"
+   :desc "データベース統一インターフェース（PostgreSQL/MySQL/SQLite）"
+   :note "RDBMSの切り替えは接続URLのみ変更すればOK"})
+
+;; ========================================
+;; 接続管理
+;; ========================================
+
+(def __doc__connect
+  {:desc "データベースに接続し、接続オブジェクトを返す"
+   :params [{:name "url" :type "string" :desc "接続URL"}
+            {:name "options" :type "map" :desc "接続オプション（省略可）"}]
+   :returns {:type "string" :desc "接続ID（DbConnection:xxx）"}
+   :examples [
+     ";; PostgreSQL"
+     "(def conn (db/connect \"postgresql://user:pass@localhost/mydb\"))"
+     ""
+     ";; MySQL"
+     "(def conn (db/connect \"mysql://root:pass@localhost/mydb\"))"
+     ""
+     ";; SQLite"
+     "(def conn (db/connect \"sqlite:path/to/db.db\"))"
+     "(def conn (db/connect \"sqlite::memory:\"))  ;; インメモリ"
+   ]})
+
+(def __doc__close
+  {:desc "データベース接続を閉じる"
+   :params [{:name "conn" :type "string" :desc "接続ID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(db/close conn)"
+   ]})
+
+;; ========================================
+;; クエリ実行
+;; ========================================
+
+(def __doc__query
+  {:desc "SELECTクエリを実行し、結果行を返す"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "sql" :type "string" :desc "SQLクエリ"}
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "vector" :desc "結果行のベクタ（各行はマップ）"}
+   :examples [
+     ";; 基本的なクエリ"
+     "(db/query conn \"SELECT * FROM users\" [])"
+     ";; => [{\"id\" 1 \"name\" \"Alice\"} {\"id\" 2 \"name\" \"Bob\"}]"
+     ""
+     ";; パラメータ化クエリ（PostgreSQL: $1, MySQL/SQLite: ?）"
+     "(db/query conn \"SELECT * FROM users WHERE id = $1\" [42])"
+     "(db/query conn \"SELECT * FROM users WHERE id = ?\" [42])"
+     ""
+     ";; パイプラインでの使用"
+     "(conn"
+     " |> (db/query \"SELECT name FROM users\" [])"
+     " |> (map (fn [row] (get row \"name\"))))"
+   ]})
+
+(def __doc__exec
+  {:desc "INSERT/UPDATE/DELETEコマンドを実行し、影響を受けた行数を返す"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "sql" :type "string" :desc "SQLコマンド"}
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "integer" :desc "影響を受けた行数"}
+   :examples [
+     ";; INSERT"
+     "(db/exec conn"
+     "  \"INSERT INTO users (name, email) VALUES ($1, $2)\""
+     "  [\"Alice\" \"alice@example.com\"])"
+     ";; => 1"
+     ""
+     ";; UPDATE"
+     "(db/exec conn"
+     "  \"UPDATE users SET email = $1 WHERE id = $2\""
+     "  [\"new@example.com\" 42])"
+     ";; => 1"
+     ""
+     ";; DELETE"
+     "(db/exec conn \"DELETE FROM users WHERE id = $1\" [42])"
+     ";; => 1"
+   ]})
+
+;; ========================================
+;; トランザクション
+;; ========================================
+
+(def __doc__begin
+  {:desc "トランザクションを開始し、トランザクションオブジェクトを返す"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "options" :type "map" :desc "トランザクションオプション（省略可）"}]
+   :returns {:type "string" :desc "トランザクションID"}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"INSERT INTO users (name) VALUES ($1)\" [\"Alice\"])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__commit
+  {:desc "トランザクションをコミットする"
+   :params [{:name "tx" :type "string" :desc "トランザクションID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"UPDATE accounts SET balance = balance - 100 WHERE id = 1\" [])"
+     "(db/exec tx \"UPDATE accounts SET balance = balance + 100 WHERE id = 2\" [])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__rollback
+  {:desc "トランザクションをロールバックする"
+   :params [{:name "tx" :type "string" :desc "トランザクションID"}]
+   :returns {:type "nil" :desc ""}
+   :examples [
+     "(def tx (db/begin conn))"
+     "(db/exec tx \"DELETE FROM users\" [])"
+     "(db/rollback tx)  ;; 変更を取り消す"
+   ]})
+
+;; ========================================
+;; スキーマ情報
+;; ========================================
+
+(def __doc__tables
+  {:desc "データベース内のテーブル一覧を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}]
+   :returns {:type "vector" :desc "テーブル名のベクタ"}
+   :examples [
+     "(db/tables conn)"
+     ";; => [\"users\" \"posts\" \"comments\"]"
+   ]})
+
+(def __doc__columns
+  {:desc "テーブルのカラム情報を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "カラム情報のベクタ"}
+   :examples [
+     "(db/columns conn \"users\")"
+     ";; => [{\"name\" \"id\" \"type\" \"INTEGER\" \"nullable\" false}"
+     ";;     {\"name\" \"name\" \"type\" \"TEXT\" \"nullable\" false}]"
+   ]})
+
+;; ========================================
+;; ユーティリティ
+;; ========================================
+
+(def __doc__sanitize
+  {:desc "SQL文字列値をエスケープする"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "value" :type "string" :desc "エスケープする値"}]
+   :returns {:type "string" :desc "エスケープされた値"}
+   :examples [
+     "(db/sanitize conn \"O'Reilly\")"
+     ";; => \"O''Reilly\""
+   ]
+   :note "パラメータ化クエリの使用を推奨。このヘルパーは動的SQL生成時のみ使用"})
+
+(def __doc__escape-like
+  {:desc "LIKE句のパターンをエスケープする"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "pattern" :type "string" :desc "LIKEパターン"}]
+   :returns {:type "string" :desc "エスケープされたパターン"}
+   :examples [
+     "(def pattern (db/escape-like conn user-input))"
+     "(db/query conn \"SELECT * FROM users WHERE name LIKE $1\" [(str \"%\" pattern \"%\")])"
+   ]})
+
+(def __doc__driver-info
+  {:desc "データベースドライバーとバージョン情報を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}]
+   :returns {:type "map" :desc "ドライバー情報"}
+   :examples [
+     "(db/driver-info conn)"
+     ";; => {\"name\" \"PostgreSQL\" \"version\" \"0.1.0\" \"database_version\" \"15.3\"}"
+   ]})
