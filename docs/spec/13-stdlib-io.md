@@ -19,13 +19,13 @@
 ### 標準入力
 
 ```qi
-;; io/read-line - 標準入力から1行読む（EOF時はnil）
-(io/read-line)                      ;; => "user input"
-(io/read-line)                      ;; => nil（EOF）
+;; io/stdin-line - 標準入力から1行読む（EOF時はnil）
+(io/stdin-line)                     ;; => "user input"
+(io/stdin-line)                     ;; => nil（EOF）
 
 ;; 使用例: 1行ずつ処理
 (defn process []
-  (let [line (io/read-line)]
+  (let [line (io/stdin-line)]
     (if (some? line)
       (do
         (line |> str/trim |> str/upper |> println)

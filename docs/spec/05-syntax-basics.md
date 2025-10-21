@@ -543,7 +543,7 @@ fn、let、defなどの特殊形式内でもunquoteは正しく動作します�
   (swap! remaining rest))
 
 ;; ファイル読み込み（行単位）
-(while-some [line (io/read-line)]
+(while-some [line (io/stdin-line)]
   (line
    |> str/trim
    |> (when (> (len line) 0)
@@ -644,7 +644,7 @@ Qiには複数のループ構文があります。それぞれ適切な用途が
 
 ```qi
 ;; ✅ 推奨（関数型的、パイプラインと相性良い）
-(while-some [line (io/read-line)]
+(while-some [line (io/stdin-line)]
   (line
    |> str/trim
    |> process

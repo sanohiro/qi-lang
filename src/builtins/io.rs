@@ -962,14 +962,14 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 // 標準入力関数
 // ========================================
 
-/// read-line - 標準入力から1行読み込む
+/// stdin-line - 標準入力から1行読み込む
 /// 引数: なし
 /// 戻り値: 文字列 または nil（EOF）
 ///
 /// 使用例:
 /// ```qi
 /// (loop []
-///   (let [line (io/read-line)]
+///   (let [line (io/stdin-line)]
 ///     (when (some? line)
 ///       (println line)
 ///       (recur))))
@@ -998,13 +998,13 @@ pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// read-lines - 標準入力から全行を読み込む
+/// stdin-lines - 標準入力から全行を読み込む
 /// 引数: なし
 /// 戻り値: 行の配列（Vector）
 ///
 /// 使用例:
 /// ```qi
-/// (io/read-lines
+/// (io/stdin-lines
 ///  |> (map str/trim)
 ///  |> (filter (fn [s] (not (str/empty? s))))
 ///  |> (each println))
@@ -1029,7 +1029,7 @@ pub fn native_stdin_read_lines(_args: &[Value]) -> Result<Value, String> {
 
 /// 登録すべき関数のリスト
 /// @qi-doc:category io
-/// @qi-doc:functions read-file, write-file, append-file, read-lines, file-exists?, file-stream, write-stream, list-dir, create-dir, delete-file, delete-dir, copy-file, move-file, file-info, is-file?, is-dir?, read-line, stdin-lines
+/// @qi-doc:functions read-file, write-file, append-file, read-lines, file-exists?, file-stream, write-stream, list-dir, create-dir, delete-file, delete-dir, copy-file, move-file, file-info, is-file?, is-dir?, stdin-line, stdin-lines
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/read-file", native_read_file),
     ("io/write-file", native_write_file),
@@ -1048,6 +1048,6 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/is-file?", native_is_file),
     ("io/is-dir?", native_is_dir),
     // 標準入力
-    ("io/read-line", native_stdin_read_line),
+    ("io/stdin-line", native_stdin_read_line),
     ("io/stdin-lines", native_stdin_read_lines),
 ];
