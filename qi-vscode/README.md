@@ -22,7 +22,7 @@ Complete language support for **Qi - A Lisp that flows**.
 - **Constants**: `nil`, `true`, `false`
 - **Predicates**: `nil?`, `list?`, `map?`, `string?`, `integer?`, etc.
 - **Built-in Functions**: `atom`, `deref`, `swap!`, `reset!`, `print`, `println`, `error`, `tap`, etc.
-- **Module System**: Highlighting for `str/`, `list/`, `map/`, `go/`, `io/`, `http/`, `db/`, etc.
+- **Module System**: Highlighting for `str/`, `list/`, `map/`, `go/`, `io/`, `http/`, `db/`, `kvs/`, etc.
 
 ### Editor Features
 - Auto-closing pairs: `()`, `[]`, `{}`, `""`
