@@ -1,0 +1,127 @@
+;; 標準ライブラリドキュメント - 高階関数
+;; Higher-Order Functions (14 functions - fn/*)
+
+(def __doc__fn/map
+  {:desc "コレクションの各要素に関数を適用します。"
+   :params [{:name "f" :type "function" :desc "各要素に適用する関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list|vector" :desc "変換されたコレクション（入力と同じ型）"}
+   :examples ["(fn/map (fn [x] (* x 2)) [1 2 3]) ;=> [2 4 6]"
+              "(fn/map str/upper [\"a\" \"b\" \"c\"]) ;=> [\"A\" \"B\" \"C\"]"]})
+
+(def __doc__fn/filter
+  {:desc "述語関数が真を返す要素のみを抽出します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list|vector" :desc "フィルタされたコレクション（入力と同じ型）"}
+   :examples ["(fn/filter (fn [x] (> x 2)) [1 2 3 4]) ;=> [3 4]"
+              "(fn/filter even? [1 2 3 4 5 6]) ;=> [2 4 6]"]})
+
+(def __doc__fn/reduce
+  {:desc "コレクションを畳み込んで単一の値にします。"
+   :params [{:name "f" :type "function" :desc "畳み込み関数(acc, item)"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}
+            {:name "init" :type "any" :desc "初期値（省略可）"}]
+   :returns {:type "any" :desc "畳み込み結果"}
+   :examples ["(fn/reduce + [1 2 3 4]) ;=> 10"
+              "(fn/reduce + [1 2 3 4] 100) ;=> 110"
+              "(fn/reduce (fn [acc x] (conj acc x)) [] [1 2 3]) ;=> [1 2 3]"]})
+
+(def __doc__fn/pmap
+  {:desc "コレクションの各要素に関数を並列適用します。"
+   :params [{:name "f" :type "function" :desc "各要素に適用する関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list|vector" :desc "変換されたコレクション"}
+   :examples ["(fn/pmap expensive-fn [1 2 3 4]) ;; 並列実行"]})
+
+(def __doc__fn/pfilter
+  {:desc "述語関数を並列適用してフィルタします。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list|vector" :desc "フィルタされたコレクション"}
+   :examples ["(fn/pfilter expensive-pred? large-collection)"]})
+
+(def __doc__fn/preduce
+  {:desc "コレクションを並列で畳み込みます。"
+   :params [{:name "f" :type "function" :desc "畳み込み関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}
+            {:name "init" :type "any" :desc "初期値（省略可）"}]
+   :returns {:type "any" :desc "畳み込み結果"}
+   :examples ["(fn/preduce + large-numbers)"]})
+
+(def __doc__fn/partition
+  {:desc "コレクションを指定サイズのチャンクに分割します。"
+   :params [{:name "n" :type "integer" :desc "チャンクサイズ"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "チャンクのリスト"}
+   :examples ["(fn/partition 2 [1 2 3 4 5 6]) ;=> [[1 2] [3 4] [5 6]]"
+              "(fn/partition 3 [1 2 3 4 5]) ;=> [[1 2 3] [4 5]]"]})
+
+(def __doc__fn/group-by
+  {:desc "関数の戻り値でコレクションをグループ化します。"
+   :params [{:name "f" :type "function" :desc "グループ化キーを返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "map" :desc "キーごとにグループ化されたマップ"}
+   :examples ["(fn/group-by even? [1 2 3 4 5 6]) ;=> {true [2 4 6], false [1 3 5]}"
+              "(fn/group-by count [\"a\" \"bb\" \"c\" \"dd\"]) ;=> {1 [\"a\" \"c\"], 2 [\"bb\" \"dd\"]}"]})
+
+(def __doc__fn/map-lines
+  {:desc "テキストの各行に関数を適用します。"
+   :params [{:name "f" :type "function" :desc "各行に適用する関数"}
+            {:name "text" :type "string" :desc "テキスト"}]
+   :returns {:type "string" :desc "変換されたテキスト"}
+   :examples ["(fn/map-lines str/trim \"  hello  \\n  world  \") ;=> \"hello\\nworld\""]})
+
+(def __doc__fn/update
+  {:desc "コレクションの指定位置の要素に関数を適用します。"
+   :params [{:name "coll" :type "list|vector|map" :desc "コレクション"}
+            {:name "key" :type "any" :desc "キーまたはインデックス"}
+            {:name "f" :type "function" :desc "適用する関数"}]
+   :returns {:type "list|vector|map" :desc "更新されたコレクション"}
+   :examples ["(fn/update [1 2 3] 1 (fn [x] (* x 10))) ;=> [1 20 3]"
+              "(fn/update {:a 1 :b 2} :a inc) ;=> {:a 2 :b 2}"]})
+
+(def __doc__fn/update-in
+  {:desc "ネストしたコレクションの深い位置の要素に関数を適用します。"
+   :params [{:name "coll" :type "map|list|vector" :desc "コレクション"}
+            {:name "path" :type "list|vector" :desc "キー/インデックスのパス"}
+            {:name "f" :type "function" :desc "適用する関数"}]
+   :returns {:type "map|list|vector" :desc "更新されたコレクション"}
+   :examples ["(fn/update-in {:a {:b {:c 1}}} [:a :b :c] inc) ;=> {:a {:b {:c 2}}}"]})
+
+(def __doc__fn/count-by
+  {:desc "関数の戻り値でグループ化し、各グループの要素数を数えます。"
+   :params [{:name "f" :type "function" :desc "グループ化キーを返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "map" :desc "キーと要素数のマップ"}
+   :examples ["(fn/count-by even? [1 2 3 4 5 6]) ;=> {true 3, false 3}"
+              "(fn/count-by first [\"apple\" \"ant\" \"banana\" \"berry\"]) ;=> {\"a\" 2, \"b\" 2}"]})
+
+(def __doc__fn/complement
+  {:desc "述語関数の論理否定を返します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}]
+   :returns {:type "function" :desc "否定された述語関数"}
+   :examples ["(def not-even? (fn/complement even?))"
+              "(not-even? 3) ;=> true"
+              "(not-even? 4) ;=> false"]})
+
+(def __doc__fn/juxt
+  {:desc "複数の関数を並置し、同じ引数に適用してベクタで返す関数を作ります。"
+   :params [{:name "& fns" :type "function..." :desc "関数（可変長引数）"}]
+   :returns {:type "function" :desc "複数の関数を並置した関数"}
+   :examples ["(def stats (fn/juxt min max count))"
+              "(stats [1 2 3 4 5]) ;=> [1 5 5]"]})
+
+(def __doc__fn/tap>
+  {:desc "パイプライン用: 値を副作用関数に渡した後、元の値を返します。"
+   :params [{:name "f" :type "function" :desc "副作用関数（デバッグ用等）"}
+            {:name "x" :type "any" :desc "値"}]
+   :returns {:type "any" :desc "元の値（変更なし）"}
+   :examples ["(42 |> (fn/tap> println) |> (* 2)) ;; 42を表示して84を返す"]})
+
+(def __doc__fn/tap
+  {:desc "値を副作用関数に渡した後、元の値を返します。"
+   :params [{:name "x" :type "any" :desc "値"}
+            {:name "f" :type "function" :desc "副作用関数"}]
+   :returns {:type "any" :desc "元の値（変更なし）"}
+   :examples ["(fn/tap 42 println) ;; 42を表示して42を返す"]})

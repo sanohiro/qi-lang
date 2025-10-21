@@ -1,75 +1,88 @@
-;; 標準ライブラリドキュメント (日本語)
-;; 数学関数
-
-;; 丸め関数
-(def __doc__math/floor
-  {:desc "最も近い整数に切り下げる"
-   :params [{:name "n" :type "number" :desc "丸める数"}]
-   :returns {:type "number" :desc "切り下げた値"}
-   :examples ["(math/floor 3.7) ;=> 3"
-              "(math/floor -2.3) ;=> -3"]})
-
-(def __doc__math/ceil
-  {:desc "最も近い整数に切り上げる"
-   :params [{:name "n" :type "number" :desc "丸める数"}]
-   :returns {:type "number" :desc "切り上げた値"}
-   :examples ["(math/ceil 3.2) ;=> 4"
-              "(math/ceil -2.8) ;=> -2"]})
-
-(def __doc__math/round
-  {:desc "最も近い整数に四捨五入する"
-   :params [{:name "n" :type "number" :desc "丸める数"}]
-   :returns {:type "number" :desc "四捨五入した値"}
-   :examples ["(math/round 3.4) ;=> 3"
-              "(math/round 3.6) ;=> 4"]})
-
-;; 数学演算
-(def __doc__math/sqrt
-  {:desc "平方根を計算する"
-   :params [{:name "n" :type "number" :desc "数（非負でなければならない）"}]
-   :returns {:type "number" :desc "平方根"}
-   :examples ["(math/sqrt 16) ;=> 4.0"
-              "(math/sqrt 2) ;=> 1.414..."]})
+;; 標準ライブラリドキュメント - 数学関数
+;; Math Functions (10 functions)
 
 (def __doc__math/pow
-  {:desc "累乗を計算する"
-   :params [{:name "base" :type "number" :desc "底"}
-            {:name "exp" :type "number" :desc "指数"}]
-   :returns {:type "number" :desc "base^expの結果"}
-   :examples ["(math/pow 2 3) ;=> 8"
-              "(math/pow 10 -2) ;=> 0.01"]})
+  {:desc "べき乗を計算します（x ^ y）。"
+   :params [{:name "x" :type "number" :desc "底"}
+            {:name "y" :type "number" :desc "指数"}]
+   :returns {:type "float" :desc "べき乗の結果"}
+   :examples ["(math/pow 2 3) ;=> 8.0"
+              "(math/pow 10 2) ;=> 100.0"
+              "(math/pow 2 0.5) ;=> 1.414... ;; 平方根"]})
+
+(def __doc__math/sqrt
+  {:desc "平方根を計算します。"
+   :params [{:name "x" :type "number" :desc "数値"}]
+   :returns {:type "float" :desc "平方根"}
+   :examples ["(math/sqrt 4) ;=> 2.0"
+              "(math/sqrt 2) ;=> 1.414..."
+              "(math/sqrt 100) ;=> 10.0"]})
+
+(def __doc__math/round
+  {:desc "数値を四捨五入します。"
+   :params [{:name "x" :type "number" :desc "数値"}]
+   :returns {:type "integer" :desc "四捨五入された整数"}
+   :examples ["(math/round 3.4) ;=> 3"
+              "(math/round 3.5) ;=> 4"
+              "(math/round -2.7) ;=> -3"]})
+
+(def __doc__math/floor
+  {:desc "数値を切り捨てます（床関数）。"
+   :params [{:name "x" :type "number" :desc "数値"}]
+   :returns {:type "integer" :desc "切り捨てられた整数"}
+   :examples ["(math/floor 3.9) ;=> 3"
+              "(math/floor -2.1) ;=> -3"]})
+
+(def __doc__math/ceil
+  {:desc "数値を切り上げます（天井関数）。"
+   :params [{:name "x" :type "number" :desc "数値"}]
+   :returns {:type "integer" :desc "切り上げられた整数"}
+   :examples ["(math/ceil 3.1) ;=> 4"
+              "(math/ceil -2.9) ;=> -2"]})
 
 (def __doc__math/clamp
-  {:desc "数を最小値と最大値の間にクランプする"
-   :params [{:name "n" :type "number" :desc "クランプする数"}
+  {:desc "数値を指定の範囲に制限します。"
+   :params [{:name "x" :type "number" :desc "数値"}
             {:name "min" :type "number" :desc "最小値"}
             {:name "max" :type "number" :desc "最大値"}]
-   :returns {:type "number" :desc "クランプされた値"}
+   :returns {:type "number" :desc "制限された値"}
    :examples ["(math/clamp 5 0 10) ;=> 5"
               "(math/clamp -5 0 10) ;=> 0"
               "(math/clamp 15 0 10) ;=> 10"]})
 
-;; 乱数関数
+;; ========================================
+;; 乱数関数 (std-math feature必須、4関数)
+;; ========================================
+
 (def __doc__math/rand
-  {:desc "0.0から1.0の間のランダムな浮動小数点数を生成する"
-   :returns {:type "number" :desc "乱数"}
-   :examples ["(math/rand) ;=> 0.742..."]})
+  {:desc "0.0以上1.0未満のランダムな浮動小数点数を生成します。"
+   :params []
+   :returns {:type "float" :desc "0.0 <= x < 1.0のランダムな値"}
+   :examples ["(math/rand) ;=> 0.742..."
+              "(math/rand) ;=> 0.123..."]
+   :feature "std-math"})
 
 (def __doc__math/rand-int
-  {:desc "0からn-1の間のランダムな整数を生成する"
-   :params [{:name "n" :type "number" :desc "上限（この値は含まれない）"}]
-   :returns {:type "number" :desc "ランダムな整数"}
-   :examples ["(math/rand-int 10) ;=> 7"]})
+  {:desc "0以上n未満のランダムな整数を生成します。"
+   :params [{:name "n" :type "integer" :desc "上限（この値は含まない）"}]
+   :returns {:type "integer" :desc "0 <= x < nのランダムな整数"}
+   :examples ["(math/rand-int 10) ;=> 7"
+              "(math/rand-int 100) ;=> 42"]
+   :feature "std-math"})
 
 (def __doc__math/random-range
-  {:desc "[min, max)の範囲のランダムな数を生成する"
-   :params [{:name "min" :type "number" :desc "最小値（含む）"}
-            {:name "max" :type "number" :desc "最大値（含まない）"}]
-   :returns {:type "number" :desc "範囲内のランダムな数"}
-   :examples ["(math/random-range 10 20) ;=> 15.342..."]})
+  {:desc "min以上max未満のランダムな整数を生成します。"
+   :params [{:name "min" :type "integer" :desc "下限（この値を含む）"}
+            {:name "max" :type "integer" :desc "上限（この値は含まない）"}]
+   :returns {:type "integer" :desc "min <= x < maxのランダムな整数"}
+   :examples ["(math/random-range 10 20) ;=> 15"
+              "(math/random-range -5 5) ;=> -2"]
+   :feature "std-math"})
 
 (def __doc__math/shuffle
-  {:desc "コレクションをランダムにシャッフルする"
-   :params [{:name "coll" :type "collection" :desc "シャッフルするコレクション"}]
-   :returns {:type "list" :desc "シャッフルされたリスト"}
-   :examples ["(math/shuffle [1 2 3 4 5])"]})
+  {:desc "コレクションをランダムにシャッフルします。"
+   :params [{:name "coll" :type "collection" :desc "コレクション"}]
+   :returns {:type "vector" :desc "シャッフルされたベクター"}
+   :examples ["(math/shuffle [1 2 3 4 5]) ;=> [3 1 5 2 4]"
+              "(math/shuffle [\"a\" \"b\" \"c\"]) ;=> [\"c\" \"a\" \"b\"]"]
+   :feature "std-math"})

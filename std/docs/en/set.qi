@@ -1,0 +1,41 @@
+;; Standard Library Documentation - Set Operations
+;; Set Operations Functions (5 functions - set/*)
+;; This module is compiled with the `std-set` feature
+
+(def __doc__set/union
+  {:desc "Returns the union of multiple lists/vectors (removes duplicates)."
+   :params [{:name "& colls" :type "list|vector..." :desc "Lists or vectors (variadic arguments)"}]
+   :returns {:type "list" :desc "Union (no duplicates)"}
+   :examples ["(set/union [1 2 3] [2 3 4] [3 4 5]) ;=> [1 2 3 4 5]"
+              "(set/union [:a :b] [:b :c]) ;=> [:a :b :c]"]})
+
+(def __doc__set/intersection
+  {:desc "Returns the intersection of multiple lists/vectors (elements common to all)."
+   :params [{:name "& colls" :type "list|vector..." :desc "Lists or vectors (2 or more)"}]
+   :returns {:type "list" :desc "Intersection"}
+   :examples ["(set/intersection [1 2 3] [2 3 4] [2 3 5]) ;=> [2 3]"
+              "(set/intersection [:a :b :c] [:b :c :d]) ;=> [:b :c]"]})
+
+(def __doc__set/difference
+  {:desc "Returns the difference set by removing elements of other lists from the first list."
+   :params [{:name "coll1" :type "list|vector" :desc "Original list"}
+            {:name "& colls" :type "list|vector..." :desc "Lists to exclude (variadic arguments)"}]
+   :returns {:type "list" :desc "Difference set"}
+   :examples ["(set/difference [1 2 3 4] [2 3] [4]) ;=> [1]"
+              "(set/difference [:a :b :c] [:b]) ;=> [:a :c]"]})
+
+(def __doc__set/subset?
+  {:desc "Determines if the first argument is a subset of the second argument."
+   :params [{:name "coll1" :type "list|vector" :desc "Subset candidate"}
+            {:name "coll2" :type "list|vector" :desc "Original set"}]
+   :returns {:type "bool" :desc "true if subset"}
+   :examples ["(set/subset? [1 2] [1 2 3 4]) ;=> true"
+              "(set/subset? [1 5] [1 2 3 4]) ;=> false"]})
+
+(def __doc__set/superset?
+  {:desc "Determines if the first argument is a superset of the second argument."
+   :params [{:name "coll1" :type "list|vector" :desc "Superset candidate"}
+            {:name "coll2" :type "list|vector" :desc "Subset candidate"}]
+   :returns {:type "bool" :desc "true if superset"}
+   :examples ["(set/superset? [1 2 3 4] [1 2]) ;=> true"
+              "(set/superset? [1 2 3] [1 5]) ;=> false"]})

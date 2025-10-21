@@ -1,61 +1,64 @@
-;; Standard Library Documentation (English)
-;; Path Manipulation Functions
+;; Standard Library Documentation - Path Manipulation
+;; Path Manipulation Functions (9 functions - path/*)
 
-;; Path Operations
 (def __doc__path/join
-  {:desc "Join path components"
-   :params [{:name "& parts" :type "string" :desc "Path parts to join"}]
+  {:desc "Joins path components."
+   :params [{:name "& parts" :type "string..." :desc "Path parts (variadic)"}]
    :returns {:type "string" :desc "Joined path"}
-   :examples ["(path/join \"home\" \"user\" \"file.txt\") ;=> \"home/user/file.txt\""]})
-
-(def __doc__path/dirname
-  {:desc "Get directory name of path"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "string" :desc "Directory name"}
-   :examples ["(path/dirname \"home/user/file.txt\") ;=> \"home/user\""]})
+   :examples ["(path/join \"/usr\" \"local\" \"bin\") ;=> \"/usr/local/bin\""
+              "(path/join \"src\" \"main.qi\") ;=> \"src/main.qi\""]})
 
 (def __doc__path/basename
-  {:desc "Get base name of path (file name with extension)"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "string" :desc "Base name"}
-   :examples ["(path/basename \"home/user/file.txt\") ;=> \"file.txt\""]})
+  {:desc "Gets the file name portion of a path."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "string" :desc "File name"}
+   :examples ["(path/basename \"/usr/local/bin/qi\") ;=> \"qi\""
+              "(path/basename \"src/main.qi\") ;=> \"main.qi\""]})
 
-(def __doc__path/stem
-  {:desc "Get file name without extension"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "string" :desc "File stem"}
-   :examples ["(path/stem \"home/user/file.txt\") ;=> \"file\""]})
+(def __doc__path/dirname
+  {:desc "Gets the directory portion of a path."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "string" :desc "Directory path"}
+   :examples ["(path/dirname \"/usr/local/bin/qi\") ;=> \"/usr/local/bin\""
+              "(path/dirname \"src/main.qi\") ;=> \"src\""]})
 
 (def __doc__path/extension
-  {:desc "Get file extension"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "string" :desc "File extension (with dot)"}
-   :examples ["(path/extension \"file.txt\") ;=> \".txt\""]})
+  {:desc "Gets the file extension."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "string|nil" :desc "Extension (including dot, nil if no extension)"}
+   :examples ["(path/extension \"main.qi\") ;=> \".qi\""
+              "(path/extension \"README\") ;=> nil"]})
 
-;; Path Normalization
-(def __doc__path/normalize
-  {:desc "Normalize path (resolve . and ..)"
-   :params [{:name "path" :type "string" :desc "Path to normalize"}]
-   :returns {:type "string" :desc "Normalized path"}
-   :examples ["(path/normalize \"home/./user/../file.txt\") ;=> \"home/file.txt\""]})
+(def __doc__path/stem
+  {:desc "Gets the file name without the extension."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "string" :desc "File name without extension"}
+   :examples ["(path/stem \"main.qi\") ;=> \"main\""
+              "(path/stem \"/path/to/file.tar.gz\") ;=> \"file.tar\""]})
 
 (def __doc__path/absolute
-  {:desc "Convert to absolute path"
-   :params [{:name "path" :type "string" :desc "Relative or absolute path"}]
+  {:desc "Converts a relative path to an absolute path."
+   :params [{:name "path" :type "string" :desc "Path"}]
    :returns {:type "string" :desc "Absolute path"}
-   :examples ["(path/absolute \"file.txt\")"]})
+   :examples ["(path/absolute \"./main.qi\") ;=> \"/current/dir/main.qi\""]})
 
-;; Path Testing
+(def __doc__path/normalize
+  {:desc "Normalizes a path (resolves \"..\" and \".\")."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "string" :desc "Normalized path"}
+   :examples ["(path/normalize \"/usr/local/../bin\") ;=> \"/usr/bin\""
+              "(path/normalize \"./src/../lib\") ;=> \"lib\""]})
+
 (def __doc__path/is-absolute?
-  {:desc "Check if path is absolute"
-   :params [{:name "path" :type "string" :desc "Path to check"}]
-   :returns {:type "boolean" :desc "true if absolute"}
-   :examples ["(path/is-absolute? \"/home/user\") ;=> true"
-              "(path/is-absolute? \"user/file.txt\") ;=> false"]})
+  {:desc "Determines if a path is absolute."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "bool" :desc "true if absolute path"}
+   :examples ["(path/is-absolute? \"/usr/bin\") ;=> true"
+              "(path/is-absolute? \"./main.qi\") ;=> false"]})
 
 (def __doc__path/is-relative?
-  {:desc "Check if path is relative"
-   :params [{:name "path" :type "string" :desc "Path to check"}]
-   :returns {:type "boolean" :desc "true if relative"}
-   :examples ["(path/is-relative? \"user/file.txt\") ;=> true"
-              "(path/is-relative? \"/home/user\") ;=> false"]})
+  {:desc "Determines if a path is relative."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "bool" :desc "true if relative path"}
+   :examples ["(path/is-relative? \"./main.qi\") ;=> true"
+              "(path/is-relative? \"/usr/bin\") ;=> false"]})

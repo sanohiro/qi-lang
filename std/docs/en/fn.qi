@@ -1,0 +1,127 @@
+;; Standard Library Documentation - Higher-Order Functions
+;; Higher-Order Functions (14 functions - fn/*)
+
+(def __doc__fn/map
+  {:desc "Applies a function to each element of a collection."
+   :params [{:name "f" :type "function" :desc "Function to apply to each element"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list|vector" :desc "Transformed collection (same type as input)"}
+   :examples ["(fn/map (fn [x] (* x 2)) [1 2 3]) ;=> [2 4 6]"
+              "(fn/map str/upper [\"a\" \"b\" \"c\"]) ;=> [\"A\" \"B\" \"C\"]"]})
+
+(def __doc__fn/filter
+  {:desc "Extracts only elements where the predicate function returns true."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list|vector" :desc "Filtered collection (same type as input)"}
+   :examples ["(fn/filter (fn [x] (> x 2)) [1 2 3 4]) ;=> [3 4]"
+              "(fn/filter even? [1 2 3 4 5 6]) ;=> [2 4 6]"]})
+
+(def __doc__fn/reduce
+  {:desc "Folds a collection into a single value."
+   :params [{:name "f" :type "function" :desc "Folding function (acc, item)"}
+            {:name "coll" :type "list|vector" :desc "Collection"}
+            {:name "init" :type "any" :desc "Initial value (optional)"}]
+   :returns {:type "any" :desc "Folded result"}
+   :examples ["(fn/reduce + [1 2 3 4]) ;=> 10"
+              "(fn/reduce + [1 2 3 4] 100) ;=> 110"
+              "(fn/reduce (fn [acc x] (conj acc x)) [] [1 2 3]) ;=> [1 2 3]"]})
+
+(def __doc__fn/pmap
+  {:desc "Applies a function to each element of a collection in parallel."
+   :params [{:name "f" :type "function" :desc "Function to apply to each element"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list|vector" :desc "Transformed collection"}
+   :examples ["(fn/pmap expensive-fn [1 2 3 4]) ;; Executes in parallel"]})
+
+(def __doc__fn/pfilter
+  {:desc "Filters by applying the predicate function in parallel."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list|vector" :desc "Filtered collection"}
+   :examples ["(fn/pfilter expensive-pred? large-collection)"]})
+
+(def __doc__fn/preduce
+  {:desc "Folds a collection in parallel."
+   :params [{:name "f" :type "function" :desc "Folding function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}
+            {:name "init" :type "any" :desc "Initial value (optional)"}]
+   :returns {:type "any" :desc "Folded result"}
+   :examples ["(fn/preduce + large-numbers)"]})
+
+(def __doc__fn/partition
+  {:desc "Splits a collection into chunks of specified size."
+   :params [{:name "n" :type "integer" :desc "Chunk size"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of chunks"}
+   :examples ["(fn/partition 2 [1 2 3 4 5 6]) ;=> [[1 2] [3 4] [5 6]]"
+              "(fn/partition 3 [1 2 3 4 5]) ;=> [[1 2 3] [4 5]]"]})
+
+(def __doc__fn/group-by
+  {:desc "Groups a collection by the return value of a function."
+   :params [{:name "f" :type "function" :desc "Function that returns grouping key"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "map" :desc "Map grouped by key"}
+   :examples ["(fn/group-by even? [1 2 3 4 5 6]) ;=> {true [2 4 6], false [1 3 5]}"
+              "(fn/group-by count [\"a\" \"bb\" \"c\" \"dd\"]) ;=> {1 [\"a\" \"c\"], 2 [\"bb\" \"dd\"]}"]})
+
+(def __doc__fn/map-lines
+  {:desc "Applies a function to each line of text."
+   :params [{:name "f" :type "function" :desc "Function to apply to each line"}
+            {:name "text" :type "string" :desc "Text"}]
+   :returns {:type "string" :desc "Transformed text"}
+   :examples ["(fn/map-lines str/trim \"  hello  \\n  world  \") ;=> \"hello\\nworld\""]})
+
+(def __doc__fn/update
+  {:desc "Applies a function to an element at a specified position in a collection."
+   :params [{:name "coll" :type "list|vector|map" :desc "Collection"}
+            {:name "key" :type "any" :desc "Key or index"}
+            {:name "f" :type "function" :desc "Function to apply"}]
+   :returns {:type "list|vector|map" :desc "Updated collection"}
+   :examples ["(fn/update [1 2 3] 1 (fn [x] (* x 10))) ;=> [1 20 3]"
+              "(fn/update {:a 1 :b 2} :a inc) ;=> {:a 2 :b 2}"]})
+
+(def __doc__fn/update-in
+  {:desc "Applies a function to an element at a deep position in a nested collection."
+   :params [{:name "coll" :type "map|list|vector" :desc "Collection"}
+            {:name "path" :type "list|vector" :desc "Path of keys/indices"}
+            {:name "f" :type "function" :desc "Function to apply"}]
+   :returns {:type "map|list|vector" :desc "Updated collection"}
+   :examples ["(fn/update-in {:a {:b {:c 1}}} [:a :b :c] inc) ;=> {:a {:b {:c 2}}}"]})
+
+(def __doc__fn/count-by
+  {:desc "Groups by function return value and counts the number of elements in each group."
+   :params [{:name "f" :type "function" :desc "Function that returns grouping key"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "map" :desc "Map of keys and element counts"}
+   :examples ["(fn/count-by even? [1 2 3 4 5 6]) ;=> {true 3, false 3}"
+              "(fn/count-by first [\"apple\" \"ant\" \"banana\" \"berry\"]) ;=> {\"a\" 2, \"b\" 2}"]})
+
+(def __doc__fn/complement
+  {:desc "Returns the logical negation of a predicate function."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}]
+   :returns {:type "function" :desc "Negated predicate function"}
+   :examples ["(def not-even? (fn/complement even?))"
+              "(not-even? 3) ;=> true"
+              "(not-even? 4) ;=> false"]})
+
+(def __doc__fn/juxt
+  {:desc "Creates a function that juxtaposes multiple functions, applying them to the same arguments and returning results in a vector."
+   :params [{:name "& fns" :type "function..." :desc "Functions (variadic arguments)"}]
+   :returns {:type "function" :desc "Juxtaposed function"}
+   :examples ["(def stats (fn/juxt min max count))"
+              "(stats [1 2 3 4 5]) ;=> [1 5 5]"]})
+
+(def __doc__fn/tap>
+  {:desc "For pipelines: passes a value to a side-effect function, then returns the original value."
+   :params [{:name "f" :type "function" :desc "Side-effect function (for debugging, etc.)"}
+            {:name "x" :type "any" :desc "Value"}]
+   :returns {:type "any" :desc "Original value (unchanged)"}
+   :examples ["(42 |> (fn/tap> println) |> (* 2)) ;; Prints 42 and returns 84"]})
+
+(def __doc__fn/tap
+  {:desc "Passes a value to a side-effect function, then returns the original value."
+   :params [{:name "x" :type "any" :desc "Value"}
+            {:name "f" :type "function" :desc "Side-effect function"}]
+   :returns {:type "any" :desc "Original value (unchanged)"}
+   :examples ["(fn/tap 42 println) ;; Prints 42 and returns 42"]})

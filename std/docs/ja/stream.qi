@@ -1,55 +1,72 @@
-;; 標準ライブラリドキュメント (日本語)
-;; ストリーム処理関数
+;; 標準ライブラリドキュメント - ストリーム
+;; Stream Functions (10 functions - stream/*)
 
-;; ストリーム作成
 (def __doc__stream/stream
-  {:desc "コレクションからストリームを作成する"
-   :params [{:name "coll" :type "collection" :desc "ストリーム化するコレクション"}]
+  {:desc "コレクションからストリームを作成します。"
+   :params [{:name "coll" :type "list|vector" :desc "コレクション"}]
    :returns {:type "stream" :desc "ストリーム"}
    :examples ["(stream/stream [1 2 3 4 5])"]})
 
 (def __doc__stream/range
-  {:desc "範囲内の数のストリームを作成する"
-   :params [{:name "start" :type "number" :desc "開始値"}
-            {:name "end" :type "number" :desc "終了値（含まない）"}]
-   :returns {:type "stream" :desc "数のストリーム"}
-   :examples ["(stream/range 1 10)"]})
+  {:desc "数値範囲のストリームを作成します。"
+   :params [{:name "start" :type "integer" :desc "開始値（省略可、デフォルト0）"}
+            {:name "end" :type "integer" :desc "終了値（省略時は無限）"}
+            {:name "step" :type "integer" :desc "ステップ（省略可、デフォルト1）"}]
+   :returns {:type "stream" :desc "数値ストリーム"}
+   :examples ["(stream/range 10) ;; 0から9まで"
+              "(stream/range 1 10) ;; 1から9まで"
+              "(stream/range 0 100 10) ;; 0, 10, 20, ..., 90"]})
+
+(def __doc__stream/iterate
+  {:desc "関数を繰り返し適用する無限ストリームを作成します。"
+   :params [{:name "f" :type "function" :desc "適用する関数"}
+            {:name "init" :type "any" :desc "初期値"}]
+   :returns {:type "stream" :desc "無限ストリーム"}
+   :examples ["(stream/iterate inc 0) ;; 0, 1, 2, 3, ..."
+              "(stream/iterate (fn [x] (* x 2)) 1) ;; 1, 2, 4, 8, ..."]})
 
 (def __doc__stream/repeat
-  {:desc "値を繰り返す無限ストリームを作成する"
+  {:desc "同じ値を繰り返す無限ストリームを作成します。"
    :params [{:name "value" :type "any" :desc "繰り返す値"}]
    :returns {:type "stream" :desc "無限ストリーム"}
-   :examples ["(stream/repeat 42)"]})
+   :examples ["(stream/repeat :x) ;; :x, :x, :x, ..."]})
 
 (def __doc__stream/cycle
-  {:desc "コレクションを循環する無限ストリームを作成する"
-   :params [{:name "coll" :type "collection" :desc "循環するコレクション"}]
+  {:desc "コレクションを繰り返す無限ストリームを作成します。"
+   :params [{:name "coll" :type "list|vector" :desc "コレクション"}]
    :returns {:type "stream" :desc "無限ストリーム"}
-   :examples ["(stream/cycle [1 2 3])"]})
+   :examples ["(stream/cycle [1 2 3]) ;; 1, 2, 3, 1, 2, 3, ..."]})
 
-(def __doc__stream/file
-  {:desc "ファイルの行からストリームを作成する"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "stream" :desc "行のストリーム"}
-   :examples ["(stream/file \"data.txt\")"]})
+(def __doc__stream/map
+  {:desc "ストリームの各要素に関数を適用します。"
+   :params [{:name "f" :type "function" :desc "適用する関数"}
+            {:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "stream" :desc "変換されたストリーム"}
+   :examples ["(stream/map (* 2) (stream/range 5)) ;; 0, 2, 4, 6, 8"]})
 
-;; ストリーム操作
+(def __doc__stream/filter
+  {:desc "ストリームから条件を満たす要素のみを抽出します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "stream" :desc "フィルタされたストリーム"}
+   :examples ["(stream/filter even? (stream/range 10)) ;; 0, 2, 4, 6, 8"]})
+
 (def __doc__stream/take
-  {:desc "ストリームから最初のn個の要素を取得する"
-   :params [{:name "n" :type "number" :desc "要素数"}
-            {:name "stream" :type "stream" :desc "入力ストリーム"}]
-   :returns {:type "list" :desc "n個の要素のリスト"}
-   :examples ["(stream/take 5 (stream/range 1 100))"]})
+  {:desc "ストリームから最初のn個の要素を取得します。"
+   :params [{:name "n" :type "integer" :desc "要素数"}
+            {:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "stream" :desc "最初のn個のストリーム"}
+   :examples ["(stream/take 5 (stream/range)) ;; 0, 1, 2, 3, 4"]})
 
 (def __doc__stream/drop
-  {:desc "ストリームから最初のn個の要素を削除する"
-   :params [{:name "n" :type "number" :desc "削除する要素数"}
-            {:name "stream" :type "stream" :desc "入力ストリーム"}]
-   :returns {:type "stream" :desc "要素が削除されたストリーム"}
-   :examples ["(stream/drop 10 (stream/range 1 100))"]})
+  {:desc "ストリームから最初のn個の要素をスキップします。"
+   :params [{:name "n" :type "integer" :desc "スキップする要素数"}
+            {:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "stream" :desc "残りのストリーム"}
+   :examples ["(stream/drop 5 (stream/range 10)) ;; 5, 6, 7, 8, 9"]})
 
 (def __doc__stream/realize
-  {:desc "ストリーム全体をリストに実現する"
-   :params [{:name "stream" :type "stream" :desc "実現するストリーム"}]
-   :returns {:type "list" :desc "すべてのストリーム要素のリスト"}
-   :examples ["(stream/realize (stream/range 1 6))"]})
+  {:desc "ストリームを実体化してリストにします。"
+   :params [{:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "list" :desc "リスト"}
+   :examples ["(stream/realize (stream/take 5 (stream/range))) ;=> [0 1 2 3 4]"]})

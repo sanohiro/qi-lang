@@ -1,0 +1,40 @@
+;; 標準ライブラリドキュメント - マップ高度操作
+;; Map Advanced Functions (5 functions - map/*)
+;; 基本的なマップ操作(get, keys, vals, assoc, dissoc, merge, get-in)はcore.qiを参照
+
+(def __doc__map/select-keys
+  {:desc "マップから指定したキーのみを選択して新しいマップを作成します。"
+   :params [{:name "m" :type "map" :desc "元のマップ"}
+            {:name "keys" :type "list|vector" :desc "選択するキーのリスト"}]
+   :returns {:type "map" :desc "選択されたキーのみを含むマップ"}
+   :examples ["(map/select-keys {:a 1 :b 2 :c 3} [:a :c]) ;=> {:a 1 :c 3}"]})
+
+(def __doc__map/assoc-in
+  {:desc "ネストしたマップの深い位置に値を設定します。"
+   :params [{:name "m" :type "map" :desc "元のマップ"}
+            {:name "path" :type "list|vector" :desc "キーのパス"}
+            {:name "value" :type "any" :desc "設定する値"}]
+   :returns {:type "map" :desc "更新されたマップ"}
+   :examples ["(map/assoc-in {:a {:b {:c 1}}} [:a :b :c] 42) ;=> {:a {:b {:c 42}}}"
+              "(map/assoc-in {} [:a :b :c] 42) ;=> {:a {:b {:c 42}}}"]})
+
+(def __doc__map/dissoc-in
+  {:desc "ネストしたマップの深い位置からキーを削除します。"
+   :params [{:name "m" :type "map" :desc "元のマップ"}
+            {:name "path" :type "list|vector" :desc "キーのパス"}]
+   :returns {:type "map" :desc "更新されたマップ"}
+   :examples ["(map/dissoc-in {:a {:b {:c 1 :d 2}}} [:a :b :c]) ;=> {:a {:b {:d 2}}}"]})
+
+(def __doc__map/update-keys
+  {:desc "マップの全てのキーに関数を適用して新しいマップを作成します。"
+   :params [{:name "m" :type "map" :desc "元のマップ"}
+            {:name "f" :type "function" :desc "キーに適用する関数"}]
+   :returns {:type "map" :desc "キーが変換されたマップ"}
+   :examples ["(map/update-keys {:a 1 :b 2} str/upper) ;=> {:A 1 :B 2}"]})
+
+(def __doc__map/update-vals
+  {:desc "マップの全ての値に関数を適用して新しいマップを作成します。"
+   :params [{:name "m" :type "map" :desc "元のマップ"}
+            {:name "f" :type "function" :desc "値に適用する関数"}]
+   :returns {:type "map" :desc "値が変換されたマップ"}
+   :examples ["(map/update-vals {:a 1 :b 2} (fn [x] (* x 2))) ;=> {:a 2 :b 4}"]})

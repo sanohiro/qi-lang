@@ -1,88 +1,78 @@
-;; Standard Library Documentation (English)
-;; HTTP Client Functions
+;; Standard Library Documentation - HTTP Client
+;; HTTP Client Functions (11 functions)
 
-;; HTTP Methods
 (def __doc__http/get
-  {:desc "Make HTTP GET request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/get \"https://api.example.com/data\")"]})
+  {:desc "Sends an HTTP GET request."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map (:status, :headers, :body)"}
+   :examples ["(http/get \"https://api.example.com/data\")"
+              "(http/get \"http://localhost:3000/api/users\")"]})
 
 (def __doc__http/post
-  {:desc "Make HTTP POST request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "body" :type "any" :desc "Request body"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"]})
+  {:desc "Sends an HTTP POST request."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body (string or map)"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"
+              "(http/post url (json/stringify data))"]})
 
 (def __doc__http/put
-  {:desc "Make HTTP PUT request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "body" :type "any" :desc "Request body"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
+  {:desc "Sends an HTTP PUT request."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body"}]
+   :returns {:type "map" :desc "Response map"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
 
-(def __doc__http/patch
-  {:desc "Make HTTP PATCH request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "body" :type "any" :desc "Request body"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
-
 (def __doc__http/delete
-  {:desc "Make HTTP DELETE request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
+  {:desc "Sends an HTTP DELETE request."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map"}
    :examples ["(http/delete \"https://api.example.com/users/1\")"]})
 
+(def __doc__http/patch
+  {:desc "Sends an HTTP PATCH request."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+
 (def __doc__http/head
-  {:desc "Make HTTP HEAD request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/head \"https://api.example.com/data\")"]})
+  {:desc "Sends an HTTP HEAD request."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map (no body)"}
+   :examples ["(http/head \"https://example.com\")"]})
 
 (def __doc__http/options
-  {:desc "Make HTTP OPTIONS request"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
+  {:desc "Sends an HTTP OPTIONS request."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map"}
    :examples ["(http/options \"https://api.example.com\")"]})
 
-;; Generic Request
 (def __doc__http/request
-  {:desc "Make generic HTTP request"
-   :params [{:name "method" :type "string" :desc "HTTP method"}
-            {:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/request \"POST\" \"https://api.example.com/data\" {:body data})"]})
+  {:desc "Sends a detailed HTTP request."
+   :params [{:name "options" :type "map" :desc "Request options (:method, :url, :headers, :body, :timeout, etc.)"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/request {:method :get :url \"https://example.com\" :headers {:Authorization \"Bearer token\"}})"
+              "(http/request {:method :post :url url :body data :timeout 5000})"]})
 
-;; Streaming Requests
+(def __doc__http/get-async
+  {:desc "Sends an asynchronous HTTP GET request."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "channel" :desc "Promise of response"}
+   :examples ["(def p (http/get-async \"https://api.example.com/data\"))"
+              "(go/await p)"]})
+
+(def __doc__http/post-async
+  {:desc "Sends an asynchronous HTTP POST request."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body"}]
+   :returns {:type "channel" :desc "Promise of response"}
+   :examples ["(def p (http/post-async url data))"
+              "(go/await p)"]})
+
 (def __doc__http/get-stream
-  {:desc "Make HTTP GET request with streaming response"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
+  {:desc "Sends a streaming HTTP GET request."
+   :params [{:name "url" :type "string" :desc "URL"}]
    :returns {:type "stream" :desc "Response stream"}
-   :examples ["(http/get-stream \"https://example.com/large-file.zip\")"]})
-
-(def __doc__http/post-stream
-  {:desc "Make HTTP POST request with streaming body"
-   :params [{:name "url" :type "string" :desc "Request URL"}
-            {:name "stream" :type "stream" :desc "Request body stream"}
-            {:name "opts" :type "map" :desc "Optional request options"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(http/post-stream \"https://api.example.com/upload\" file-stream)"]})
-
-(def __doc__http/request-stream
-  {:desc "Make generic HTTP request with streaming"
-   :params [{:name "method" :type "string" :desc "HTTP method"}
-            {:name "url" :type "string" :desc "Request URL"}
-            {:name "opts" :type "map" :desc "Request options"}]
-   :returns {:type "stream" :desc "Response stream"}
-   :examples ["(http/request-stream \"GET\" \"https://example.com/stream\")"]})
+   :examples ["(def stream (http/get-stream \"https://example.com/large-file\"))"
+              "(stream/realize stream 10)"]})

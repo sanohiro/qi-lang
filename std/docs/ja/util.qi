@@ -1,0 +1,9 @@
+;; 標準ライブラリドキュメント - ユーティリティ
+;; Utility Functions (1 function - util/*)
+
+(def __doc__util/inspect
+  {:desc "値の内部構造を詳細に表示します（デバッグ用）。"
+   :params [{:name "value" :type "any" :desc "検査する値"}]
+   :returns {:type "string" :desc "値の詳細表現"}
+   :examples ["(util/inspect {:a 1 :b [2 3]})"
+              "(util/inspect (fn [x] (* x 2)))"]})

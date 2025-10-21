@@ -1,183 +1,170 @@
-;; Standard Library Documentation (English)
-;; Time Functions
-
-;; Current Time
-(def __doc__timestamp
-  {:desc "Get current Unix timestamp in milliseconds"
-   :returns {:type "number" :desc "Current timestamp"}
-   :examples ["(timestamp) ;=> 1704067200000"]})
+;; Standard Library Documentation - Time Functions
+;; Time Functions (20 functions)
 
 (def __doc__time/now-iso
-  {:desc "Get current time as ISO 8601 string"
-   :returns {:type "string" :desc "ISO 8601 timestamp"}
-   :examples ["(time/now-iso) ;=> \"2024-01-01T00:00:00Z\""]})
-
-(def __doc__time/today
-  {:desc "Get today's date as string"
-   :returns {:type "string" :desc "Today's date"}
-   :examples ["(time/today) ;=> \"2024-01-01\""]})
-
-;; Time Parsing and Formatting
-(def __doc__time/parse
-  {:desc "Parse time string to timestamp"
-   :params [{:name "s" :type "string" :desc "Time string"}]
-   :returns {:type "number" :desc "Timestamp"}
-   :examples ["(time/parse \"2024-01-01T00:00:00Z\") ;=> 1704067200000"]})
-
-(def __doc__time/format
-  {:desc "Format timestamp as string"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "format" :type "string" :desc "Format string"}]
-   :returns {:type "string" :desc "Formatted time string"}
-   :examples ["(time/format 1704067200000 \"%Y-%m-%d\") ;=> \"2024-01-01\""]})
-
-;; Unix Time Conversion
-(def __doc__time/to-unix
-  {:desc "Convert time to Unix timestamp (seconds)"
-   :params [{:name "ts" :type "number" :desc "Timestamp in milliseconds"}]
-   :returns {:type "number" :desc "Unix timestamp (seconds)"}
-   :examples ["(time/to-unix 1704067200000) ;=> 1704067200"]})
+  {:desc "Returns the current date and time in ISO 8601 format."
+   :params []
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/now-iso) ;=> \"2024-10-21T12:34:56Z\""]})
 
 (def __doc__time/from-unix
-  {:desc "Convert Unix timestamp to milliseconds"
-   :params [{:name "unix" :type "number" :desc "Unix timestamp (seconds)"}]
-   :returns {:type "number" :desc "Timestamp in milliseconds"}
-   :examples ["(time/from-unix 1704067200) ;=> 1704067200000"]})
+  {:desc "Converts Unix timestamp (seconds) to ISO 8601 formatted date-time."
+   :params [{:name "timestamp" :type "integer" :desc "Unix timestamp (seconds)"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/from-unix 1729544123) ;=> \"2024-10-21T12:34:56Z\""]})
 
-;; Time Components
-(def __doc__time/year
-  {:desc "Extract year from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Year"}
-   :examples ["(time/year 1704067200000) ;=> 2024"]})
+(def __doc__time/to-unix
+  {:desc "Converts ISO 8601 formatted date-time to Unix timestamp (seconds)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "Unix timestamp (seconds)"}
+   :examples ["(time/to-unix \"2024-10-21T12:34:56Z\") ;=> 1729544123"]})
 
-(def __doc__time/month
-  {:desc "Extract month from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Month (1-12)"}
-   :examples ["(time/month 1704067200000) ;=> 1"]})
+(def __doc__time/format
+  {:desc "Formats date-time as a string with the specified format."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "format" :type "string" :desc "format string"}]
+   :returns {:type "string" :desc "formatted date-time string"}
+   :examples ["(time/format (time/now-iso) \"%Y-%m-%d\") ;=> \"2024-10-21\""
+              "(time/format dt \"%Y/%m/%d %H:%M:%S\") ;=> \"2024/10/21 12:34:56\""]})
 
-(def __doc__time/day
-  {:desc "Extract day from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Day (1-31)"}
-   :examples ["(time/day 1704067200000) ;=> 1"]})
+(def __doc__time/parse
+  {:desc "Parses date-time string with the specified format."
+   :params [{:name "date-str" :type "string" :desc "date-time string"}
+            {:name "format" :type "string" :desc "format string"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/parse \"2024-10-21\" \"%Y-%m-%d\")"
+              "(time/parse \"21/10/2024 12:34\" \"%d/%m/%Y %H:%M\")"]})
 
-(def __doc__time/hour
-  {:desc "Extract hour from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Hour (0-23)"}
-   :examples ["(time/hour 1704067200000) ;=> 0"]})
+(def __doc__time/today
+  {:desc "Returns today's date (00:00:00)."
+   :params []
+   :returns {:type "string" :desc "ISO 8601 formatted date string"}
+   :examples ["(time/today) ;=> \"2024-10-21T00:00:00Z\""]})
 
-(def __doc__time/minute
-  {:desc "Extract minute from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Minute (0-59)"}
-   :examples ["(time/minute 1704067200000) ;=> 0"]})
-
-(def __doc__time/second
-  {:desc "Extract second from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Second (0-59)"}
-   :examples ["(time/second 1704067200000) ;=> 0"]})
-
-(def __doc__time/weekday
-  {:desc "Get day of week from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}]
-   :returns {:type "number" :desc "Weekday (0=Sunday, 6=Saturday)"}
-   :examples ["(time/weekday 1704067200000) ;=> 1"]})
-
-;; Time Arithmetic
 (def __doc__time/add-days
-  {:desc "Add days to timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "days" :type "number" :desc "Number of days"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/add-days 1704067200000 7) ;=> 1704672000000"]})
+  {:desc "Adds the specified number of days to a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "days" :type "integer" :desc "number of days to add"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/add-days \"2024-10-21T00:00:00Z\" 7) ;=> \"2024-10-28T00:00:00Z\""
+              "(time/add-days (time/today) -1) ;; yesterday"]})
 
 (def __doc__time/add-hours
-  {:desc "Add hours to timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "hours" :type "number" :desc "Number of hours"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/add-hours 1704067200000 24) ;=> 1704153600000"]})
+  {:desc "Adds the specified number of hours to a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "hours" :type "integer" :desc "number of hours to add"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/add-hours \"2024-10-21T12:00:00Z\" 3) ;=> \"2024-10-21T15:00:00Z\""]})
 
 (def __doc__time/add-minutes
-  {:desc "Add minutes to timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "minutes" :type "number" :desc "Number of minutes"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/add-minutes 1704067200000 60) ;=> 1704070800000"]})
+  {:desc "Adds the specified number of minutes to a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "minutes" :type "integer" :desc "number of minutes to add"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/add-minutes \"2024-10-21T12:00:00Z\" 30) ;=> \"2024-10-21T12:30:00Z\""]})
 
 (def __doc__time/sub-days
-  {:desc "Subtract days from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "days" :type "number" :desc "Number of days"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/sub-days 1704067200000 7) ;=> 1703462400000"]})
+  {:desc "Subtracts the specified number of days from a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "days" :type "integer" :desc "number of days to subtract"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/sub-days \"2024-10-21T00:00:00Z\" 7) ;=> \"2024-10-14T00:00:00Z\""]})
 
 (def __doc__time/sub-hours
-  {:desc "Subtract hours from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "hours" :type "number" :desc "Number of hours"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/sub-hours 1704067200000 24) ;=> 1703980800000"]})
+  {:desc "Subtracts the specified number of hours from a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "hours" :type "integer" :desc "number of hours to subtract"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/sub-hours \"2024-10-21T12:00:00Z\" 3) ;=> \"2024-10-21T09:00:00Z\""]})
 
 (def __doc__time/sub-minutes
-  {:desc "Subtract minutes from timestamp"
-   :params [{:name "ts" :type "number" :desc "Timestamp"}
-            {:name "minutes" :type "number" :desc "Number of minutes"}]
-   :returns {:type "number" :desc "New timestamp"}
-   :examples ["(time/sub-minutes 1704067200000 60) ;=> 1704063600000"]})
+  {:desc "Subtracts the specified number of minutes from a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}
+            {:name "minutes" :type "integer" :desc "number of minutes to subtract"}]
+   :returns {:type "string" :desc "ISO 8601 formatted date-time string"}
+   :examples ["(time/sub-minutes \"2024-10-21T12:30:00Z\" 15) ;=> \"2024-10-21T12:15:00Z\""]})
 
-;; Time Comparison
-(def __doc__time/after?
-  {:desc "Check if first timestamp is after second"
-   :params [{:name "ts1" :type "number" :desc "First timestamp"}
-            {:name "ts2" :type "number" :desc "Second timestamp"}]
-   :returns {:type "boolean" :desc "true if ts1 > ts2"}
-   :examples ["(time/after? 1704153600000 1704067200000) ;=> true"]})
-
-(def __doc__time/before?
-  {:desc "Check if first timestamp is before second"
-   :params [{:name "ts1" :type "number" :desc "First timestamp"}
-            {:name "ts2" :type "number" :desc "Second timestamp"}]
-   :returns {:type "boolean" :desc "true if ts1 < ts2"}
-   :examples ["(time/before? 1704067200000 1704153600000) ;=> true"]})
-
-(def __doc__time/between?
-  {:desc "Check if timestamp is between two other timestamps"
-   :params [{:name "ts" :type "number" :desc "Timestamp to check"}
-            {:name "start" :type "number" :desc "Start timestamp"}
-            {:name "end" :type "number" :desc "End timestamp"}]
-   :returns {:type "boolean" :desc "true if start <= ts <= end"}
-   :examples ["(time/between? 1704100000000 1704067200000 1704153600000) ;=> true"]})
-
-;; Time Differences
 (def __doc__time/diff-days
-  {:desc "Calculate difference in days between timestamps"
-   :params [{:name "ts1" :type "number" :desc "First timestamp"}
-            {:name "ts2" :type "number" :desc "Second timestamp"}]
-   :returns {:type "number" :desc "Difference in days"}
-   :examples ["(time/diff-days 1704153600000 1704067200000) ;=> 1"]})
+  {:desc "Calculates the difference in days between two date-times."
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601 formatted date-time string 1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601 formatted date-time string 2"}]
+   :returns {:type "integer" :desc "difference in days"}
+   :examples ["(time/diff-days \"2024-10-28T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> 7"]})
 
 (def __doc__time/diff-hours
-  {:desc "Calculate difference in hours between timestamps"
-   :params [{:name "ts1" :type "number" :desc "First timestamp"}
-            {:name "ts2" :type "number" :desc "Second timestamp"}]
-   :returns {:type "number" :desc "Difference in hours"}
-   :examples ["(time/diff-hours 1704153600000 1704067200000) ;=> 24"]})
+  {:desc "Calculates the difference in hours between two date-times."
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601 formatted date-time string 1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601 formatted date-time string 2"}]
+   :returns {:type "integer" :desc "difference in hours"}
+   :examples ["(time/diff-hours \"2024-10-21T15:00:00Z\" \"2024-10-21T12:00:00Z\") ;=> 3"]})
 
 (def __doc__time/diff-minutes
-  {:desc "Calculate difference in minutes between timestamps"
-   :params [{:name "ts1" :type "number" :desc "First timestamp"}
-            {:name "ts2" :type "number" :desc "Second timestamp"}]
-   :returns {:type "number" :desc "Difference in minutes"}
-   :examples ["(time/diff-minutes 1704070800000 1704067200000) ;=> 60"]})
+  {:desc "Calculates the difference in minutes between two date-times."
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601 formatted date-time string 1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601 formatted date-time string 2"}]
+   :returns {:type "integer" :desc "difference in minutes"}
+   :examples ["(time/diff-minutes \"2024-10-21T12:30:00Z\" \"2024-10-21T12:00:00Z\") ;=> 30"]})
 
-;; Utilities
-(def __doc__sleep
-  {:desc "Sleep for specified milliseconds"
-   :params [{:name "ms" :type "number" :desc "Milliseconds to sleep"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(sleep 1000) ; Sleep for 1 second"]})
+(def __doc__time/before?
+  {:desc "Checks if date-time 1 is before date-time 2."
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601 formatted date-time string 1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601 formatted date-time string 2"}]
+   :returns {:type "bool" :desc "true if date-time 1 is before date-time 2"}
+   :examples ["(time/before? \"2024-10-20T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/after?
+  {:desc "Checks if date-time 1 is after date-time 2."
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601 formatted date-time string 1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601 formatted date-time string 2"}]
+   :returns {:type "bool" :desc "true if date-time 1 is after date-time 2"}
+   :examples ["(time/after? \"2024-10-22T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/between?
+  {:desc "Checks if a date-time is within the specified range."
+   :params [{:name "target" :type "string" :desc "target date-time"}
+            {:name "start" :type "string" :desc "start date-time"}
+            {:name "end" :type "string" :desc "end date-time"}]
+   :returns {:type "bool" :desc "true if within range"}
+   :examples ["(time/between? \"2024-10-21T12:00:00Z\" \"2024-10-21T00:00:00Z\" \"2024-10-22T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/year
+  {:desc "Extracts the year from a date-time."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "year"}
+   :examples ["(time/year \"2024-10-21T12:34:56Z\") ;=> 2024"]})
+
+(def __doc__time/month
+  {:desc "Extracts the month from a date-time (1-12)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "month (1-12)"}
+   :examples ["(time/month \"2024-10-21T12:34:56Z\") ;=> 10"]})
+
+(def __doc__time/day
+  {:desc "Extracts the day from a date-time (1-31)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "day (1-31)"}
+   :examples ["(time/day \"2024-10-21T12:34:56Z\") ;=> 21"]})
+
+(def __doc__time/hour
+  {:desc "Extracts the hour from a date-time (0-23)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "hour (0-23)"}
+   :examples ["(time/hour \"2024-10-21T12:34:56Z\") ;=> 12"]})
+
+(def __doc__time/minute
+  {:desc "Extracts the minute from a date-time (0-59)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "minute (0-59)"}
+   :examples ["(time/minute \"2024-10-21T12:34:56Z\") ;=> 34"]})
+
+(def __doc__time/second
+  {:desc "Extracts the second from a date-time (0-59)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "second (0-59)"}
+   :examples ["(time/second \"2024-10-21T12:34:56Z\") ;=> 56"]})
+
+(def __doc__time/weekday
+  {:desc "Extracts the weekday from a date-time (0=Sunday, 1=Monday, ..., 6=Saturday)."
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601 formatted date-time string"}]
+   :returns {:type "integer" :desc "weekday (0-6)"}
+   :examples ["(time/weekday \"2024-10-21T00:00:00Z\") ;=> 1 ;; Monday"]})

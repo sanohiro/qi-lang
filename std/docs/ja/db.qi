@@ -1,128 +1,172 @@
-;; 標準ライブラリドキュメント (日本語)
-;; データベース関数
+;; 標準ライブラリドキュメント - データベース統一API
+;; Database Functions (24 functions - db/*)
+;; このモジュールは `db-sqlite` feature でコンパイルされます
 
-;; データベース接続
+;; ========== Phase 1: 基本操作・サニタイズ (8個) ==========
+
 (def __doc__db/connect
-  {:desc "データベースに接続する"
-   :params [{:name "url" :type "string" :desc "データベース接続URL"}]
+  {:desc "データベースに接続します。"
+   :params [{:name "url" :type "string" :desc "接続URL（例: \"sqlite:db.db\", \"sqlite::memory:\"）"}
+            {:name "opts" :type "map" :desc "接続オプション（省略可）{:timeout 30000 :read-only false :auto-commit true}"}]
    :returns {:type "connection" :desc "データベース接続"}
-   :examples ["(db/connect \"sqlite://data.db\")"
-              "(db/connect \"postgres://localhost/mydb\")"]})
+   :examples ["(def db (db/connect \"sqlite:test.db\"))"
+              "(def db (db/connect \"sqlite::memory:\" {:read-only false}))"]})
 
-(def __doc__db/close
-  {:desc "データベース接続を閉じる"
-   :params [{:name "conn" :type "connection" :desc "閉じる接続"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(db/close conn)"]})
-
-(def __doc__db/driver-info
-  {:desc "データベースドライバー情報を取得する"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
-   :returns {:type "map" :desc "ドライバー情報マップ"}
-   :examples ["(db/driver-info conn)"]})
-
-;; クエリ実行
 (def __doc__db/query
-  {:desc "SQLクエリを実行してすべての行を返す"
+  {:desc "SQLクエリを実行して全ての行を取得します。"
    :params [{:name "conn" :type "connection" :desc "データベース接続"}
             {:name "sql" :type "string" :desc "SQLクエリ"}
-            {:name "& params" :type "any" :desc "クエリパラメータ"}]
-   :returns {:type "list" :desc "行マップのリスト"}
-   :examples ["(db/query conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "vector" :desc "行のベクタ（各行はマップ）"}
+   :examples ["(db/query db \"SELECT * FROM users\")"
+              "(db/query db \"SELECT * FROM users WHERE id = ?\" [42])"]})
 
 (def __doc__db/query-one
-  {:desc "SQLクエリを実行して1行だけ返す"
+  {:desc "SQLクエリを実行して最初の1行のみ取得します。"
    :params [{:name "conn" :type "connection" :desc "データベース接続"}
             {:name "sql" :type "string" :desc "SQLクエリ"}
-            {:name "& params" :type "any" :desc "クエリパラメータ"}]
-   :returns {:type "map" :desc "1行のマップまたはnil"}
-   :examples ["(db/query-one conn \"SELECT * FROM users WHERE id = ?\" 1)"]})
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "map|nil" :desc "行のマップ、または結果がない場合nil"}
+   :examples ["(db/query-one db \"SELECT * FROM users WHERE id = ?\" [1])"]})
 
 (def __doc__db/exec
-  {:desc "SQL文を実行する（INSERT, UPDATE, DELETE）"
+  {:desc "SQL文を実行します（INSERT, UPDATE, DELETE等）。"
    :params [{:name "conn" :type "connection" :desc "データベース接続"}
             {:name "sql" :type "string" :desc "SQL文"}
-            {:name "& params" :type "any" :desc "文のパラメータ"}]
-   :returns {:type "number" :desc "影響を受けた行数"}
-   :examples ["(db/exec conn \"INSERT INTO users (name) VALUES (?)\" \"Alice\")"]})
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "integer" :desc "影響を受けた行数"}
+   :examples ["(db/exec db \"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)\")"
+              "(db/exec db \"INSERT INTO users (name) VALUES (?)\" [\"Alice\"])"]})
 
-(def __doc__db/call
-  {:desc "ストアドプロシージャまたは関数を呼び出す"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}
-            {:name "proc" :type "string" :desc "プロシージャ名"}
-            {:name "& args" :type "any" :desc "プロシージャ引数"}]
-   :returns {:type "any" :desc "プロシージャの結果"}
-   :examples ["(db/call conn \"get_user_count\")"]})
-
-;; トランザクション管理
-(def __doc__db/begin
-  {:desc "データベーストランザクションを開始する"
+(def __doc__db/close
+  {:desc "データベース接続をクローズします。"
    :params [{:name "conn" :type "connection" :desc "データベース接続"}]
-   :returns {:type "transaction" :desc "トランザクションオブジェクト"}
-   :examples ["(db/begin conn)"]})
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/close db)"]})
 
-(def __doc__db/commit
-  {:desc "トランザクションをコミットする"
-   :params [{:name "tx" :type "transaction" :desc "コミットするトランザクション"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(db/commit tx)"]})
-
-(def __doc__db/rollback
-  {:desc "トランザクションをロールバックする"
-   :params [{:name "tx" :type "transaction" :desc "ロールバックするトランザクション"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(db/rollback tx)"]})
-
-;; スキーマ参照
-(def __doc__db/tables
-  {:desc "データベース内のすべてのテーブルをリストする"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
-   :returns {:type "list" :desc "テーブル名のリスト"}
-   :examples ["(db/tables conn) ;=> [\"users\" \"posts\"]"]})
-
-(def __doc__db/columns
-  {:desc "テーブルのカラムをリストする"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}
-            {:name "table" :type "string" :desc "テーブル名"}]
-   :returns {:type "list" :desc "カラム情報マップのリスト"}
-   :examples ["(db/columns conn \"users\")"]})
-
-(def __doc__db/indexes
-  {:desc "テーブルのインデックスをリストする"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}
-            {:name "table" :type "string" :desc "テーブル名"}]
-   :returns {:type "list" :desc "インデックス情報マップのリスト"}
-   :examples ["(db/indexes conn \"users\")"]})
-
-(def __doc__db/foreign-keys
-  {:desc "テーブルの外部キーをリストする"
-   :params [{:name "conn" :type "connection" :desc "データベース接続"}
-            {:name "table" :type "string" :desc "テーブル名"}]
-   :returns {:type "list" :desc "外部キー情報マップのリスト"}
-   :examples ["(db/foreign-keys conn \"posts\")"]})
-
-;; セキュリティとユーティリティ
 (def __doc__db/sanitize
-  {:desc "SQLインジェクションを防ぐためにSQL値をサニタイズする"
-   :params [{:name "value" :type "any" :desc "サニタイズする値"}]
-   :returns {:type "string" :desc "サニタイズされた値"}
-   :examples ["(db/sanitize \"user's input\")"]})
+  {:desc "SQL値を安全にエスケープします。"
+   :params [{:name "value" :type "any" :desc "エスケープする値"}]
+   :returns {:type "string" :desc "エスケープされた値"}
+   :examples ["(db/sanitize \"O'Reilly\") ;=> \"'O''Reilly'\""]})
 
 (def __doc__db/sanitize-identifier
-  {:desc "SQL識別子（テーブル/カラム名）をサニタイズする"
-   :params [{:name "name" :type "string" :desc "サニタイズする識別子"}]
-   :returns {:type "string" :desc "サニタイズされた識別子"}
-   :examples ["(db/sanitize-identifier \"table_name\")"]})
+  {:desc "SQL識別子（テーブル名、カラム名等）を安全にエスケープします。"
+   :params [{:name "identifier" :type "string" :desc "識別子"}]
+   :returns {:type "string" :desc "エスケープされた識別子"}
+   :examples ["(db/sanitize-identifier \"user-table\") ;=> \"\\\"user-table\\\"\""]})
 
 (def __doc__db/escape-like
-  {:desc "LIKEパターンの特殊文字をエスケープする"
-   :params [{:name "pattern" :type "string" :desc "LIKEパターン"}]
+  {:desc "LIKE句で使う文字列をエスケープします。"
+   :params [{:name "pattern" :type "string" :desc "パターン文字列"}]
    :returns {:type "string" :desc "エスケープされたパターン"}
-   :examples ["(db/escape-like \"50%\") ;=> \"50\\%\""]})
+   :examples ["(db/escape-like \"50%_off\") ;=> \"50\\\\%\\\\_off\""]})
+
+;; ========== Phase 2: トランザクション・メタデータAPI (11個) ==========
+
+(def __doc__db/begin
+  {:desc "トランザクションを開始します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/begin db)"]})
+
+(def __doc__db/commit
+  {:desc "トランザクションをコミットします。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/commit db)"]})
+
+(def __doc__db/rollback
+  {:desc "トランザクションをロールバックします。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/rollback db)"]})
+
+(def __doc__db/tables
+  {:desc "データベース内の全テーブルをリストします。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "vector" :desc "テーブル名のベクタ"}
+   :examples ["(db/tables db) ;=> [\"users\" \"posts\" \"comments\"]"]})
+
+(def __doc__db/columns
+  {:desc "テーブルの全カラム情報を取得します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "カラム情報のベクタ"}
+   :examples ["(db/columns db \"users\")"]})
+
+(def __doc__db/indexes
+  {:desc "テーブルの全インデックス情報を取得します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "インデックス情報のベクタ"}
+   :examples ["(db/indexes db \"users\")"]})
+
+(def __doc__db/foreign-keys
+  {:desc "テーブルの全外部キー情報を取得します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "外部キー情報のベクタ"}
+   :examples ["(db/foreign-keys db \"posts\")"]})
+
+(def __doc__db/call
+  {:desc "ストアドプロシージャまたはファンクションを呼び出します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "name" :type "string" :desc "プロシージャ/ファンクション名"}
+            {:name "params" :type "vector" :desc "パラメータ"}]
+   :returns {:type "any" :desc "実行結果"}
+   :examples ["(db/call db \"my_function\" [1 2 3])"]})
 
 (def __doc__db/supports?
-  {:desc "データベースが機能をサポートしているかチェックする"
+  {:desc "データベースが特定の機能をサポートしているかチェックします。"
    :params [{:name "conn" :type "connection" :desc "データベース接続"}
-            {:name "feature" :type "keyword" :desc "チェックする機能"}]
-   :returns {:type "boolean" :desc "サポートしている場合true"}
-   :examples ["(db/supports? conn :transactions)"]})
+            {:name "feature" :type "string" :desc "機能名"}]
+   :returns {:type "bool" :desc "サポートしている場合true"}
+   :examples ["(db/supports? db \"transactions\") ;=> true"]})
+
+(def __doc__db/driver-info
+  {:desc "データベースドライバーの情報を取得します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "map" :desc "ドライバー情報のマップ"}
+   :examples ["(db/driver-info db) ;=> {:name \"sqlite\" :version \"3.40.0\"}"]})
+
+(def __doc__db/query-info
+  {:desc "クエリの実行計画や統計情報を取得します。"
+   :params [{:name "conn" :type "connection" :desc "データベース接続"}
+            {:name "sql" :type "string" :desc "SQLクエリ"}]
+   :returns {:type "map" :desc "クエリ情報のマップ"}
+   :examples ["(db/query-info db \"SELECT * FROM users WHERE id = 1\")"]})
+
+;; ========== Phase 3: コネクションプーリング (5個) ==========
+
+(def __doc__db/create-pool
+  {:desc "コネクションプールを作成します。"
+   :params [{:name "url" :type "string" :desc "接続URL"}
+            {:name "opts" :type "map" :desc "プールオプション {:min-size 1 :max-size 10}"}]
+   :returns {:type "pool" :desc "コネクションプール"}
+   :examples ["(def pool (db/create-pool \"sqlite:test.db\" {:max-size 10}))"]})
+
+(def __doc__db/pool-acquire
+  {:desc "プールから接続を取得します。"
+   :params [{:name "pool" :type "pool" :desc "コネクションプール"}]
+   :returns {:type "connection" :desc "データベース接続"}
+   :examples ["(def conn (db/pool-acquire pool))"]})
+
+(def __doc__db/pool-release
+  {:desc "接続をプールに返却します。"
+   :params [{:name "pool" :type "pool" :desc "コネクションプール"}
+            {:name "conn" :type "connection" :desc "データベース接続"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/pool-release pool conn)"]})
+
+(def __doc__db/pool-close
+  {:desc "コネクションプールをクローズします。"
+   :params [{:name "pool" :type "pool" :desc "コネクションプール"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(db/pool-close pool)"]})
+
+(def __doc__db/pool-stats
+  {:desc "コネクションプールの統計情報を取得します。"
+   :params [{:name "pool" :type "pool" :desc "コネクションプール"}]
+   :returns {:type "map" :desc "統計情報 {:active 3 :idle 2 :total 5}"}
+   :examples ["(db/pool-stats pool) ;=> {:active 2 :idle 3 :total 5}"]})

@@ -1,0 +1,41 @@
+;; 標準ライブラリドキュメント - 集合演算
+;; Set Operations Functions (5 functions - set/*)
+;; このモジュールは `std-set` feature でコンパイルされます
+
+(def __doc__set/union
+  {:desc "複数のリスト/ベクタの和集合を返します（重複を除去）。"
+   :params [{:name "& colls" :type "list|vector..." :desc "リストまたはベクタ（可変長引数）"}]
+   :returns {:type "list" :desc "和集合（重複なし）"}
+   :examples ["(set/union [1 2 3] [2 3 4] [3 4 5]) ;=> [1 2 3 4 5]"
+              "(set/union [:a :b] [:b :c]) ;=> [:a :b :c]"]})
+
+(def __doc__set/intersection
+  {:desc "複数のリスト/ベクタの積集合を返します（全てに共通する要素）。"
+   :params [{:name "& colls" :type "list|vector..." :desc "リストまたはベクタ（2個以上）"}]
+   :returns {:type "list" :desc "積集合"}
+   :examples ["(set/intersection [1 2 3] [2 3 4] [2 3 5]) ;=> [2 3]"
+              "(set/intersection [:a :b :c] [:b :c :d]) ;=> [:b :c]"]})
+
+(def __doc__set/difference
+  {:desc "最初のリストから他のリストの要素を除いた差集合を返します。"
+   :params [{:name "coll1" :type "list|vector" :desc "元のリスト"}
+            {:name "& colls" :type "list|vector..." :desc "除外するリスト（可変長引数）"}]
+   :returns {:type "list" :desc "差集合"}
+   :examples ["(set/difference [1 2 3 4] [2 3] [4]) ;=> [1]"
+              "(set/difference [:a :b :c] [:b]) ;=> [:a :c]"]})
+
+(def __doc__set/subset?
+  {:desc "第1引数が第2引数の部分集合かどうかを判定します。"
+   :params [{:name "coll1" :type "list|vector" :desc "部分集合候補"}
+            {:name "coll2" :type "list|vector" :desc "元の集合"}]
+   :returns {:type "bool" :desc "部分集合の場合true"}
+   :examples ["(set/subset? [1 2] [1 2 3 4]) ;=> true"
+              "(set/subset? [1 5] [1 2 3 4]) ;=> false"]})
+
+(def __doc__set/superset?
+  {:desc "第1引数が第2引数の上位集合かどうかを判定します。"
+   :params [{:name "coll1" :type "list|vector" :desc "上位集合候補"}
+            {:name "coll2" :type "list|vector" :desc "部分集合候補"}]
+   :returns {:type "bool" :desc "上位集合の場合true"}
+   :examples ["(set/superset? [1 2 3 4] [1 2]) ;=> true"
+              "(set/superset? [1 2 3] [1 5]) ;=> false"]})

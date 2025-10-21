@@ -1,0 +1,33 @@
+;; 標準ライブラリドキュメント - コマンドライン引数
+;; Command Line Arguments Functions (4 functions - args/*)
+
+(def __doc__args/all
+  {:desc "全てのコマンドライン引数をリストで取得します。"
+   :params []
+   :returns {:type "list" :desc "引数のリスト（プログラム名を含む）"}
+   :examples ["(args/all) ;=> (\"./qi\" \"script.qi\" \"arg1\" \"arg2\")"]})
+
+(def __doc__args/get
+  {:desc "指定位置のコマンドライン引数を取得します。存在しない場合はデフォルト値またはnilを返します。"
+   :params [{:name "index" :type "integer" :desc "引数のインデックス（0はプログラム名）"}
+            {:name "default" :type "any" :desc "デフォルト値（省略可）"}]
+   :returns {:type "string|any" :desc "引数の値、またはデフォルト値、またはnil"}
+   :examples ["(args/get 0) ;=> \"./qi\""
+              "(args/get 1) ;=> \"script.qi\""
+              "(args/get 10 \"default\") ;=> \"default\""]})
+
+(def __doc__args/parse
+  {:desc "コマンドライン引数をパースし、フラグ・オプション・位置引数に分類します。"
+   :params []
+   :returns {:type "map" :desc "{:flags [...] :options {...} :args [...]} の形式"}
+   :examples ["(args/parse)"
+              ";; 実行: ./qi script.qi --verbose --port 3000 -df input.txt"
+              ";=> {:flags [\"verbose\" \"d\" \"f\"]"
+              ";    :options {\"port\" \"3000\"}"
+              ";    :args [\"./qi\" \"script.qi\" \"input.txt\"]}"]})
+
+(def __doc__args/count
+  {:desc "コマンドライン引数の数を取得します（プログラム名を含む）。"
+   :params []
+   :returns {:type "integer" :desc "引数の数"}
+   :examples ["(args/count) ;=> 3"]})

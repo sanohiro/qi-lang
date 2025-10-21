@@ -1,183 +1,170 @@
-;; 標準ライブラリドキュメント (日本語)
-;; 時間関数
-
-;; 現在時刻
-(def __doc__timestamp
-  {:desc "現在のUnixタイムスタンプ（ミリ秒）を取得する"
-   :returns {:type "number" :desc "現在のタイムスタンプ"}
-   :examples ["(timestamp) ;=> 1704067200000"]})
+;; 標準ライブラリドキュメント - 日時操作
+;; Time Functions (20 functions)
 
 (def __doc__time/now-iso
-  {:desc "現在時刻をISO 8601文字列として取得する"
-   :returns {:type "string" :desc "ISO 8601タイムスタンプ"}
-   :examples ["(time/now-iso) ;=> \"2024-01-01T00:00:00Z\""]})
-
-(def __doc__time/today
-  {:desc "今日の日付を文字列として取得する"
-   :returns {:type "string" :desc "今日の日付"}
-   :examples ["(time/today) ;=> \"2024-01-01\""]})
-
-;; 時間のパースとフォーマット
-(def __doc__time/parse
-  {:desc "時間文字列をタイムスタンプにパースする"
-   :params [{:name "s" :type "string" :desc "時間文字列"}]
-   :returns {:type "number" :desc "タイムスタンプ"}
-   :examples ["(time/parse \"2024-01-01T00:00:00Z\") ;=> 1704067200000"]})
-
-(def __doc__time/format
-  {:desc "タイムスタンプを文字列としてフォーマットする"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "format" :type "string" :desc "フォーマット文字列"}]
-   :returns {:type "string" :desc "フォーマット済み時間文字列"}
-   :examples ["(time/format 1704067200000 \"%Y-%m-%d\") ;=> \"2024-01-01\""]})
-
-;; Unix時間変換
-(def __doc__time/to-unix
-  {:desc "時間をUnixタイムスタンプ（秒）に変換する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ（ミリ秒）"}]
-   :returns {:type "number" :desc "Unixタイムスタンプ（秒）"}
-   :examples ["(time/to-unix 1704067200000) ;=> 1704067200"]})
+  {:desc "現在の日時をISO 8601形式で返します。"
+   :params []
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/now-iso) ;=> \"2024-10-21T12:34:56Z\""]})
 
 (def __doc__time/from-unix
-  {:desc "UnixタイムスタンプをミリData変換する"
-   :params [{:name "unix" :type "number" :desc "Unixタイムスタンプ（秒）"}]
-   :returns {:type "number" :desc "タイムスタンプ（ミリ秒）"}
-   :examples ["(time/from-unix 1704067200) ;=> 1704067200000"]})
+  {:desc "Unixタイムスタンプ（秒）からISO 8601形式の日時を生成します。"
+   :params [{:name "timestamp" :type "integer" :desc "Unixタイムスタンプ（秒）"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/from-unix 1729544123) ;=> \"2024-10-21T12:34:56Z\""]})
 
-;; 時間コンポーネント
-(def __doc__time/year
-  {:desc "タイムスタンプから年を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "年"}
-   :examples ["(time/year 1704067200000) ;=> 2024"]})
+(def __doc__time/to-unix
+  {:desc "ISO 8601形式の日時をUnixタイムスタンプ（秒）に変換します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "Unixタイムスタンプ（秒）"}
+   :examples ["(time/to-unix \"2024-10-21T12:34:56Z\") ;=> 1729544123"]})
 
-(def __doc__time/month
-  {:desc "タイムスタンプから月を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "月（1-12）"}
-   :examples ["(time/month 1704067200000) ;=> 1"]})
+(def __doc__time/format
+  {:desc "日時を指定のフォーマットで文字列化します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "format" :type "string" :desc "フォーマット文字列"}]
+   :returns {:type "string" :desc "フォーマットされた日時文字列"}
+   :examples ["(time/format (time/now-iso) \"%Y-%m-%d\") ;=> \"2024-10-21\""
+              "(time/format dt \"%Y/%m/%d %H:%M:%S\") ;=> \"2024/10/21 12:34:56\""]})
 
-(def __doc__time/day
-  {:desc "タイムスタンプから日を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "日（1-31）"}
-   :examples ["(time/day 1704067200000) ;=> 1"]})
+(def __doc__time/parse
+  {:desc "指定のフォーマットで日時文字列をパースします。"
+   :params [{:name "date-str" :type "string" :desc "日時文字列"}
+            {:name "format" :type "string" :desc "フォーマット文字列"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/parse \"2024-10-21\" \"%Y-%m-%d\")"
+              "(time/parse \"21/10/2024 12:34\" \"%d/%m/%Y %H:%M\")"]})
 
-(def __doc__time/hour
-  {:desc "タイムスタンプから時を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "時（0-23）"}
-   :examples ["(time/hour 1704067200000) ;=> 0"]})
+(def __doc__time/today
+  {:desc "今日の日付（00:00:00）を返します。"
+   :params []
+   :returns {:type "string" :desc "ISO 8601形式の日付文字列"}
+   :examples ["(time/today) ;=> \"2024-10-21T00:00:00Z\""]})
 
-(def __doc__time/minute
-  {:desc "タイムスタンプから分を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "分（0-59）"}
-   :examples ["(time/minute 1704067200000) ;=> 0"]})
-
-(def __doc__time/second
-  {:desc "タイムスタンプから秒を抽出する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "秒（0-59）"}
-   :examples ["(time/second 1704067200000) ;=> 0"]})
-
-(def __doc__time/weekday
-  {:desc "タイムスタンプから曜日を取得する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}]
-   :returns {:type "number" :desc "曜日（0=日曜、6=土曜）"}
-   :examples ["(time/weekday 1704067200000) ;=> 1"]})
-
-;; 時間演算
 (def __doc__time/add-days
-  {:desc "タイムスタンプに日数を加算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "days" :type "number" :desc "日数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/add-days 1704067200000 7) ;=> 1704672000000"]})
+  {:desc "日時に指定の日数を加算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "days" :type "integer" :desc "加算する日数"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/add-days \"2024-10-21T00:00:00Z\" 7) ;=> \"2024-10-28T00:00:00Z\""
+              "(time/add-days (time/today) -1) ;; 昨日"]})
 
 (def __doc__time/add-hours
-  {:desc "タイムスタンプに時間を加算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "hours" :type "number" :desc "時間数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/add-hours 1704067200000 24) ;=> 1704153600000"]})
+  {:desc "日時に指定の時間を加算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "hours" :type "integer" :desc "加算する時間"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/add-hours \"2024-10-21T12:00:00Z\" 3) ;=> \"2024-10-21T15:00:00Z\""]})
 
 (def __doc__time/add-minutes
-  {:desc "タイムスタンプに分を加算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "minutes" :type "number" :desc "分数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/add-minutes 1704067200000 60) ;=> 1704070800000"]})
+  {:desc "日時に指定の分を加算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "minutes" :type "integer" :desc "加算する分"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/add-minutes \"2024-10-21T12:00:00Z\" 30) ;=> \"2024-10-21T12:30:00Z\""]})
 
 (def __doc__time/sub-days
-  {:desc "タイムスタンプから日数を減算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "days" :type "number" :desc "日数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/sub-days 1704067200000 7) ;=> 1703462400000"]})
+  {:desc "日時から指定の日数を減算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "days" :type "integer" :desc "減算する日数"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/sub-days \"2024-10-21T00:00:00Z\" 7) ;=> \"2024-10-14T00:00:00Z\""]})
 
 (def __doc__time/sub-hours
-  {:desc "タイムスタンプから時間を減算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "hours" :type "number" :desc "時間数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/sub-hours 1704067200000 24) ;=> 1703980800000"]})
+  {:desc "日時から指定の時間を減算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "hours" :type "integer" :desc "減算する時間"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/sub-hours \"2024-10-21T12:00:00Z\" 3) ;=> \"2024-10-21T09:00:00Z\""]})
 
 (def __doc__time/sub-minutes
-  {:desc "タイムスタンプから分を減算する"
-   :params [{:name "ts" :type "number" :desc "タイムスタンプ"}
-            {:name "minutes" :type "number" :desc "分数"}]
-   :returns {:type "number" :desc "新しいタイムスタンプ"}
-   :examples ["(time/sub-minutes 1704067200000 60) ;=> 1704063600000"]})
+  {:desc "日時から指定の分を減算します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}
+            {:name "minutes" :type "integer" :desc "減算する分"}]
+   :returns {:type "string" :desc "ISO 8601形式の日時文字列"}
+   :examples ["(time/sub-minutes \"2024-10-21T12:30:00Z\" 15) ;=> \"2024-10-21T12:15:00Z\""]})
 
-;; 時間比較
-(def __doc__time/after?
-  {:desc "最初のタイムスタンプが2番目より後かチェックする"
-   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
-            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
-   :returns {:type "boolean" :desc "ts1 > ts2ならtrue"}
-   :examples ["(time/after? 1704153600000 1704067200000) ;=> true"]})
-
-(def __doc__time/before?
-  {:desc "最初のタイムスタンプが2番目より前かチェックする"
-   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
-            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
-   :returns {:type "boolean" :desc "ts1 < ts2ならtrue"}
-   :examples ["(time/before? 1704067200000 1704153600000) ;=> true"]})
-
-(def __doc__time/between?
-  {:desc "タイムスタンプが2つの他のタイムスタンプの間にあるかチェックする"
-   :params [{:name "ts" :type "number" :desc "チェックするタイムスタンプ"}
-            {:name "start" :type "number" :desc "開始タイムスタンプ"}
-            {:name "end" :type "number" :desc "終了タイムスタンプ"}]
-   :returns {:type "boolean" :desc "start <= ts <= endならtrue"}
-   :examples ["(time/between? 1704100000000 1704067200000 1704153600000) ;=> true"]})
-
-;; 時間差分
 (def __doc__time/diff-days
-  {:desc "タイムスタンプ間の日数差分を計算する"
-   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
-            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
-   :returns {:type "number" :desc "日数差分"}
-   :examples ["(time/diff-days 1704153600000 1704067200000) ;=> 1"]})
+  {:desc "2つの日時の日数差を計算します。"
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601形式の日時文字列1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601形式の日時文字列2"}]
+   :returns {:type "integer" :desc "日数差"}
+   :examples ["(time/diff-days \"2024-10-28T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> 7"]})
 
 (def __doc__time/diff-hours
-  {:desc "タイムスタンプ間の時間差分を計算する"
-   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
-            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
-   :returns {:type "number" :desc "時間差分"}
-   :examples ["(time/diff-hours 1704153600000 1704067200000) ;=> 24"]})
+  {:desc "2つの日時の時間差を計算します。"
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601形式の日時文字列1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601形式の日時文字列2"}]
+   :returns {:type "integer" :desc "時間差"}
+   :examples ["(time/diff-hours \"2024-10-21T15:00:00Z\" \"2024-10-21T12:00:00Z\") ;=> 3"]})
 
 (def __doc__time/diff-minutes
-  {:desc "タイムスタンプ間の分差分を計算する"
-   :params [{:name "ts1" :type "number" :desc "最初のタイムスタンプ"}
-            {:name "ts2" :type "number" :desc "2番目のタイムスタンプ"}]
-   :returns {:type "number" :desc "分差分"}
-   :examples ["(time/diff-minutes 1704070800000 1704067200000) ;=> 60"]})
+  {:desc "2つの日時の分差を計算します。"
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601形式の日時文字列1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601形式の日時文字列2"}]
+   :returns {:type "integer" :desc "分差"}
+   :examples ["(time/diff-minutes \"2024-10-21T12:30:00Z\" \"2024-10-21T12:00:00Z\") ;=> 30"]})
 
-;; ユーティリティ
-(def __doc__sleep
-  {:desc "指定ミリ秒だけスリープする"
-   :params [{:name "ms" :type "number" :desc "スリープするミリ秒"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(sleep 1000) ; 1秒スリープ"]})
+(def __doc__time/before?
+  {:desc "日時1が日時2より前かを判定します。"
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601形式の日時文字列1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601形式の日時文字列2"}]
+   :returns {:type "bool" :desc "日時1が日時2より前の場合true"}
+   :examples ["(time/before? \"2024-10-20T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/after?
+  {:desc "日時1が日時2より後かを判定します。"
+   :params [{:name "iso-str1" :type "string" :desc "ISO 8601形式の日時文字列1"}
+            {:name "iso-str2" :type "string" :desc "ISO 8601形式の日時文字列2"}]
+   :returns {:type "bool" :desc "日時1が日時2より後の場合true"}
+   :examples ["(time/after? \"2024-10-22T00:00:00Z\" \"2024-10-21T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/between?
+  {:desc "日時が指定の範囲内かを判定します。"
+   :params [{:name "target" :type "string" :desc "判定対象の日時"}
+            {:name "start" :type "string" :desc "開始日時"}
+            {:name "end" :type "string" :desc "終了日時"}]
+   :returns {:type "bool" :desc "範囲内の場合true"}
+   :examples ["(time/between? \"2024-10-21T12:00:00Z\" \"2024-10-21T00:00:00Z\" \"2024-10-22T00:00:00Z\") ;=> true"]})
+
+(def __doc__time/year
+  {:desc "日時から年を取得します。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "年"}
+   :examples ["(time/year \"2024-10-21T12:34:56Z\") ;=> 2024"]})
+
+(def __doc__time/month
+  {:desc "日時から月を取得します（1-12）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "月（1-12）"}
+   :examples ["(time/month \"2024-10-21T12:34:56Z\") ;=> 10"]})
+
+(def __doc__time/day
+  {:desc "日時から日を取得します（1-31）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "日（1-31）"}
+   :examples ["(time/day \"2024-10-21T12:34:56Z\") ;=> 21"]})
+
+(def __doc__time/hour
+  {:desc "日時から時を取得します（0-23）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "時（0-23）"}
+   :examples ["(time/hour \"2024-10-21T12:34:56Z\") ;=> 12"]})
+
+(def __doc__time/minute
+  {:desc "日時から分を取得します（0-59）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "分（0-59）"}
+   :examples ["(time/minute \"2024-10-21T12:34:56Z\") ;=> 34"]})
+
+(def __doc__time/second
+  {:desc "日時から秒を取得します（0-59）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "秒（0-59）"}
+   :examples ["(time/second \"2024-10-21T12:34:56Z\") ;=> 56"]})
+
+(def __doc__time/weekday
+  {:desc "日時から曜日を取得します（0=日曜, 1=月曜, ..., 6=土曜）。"
+   :params [{:name "iso-str" :type "string" :desc "ISO 8601形式の日時文字列"}]
+   :returns {:type "integer" :desc "曜日（0-6）"}
+   :examples ["(time/weekday \"2024-10-21T00:00:00Z\") ;=> 1 ;; 月曜日"]})

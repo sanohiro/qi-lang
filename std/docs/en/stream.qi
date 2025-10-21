@@ -1,55 +1,72 @@
-;; Standard Library Documentation (English)
-;; Stream Processing Functions
+;; Standard Library Documentation - Streams
+;; Stream Functions (10 functions - stream/*)
 
-;; Stream Creation
 (def __doc__stream/stream
-  {:desc "Create stream from collection"
-   :params [{:name "coll" :type "collection" :desc "Collection to stream"}]
+  {:desc "Creates a stream from a collection."
+   :params [{:name "coll" :type "list|vector" :desc "Collection"}]
    :returns {:type "stream" :desc "Stream"}
    :examples ["(stream/stream [1 2 3 4 5])"]})
 
 (def __doc__stream/range
-  {:desc "Create stream of numbers in range"
-   :params [{:name "start" :type "number" :desc "Start value"}
-            {:name "end" :type "number" :desc "End value (exclusive)"}]
-   :returns {:type "stream" :desc "Stream of numbers"}
-   :examples ["(stream/range 1 10)"]})
+  {:desc "Creates a stream of numeric ranges."
+   :params [{:name "start" :type "integer" :desc "Start value (optional, default 0)"}
+            {:name "end" :type "integer" :desc "End value (infinite if omitted)"}
+            {:name "step" :type "integer" :desc "Step (optional, default 1)"}]
+   :returns {:type "stream" :desc "Numeric stream"}
+   :examples ["(stream/range 10) ;; 0 to 9"
+              "(stream/range 1 10) ;; 1 to 9"
+              "(stream/range 0 100 10) ;; 0, 10, 20, ..., 90"]})
+
+(def __doc__stream/iterate
+  {:desc "Creates an infinite stream by repeatedly applying a function."
+   :params [{:name "f" :type "function" :desc "Function to apply"}
+            {:name "init" :type "any" :desc "Initial value"}]
+   :returns {:type "stream" :desc "Infinite stream"}
+   :examples ["(stream/iterate inc 0) ;; 0, 1, 2, 3, ..."
+              "(stream/iterate (fn [x] (* x 2)) 1) ;; 1, 2, 4, 8, ..."]})
 
 (def __doc__stream/repeat
-  {:desc "Create infinite stream of repeated value"
+  {:desc "Creates an infinite stream that repeats the same value."
    :params [{:name "value" :type "any" :desc "Value to repeat"}]
    :returns {:type "stream" :desc "Infinite stream"}
-   :examples ["(stream/repeat 42)"]})
+   :examples ["(stream/repeat :x) ;; :x, :x, :x, ..."]})
 
 (def __doc__stream/cycle
-  {:desc "Create infinite stream cycling through collection"
-   :params [{:name "coll" :type "collection" :desc "Collection to cycle"}]
+  {:desc "Creates an infinite stream that cycles through a collection."
+   :params [{:name "coll" :type "list|vector" :desc "Collection"}]
    :returns {:type "stream" :desc "Infinite stream"}
-   :examples ["(stream/cycle [1 2 3])"]})
+   :examples ["(stream/cycle [1 2 3]) ;; 1, 2, 3, 1, 2, 3, ..."]})
 
-(def __doc__stream/file
-  {:desc "Create stream from file lines"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "stream" :desc "Stream of lines"}
-   :examples ["(stream/file \"data.txt\")"]})
+(def __doc__stream/map
+  {:desc "Applies a function to each element of a stream."
+   :params [{:name "f" :type "function" :desc "Function to apply"}
+            {:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "stream" :desc "Transformed stream"}
+   :examples ["(stream/map (* 2) (stream/range 5)) ;; 0, 2, 4, 6, 8"]})
 
-;; Stream Operations
+(def __doc__stream/filter
+  {:desc "Extracts only elements that satisfy a condition from a stream."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "stream" :desc "Filtered stream"}
+   :examples ["(stream/filter even? (stream/range 10)) ;; 0, 2, 4, 6, 8"]})
+
 (def __doc__stream/take
-  {:desc "Take first n elements from stream"
-   :params [{:name "n" :type "number" :desc "Number of elements"}
-            {:name "stream" :type "stream" :desc "Input stream"}]
-   :returns {:type "list" :desc "List of n elements"}
-   :examples ["(stream/take 5 (stream/range 1 100))"]})
+  {:desc "Takes the first n elements from a stream."
+   :params [{:name "n" :type "integer" :desc "Number of elements"}
+            {:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "stream" :desc "Stream of first n elements"}
+   :examples ["(stream/take 5 (stream/range)) ;; 0, 1, 2, 3, 4"]})
 
 (def __doc__stream/drop
-  {:desc "Drop first n elements from stream"
-   :params [{:name "n" :type "number" :desc "Number of elements to drop"}
-            {:name "stream" :type "stream" :desc "Input stream"}]
-   :returns {:type "stream" :desc "Stream with elements dropped"}
-   :examples ["(stream/drop 10 (stream/range 1 100))"]})
+  {:desc "Skips the first n elements of a stream."
+   :params [{:name "n" :type "integer" :desc "Number of elements to skip"}
+            {:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "stream" :desc "Remaining stream"}
+   :examples ["(stream/drop 5 (stream/range 10)) ;; 5, 6, 7, 8, 9"]})
 
 (def __doc__stream/realize
-  {:desc "Realize entire stream into list"
-   :params [{:name "stream" :type "stream" :desc "Stream to realize"}]
-   :returns {:type "list" :desc "List of all stream elements"}
-   :examples ["(stream/realize (stream/range 1 6))"]})
+  {:desc "Realizes a stream into a list."
+   :params [{:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "list" :desc "List"}
+   :examples ["(stream/realize (stream/take 5 (stream/range))) ;=> [0 1 2 3 4]"]})

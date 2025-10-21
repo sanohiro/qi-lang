@@ -1,39 +1,66 @@
-;; 標準ライブラリドキュメント (日本語)
-;; テスト関数
-
-;; テストアサーション
-(def __doc__test/assert
-  {:desc "式が真であることをアサートする"
-   :params [{:name "expr" :type "any" :desc "テストする式"}
-            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
-   :returns {:type "boolean" :desc "通過した場合true"}
-   :examples ["(test/assert (= 1 1) \"等しいはず\")"
-              "(test/assert (> 5 3))"]})
+;; 標準ライブラリドキュメント - テスト
+;; Testing Functions (9 functions - test/*)
 
 (def __doc__test/assert-eq
-  {:desc "2つの値が等しいことをアサートする"
-   :params [{:name "expected" :type "any" :desc "期待される値"}
+  {:desc "2つの値が等しいことをアサートします。"
+   :params [{:name "expected" :type "any" :desc "期待値"}
             {:name "actual" :type "any" :desc "実際の値"}
-            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
-   :returns {:type "boolean" :desc "等しい場合true"}
-   :examples ["(test/assert-eq 42 (+ 40 2))"
-              "(test/assert-eq \"hello\" (str \"hel\" \"lo\"))"]})
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-eq 4 (+ 2 2))"
+              "(test/assert-eq \"hello\" (str/lower \"HELLO\") \"文字列変換\")"]})
 
-(def __doc__test/assert-not
-  {:desc "式が偽であることをアサートする"
-   :params [{:name "expr" :type "any" :desc "テストする式"}
-            {:name "msg" :type "string" :desc "オプションの失敗メッセージ"}]
-   :returns {:type "boolean" :desc "通過した場合true"}
-   :examples ["(test/assert-not (= 1 2))"
-              "(test/assert-not nil)"]})
+(def __doc__test/assert-ne
+  {:desc "2つの値が等しくないことをアサートします。"
+   :params [{:name "not-expected" :type "any" :desc "等しくないべき値"}
+            {:name "actual" :type "any" :desc "実際の値"}
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-ne 5 (+ 2 2))"]})
 
-;; テスト管理
-(def __doc__test/run-all
-  {:desc "登録されたすべてのテストを実行する"
-   :returns {:type "map" :desc "テスト結果のサマリー"}
-   :examples ["(test/run-all)"]})
+(def __doc__test/assert-true
+  {:desc "値が真であることをアサートします。"
+   :params [{:name "value" :type "any" :desc "値"}
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-true (> 5 3))"
+              "(test/assert-true (even? 4) \"4は偶数\")"]})
+
+(def __doc__test/assert-false
+  {:desc "値が偽であることをアサートします。"
+   :params [{:name "value" :type "any" :desc "値"}
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-false (< 5 3))"]})
+
+(def __doc__test/assert-nil
+  {:desc "値がnilであることをアサートします。"
+   :params [{:name "value" :type "any" :desc "値"}
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-nil (get {:a 1} :b))"]})
+
+(def __doc__test/run
+  {:desc "テストを実行します。"
+   :params [{:name "test-fn" :type "function" :desc "テスト関数"}]
+   :returns {:type "map" :desc "テスト結果 {:passed true/false :error ...}"}
+   :examples ["(test/run (fn [] (test/assert-eq 4 (+ 2 2))))"]})
+
+(def __doc__test/assert-throws
+  {:desc "関数がエラーをスローすることをアサートします。"
+   :params [{:name "f" :type "function" :desc "テストする関数"}
+            {:name "message" :type "string" :desc "メッセージ（省略可）"}]
+   :returns {:type "nil" :desc "常にnil（失敗時はエラー）"}
+   :examples ["(test/assert-throws (fn [] (/ 1 0)) \"ゼロ除算\")"]})
+
+(def __doc__test/summary
+  {:desc "テスト結果のサマリーを表示します。"
+   :params []
+   :returns {:type "map" :desc "テスト統計 {:total N :passed M :failed K}"}
+   :examples ["(test/summary) ;=> {:total 10 :passed 9 :failed 1}"]})
 
 (def __doc__test/clear
-  {:desc "登録されたすべてのテストをクリアする"
-   :returns {:type "nil" :desc "nil"}
+  {:desc "テスト統計をクリアします。"
+   :params []
+   :returns {:type "nil" :desc "常にnil"}
    :examples ["(test/clear)"]})

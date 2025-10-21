@@ -1,0 +1,9 @@
+;; Standard Library Documentation - Utilities
+;; Utility Functions (1 function - util/*)
+
+(def __doc__util/inspect
+  {:desc "Displays the internal structure of a value in detail (for debugging)."
+   :params [{:name "value" :type "any" :desc "Value to inspect"}]
+   :returns {:type "string" :desc "Detailed representation of the value"}
+   :examples ["(util/inspect {:a 1 :b [2 3]})"
+              "(util/inspect (fn [x] (* x 2)))"]})

@@ -1,291 +1,423 @@
-;; Standard Library Documentation (English)
-;; String Functions
+;; Standard Library Documentation - String Functions
+;; String Functions (72 functions)
 
-;; Case Conversion
-(def __doc__str/lower
-  {:desc "Convert string to lowercase"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "Lowercase string"}
-   :examples ["(str/lower \"Hello World\") ;=> \"hello world\""
-              "(str/lower \"ABC\") ;=> \"abc\""]})
+;; ========================================
+;; Basic Operations (26 functions)
+;; ========================================
+
+(def __doc__str/split
+  {:desc "Splits a string by a separator."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sep" :type "string" :desc "separator"}]
+   :returns {:type "vector" :desc "vector of split strings"}
+   :examples ["(str/split \"a,b,c\" \",\") ;=> [\"a\" \"b\" \"c\"]"
+              "(str/split \"hello world\" \" \") ;=> [\"hello\" \"world\"]"]})
 
 (def __doc__str/upper
-  {:desc "Convert string to uppercase"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "Uppercase string"}
-   :examples ["(str/upper \"hello world\") ;=> \"HELLO WORLD\""
-              "(str/upper \"abc\") ;=> \"ABC\""]})
+  {:desc "Converts a string to uppercase."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "uppercase string"}
+   :examples ["(str/upper \"hello\") ;=> \"HELLO\""
+              "(str/upper \"Test123\") ;=> \"TEST123\""]})
 
-(def __doc__str/capitalize
-  {:desc "Capitalize first letter of string"
-   :params [{:name "s" :type "string" :desc "String to capitalize"}]
-   :returns {:type "string" :desc "Capitalized string"}
-   :examples ["(str/capitalize \"hello\") ;=> \"Hello\""
-              "(str/capitalize \"world\") ;=> \"World\""]})
+(def __doc__str/lower
+  {:desc "Converts a string to lowercase."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "lowercase string"}
+   :examples ["(str/lower \"HELLO\") ;=> \"hello\""
+              "(str/lower \"Test123\") ;=> \"test123\""]})
 
-(def __doc__str/title
-  {:desc "Convert string to title case"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "Title case string"}
-   :examples ["(str/title \"hello world\") ;=> \"Hello World\""
-              "(str/title \"the quick brown\") ;=> \"The Quick Brown\""]})
-
-;; Case Style Conversion
-(def __doc__str/camel
-  {:desc "Convert string to camelCase"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "camelCase string"}
-   :examples ["(str/camel \"hello-world\") ;=> \"helloWorld\""
-              "(str/camel \"foo_bar_baz\") ;=> \"fooBarBaz\""]})
-
-(def __doc__str/pascal
-  {:desc "Convert string to PascalCase"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "PascalCase string"}
-   :examples ["(str/pascal \"hello-world\") ;=> \"HelloWorld\""
-              "(str/pascal \"foo_bar\") ;=> \"FooBar\""]})
-
-(def __doc__str/snake
-  {:desc "Convert string to snake_case"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "snake_case string"}
-   :examples ["(str/snake \"HelloWorld\") ;=> \"hello_world\""
-              "(str/snake \"fooBarBaz\") ;=> \"foo_bar_baz\""]})
-
-(def __doc__str/kebab
-  {:desc "Convert string to kebab-case"
-   :params [{:name "s" :type "string" :desc "String to convert"}]
-   :returns {:type "string" :desc "kebab-case string"}
-   :examples ["(str/kebab \"HelloWorld\") ;=> \"hello-world\""
-              "(str/kebab \"fooBarBaz\") ;=> \"foo-bar-baz\""]})
-
-;; Trimming and Padding
 (def __doc__str/trim
-  {:desc "Remove whitespace from both ends of string"
-   :params [{:name "s" :type "string" :desc "String to trim"}]
-   :returns {:type "string" :desc "Trimmed string"}
+  {:desc "Removes leading and trailing whitespace from a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "trimmed string"}
    :examples ["(str/trim \"  hello  \") ;=> \"hello\""
-              "(str/trim \"\\n  world\\t\") ;=> \"world\""]})
+              "(str/trim \"\\n\\ttest\\n\") ;=> \"test\""]})
 
 (def __doc__str/trim-left
-  {:desc "Remove whitespace from start of string"
-   :params [{:name "s" :type "string" :desc "String to trim"}]
-   :returns {:type "string" :desc "Left-trimmed string"}
-   :examples ["(str/trim-left \"  hello\") ;=> \"hello\""
-              "(str/trim-left \"\\n  world\") ;=> \"world\""]})
+  {:desc "Removes leading whitespace from a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "left-trimmed string"}
+   :examples ["(str/trim-left \"  hello  \") ;=> \"hello  \""]})
 
 (def __doc__str/trim-right
-  {:desc "Remove whitespace from end of string"
-   :params [{:name "s" :type "string" :desc "String to trim"}]
-   :returns {:type "string" :desc "Right-trimmed string"}
-   :examples ["(str/trim-right \"hello  \") ;=> \"hello\""
-              "(str/trim-right \"world\\n  \") ;=> \"world\""]})
-
-(def __doc__str/pad
-  {:desc "Pad string to specified length"
-   :params [{:name "s" :type "string" :desc "String to pad"}
-            {:name "len" :type "number" :desc "Target length"}
-            {:name "pad-str" :type "string" :desc "Padding string"}]
-   :returns {:type "string" :desc "Padded string"}
-   :examples ["(str/pad \"hi\" 5 \" \") ;=> \" hi  \""
-              "(str/pad \"x\" 3 \"0\") ;=> \"0x0\""]})
-
-(def __doc__str/pad-left
-  {:desc "Pad string on the left"
-   :params [{:name "s" :type "string" :desc "String to pad"}
-            {:name "len" :type "number" :desc "Target length"}
-            {:name "pad-str" :type "string" :desc "Padding string"}]
-   :returns {:type "string" :desc "Left-padded string"}
-   :examples ["(str/pad-left \"5\" 3 \"0\") ;=> \"005\""
-              "(str/pad-left \"hi\" 5 \" \") ;=> \"   hi\""]})
-
-(def __doc__str/pad-right
-  {:desc "Pad string on the right"
-   :params [{:name "s" :type "string" :desc "String to pad"}
-            {:name "len" :type "number" :desc "Target length"}
-            {:name "pad-str" :type "string" :desc "Padding string"}]
-   :returns {:type "string" :desc "Right-padded string"}
-   :examples ["(str/pad-right \"5\" 3 \"0\") ;=> \"500\""
-              "(str/pad-right \"hi\" 5 \" \") ;=> \"hi   \""]})
-
-;; String Testing
-(def __doc__str/starts-with?
-  {:desc "Check if string starts with prefix"
-   :params [{:name "s" :type "string" :desc "String to check"}
-            {:name "prefix" :type "string" :desc "Prefix to look for"}]
-   :returns {:type "boolean" :desc "true if starts with prefix"}
-   :examples ["(str/starts-with? \"hello\" \"he\") ;=> true"
-              "(str/starts-with? \"world\" \"wo\") ;=> true"]})
-
-(def __doc__str/ends-with?
-  {:desc "Check if string ends with suffix"
-   :params [{:name "s" :type "string" :desc "String to check"}
-            {:name "suffix" :type "string" :desc "Suffix to look for"}]
-   :returns {:type "boolean" :desc "true if ends with suffix"}
-   :examples ["(str/ends-with? \"hello\" \"lo\") ;=> true"
-              "(str/ends-with? \"world\" \"ld\") ;=> true"]})
+  {:desc "Removes trailing whitespace from a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "right-trimmed string"}
+   :examples ["(str/trim-right \"  hello  \") ;=> \"  hello\""]})
 
 (def __doc__str/contains?
-  {:desc "Check if string contains substring"
-   :params [{:name "s" :type "string" :desc "String to check"}
-            {:name "substr" :type "string" :desc "Substring to look for"}]
-   :returns {:type "boolean" :desc "true if contains substring"}
-   :examples ["(str/contains? \"hello world\" \"wo\") ;=> true"
+  {:desc "Checks if a string contains a substring."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sub" :type "string" :desc "substring"}]
+   :returns {:type "bool" :desc "true if contains"}
+   :examples ["(str/contains? \"hello world\" \"world\") ;=> true"
               "(str/contains? \"test\" \"xyz\") ;=> false"]})
 
-(def __doc__str/blank?
-  {:desc "Check if string is empty or whitespace only"
-   :params [{:name "s" :type "string" :desc "String to check"}]
-   :returns {:type "boolean" :desc "true if blank"}
-   :examples ["(str/blank? \"\") ;=> true"
-              "(str/blank? \"   \") ;=> true"
-              "(str/blank? \"hi\") ;=> false"]})
+(def __doc__str/starts-with?
+  {:desc "Checks if a string starts with a prefix."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "prefix" :type "string" :desc "prefix"}]
+   :returns {:type "bool" :desc "true if starts with"}
+   :examples ["(str/starts-with? \"hello world\" \"hello\") ;=> true"
+              "(str/starts-with? \"test\" \"xyz\") ;=> false"]})
 
-;; Character Type Checking
-(def __doc__str/alpha?
-  {:desc "Check if string contains only alphabetic characters"
-   :params [{:name "s" :type "string" :desc "String to check"}]
-   :returns {:type "boolean" :desc "true if alphabetic only"}
-   :examples ["(str/alpha? \"abc\") ;=> true"
-              "(str/alpha? \"abc123\") ;=> false"]})
-
-(def __doc__str/digit?
-  {:desc "Check if string contains only digit characters"
-   :params [{:name "s" :type "string" :desc "String to check"}]
-   :returns {:type "boolean" :desc "true if digits only"}
-   :examples ["(str/digit? \"123\") ;=> true"
-              "(str/digit? \"12a\") ;=> false"]})
-
-(def __doc__str/alnum?
-  {:desc "Check if string contains only alphanumeric characters"
-   :params [{:name "s" :type "string" :desc "String to check"}]
-   :returns {:type "boolean" :desc "true if alphanumeric only"}
-   :examples ["(str/alnum? \"abc123\") ;=> true"
-              "(str/alnum? \"abc-123\") ;=> false"]})
-
-;; String Manipulation
-(def __doc__str/replace
-  {:desc "Replace all occurrences of pattern with replacement"
-   :params [{:name "s" :type "string" :desc "String to modify"}
-            {:name "pattern" :type "string" :desc "Pattern to find"}
-            {:name "replacement" :type "string" :desc "Replacement string"}]
-   :returns {:type "string" :desc "Modified string"}
-   :examples ["(str/replace \"hello world\" \"o\" \"0\") ;=> \"hell0 w0rld\""
-              "(str/replace \"foo bar\" \"bar\" \"baz\") ;=> \"foo baz\""]})
-
-(def __doc__str/replace-first
-  {:desc "Replace first occurrence of pattern"
-   :params [{:name "s" :type "string" :desc "String to modify"}
-            {:name "pattern" :type "string" :desc "Pattern to find"}
-            {:name "replacement" :type "string" :desc "Replacement string"}]
-   :returns {:type "string" :desc "Modified string"}
-   :examples ["(str/replace-first \"hello hello\" \"hello\" \"hi\") ;=> \"hi hello\""]})
-
-(def __doc__str/repeat
-  {:desc "Repeat string n times"
-   :params [{:name "s" :type "string" :desc "String to repeat"}
-            {:name "n" :type "number" :desc "Number of repetitions"}]
-   :returns {:type "string" :desc "Repeated string"}
-   :examples ["(str/repeat \"ha\" 3) ;=> \"hahaha\""
-              "(str/repeat \"x\" 5) ;=> \"xxxxx\""]})
-
-(def __doc__str/reverse
-  {:desc "Reverse string character order"
-   :params [{:name "s" :type "string" :desc "String to reverse"}]
-   :returns {:type "string" :desc "Reversed string"}
-   :examples ["(str/reverse \"hello\") ;=> \"olleh\""
-              "(str/reverse \"abc\") ;=> \"cba\""]})
-
-;; Parsing
-(def __doc__str/parse-int
-  {:desc "Parse string as integer"
-   :params [{:name "s" :type "string" :desc "String to parse"}]
-   :returns {:type "number" :desc "Parsed integer"}
-   :examples ["(str/parse-int \"42\") ;=> 42"
-              "(str/parse-int \"-10\") ;=> -10"]})
-
-(def __doc__str/parse-float
-  {:desc "Parse string as floating point number"
-   :params [{:name "s" :type "string" :desc "String to parse"}]
-   :returns {:type "number" :desc "Parsed float"}
-   :examples ["(str/parse-float \"3.14\") ;=> 3.14"
-              "(str/parse-float \"2.5\") ;=> 2.5"]})
-
-;; Encoding
-(def __doc__str/to-base64
-  {:desc "Encode string to base64"
-   :params [{:name "s" :type "string" :desc "String to encode"}]
-   :returns {:type "string" :desc "Base64 encoded string"}
-   :examples ["(str/to-base64 \"hello\") ;=> \"aGVsbG8=\""]})
-
-(def __doc__str/from-base64
-  {:desc "Decode base64 string"
-   :params [{:name "s" :type "string" :desc "Base64 string to decode"}]
-   :returns {:type "string" :desc "Decoded string"}
-   :examples ["(str/from-base64 \"aGVsbG8=\") ;=> \"hello\""]})
-
-(def __doc__str/url-encode
-  {:desc "URL encode string"
-   :params [{:name "s" :type "string" :desc "String to encode"}]
-   :returns {:type "string" :desc "URL encoded string"}
-   :examples ["(str/url-encode \"hello world\") ;=> \"hello%20world\""
-              "(str/url-encode \"a+b=c\") ;=> \"a%2Bb%3Dc\""]})
-
-(def __doc__str/url-decode
-  {:desc "URL decode string"
-   :params [{:name "s" :type "string" :desc "URL encoded string"}]
-   :returns {:type "string" :desc "Decoded string"}
-   :examples ["(str/url-decode \"hello%20world\") ;=> \"hello world\""
-              "(str/url-decode \"a%2Bb%3Dc\") ;=> \"a+b=c\""]})
-
-(def __doc__str/html-encode
-  {:desc "HTML encode special characters"
-   :params [{:name "s" :type "string" :desc "String to encode"}]
-   :returns {:type "string" :desc "HTML encoded string"}
-   :examples ["(str/html-encode \"<div>\") ;=> \"&lt;div&gt;\""
-              "(str/html-encode \"a & b\") ;=> \"a &amp; b\""]})
-
-(def __doc__str/html-decode
-  {:desc "HTML decode entities"
-   :params [{:name "s" :type "string" :desc "HTML encoded string"}]
-   :returns {:type "string" :desc "Decoded string"}
-   :examples ["(str/html-decode \"&lt;div&gt;\") ;=> \"<div>\""
-              "(str/html-decode \"a &amp; b\") ;=> \"a & b\""]})
-
-;; Utility
-(def __doc__str/lines
-  {:desc "Split string into lines"
-   :params [{:name "s" :type "string" :desc "String to split"}]
-   :returns {:type "list" :desc "List of lines"}
-   :examples ["(str/lines \"a\\nb\\nc\") ;=> (\"a\" \"b\" \"c\")"
-              "(str/lines \"hello\\nworld\") ;=> (\"hello\" \"world\")"]})
-
-(def __doc__str/words
-  {:desc "Split string into words"
-   :params [{:name "s" :type "string" :desc "String to split"}]
-   :returns {:type "list" :desc "List of words"}
-   :examples ["(str/words \"hello world\") ;=> (\"hello\" \"world\")"
-              "(str/words \"one two three\") ;=> (\"one\" \"two\" \"three\")"]})
-
-(def __doc__str/chars
-  {:desc "Split string into characters"
-   :params [{:name "s" :type "string" :desc "String to split"}]
-   :returns {:type "list" :desc "List of characters"}
-   :examples ["(str/chars \"abc\") ;=> (\"a\" \"b\" \"c\")"
-              "(str/chars \"hi\") ;=> (\"h\" \"i\")"]})
+(def __doc__str/ends-with?
+  {:desc "Checks if a string ends with a suffix."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "suffix" :type "string" :desc "suffix"}]
+   :returns {:type "bool" :desc "true if ends with"}
+   :examples ["(str/ends-with? \"hello world\" \"world\") ;=> true"
+              "(str/ends-with? \"test\" \"xyz\") ;=> false"]})
 
 (def __doc__str/index-of
-  {:desc "Find first index of substring"
-   :params [{:name "s" :type "string" :desc "String to search"}
-            {:name "substr" :type "string" :desc "Substring to find"}]
-   :returns {:type "number" :desc "Index or -1 if not found"}
-   :examples ["(str/index-of \"hello\" \"ll\") ;=> 2"
-              "(str/index-of \"world\" \"x\") ;=> -1"]})
+  {:desc "Returns the first occurrence position of a substring."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sub" :type "string" :desc "substring"}]
+   :returns {:type "integer|nil" :desc "index (nil if not found)"}
+   :examples ["(str/index-of \"hello world\" \"world\") ;=> 6"
+              "(str/index-of \"test\" \"xyz\") ;=> nil"]})
 
 (def __doc__str/last-index-of
-  {:desc "Find last index of substring"
-   :params [{:name "s" :type "string" :desc "String to search"}
-            {:name "substr" :type "string" :desc "Substring to find"}]
-   :returns {:type "number" :desc "Index or -1 if not found"}
-   :examples ["(str/last-index-of \"hello\" \"l\") ;=> 3"
-              "(str/last-index-of \"ababa\" \"ba\") ;=> 3"]})
+  {:desc "Returns the last occurrence position of a substring."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sub" :type "string" :desc "substring"}]
+   :returns {:type "integer|nil" :desc "index (nil if not found)"}
+   :examples ["(str/last-index-of \"hello hello\" \"hello\") ;=> 6"
+              "(str/last-index-of \"test\" \"xyz\") ;=> nil"]})
+
+(def __doc__str/slice
+  {:desc "Gets a substring from a string."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "start" :type "integer" :desc "start index"}
+            {:name "end" :type "integer" :desc "end index (optional)"}]
+   :returns {:type "string" :desc "substring"}
+   :examples ["(str/slice \"hello world\" 0 5) ;=> \"hello\""
+              "(str/slice \"hello world\" 6) ;=> \"world\""]})
+
+(def __doc__str/take-str
+  {:desc "Gets the first n characters from a string."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "n" :type "integer" :desc "number of characters"}]
+   :returns {:type "string" :desc "first n characters"}
+   :examples ["(str/take-str \"hello\" 3) ;=> \"hel\""
+              "(str/take-str \"hi\" 10) ;=> \"hi\""]})
+
+(def __doc__str/drop-str
+  {:desc "Skips the first n characters from a string."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "n" :type "integer" :desc "number of characters to skip"}]
+   :returns {:type "string" :desc "remaining string"}
+   :examples ["(str/drop-str \"hello\" 2) ;=> \"llo\""
+              "(str/drop-str \"hi\" 10) ;=> \"\""]})
+
+(def __doc__str/sub-before
+  {:desc "Gets the substring before a separator."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sep" :type "string" :desc "separator"}]
+   :returns {:type "string" :desc "part before separator"}
+   :examples ["(str/sub-before \"hello-world\" \"-\") ;=> \"hello\""
+              "(str/sub-before \"test\" \"-\") ;=> \"test\""]})
+
+(def __doc__str/sub-after
+  {:desc "Gets the substring after a separator."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "sep" :type "string" :desc "separator"}]
+   :returns {:type "string" :desc "part after separator"}
+   :examples ["(str/sub-after \"hello-world\" \"-\") ;=> \"world\""
+              "(str/sub-after \"test\" \"-\") ;=> \"\""]})
+
+(def __doc__str/replace
+  {:desc "Replaces all occurrences in a string."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "search pattern"}
+            {:name "replacement" :type "string" :desc "replacement string"}]
+   :returns {:type "string" :desc "replaced string"}
+   :examples ["(str/replace \"hello world\" \"world\" \"there\") ;=> \"hello there\""
+              "(str/replace \"aaa\" \"a\" \"b\") ;=> \"bbb\""]})
+
+(def __doc__str/replace-first
+  {:desc "Replaces only the first occurrence in a string."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "search pattern"}
+            {:name "replacement" :type "string" :desc "replacement string"}]
+   :returns {:type "string" :desc "replaced string"}
+   :examples ["(str/replace-first \"hello hello\" \"hello\" \"hi\") ;=> \"hi hello\""
+              "(str/replace-first \"aaa\" \"a\" \"b\") ;=> \"baa\""]})
+
+(def __doc__str/lines
+  {:desc "Splits a string into lines."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "vector" :desc "vector of lines"}
+   :examples ["(str/lines \"a\\nb\\nc\") ;=> [\"a\" \"b\" \"c\"]"
+              "(str/lines \"single line\") ;=> [\"single line\"]"]})
+
+(def __doc__str/words
+  {:desc "Splits a string into words."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "vector" :desc "vector of words"}
+   :examples ["(str/words \"hello world test\") ;=> [\"hello\" \"world\" \"test\"]"
+              "(str/words \"one  two   three\") ;=> [\"one\" \"two\" \"three\"]"]})
+
+(def __doc__str/capitalize
+  {:desc "Capitalizes the first character of a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "capitalized string"}
+   :examples ["(str/capitalize \"hello\") ;=> \"Hello\""
+              "(str/capitalize \"WORLD\") ;=> \"WORLD\""]})
+
+(def __doc__str/repeat
+  {:desc "Repeats a string n times."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "n" :type "integer" :desc "number of repetitions"}]
+   :returns {:type "string" :desc "repeated string"}
+   :examples ["(str/repeat \"ab\" 3) ;=> \"ababab\""
+              "(str/repeat \"x\" 5) ;=> \"xxxxx\""]})
+
+(def __doc__str/chars-count
+  {:desc "Returns the character count (Unicode-aware) of a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "integer" :desc "character count"}
+   :examples ["(str/chars-count \"hello\") ;=> 5"
+              "(str/chars-count \"こんにちは\") ;=> 5"]})
+
+(def __doc__str/bytes-count
+  {:desc "Returns the byte count of a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "integer" :desc "byte count"}
+   :examples ["(str/bytes-count \"hello\") ;=> 5"
+              "(str/bytes-count \"こんにちは\") ;=> 15"]})
+
+;; ========================================
+;; Character Predicates (6 functions)
+;; ========================================
+
+(def __doc__str/digit?
+  {:desc "Checks if a string contains only digits."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all digits"}
+   :examples ["(str/digit? \"123\") ;=> true"
+              "(str/digit? \"12a\") ;=> false"
+              "(str/digit? \"\") ;=> false"]})
+
+(def __doc__str/alpha?
+  {:desc "Checks if a string contains only alphabetic characters."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all alphabetic"}
+   :examples ["(str/alpha? \"abc\") ;=> true"
+              "(str/alpha? \"abc123\") ;=> false"
+              "(str/alpha? \"\") ;=> false"]})
+
+(def __doc__str/alnum?
+  {:desc "Checks if a string contains only alphanumeric characters."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all alphanumeric"}
+   :examples ["(str/alnum? \"abc123\") ;=> true"
+              "(str/alnum? \"abc-123\") ;=> false"
+              "(str/alnum? \"\") ;=> false"]})
+
+(def __doc__str/space?
+  {:desc "Checks if a string contains only whitespace characters."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all whitespace"}
+   :examples ["(str/space? \"   \") ;=> true"
+              "(str/space? \" a \") ;=> false"
+              "(str/space? \"\") ;=> false"]})
+
+(def __doc__str/lower?
+  {:desc "Checks if a string contains only lowercase characters."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all lowercase"}
+   :examples ["(str/lower? \"abc\") ;=> true"
+              "(str/lower? \"Abc\") ;=> false"
+              "(str/lower? \"123\") ;=> false"]})
+
+(def __doc__str/upper?
+  {:desc "Checks if a string contains only uppercase characters."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "bool" :desc "true if all uppercase"}
+   :examples ["(str/upper? \"ABC\") ;=> true"
+              "(str/upper? \"Abc\") ;=> false"
+              "(str/upper? \"123\") ;=> false"]})
+
+;; ========================================
+;; Regular Expressions (4 functions)
+;; ========================================
+
+(def __doc__str/match?
+  {:desc "Checks if a string matches a regular expression pattern."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "regex pattern"}]
+   :returns {:type "bool" :desc "true if matches"}
+   :examples ["(str/match? \"test123\" \"\\\\d+\") ;=> true"
+              "(str/match? \"hello\" \"^h.*o$\") ;=> true"]})
+
+(def __doc__str/find
+  {:desc "Returns the first match of a regular expression pattern."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "regex pattern"}]
+   :returns {:type "string|nil" :desc "matched string (nil if not found)"}
+   :examples ["(str/find \"abc123def\" \"\\\\d+\") ;=> \"123\""
+              "(str/find \"hello\" \"\\\\d+\") ;=> nil"]})
+
+(def __doc__str/find-all
+  {:desc "Returns all matches of a regular expression pattern."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "regex pattern"}]
+   :returns {:type "vector" :desc "vector of matched strings"}
+   :examples ["(str/find-all \"a1b2c3\" \"\\\\d\") ;=> [\"1\" \"2\" \"3\"]"
+              "(str/find-all \"hello world\" \"\\\\w+\") ;=> [\"hello\" \"world\"]"]})
+
+(def __doc__str/replace-re
+  {:desc "Replaces parts matching a regular expression pattern."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "pattern" :type "string" :desc "regex pattern"}
+            {:name "replacement" :type "string" :desc "replacement string"}]
+   :returns {:type "string" :desc "replaced string"}
+   :examples ["(str/replace-re \"a1b2c3\" \"\\\\d\" \"X\") ;=> \"aXbXcX\""
+              "(str/replace-re \"hello123world\" \"\\\\d+\" \"-\") ;=> \"hello-world\""]})
+
+;; ========================================
+;; Encoding (requires string-encoding feature, 6 functions)
+;; ========================================
+
+(def __doc__str/to-base64
+  {:desc "Encodes a string to Base64."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "Base64-encoded string"}
+   :examples ["(str/to-base64 \"hello\") ;=> \"aGVsbG8=\""
+              "(str/to-base64 \"test\") ;=> \"dGVzdA==\""]
+   :feature "string-encoding"})
+
+(def __doc__str/from-base64
+  {:desc "Decodes a Base64-encoded string."
+   :params [{:name "s" :type "string" :desc "Base64 string"}]
+   :returns {:type "string" :desc "decoded string"}
+   :examples ["(str/from-base64 \"aGVsbG8=\") ;=> \"hello\""
+              "(str/from-base64 \"dGVzdA==\") ;=> \"test\""]
+   :feature "string-encoding"})
+
+(def __doc__str/url-encode
+  {:desc "URL-encodes a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "URL-encoded string"}
+   :examples ["(str/url-encode \"hello world\") ;=> \"hello%20world\""
+              "(str/url-encode \"a=b&c=d\") ;=> \"a%3Db%26c%3Dd\""]
+   :feature "string-encoding"})
+
+(def __doc__str/url-decode
+  {:desc "Decodes a URL-encoded string."
+   :params [{:name "s" :type "string" :desc "URL-encoded string"}]
+   :returns {:type "string" :desc "decoded string"}
+   :examples ["(str/url-decode \"hello%20world\") ;=> \"hello world\""
+              "(str/url-decode \"a%3Db%26c%3Dd\") ;=> \"a=b&c=d\""]
+   :feature "string-encoding"})
+
+(def __doc__str/html-escape
+  {:desc "HTML-escapes a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "HTML-escaped string"}
+   :examples ["(str/html-escape \"<div>test</div>\") ;=> \"&lt;div&gt;test&lt;/div&gt;\""
+              "(str/html-escape \"a & b\") ;=> \"a &amp; b\""]
+   :feature "string-encoding"})
+
+(def __doc__str/html-unescape
+  {:desc "Unescapes an HTML-escaped string."
+   :params [{:name "s" :type "string" :desc "HTML-escaped string"}]
+   :returns {:type "string" :desc "original string"}
+   :examples ["(str/html-unescape \"&lt;div&gt;test&lt;/div&gt;\") ;=> \"<div>test</div>\""
+              "(str/html-unescape \"a &amp; b\") ;=> \"a & b\""]
+   :feature "string-encoding"})
+
+;; ========================================
+;; Cryptography & Hashing (requires string-crypto feature, 3 functions)
+;; ========================================
+
+(def __doc__str/sha256
+  {:desc "Computes the SHA-256 hash of a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "hexadecimal hash"}
+   :examples ["(str/sha256 \"hello\") ;=> \"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c...\""
+              "(str/sha256 \"test\") ;=> \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b...\""]
+   :feature "string-crypto"})
+
+(def __doc__str/md5
+  {:desc "Computes the MD5 hash of a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "hexadecimal hash"}
+   :examples ["(str/md5 \"hello\") ;=> \"5d41402abc4b2a76b9719d911017c592\""
+              "(str/md5 \"test\") ;=> \"098f6bcd4621d373cade4e832627b4f6\""]
+   :feature "string-crypto"})
+
+(def __doc__str/uuid
+  {:desc "Generates a UUID v4."
+   :params []
+   :returns {:type "string" :desc "UUID string"}
+   :examples ["(str/uuid) ;=> \"550e8400-e29b-41d4-a716-446655440000\""
+              "(str/uuid) ;=> \"6ba7b810-9dad-11d1-80b4-00c04fd430c8\""]
+   :feature "string-crypto"})
+
+;; ========================================
+;; Templates (2 functions)
+;; ========================================
+
+(def __doc__str/template
+  {:desc "Substitutes values into a template string. Placeholders: {0}, {1}, ..."
+   :params [{:name "template" :type "string" :desc "template string"}
+            {:name "values" :type "any..." :desc "values to substitute"}]
+   :returns {:type "string" :desc "string with substituted values"}
+   :examples ["(str/template \"Hello {0}!\" \"World\") ;=> \"Hello World!\""
+              "(str/template \"{0} + {1} = {2}\" 1 2 3) ;=> \"1 + 2 = 3\""]})
+
+(def __doc__str/format
+  {:desc "Substitutes values into a format string. Named placeholders: {name}"
+   :params [{:name "template" :type "string" :desc "format string"}
+            {:name "map" :type "map" :desc "map of values"}]
+   :returns {:type "string" :desc "string with substituted values"}
+   :examples ["(str/format \"Hello {name}!\" {:name \"Alice\"}) ;=> \"Hello Alice!\""
+              "(str/format \"{x} + {y} = {z}\" {:x 1 :y 2 :z 3}) ;=> \"1 + 2 = 3\""]})
+
+;; ========================================
+;; Other Functions (25 functions)
+;; ========================================
+
+(def __doc__str/join-lines
+  {:desc "Joins a vector of strings with newlines."
+   :params [{:name "lines" :type "vector" :desc "vector of strings"}]
+   :returns {:type "string" :desc "joined string"}
+   :examples ["(str/join-lines [\"a\" \"b\" \"c\"]) ;=> \"a\\nb\\nc\""
+              "(str/join-lines [\"hello\" \"world\"]) ;=> \"hello\\nworld\""]})
+
+(def __doc__str/reverse
+  {:desc "Reverses a string."
+   :params [{:name "s" :type "string" :desc "string"}]
+   :returns {:type "string" :desc "reversed string"}
+   :examples ["(str/reverse \"hello\") ;=> \"olleh\""
+              "(str/reverse \"12345\") ;=> \"54321\""]})
+
+(def __doc__str/pad-left
+  {:desc "Pads a string on the left to a specified length."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "len" :type "integer" :desc "target length"}
+            {:name "pad" :type "string" :desc "padding character (default: space)"}]
+   :returns {:type "string" :desc "padded string"}
+   :examples ["(str/pad-left \"42\" 5 \"0\") ;=> \"00042\""
+              "(str/pad-left \"hi\" 5) ;=> \"   hi\""]})
+
+(def __doc__str/pad-right
+  {:desc "Pads a string on the right to a specified length."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "len" :type "integer" :desc "target length"}
+            {:name "pad" :type "string" :desc "padding character (default: space)"}]
+   :returns {:type "string" :desc "padded string"}
+   :examples ["(str/pad-right \"42\" 5 \"0\") ;=> \"42000\""
+              "(str/pad-right \"hi\" 5) ;=> \"hi   \""]})
+
+(def __doc__str/truncate
+  {:desc "Truncates a string to a specified length."
+   :params [{:name "s" :type "string" :desc "string"}
+            {:name "len" :type "integer" :desc "maximum length"}
+            {:name "suffix" :type "string" :desc "ellipsis (default: \"...\")"}]
+   :returns {:type "string" :desc "truncated string"}
+   :examples ["(str/truncate \"hello world\" 8) ;=> \"hello...\""
+              "(str/truncate \"test\" 10) ;=> \"test\""]})

@@ -1,0 +1,92 @@
+;; Standard Library Documentation - Concurrency
+;; Async/Concurrency Functions (13 functions - go/*)
+
+(def __doc__go/chan
+  {:desc "Creates a channel. Without arguments creates unbuffered channel, with argument specifies buffer size."
+   :params [{:name "capacity" :type "integer" :desc "Buffer size (optional)"}]
+   :returns {:type "channel" :desc "Channel"}
+   :examples ["(def ch (go/chan))      ;; Unbuffered channel"
+              "(def ch (go/chan 10))   ;; Buffer size 10"]})
+
+(def __doc__go/send!
+  {:desc "Sends a value to a channel."
+   :params [{:name "ch" :type "channel" :desc "Channel"}
+            {:name "value" :type "any" :desc "Value to send"}]
+   :returns {:type "any" :desc "Sent value"}
+   :examples ["(go/send! ch 42)"
+              "(go/send! ch {:status :ok})"]})
+
+(def __doc__go/recv!
+  {:desc "Receives a value from a channel (blocking)."
+   :params [{:name "ch" :type "channel" :desc "Channel"}
+            {:name ":timeout" :type "keyword" :desc "Timeout keyword (optional)"}
+            {:name "ms" :type "integer" :desc "Timeout duration in milliseconds (optional)"}]
+   :returns {:type "any" :desc "Received value (nil on timeout)"}
+   :examples ["(go/recv! ch)"
+              "(go/recv! ch :timeout 1000)  ;; 1 second timeout"]})
+
+(def __doc__go/try-recv!
+  {:desc "Non-blocking receive from a channel."
+   :params [{:name "ch" :type "channel" :desc "Channel"}]
+   :returns {:type "any|nil" :desc "Received value (nil if no value available)"}
+   :examples ["(go/try-recv! ch)"]})
+
+(def __doc__go/close!
+  {:desc "Closes a channel."
+   :params [{:name "ch" :type "channel" :desc "Channel"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(go/close! ch)"]})
+
+(def __doc__go/await
+  {:desc "Waits for a Promise (channel) value."
+   :params [{:name "promise" :type "channel" :desc "Promise (channel)"}]
+   :returns {:type "any" :desc "Promise value"}
+   :examples ["(def p (go (+ 1 2)))"
+              "(go/await p) ;=> 3"]})
+
+(def __doc__go/all
+  {:desc "Waits for all Promises to complete."
+   :params [{:name "promises" :type "vector" :desc "Vector of Promises"}]
+   :returns {:type "vector" :desc "Vector of all results"}
+   :examples ["(go/all [(go (+ 1 2)) (go (* 3 4))]) ;=> [3 12]"]})
+
+(def __doc__go/race
+  {:desc "Returns the value of the first completed Promise."
+   :params [{:name "promises" :type "vector" :desc "Vector of Promises"}]
+   :returns {:type "any" :desc "Value of the first completed Promise"}
+   :examples ["(go/race [(go (sleep 100) :slow) (go :fast)]) ;=> :fast"]})
+
+(def __doc__go/fan-out
+  {:desc "Sends a value to n channels."
+   :params [{:name "value" :type "any" :desc "Value to send"}
+            {:name "n" :type "integer" :desc "Number of channels"}]
+   :returns {:type "vector" :desc "Vector of channels"}
+   :examples ["(def chs (go/fan-out 42 3))"
+              "(map go/recv! chs) ;=> [42 42 42]"]})
+
+(def __doc__go/fan-in
+  {:desc "Aggregates values from multiple channels."
+   :params [{:name "channels" :type "vector" :desc "Vector of channels"}]
+   :returns {:type "channel" :desc "Aggregated channel"}
+   :examples ["(def combined (go/fan-in [ch1 ch2 ch3]))"
+              "(go/recv! combined)"]})
+
+(def __doc__go/make-scope
+  {:desc "Creates a cancellable scope."
+   :params []
+   :returns {:type "scope" :desc "Scope object"}
+   :examples ["(def scope (go/make-scope))"]})
+
+(def __doc__go/cancel!
+  {:desc "Cancels a scope."
+   :params [{:name "scope" :type "scope" :desc "Scope"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(go/cancel! scope)"]})
+
+(def __doc__go/cancelled?
+  {:desc "Checks if a scope is cancelled."
+   :params [{:name "scope" :type "scope" :desc "Scope"}]
+   :returns {:type "bool" :desc "true if cancelled"}
+   :examples ["(go/cancelled? scope) ;=> false"
+              "(go/cancel! scope)"
+              "(go/cancelled? scope) ;=> true"]})

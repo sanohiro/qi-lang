@@ -1,0 +1,41 @@
+;; Standard Library Documentation - ZIP Compression
+;; ZIP Compression Functions (5 functions - zip/*)
+;; This module is compiled with the `util-zip` feature
+
+(def __doc__zip/create
+  {:desc "Creates a ZIP archive."
+   :params [{:name "zip-path" :type "string" :desc "ZIP file path to create"}
+            {:name "files" :type "list|vector" :desc "List of file paths to include"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(zip/create \"archive.zip\" [\"file1.txt\" \"file2.txt\" \"dir/\"])"
+              "(zip/create \"backup.zip\" (io/list-files \"src/\"))"]})
+
+(def __doc__zip/extract
+  {:desc "Extracts a ZIP archive."
+   :params [{:name "zip-path" :type "string" :desc "ZIP file path"}
+            {:name "dest-dir" :type "string" :desc "Destination directory"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(zip/extract \"archive.zip\" \"./extracted/\")"
+              "(zip/extract \"backup.zip\" \"/tmp/restore/\")"]})
+
+(def __doc__zip/list
+  {:desc "Gets a list of files in a ZIP archive."
+   :params [{:name "zip-path" :type "string" :desc "ZIP file path"}]
+   :returns {:type "list" :desc "List of file paths"}
+   :examples ["(zip/list \"archive.zip\") ;=> [\"file1.txt\" \"file2.txt\" \"dir/file3.txt\"]"]})
+
+(def __doc__zip/gzip
+  {:desc "Compresses a file with gzip."
+   :params [{:name "input-path" :type "string" :desc "Input file path"}
+            {:name "output-path" :type "string" :desc "Output file path (defaults to input path + .gz)"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(zip/gzip \"large-file.txt\")"
+              "(zip/gzip \"data.json\" \"data.json.gz\")"]})
+
+(def __doc__zip/gunzip
+  {:desc "Decompresses a gzip file."
+   :params [{:name "input-path" :type "string" :desc "gzip file path"}
+            {:name "output-path" :type "string" :desc "Output file path (defaults to path without .gz)"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(zip/gunzip \"file.txt.gz\")"
+              "(zip/gunzip \"data.json.gz\" \"data.json\")"]})

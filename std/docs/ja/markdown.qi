@@ -1,0 +1,76 @@
+;; 標準ライブラリドキュメント - Markdown生成
+;; Markdown Generation Functions (11 functions - markdown/*)
+
+(def __doc__markdown/header
+  {:desc "Markdownヘッダーを生成します。"
+   :params [{:name "level" :type "integer" :desc "ヘッダーレベル (1-6)"}
+            {:name "text" :type "string" :desc "ヘッダーテキスト"}]
+   :returns {:type "string" :desc "Markdownヘッダー文字列"}
+   :examples ["(markdown/header 1 \"Title\") ;=> \"# Title\""
+              "(markdown/header 2 \"Subtitle\") ;=> \"## Subtitle\""]})
+
+(def __doc__markdown/bold
+  {:desc "太字テキストを生成します。"
+   :params [{:name "text" :type "string" :desc "テキスト"}]
+   :returns {:type "string" :desc "太字Markdown"}
+   :examples ["(markdown/bold \"important\") ;=> \"**important**\""]})
+
+(def __doc__markdown/italic
+  {:desc "斜体テキストを生成します。"
+   :params [{:name "text" :type "string" :desc "テキスト"}]
+   :returns {:type "string" :desc "斜体Markdown"}
+   :examples ["(markdown/italic \"emphasis\") ;=> \"*emphasis*\""]})
+
+(def __doc__markdown/code
+  {:desc "インラインコードを生成します。"
+   :params [{:name "text" :type "string" :desc "コードテキスト"}]
+   :returns {:type "string" :desc "インラインコードMarkdown"}
+   :examples ["(markdown/code \"let x = 42\") ;=> \"`let x = 42`\""]})
+
+(def __doc__markdown/codeblock
+  {:desc "コードブロックを生成します。"
+   :params [{:name "code" :type "string" :desc "コード"}
+            {:name "lang" :type "string" :desc "言語名（省略可）"}]
+   :returns {:type "string" :desc "コードブロックMarkdown"}
+   :examples ["(markdown/codeblock \"fn main() { }\" \"rust\")"
+              "(markdown/codeblock \"print('hello')\")"]})
+
+(def __doc__markdown/link
+  {:desc "リンクを生成します。"
+   :params [{:name "text" :type "string" :desc "リンクテキスト"}
+            {:name "url" :type "string" :desc "URL"}]
+   :returns {:type "string" :desc "リンクMarkdown"}
+   :examples ["(markdown/link \"GitHub\" \"https://github.com\") ;=> \"[GitHub](https://github.com)\""]})
+
+(def __doc__markdown/list
+  {:desc "リストを生成します。"
+   :params [{:name "items" :type "list|vector" :desc "リスト項目"}
+            {:name "ordered" :type "bool" :desc "順序付きリストか（省略時false）"}]
+   :returns {:type "string" :desc "リストMarkdown"}
+   :examples ["(markdown/list [\"item1\" \"item2\" \"item3\"])"
+              "(markdown/list [\"first\" \"second\"] true)"]})
+
+(def __doc__markdown/table
+  {:desc "テーブルを生成します。"
+   :params [{:name "headers" :type "list|vector" :desc "ヘッダー行"}
+            {:name "rows" :type "list|vector" :desc "データ行のリスト"}]
+   :returns {:type "string" :desc "テーブルMarkdown"}
+   :examples ["(markdown/table [\"Name\" \"Age\"] [[\"Alice\" 30] [\"Bob\" 25]])"]})
+
+(def __doc__markdown/quote
+  {:desc "引用ブロックを生成します。"
+   :params [{:name "text" :type "string" :desc "引用テキスト"}]
+   :returns {:type "string" :desc "引用Markdown"}
+   :examples ["(markdown/quote \"To be or not to be\") ;=> \"> To be or not to be\""]})
+
+(def __doc__markdown/hr
+  {:desc "水平線を生成します。"
+   :params []
+   :returns {:type "string" :desc "水平線Markdown"}
+   :examples ["(markdown/hr) ;=> \"---\""]})
+
+(def __doc__markdown/escape
+  {:desc "Markdown特殊文字をエスケープします。"
+   :params [{:name "text" :type "string" :desc "テキスト"}]
+   :returns {:type "string" :desc "エスケープされたテキスト"}
+   :examples ["(markdown/escape \"*test*\") ;=> \"\\\\*test\\\\*\""]})

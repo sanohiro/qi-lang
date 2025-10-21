@@ -1,75 +1,88 @@
-;; Standard Library Documentation (English)
-;; Math Functions
-
-;; Rounding Functions
-(def __doc__math/floor
-  {:desc "Round down to nearest integer"
-   :params [{:name "n" :type "number" :desc "Number to round"}]
-   :returns {:type "number" :desc "Floored value"}
-   :examples ["(math/floor 3.7) ;=> 3"
-              "(math/floor -2.3) ;=> -3"]})
-
-(def __doc__math/ceil
-  {:desc "Round up to nearest integer"
-   :params [{:name "n" :type "number" :desc "Number to round"}]
-   :returns {:type "number" :desc "Ceiled value"}
-   :examples ["(math/ceil 3.2) ;=> 4"
-              "(math/ceil -2.8) ;=> -2"]})
-
-(def __doc__math/round
-  {:desc "Round to nearest integer"
-   :params [{:name "n" :type "number" :desc "Number to round"}]
-   :returns {:type "number" :desc "Rounded value"}
-   :examples ["(math/round 3.4) ;=> 3"
-              "(math/round 3.6) ;=> 4"]})
-
-;; Mathematical Operations
-(def __doc__math/sqrt
-  {:desc "Calculate square root"
-   :params [{:name "n" :type "number" :desc "Number (must be non-negative)"}]
-   :returns {:type "number" :desc "Square root"}
-   :examples ["(math/sqrt 16) ;=> 4.0"
-              "(math/sqrt 2) ;=> 1.414..."]})
+;; Standard Library Documentation - Math Functions
+;; Math Functions (10 functions)
 
 (def __doc__math/pow
-  {:desc "Raise number to power"
-   :params [{:name "base" :type "number" :desc "Base number"}
-            {:name "exp" :type "number" :desc "Exponent"}]
-   :returns {:type "number" :desc "Result of base^exp"}
-   :examples ["(math/pow 2 3) ;=> 8"
-              "(math/pow 10 -2) ;=> 0.01"]})
+  {:desc "Calculates exponentiation (x ^ y)."
+   :params [{:name "x" :type "number" :desc "base"}
+            {:name "y" :type "number" :desc "exponent"}]
+   :returns {:type "float" :desc "result of exponentiation"}
+   :examples ["(math/pow 2 3) ;=> 8.0"
+              "(math/pow 10 2) ;=> 100.0"
+              "(math/pow 2 0.5) ;=> 1.414... ;; square root"]})
+
+(def __doc__math/sqrt
+  {:desc "Calculates square root."
+   :params [{:name "x" :type "number" :desc "number"}]
+   :returns {:type "float" :desc "square root"}
+   :examples ["(math/sqrt 4) ;=> 2.0"
+              "(math/sqrt 2) ;=> 1.414..."
+              "(math/sqrt 100) ;=> 10.0"]})
+
+(def __doc__math/round
+  {:desc "Rounds a number."
+   :params [{:name "x" :type "number" :desc "number"}]
+   :returns {:type "integer" :desc "rounded integer"}
+   :examples ["(math/round 3.4) ;=> 3"
+              "(math/round 3.5) ;=> 4"
+              "(math/round -2.7) ;=> -3"]})
+
+(def __doc__math/floor
+  {:desc "Rounds down a number (floor function)."
+   :params [{:name "x" :type "number" :desc "number"}]
+   :returns {:type "integer" :desc "floored integer"}
+   :examples ["(math/floor 3.9) ;=> 3"
+              "(math/floor -2.1) ;=> -3"]})
+
+(def __doc__math/ceil
+  {:desc "Rounds up a number (ceiling function)."
+   :params [{:name "x" :type "number" :desc "number"}]
+   :returns {:type "integer" :desc "ceiled integer"}
+   :examples ["(math/ceil 3.1) ;=> 4"
+              "(math/ceil -2.9) ;=> -2"]})
 
 (def __doc__math/clamp
-  {:desc "Clamp number between min and max"
-   :params [{:name "n" :type "number" :desc "Number to clamp"}
-            {:name "min" :type "number" :desc "Minimum value"}
-            {:name "max" :type "number" :desc "Maximum value"}]
-   :returns {:type "number" :desc "Clamped value"}
+  {:desc "Clamps a number to the specified range."
+   :params [{:name "x" :type "number" :desc "number"}
+            {:name "min" :type "number" :desc "minimum value"}
+            {:name "max" :type "number" :desc "maximum value"}]
+   :returns {:type "number" :desc "clamped value"}
    :examples ["(math/clamp 5 0 10) ;=> 5"
               "(math/clamp -5 0 10) ;=> 0"
               "(math/clamp 15 0 10) ;=> 10"]})
 
-;; Random Functions
+;; ========================================
+;; Random Number Functions (requires std-math feature, 4 functions)
+;; ========================================
+
 (def __doc__math/rand
-  {:desc "Generate random float between 0.0 and 1.0"
-   :returns {:type "number" :desc "Random number"}
-   :examples ["(math/rand) ;=> 0.742..."]})
+  {:desc "Generates a random floating-point number between 0.0 (inclusive) and 1.0 (exclusive)."
+   :params []
+   :returns {:type "float" :desc "random value where 0.0 <= x < 1.0"}
+   :examples ["(math/rand) ;=> 0.742..."
+              "(math/rand) ;=> 0.123..."]
+   :feature "std-math"})
 
 (def __doc__math/rand-int
-  {:desc "Generate random integer between 0 and n-1"
-   :params [{:name "n" :type "number" :desc "Upper bound (exclusive)"}]
-   :returns {:type "number" :desc "Random integer"}
-   :examples ["(math/rand-int 10) ;=> 7"]})
+  {:desc "Generates a random integer between 0 (inclusive) and n (exclusive)."
+   :params [{:name "n" :type "integer" :desc "upper bound (exclusive)"}]
+   :returns {:type "integer" :desc "random integer where 0 <= x < n"}
+   :examples ["(math/rand-int 10) ;=> 7"
+              "(math/rand-int 100) ;=> 42"]
+   :feature "std-math"})
 
 (def __doc__math/random-range
-  {:desc "Generate random number in range [min, max)"
-   :params [{:name "min" :type "number" :desc "Minimum value (inclusive)"}
-            {:name "max" :type "number" :desc "Maximum value (exclusive)"}]
-   :returns {:type "number" :desc "Random number in range"}
-   :examples ["(math/random-range 10 20) ;=> 15.342..."]})
+  {:desc "Generates a random integer between min (inclusive) and max (exclusive)."
+   :params [{:name "min" :type "integer" :desc "lower bound (inclusive)"}
+            {:name "max" :type "integer" :desc "upper bound (exclusive)"}]
+   :returns {:type "integer" :desc "random integer where min <= x < max"}
+   :examples ["(math/random-range 10 20) ;=> 15"
+              "(math/random-range -5 5) ;=> -2"]
+   :feature "std-math"})
 
 (def __doc__math/shuffle
-  {:desc "Randomly shuffle collection"
-   :params [{:name "coll" :type "collection" :desc "Collection to shuffle"}]
-   :returns {:type "list" :desc "Shuffled list"}
-   :examples ["(math/shuffle [1 2 3 4 5])"]})
+  {:desc "Randomly shuffles a collection."
+   :params [{:name "coll" :type "collection" :desc "collection"}]
+   :returns {:type "vector" :desc "shuffled vector"}
+   :examples ["(math/shuffle [1 2 3 4 5]) ;=> [3 1 5 2 4]"
+              "(math/shuffle [\"a\" \"b\" \"c\"]) ;=> [\"c\" \"a\" \"b\"]"]
+   :feature "std-math"})

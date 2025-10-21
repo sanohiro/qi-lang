@@ -1,0 +1,90 @@
+;; 標準ライブラリドキュメント - データ構造
+;; Data Structures Functions (12 functions - queue/*, stack/*)
+
+;; ========== Queue (6個) ==========
+
+(def __doc__queue/new
+  {:desc "空のキューを作成します。"
+   :params []
+   :returns {:type "queue" :desc "空のキュー"}
+   :examples ["(def q (queue/new))"]})
+
+(def __doc__queue/enqueue
+  {:desc "キューに要素を追加します（末尾に追加）。"
+   :params [{:name "queue" :type "queue" :desc "キュー"}
+            {:name "item" :type "any" :desc "追加する要素"}]
+   :returns {:type "queue" :desc "新しいキュー"}
+   :examples ["(def q (queue/new))"
+              "(def q2 (queue/enqueue q 1))"
+              "(def q3 (queue/enqueue q2 2))"]})
+
+(def __doc__queue/dequeue
+  {:desc "キューから要素を取り出します（先頭から取り出し）。"
+   :params [{:name "queue" :type "queue" :desc "キュー"}]
+   :returns {:type "map" :desc "{:value <要素> :queue <新しいキュー>}"}
+   :examples ["(def result (queue/dequeue q))"
+              "(get result :value) ;=> 1"
+              "(get result :queue) ;=> 新しいキュー"]})
+
+(def __doc__queue/peek
+  {:desc "キューの先頭要素を取得します（取り出さずに参照のみ）。"
+   :params [{:name "queue" :type "queue" :desc "キュー"}]
+   :returns {:type "any|nil" :desc "先頭要素（空の場合nil）"}
+   :examples ["(queue/peek q) ;=> 1"]})
+
+(def __doc__queue/empty?
+  {:desc "キューが空かどうかを判定します。"
+   :params [{:name "queue" :type "queue" :desc "キュー"}]
+   :returns {:type "bool" :desc "空の場合true"}
+   :examples ["(queue/empty? q) ;=> false"
+              "(queue/empty? (queue/new)) ;=> true"]})
+
+(def __doc__queue/size
+  {:desc "キューの要素数を取得します。"
+   :params [{:name "queue" :type "queue" :desc "キュー"}]
+   :returns {:type "integer" :desc "要素数"}
+   :examples ["(queue/size q) ;=> 3"]})
+
+;; ========== Stack (6個) ==========
+
+(def __doc__stack/new
+  {:desc "空のスタックを作成します。"
+   :params []
+   :returns {:type "stack" :desc "空のスタック"}
+   :examples ["(def s (stack/new))"]})
+
+(def __doc__stack/push
+  {:desc "スタックに要素をプッシュします（末尾に追加）。"
+   :params [{:name "stack" :type "stack" :desc "スタック"}
+            {:name "item" :type "any" :desc "追加する要素"}]
+   :returns {:type "stack" :desc "新しいスタック"}
+   :examples ["(def s (stack/new))"
+              "(def s2 (stack/push s 1))"
+              "(def s3 (stack/push s2 2))"]})
+
+(def __doc__stack/pop
+  {:desc "スタックから要素をポップします（末尾から取り出し）。"
+   :params [{:name "stack" :type "stack" :desc "スタック"}]
+   :returns {:type "map" :desc "{:value <要素> :stack <新しいスタック>}"}
+   :examples ["(def result (stack/pop s))"
+              "(get result :value) ;=> 2"
+              "(get result :stack) ;=> 新しいスタック"]})
+
+(def __doc__stack/peek
+  {:desc "スタックの最上位要素を取得します（取り出さずに参照のみ）。"
+   :params [{:name "stack" :type "stack" :desc "スタック"}]
+   :returns {:type "any|nil" :desc "最上位要素（空の場合nil）"}
+   :examples ["(stack/peek s) ;=> 2"]})
+
+(def __doc__stack/empty?
+  {:desc "スタックが空かどうかを判定します。"
+   :params [{:name "stack" :type "stack" :desc "スタック"}]
+   :returns {:type "bool" :desc "空の場合true"}
+   :examples ["(stack/empty? s) ;=> false"
+              "(stack/empty? (stack/new)) ;=> true"]})
+
+(def __doc__stack/size
+  {:desc "スタックの要素数を取得します。"
+   :params [{:name "stack" :type "stack" :desc "スタック"}]
+   :returns {:type "integer" :desc "要素数"}
+   :examples ["(stack/size s) ;=> 2"]})

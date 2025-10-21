@@ -1,44 +1,46 @@
-;; 標準ライブラリドキュメント (日本語)
-;; 統計関数
+;; 標準ライブラリドキュメント - 統計関数
+;; Statistics Functions (6 functions)
 
-;; 中心傾向
 (def __doc__stats/mean
-  {:desc "算術平均（平均値）を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
-   :returns {:type "number" :desc "平均値"}
-   :examples ["(stats/mean [1 2 3 4 5]) ;=> 3.0"]})
+  {:desc "平均値を計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}]
+   :returns {:type "float" :desc "平均値"}
+   :examples ["(stats/mean [1 2 3 4 5]) ;=> 3.0"
+              "(stats/mean [10 20 30]) ;=> 20.0"]})
 
 (def __doc__stats/median
-  {:desc "中央値を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
-   :returns {:type "number" :desc "中央値"}
-   :examples ["(stats/median [1 2 3 4 5]) ;=> 3"
-              "(stats/median [1 2 3 4]) ;=> 2.5"]})
+  {:desc "中央値を計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}]
+   :returns {:type "float" :desc "中央値"}
+   :examples ["(stats/median [1 2 3 4 5]) ;=> 3.0"
+              "(stats/median [1 2 3 4]) ;=> 2.5"
+              "(stats/median [5 1 3 2 4]) ;=> 3.0"]})
 
 (def __doc__stats/mode
-  {:desc "最頻値（最も頻繁に出現する値）を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
-   :returns {:type "any" :desc "最頻値"}
-   :examples ["(stats/mode [1 2 2 3 3 3 4]) ;=> 3"]})
+  {:desc "最頻値（モード）を計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}]
+   :returns {:type "number" :desc "最頻値"}
+   :examples ["(stats/mode [1 2 2 3 3 3 4]) ;=> 3"
+              "(stats/mode [1 1 2 2 3]) ;=> 1 ;; 複数ある場合は最初のもの"]})
 
-;; 散らばり
 (def __doc__stats/variance
-  {:desc "分散を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
-   :returns {:type "number" :desc "分散"}
-   :examples ["(stats/variance [1 2 3 4 5]) ;=> 2.5"]})
+  {:desc "分散を計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}]
+   :returns {:type "float" :desc "分散"}
+   :examples ["(stats/variance [1 2 3 4 5]) ;=> 2.0"
+              "(stats/variance [10 20 30]) ;=> 66.666..."]})
 
 (def __doc__stats/stddev
-  {:desc "標準偏差を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}]
-   :returns {:type "number" :desc "標準偏差"}
-   :examples ["(stats/stddev [1 2 3 4 5]) ;=> 1.581..."]})
+  {:desc "標準偏差を計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}]
+   :returns {:type "float" :desc "標準偏差"}
+   :examples ["(stats/stddev [1 2 3 4 5]) ;=> 1.414..."
+              "(stats/stddev [10 20 30]) ;=> 8.164..."]})
 
-;; パーセンタイル
 (def __doc__stats/percentile
-  {:desc "パーセンタイル値を計算する"
-   :params [{:name "nums" :type "collection" :desc "数のコレクション"}
+  {:desc "パーセンタイルを計算します。"
+   :params [{:name "numbers" :type "vector" :desc "数値のベクター"}
             {:name "p" :type "number" :desc "パーセンタイル（0-100）"}]
-   :returns {:type "number" :desc "パーセンタイル値"}
-   :examples ["(stats/percentile [1 2 3 4 5] 50) ;=> 3"
-              "(stats/percentile [1 2 3 4 5] 95) ;=> 5"]})
+   :returns {:type "float" :desc "パーセンタイルの値"}
+   :examples ["(stats/percentile [1 2 3 4 5 6 7 8 9 10] 50) ;=> 5.5 ;; 中央値"
+              "(stats/percentile [1 2 3 4 5 6 7 8 9 10] 95) ;=> 9.5"]})

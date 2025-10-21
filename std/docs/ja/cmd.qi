@@ -1,69 +1,72 @@
-;; 標準ライブラリドキュメント (日本語)
-;; コマンド実行関数
-
-;; 基本実行
-(def __doc__cmd/sh
-  {:desc "シェルコマンドを実行して出力を返す"
-   :params [{:name "command" :type "string" :desc "実行するシェルコマンド"}]
-   :returns {:type "string" :desc "コマンド出力"}
-   :examples ["(cmd/sh \"ls -la\")"]})
+;; 標準ライブラリドキュメント - コマンド実行
+;; Command Execution Functions (10 functions - cmd/*)
+;; このモジュールは `cmd-exec` feature でコンパイルされます
 
 (def __doc__cmd/exec
-  {:desc "引数付きコマンドを実行する"
-   :params [{:name "program" :type "string" :desc "実行するプログラム"}
-            {:name "& args" :type "string" :desc "コマンド引数"}]
-   :returns {:type "string" :desc "コマンド出力"}
-   :examples ["(cmd/exec \"git\" \"status\")"]})
+  {:desc "コマンドを実行して結果を返します。文字列またはベクタで指定できます。"
+   :params [{:name "command" :type "string|vector" :desc "コマンド（文字列の場合はシェル経由、ベクタの場合は直接実行）"}]
+   :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
+   :examples ["(cmd/exec \"ls -la\") ;=> {:stdout \"...\", :stderr \"\", :exit 0}"
+              "(cmd/exec [\"ls\" \"-la\"]) ;=> {:stdout \"...\", :stderr \"\", :exit 0}"]})
 
-;; インタラクティブコマンド
-(def __doc__cmd/interactive
-  {:desc "インタラクティブコマンドを実行する（stdioを継承）"
-   :params [{:name "program" :type "string" :desc "実行するプログラム"}
-            {:name "& args" :type "string" :desc "コマンド引数"}]
-   :returns {:type "number" :desc "終了コード"}
-   :examples ["(cmd/interactive \"vim\" \"file.txt\")"]})
+(def __doc__cmd/sh
+  {:desc "シェル経由でコマンドを実行します。パイプや変数展開などのシェル機能が使えます。"
+   :params [{:name "command" :type "string" :desc "シェルコマンド"}]
+   :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
+   :examples ["(cmd/sh \"cat *.txt | grep pattern | wc -l\")"
+              "(cmd/sh \"echo $HOME\")"]})
 
-;; プロセス管理
 (def __doc__cmd/pipe
-  {:desc "コマンドパイプラインを作成する"
-   :params [{:name "& commands" :type "list" :desc "パイプするコマンド"}]
-   :returns {:type "string" :desc "パイプライン出力"}
-   :examples ["(cmd/pipe [\"cat\" \"data.txt\"] [\"grep\" \"error\"])"]})
-
-(def __doc__cmd/wait
-  {:desc "プロセスの完了を待つ"
-   :params [{:name "process" :type "process" :desc "待機するプロセス"}]
-   :returns {:type "number" :desc "終了コード"}
-   :examples ["(cmd/wait proc)"]})
-
-(def __doc__cmd/write
-  {:desc "プロセスの標準入力に書き込む"
-   :params [{:name "process" :type "process" :desc "書き込むプロセス"}
-            {:name "data" :type "string" :desc "書き込むデータ"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(cmd/write proc \"input\\n\")"]})
-
-;; ストリームベース実行
-(def __doc__cmd/stream-lines
-  {:desc "コマンドを実行して出力を行ごとにストリームする"
-   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
-   :returns {:type "stream" :desc "行のストリーム"}
-   :examples ["(cmd/stream-lines \"tail -f log.txt\")"]})
-
-(def __doc__cmd/stream-bytes
-  {:desc "コマンドを実行して出力をバイトとしてストリームする"
-   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
-   :returns {:type "stream" :desc "バイトのストリーム"}
-   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+  {:desc "データをコマンドの標準入力へパイプして実行します。"
+   :params [{:name "command" :type "string|vector" :desc "コマンド"}
+            {:name "data" :type "string|list" :desc "標準入力に渡すデータ"}]
+   :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
+   :examples ["(\"hello\\nworld\" |> (cmd/pipe \"sort\"))"
+              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\"))"]})
 
 (def __doc__cmd/lines
-  {:desc "コマンドを実行して行を返す"
-   :params [{:name "command" :type "string" :desc "実行するコマンド"}]
-   :returns {:type "list" :desc "出力行のリスト"}
-   :examples ["(cmd/lines \"ls -1\")"]})
+  {:desc "テキストを行のリストに分割します。"
+   :params [{:name "text" :type "string" :desc "テキスト"}]
+   :returns {:type "list" :desc "行のリスト"}
+   :examples ["(cmd/lines \"a\\nb\\nc\") ;=> [\"a\" \"b\" \"c\"]"
+              "(\"hello\\nworld\" |> cmd/lines) ;=> [\"hello\" \"world\"]"]})
+
+(def __doc__cmd/stream-lines
+  {:desc "コマンドのstdoutを行単位でストリームとして返します。"
+   :params [{:name "command" :type "string|vector" :desc "コマンド"}]
+   :returns {:type "stream" :desc "行ストリーム"}
+   :examples ["(cmd/stream-lines \"ls -1\")"
+              "(cmd/stream-lines [\"find\" \".\" \"-name\" \"*.qi\"])"]})
+
+(def __doc__cmd/stream-bytes
+  {:desc "コマンドのstdoutをバイトストリームとして返します。"
+   :params [{:name "command" :type "string|vector" :desc "コマンド"}]
+   :returns {:type "stream" :desc "バイトストリーム"}
+   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+
+(def __doc__cmd/interactive
+  {:desc "対話的プロセスを開始します。プロセスIDを返します。"
+   :params [{:name "command" :type "string|vector" :desc "コマンド"}]
+   :returns {:type "integer" :desc "プロセスID"}
+   :examples ["(def pid (cmd/interactive \"python3\"))"
+              "(cmd/write pid \"print(1 + 2)\\n\")"
+              "(cmd/read-line pid) ;=> \"3\""]})
+
+(def __doc__cmd/write
+  {:desc "対話的プロセスの標準入力に文字列を書き込みます。"
+   :params [{:name "pid" :type "integer" :desc "プロセスID"}
+            {:name "data" :type "string" :desc "書き込むデータ"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(cmd/write pid \"hello\\n\")"]})
 
 (def __doc__cmd/read-line
-  {:desc "プロセスの標準出力から1行読み込む"
-   :params [{:name "process" :type "process" :desc "読み込むプロセス"}]
-   :returns {:type "string" :desc "出力行、またはnil"}
-   :examples ["(cmd/read-line proc)"]})
+  {:desc "対話的プロセスの標準出力から1行読み取ります。"
+   :params [{:name "pid" :type "integer" :desc "プロセスID"}]
+   :returns {:type "string|nil" :desc "読み取った行（終了している場合はnil）"}
+   :examples ["(cmd/read-line pid) ;=> \"output line\""]})
+
+(def __doc__cmd/wait
+  {:desc "プロセスの終了を待機して結果を返します。"
+   :params [{:name "pid" :type "integer" :desc "プロセスID"}]
+   :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
+   :examples ["(def result (cmd/wait pid))"]})

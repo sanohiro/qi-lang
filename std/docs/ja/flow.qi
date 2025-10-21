@@ -1,0 +1,18 @@
+;; 標準ライブラリドキュメント - フロー制御
+;; Flow Control Functions (1 function - flow/*)
+
+(def __doc__flow/branch
+  {:desc "パイプライン内で条件分岐を行います。各分岐は [condition handler] のベクタで指定します。"
+   :params [{:name "branches" :type "vector..." :desc "分岐のベクタ [[condition1 handler1] [condition2 handler2] [:else default]]"}
+            {:name "data" :type "any" :desc "処理するデータ（パイプラインから渡される）"}]
+   :returns {:type "any" :desc "マッチしたハンドラーの実行結果"}
+   :examples ["(42 |> (flow/branch"
+              "        [(fn [x] (< x 10)) (fn [x] \"small\")]"
+              "        [(fn [x] (< x 100)) (fn [x] \"medium\")]"
+              "        [:else (fn [x] \"large\")]))"
+              ";=> \"medium\""
+              ""
+              "(100 |> (flow/branch"
+              "         [(fn [x] (even? x)) (fn [x] (* x 2))]"
+              "         [:else (fn [x] (* x 3))]))"
+              ";=> 200"]})

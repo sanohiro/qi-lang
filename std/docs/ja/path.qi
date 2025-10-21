@@ -1,61 +1,64 @@
-;; 標準ライブラリドキュメント (日本語)
-;; パス操作関数
+;; 標準ライブラリドキュメント - パス操作
+;; Path Manipulation Functions (9 functions - path/*)
 
-;; パス操作
 (def __doc__path/join
-  {:desc "パスコンポーネントを結合する"
-   :params [{:name "& parts" :type "string" :desc "結合するパス部分"}]
+  {:desc "パスコンポーネントを結合します。"
+   :params [{:name "& parts" :type "string..." :desc "パスの部分（可変長引数）"}]
    :returns {:type "string" :desc "結合されたパス"}
-   :examples ["(path/join \"home\" \"user\" \"file.txt\") ;=> \"home/user/file.txt\""]})
-
-(def __doc__path/dirname
-  {:desc "パスのディレクトリ名を取得する"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "string" :desc "ディレクトリ名"}
-   :examples ["(path/dirname \"home/user/file.txt\") ;=> \"home/user\""]})
+   :examples ["(path/join \"/usr\" \"local\" \"bin\") ;=> \"/usr/local/bin\""
+              "(path/join \"src\" \"main.qi\") ;=> \"src/main.qi\""]})
 
 (def __doc__path/basename
-  {:desc "パスのベース名を取得する（拡張子付きファイル名）"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "string" :desc "ベース名"}
-   :examples ["(path/basename \"home/user/file.txt\") ;=> \"file.txt\""]})
+  {:desc "パスのファイル名部分を取得します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "string" :desc "ファイル名"}
+   :examples ["(path/basename \"/usr/local/bin/qi\") ;=> \"qi\""
+              "(path/basename \"src/main.qi\") ;=> \"main.qi\""]})
 
-(def __doc__path/stem
-  {:desc "拡張子なしのファイル名を取得する"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "string" :desc "ファイルステム"}
-   :examples ["(path/stem \"home/user/file.txt\") ;=> \"file\""]})
+(def __doc__path/dirname
+  {:desc "パスのディレクトリ部分を取得します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "string" :desc "ディレクトリパス"}
+   :examples ["(path/dirname \"/usr/local/bin/qi\") ;=> \"/usr/local/bin\""
+              "(path/dirname \"src/main.qi\") ;=> \"src\""]})
 
 (def __doc__path/extension
-  {:desc "ファイル拡張子を取得する"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "string" :desc "ファイル拡張子（ドット付き）"}
-   :examples ["(path/extension \"file.txt\") ;=> \".txt\""]})
+  {:desc "ファイルの拡張子を取得します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "string|nil" :desc "拡張子（ドット含む、拡張子がない場合nil）"}
+   :examples ["(path/extension \"main.qi\") ;=> \".qi\""
+              "(path/extension \"README\") ;=> nil"]})
 
-;; パス正規化
-(def __doc__path/normalize
-  {:desc "パスを正規化する（.と..を解決）"
-   :params [{:name "path" :type "string" :desc "正規化するパス"}]
-   :returns {:type "string" :desc "正規化されたパス"}
-   :examples ["(path/normalize \"home/./user/../file.txt\") ;=> \"home/file.txt\""]})
+(def __doc__path/stem
+  {:desc "拡張子を除いたファイル名を取得します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "string" :desc "拡張子なしのファイル名"}
+   :examples ["(path/stem \"main.qi\") ;=> \"main\""
+              "(path/stem \"/path/to/file.tar.gz\") ;=> \"file.tar\""]})
 
 (def __doc__path/absolute
-  {:desc "絶対パスに変換する"
-   :params [{:name "path" :type "string" :desc "相対パスまたは絶対パス"}]
+  {:desc "相対パスを絶対パスに変換します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
    :returns {:type "string" :desc "絶対パス"}
-   :examples ["(path/absolute \"file.txt\")"]})
+   :examples ["(path/absolute \"./main.qi\") ;=> \"/current/dir/main.qi\""]})
 
-;; パステスト
+(def __doc__path/normalize
+  {:desc "パスを正規化します（「..」や「.」を解決）。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "string" :desc "正規化されたパス"}
+   :examples ["(path/normalize \"/usr/local/../bin\") ;=> \"/usr/bin\""
+              "(path/normalize \"./src/../lib\") ;=> \"lib\""]})
+
 (def __doc__path/is-absolute?
-  {:desc "パスが絶対パスかチェックする"
-   :params [{:name "path" :type "string" :desc "チェックするパス"}]
-   :returns {:type "boolean" :desc "絶対パスの場合true"}
-   :examples ["(path/is-absolute? \"/home/user\") ;=> true"
-              "(path/is-absolute? \"user/file.txt\") ;=> false"]})
+  {:desc "パスが絶対パスかどうかを判定します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "bool" :desc "絶対パスの場合true"}
+   :examples ["(path/is-absolute? \"/usr/bin\") ;=> true"
+              "(path/is-absolute? \"./main.qi\") ;=> false"]})
 
 (def __doc__path/is-relative?
-  {:desc "パスが相対パスかチェックする"
-   :params [{:name "path" :type "string" :desc "チェックするパス"}]
-   :returns {:type "boolean" :desc "相対パスの場合true"}
-   :examples ["(path/is-relative? \"user/file.txt\") ;=> true"
-              "(path/is-relative? \"/home/user\") ;=> false"]})
+  {:desc "パスが相対パスかどうかを判定します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "bool" :desc "相対パスの場合true"}
+   :examples ["(path/is-relative? \"./main.qi\") ;=> true"
+              "(path/is-relative? \"/usr/bin\") ;=> false"]})

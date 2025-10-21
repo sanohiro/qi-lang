@@ -1,0 +1,90 @@
+;; Standard Library Documentation - Data Structures
+;; Data Structures Functions (12 functions - queue/*, stack/*)
+
+;; ========== Queue (6 functions) ==========
+
+(def __doc__queue/new
+  {:desc "Creates an empty queue."
+   :params []
+   :returns {:type "queue" :desc "Empty queue"}
+   :examples ["(def q (queue/new))"]})
+
+(def __doc__queue/enqueue
+  {:desc "Adds an element to the queue (appends to the end)."
+   :params [{:name "queue" :type "queue" :desc "Queue"}
+            {:name "item" :type "any" :desc "Element to add"}]
+   :returns {:type "queue" :desc "New queue"}
+   :examples ["(def q (queue/new))"
+              "(def q2 (queue/enqueue q 1))"
+              "(def q3 (queue/enqueue q2 2))"]})
+
+(def __doc__queue/dequeue
+  {:desc "Removes an element from the queue (removes from the front)."
+   :params [{:name "queue" :type "queue" :desc "Queue"}]
+   :returns {:type "map" :desc "{:value <element> :queue <new queue>}"}
+   :examples ["(def result (queue/dequeue q))"
+              "(get result :value) ;=> 1"
+              "(get result :queue) ;=> new queue"]})
+
+(def __doc__queue/peek
+  {:desc "Gets the front element of the queue (reference only, does not remove)."
+   :params [{:name "queue" :type "queue" :desc "Queue"}]
+   :returns {:type "any|nil" :desc "Front element (nil if empty)"}
+   :examples ["(queue/peek q) ;=> 1"]})
+
+(def __doc__queue/empty?
+  {:desc "Checks if the queue is empty."
+   :params [{:name "queue" :type "queue" :desc "Queue"}]
+   :returns {:type "bool" :desc "true if empty"}
+   :examples ["(queue/empty? q) ;=> false"
+              "(queue/empty? (queue/new)) ;=> true"]})
+
+(def __doc__queue/size
+  {:desc "Gets the number of elements in the queue."
+   :params [{:name "queue" :type "queue" :desc "Queue"}]
+   :returns {:type "integer" :desc "Number of elements"}
+   :examples ["(queue/size q) ;=> 3"]})
+
+;; ========== Stack (6 functions) ==========
+
+(def __doc__stack/new
+  {:desc "Creates an empty stack."
+   :params []
+   :returns {:type "stack" :desc "Empty stack"}
+   :examples ["(def s (stack/new))"]})
+
+(def __doc__stack/push
+  {:desc "Pushes an element onto the stack (adds to the end)."
+   :params [{:name "stack" :type "stack" :desc "Stack"}
+            {:name "item" :type "any" :desc "Element to add"}]
+   :returns {:type "stack" :desc "New stack"}
+   :examples ["(def s (stack/new))"
+              "(def s2 (stack/push s 1))"
+              "(def s3 (stack/push s2 2))"]})
+
+(def __doc__stack/pop
+  {:desc "Pops an element from the stack (removes from the end)."
+   :params [{:name "stack" :type "stack" :desc "Stack"}]
+   :returns {:type "map" :desc "{:value <element> :stack <new stack>}"}
+   :examples ["(def result (stack/pop s))"
+              "(get result :value) ;=> 2"
+              "(get result :stack) ;=> new stack"]})
+
+(def __doc__stack/peek
+  {:desc "Gets the top element of the stack (reference only, does not remove)."
+   :params [{:name "stack" :type "stack" :desc "Stack"}]
+   :returns {:type "any|nil" :desc "Top element (nil if empty)"}
+   :examples ["(stack/peek s) ;=> 2"]})
+
+(def __doc__stack/empty?
+  {:desc "Checks if the stack is empty."
+   :params [{:name "stack" :type "stack" :desc "Stack"}]
+   :returns {:type "bool" :desc "true if empty"}
+   :examples ["(stack/empty? s) ;=> false"
+              "(stack/empty? (stack/new)) ;=> true"]})
+
+(def __doc__stack/size
+  {:desc "Gets the number of elements in the stack."
+   :params [{:name "stack" :type "stack" :desc "Stack"}]
+   :returns {:type "integer" :desc "Number of elements"}
+   :examples ["(stack/size s) ;=> 2"]})

@@ -1,0 +1,41 @@
+;; 標準ライブラリドキュメント - ZIP圧縮
+;; ZIP Compression Functions (5 functions - zip/*)
+;; このモジュールは `util-zip` feature でコンパイルされます
+
+(def __doc__zip/create
+  {:desc "ZIPアーカイブを作成します。"
+   :params [{:name "zip-path" :type "string" :desc "作成するZIPファイルパス"}
+            {:name "files" :type "list|vector" :desc "含めるファイルパスのリスト"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(zip/create \"archive.zip\" [\"file1.txt\" \"file2.txt\" \"dir/\"])"
+              "(zip/create \"backup.zip\" (io/list-files \"src/\"))"]})
+
+(def __doc__zip/extract
+  {:desc "ZIPアーカイブを解凍します。"
+   :params [{:name "zip-path" :type "string" :desc "ZIPファイルパス"}
+            {:name "dest-dir" :type "string" :desc "解凍先ディレクトリ"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(zip/extract \"archive.zip\" \"./extracted/\")"
+              "(zip/extract \"backup.zip\" \"/tmp/restore/\")"]})
+
+(def __doc__zip/list
+  {:desc "ZIPアーカイブ内のファイル一覧を取得します。"
+   :params [{:name "zip-path" :type "string" :desc "ZIPファイルパス"}]
+   :returns {:type "list" :desc "ファイルパスのリスト"}
+   :examples ["(zip/list \"archive.zip\") ;=> [\"file1.txt\" \"file2.txt\" \"dir/file3.txt\"]"]})
+
+(def __doc__zip/gzip
+  {:desc "ファイルをgzip圧縮します。"
+   :params [{:name "input-path" :type "string" :desc "入力ファイルパス"}
+            {:name "output-path" :type "string" :desc "出力ファイルパス（省略時は入力パス+.gz）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(zip/gzip \"large-file.txt\")"
+              "(zip/gzip \"data.json\" \"data.json.gz\")"]})
+
+(def __doc__zip/gunzip
+  {:desc "gzipファイルを解凍します。"
+   :params [{:name "input-path" :type "string" :desc "gzipファイルパス"}
+            {:name "output-path" :type "string" :desc "出力ファイルパス（省略時は.gzを除いたパス）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(zip/gunzip \"file.txt.gz\")"
+              "(zip/gunzip \"data.json.gz\" \"data.json\")"]})

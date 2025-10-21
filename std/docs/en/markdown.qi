@@ -1,0 +1,76 @@
+;; Standard Library Documentation - Markdown Generation
+;; Markdown Generation Functions (11 functions - markdown/*)
+
+(def __doc__markdown/header
+  {:desc "Generates a Markdown header."
+   :params [{:name "level" :type "integer" :desc "Header level (1-6)"}
+            {:name "text" :type "string" :desc "Header text"}]
+   :returns {:type "string" :desc "Markdown header string"}
+   :examples ["(markdown/header 1 \"Title\") ;=> \"# Title\""
+              "(markdown/header 2 \"Subtitle\") ;=> \"## Subtitle\""]})
+
+(def __doc__markdown/bold
+  {:desc "Generates bold text."
+   :params [{:name "text" :type "string" :desc "Text"}]
+   :returns {:type "string" :desc "Bold Markdown"}
+   :examples ["(markdown/bold \"important\") ;=> \"**important**\""]})
+
+(def __doc__markdown/italic
+  {:desc "Generates italic text."
+   :params [{:name "text" :type "string" :desc "Text"}]
+   :returns {:type "string" :desc "Italic Markdown"}
+   :examples ["(markdown/italic \"emphasis\") ;=> \"*emphasis*\""]})
+
+(def __doc__markdown/code
+  {:desc "Generates inline code."
+   :params [{:name "text" :type "string" :desc "Code text"}]
+   :returns {:type "string" :desc "Inline code Markdown"}
+   :examples ["(markdown/code \"let x = 42\") ;=> \"`let x = 42`\""]})
+
+(def __doc__markdown/codeblock
+  {:desc "Generates a code block."
+   :params [{:name "code" :type "string" :desc "Code"}
+            {:name "lang" :type "string" :desc "Language name (optional)"}]
+   :returns {:type "string" :desc "Code block Markdown"}
+   :examples ["(markdown/codeblock \"fn main() { }\" \"rust\")"
+              "(markdown/codeblock \"print('hello')\")"]})
+
+(def __doc__markdown/link
+  {:desc "Generates a link."
+   :params [{:name "text" :type "string" :desc "Link text"}
+            {:name "url" :type "string" :desc "URL"}]
+   :returns {:type "string" :desc "Link Markdown"}
+   :examples ["(markdown/link \"GitHub\" \"https://github.com\") ;=> \"[GitHub](https://github.com)\""]})
+
+(def __doc__markdown/list
+  {:desc "Generates a list."
+   :params [{:name "items" :type "list|vector" :desc "List items"}
+            {:name "ordered" :type "bool" :desc "Ordered list or not (default false)"}]
+   :returns {:type "string" :desc "List Markdown"}
+   :examples ["(markdown/list [\"item1\" \"item2\" \"item3\"])"
+              "(markdown/list [\"first\" \"second\"] true)"]})
+
+(def __doc__markdown/table
+  {:desc "Generates a table."
+   :params [{:name "headers" :type "list|vector" :desc "Header row"}
+            {:name "rows" :type "list|vector" :desc "List of data rows"}]
+   :returns {:type "string" :desc "Table Markdown"}
+   :examples ["(markdown/table [\"Name\" \"Age\"] [[\"Alice\" 30] [\"Bob\" 25]])"]})
+
+(def __doc__markdown/quote
+  {:desc "Generates a quote block."
+   :params [{:name "text" :type "string" :desc "Quote text"}]
+   :returns {:type "string" :desc "Quote Markdown"}
+   :examples ["(markdown/quote \"To be or not to be\") ;=> \"> To be or not to be\""]})
+
+(def __doc__markdown/hr
+  {:desc "Generates a horizontal rule."
+   :params []
+   :returns {:type "string" :desc "Horizontal rule Markdown"}
+   :examples ["(markdown/hr) ;=> \"---\""]})
+
+(def __doc__markdown/escape
+  {:desc "Escapes Markdown special characters."
+   :params [{:name "text" :type "string" :desc "Text"}]
+   :returns {:type "string" :desc "Escaped text"}
+   :examples ["(markdown/escape \"*test*\") ;=> \"\\\\*test\\\\*\""]})

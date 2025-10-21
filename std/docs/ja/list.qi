@@ -1,229 +1,150 @@
-;; 標準ライブラリドキュメント (日本語)
-;; リスト・コレクション関数
+;; 標準ライブラリドキュメント - リスト拡張操作
+;; List Extended Functions (19 functions - list/*)
 
-;; 高階関数
-(def __doc__map
-  {:desc "コレクションの各要素に関数を適用する"
-   :params [{:name "f" :type "function" :desc "適用する関数"}
-            {:name "coll" :type "collection" :desc "対象のコレクション"}]
-   :returns {:type "list" :desc "変換後のリスト"}
-   :examples ["(map inc [1 2 3]) ;=> (2 3 4)"
-              "(map str [1 2 3]) ;=> (\"1\" \"2\" \"3\")"]})
-
-(def __doc__filter
-  {:desc "述語関数でコレクションをフィルタリング"
+(def __doc__list/take-while
+  {:desc "述語が真を返す間、先頭から要素を取り出します。"
    :params [{:name "pred" :type "function" :desc "述語関数"}
-            {:name "coll" :type "collection" :desc "対象のコレクション"}]
-   :returns {:type "list" :desc "フィルタ後のリスト"}
-   :examples ["(filter even? [1 2 3 4 5 6]) ;=> (2 4 6)"
-              "(filter (fn [x] (> x 5)) [1 3 5 7 9]) ;=> (7 9)"]})
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "取り出された要素のリスト"}
+   :examples ["(list/take-while (fn [x] (< x 5)) [1 2 3 4 5 6 2 1]) ;=> [1 2 3 4]"]})
 
-(def __doc__reduce
-  {:desc "関数でコレクションを単一の値に畳み込む"
-   :params [{:name "f" :type "function" :desc "2引数関数"}
-            {:name "init" :type "any" :desc "初期値"}
-            {:name "coll" :type "collection" :desc "対象のコレクション"}]
-   :returns {:type "any" :desc "畳み込み結果"}
-   :examples ["(reduce + 0 [1 2 3 4]) ;=> 10"
-              "(reduce * 1 [1 2 3 4]) ;=> 24"]})
+(def __doc__list/drop-while
+  {:desc "述語が真を返す間、先頭から要素を除外します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "残りの要素のリスト"}
+   :examples ["(list/drop-while (fn [x] (< x 5)) [1 2 3 4 5 6 2 1]) ;=> [5 6 2 1]"]})
 
-(def __doc__apply
-  {:desc "引数のリストを使って関数を適用する"
-   :params [{:name "f" :type "function" :desc "適用する関数"}
-            {:name "args" :type "list" :desc "引数のリスト"}]
-   :returns {:type "any" :desc "関数呼び出しの結果"}
-   :examples ["(apply + [1 2 3]) ;=> 6"
-              "(apply max [5 2 8 3]) ;=> 8"]})
+(def __doc__list/split-at
+  {:desc "指定位置でリストを2つに分割します。"
+   :params [{:name "n" :type "integer" :desc "分割位置"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "vector" :desc "[前半, 後半] のベクタ"}
+   :examples ["(list/split-at 3 [1 2 3 4 5]) ;=> [[1 2 3] [4 5]]"]})
 
-;; コレクション変換
-(def __doc__distinct
-  {:desc "重複する値を除いたコレクションを返す"
-   :params [{:name "coll" :type "collection" :desc "対象のコレクション"}]
-   :returns {:type "list" :desc "一意な要素のリスト"}
-   :examples ["(distinct [1 2 2 3 3 3]) ;=> (1 2 3)"
-              "(distinct [\"a\" \"b\" \"a\"]) ;=> (\"a\" \"b\")"]})
+(def __doc__list/interleave
+  {:desc "複数のリストの要素を交互に取り出します。"
+   :params [{:name "& colls" :type "list|vector..." :desc "コレクション（可変長引数）"}]
+   :returns {:type "list" :desc "交互に配置された要素のリスト"}
+   :examples ["(list/interleave [1 2 3] [:a :b :c]) ;=> [1 :a 2 :b 3 :c]"
+              "(list/interleave [1 2] [10 20] [100 200]) ;=> [1 10 100 2 20 200]"]})
 
-(def __doc__flatten
-  {:desc "ネストしたコレクション構造を平坦化する"
-   :params [{:name "coll" :type "collection" :desc "ネストしたコレクション"}]
-   :returns {:type "list" :desc "平坦化されたリスト"}
-   :examples ["(flatten [[1 2] [3 4]]) ;=> (1 2 3 4)"
-              "(flatten [1 [2 [3 4]]]) ;=> (1 2 3 4)"]})
+(def __doc__list/frequencies
+  {:desc "各要素の出現回数をカウントします。"
+   :params [{:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "map" :desc "要素と出現回数のマップ"}
+   :examples ["(list/frequencies [1 2 1 3 2 1]) ;=> {1 3, 2 2, 3 1}"
+              "(list/frequencies [\"a\" \"b\" \"a\" \"c\" \"b\" \"a\"]) ;=> {\"a\" 3, \"b\" 2, \"c\" 1}"]})
 
-(def __doc__zip
-  {:desc "複数のコレクションを要素ごとに結合する"
-   :params [{:name "& colls" :type "collection" :desc "結合するコレクション"}]
-   :returns {:type "list" :desc "タプルのリスト"}
-   :examples ["(zip [1 2 3] [\"a\" \"b\" \"c\"]) ;=> ((1 \"a\") (2 \"b\") (3 \"c\"))"
-              "(zip [1 2] [10 20] [100 200]) ;=> ((1 10 100) (2 20 200))"]})
+(def __doc__list/sort-by
+  {:desc "関数の戻り値でソートします。"
+   :params [{:name "f" :type "function" :desc "ソートキーを返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "ソートされたリスト"}
+   :examples ["(list/sort-by count [\"aaa\" \"b\" \"cc\"]) ;=> [\"b\" \"cc\" \"aaa\"]"
+              "(list/sort-by :age [{:name \"Alice\" :age 30} {:name \"Bob\" :age 25}]) ;=> [{:name \"Bob\" :age 25} {:name \"Alice\" :age 30}]"]})
 
-(def __doc__interleave
-  {:desc "複数のコレクションの要素を交互に配置する"
-   :params [{:name "& colls" :type "collection" :desc "交互配置するコレクション"}]
-   :returns {:type "list" :desc "交互配置されたリスト"}
-   :examples ["(interleave [1 2 3] [:a :b :c]) ;=> (1 :a 2 :b 3 :c)"
-              "(interleave [1 2] [10 20] [100 200]) ;=> (1 10 100 2 20 200)"]})
-
-(def __doc__partition
-  {:desc "コレクションをサイズnのチャンクに分割する"
-   :params [{:name "n" :type "number" :desc "チャンクサイズ"}
-            {:name "coll" :type "collection" :desc "分割するコレクション"}]
+(def __doc__list/chunk
+  {:desc "指定サイズのチャンクに分割します（最後のチャンクは小さくてもOK）。"
+   :params [{:name "n" :type "integer" :desc "チャンクサイズ"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
    :returns {:type "list" :desc "チャンクのリスト"}
-   :examples ["(list/partition 2 [1 2 3 4 5 6]) ;=> ((1 2) (3 4) (5 6))"
-              "(list/partition 3 [1 2 3 4 5]) ;=> ((1 2 3))"]})
+   :examples ["(list/chunk 3 [1 2 3 4 5 6 7]) ;=> [[1 2 3] [4 5 6] [7]]"]})
 
-(def __doc__group-by
-  {:desc "キー関数でコレクション要素をグループ化する"
-   :params [{:name "f" :type "function" :desc "キー関数"}
-            {:name "coll" :type "collection" :desc "グループ化するコレクション"}]
-   :returns {:type "map" :desc "グループ化された要素のマップ"}
-   :examples ["(list/group-by even? [1 2 3 4 5 6]) ;=> {true [2 4 6] false [1 3 5]}"
-              "(list/group-by count [\"a\" \"as\" \"asd\"]) ;=> {1 [\"a\"] 2 [\"as\"] 3 [\"asd\"]}"]})
+(def __doc__list/max-by
+  {:desc "関数の戻り値が最大の要素を返します。"
+   :params [{:name "f" :type "function" :desc "比較値を返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "any" :desc "最大の要素"}
+   :examples ["(list/max-by count [\"a\" \"bbb\" \"cc\"]) ;=> \"bbb\""
+              "(list/max-by :score [{:name \"A\" :score 80} {:name \"B\" :score 95}]) ;=> {:name \"B\" :score 95}"]})
 
-;; コレクションテスト
-(def __doc__some
-  {:desc "述語がいずれかの要素でtrueかテストする"
+(def __doc__list/min-by
+  {:desc "関数の戻り値が最小の要素を返します。"
+   :params [{:name "f" :type "function" :desc "比較値を返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "any" :desc "最小の要素"}
+   :examples ["(list/min-by count [\"a\" \"bbb\" \"cc\"]) ;=> \"a\""]})
+
+(def __doc__list/sum-by
+  {:desc "関数の戻り値の合計を計算します。"
+   :params [{:name "f" :type "function" :desc "数値を返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "number" :desc "合計値"}
+   :examples ["(list/sum-by count [\"a\" \"bb\" \"ccc\"]) ;=> 6"
+              "(list/sum-by :price [{:item \"A\" :price 100} {:item \"B\" :price 200}]) ;=> 300"]})
+
+(def __doc__list/find
+  {:desc "述語が真を返す最初の要素を返します。"
    :params [{:name "pred" :type "function" :desc "述語関数"}
-            {:name "coll" :type "collection" :desc "テストするコレクション"}]
-   :returns {:type "boolean" :desc "いずれかの要素がマッチすればtrue"}
-   :examples ["(some even? [1 3 5 6 7]) ;=> true"
-              "(some even? [1 3 5]) ;=> false"]})
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "any|nil" :desc "最初にマッチした要素、見つからない場合nil"}
+   :examples ["(list/find even? [1 3 5 6 7 8]) ;=> 6"
+              "(list/find (fn [x] (> x 10)) [1 2 3]) ;=> nil"]})
 
-(def __doc__every
-  {:desc "述語が全要素でtrueかテストする"
+(def __doc__list/find-index
+  {:desc "述語が真を返す最初の要素のインデックスを返します。"
    :params [{:name "pred" :type "function" :desc "述語関数"}
-            {:name "coll" :type "collection" :desc "テストするコレクション"}]
-   :returns {:type "boolean" :desc "全要素がマッチすればtrue"}
-   :examples ["(every even? [2 4 6 8]) ;=> true"
-              "(every even? [2 4 5 8]) ;=> false"]})
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "integer|nil" :desc "インデックス、見つからない場合nil"}
+   :examples ["(list/find-index even? [1 3 5 6 7 8]) ;=> 3"]})
 
-(def __doc__some?
-  {:desc "値がnilでないかチェックする"
-   :params [{:name "x" :type "any" :desc "チェックする値"}]
-   :returns {:type "boolean" :desc "nilでなければtrue"}
-   :examples ["(some? 0) ;=> true"
-              "(some? nil) ;=> false"]})
+(def __doc__list/every?
+  {:desc "全ての要素が述語を満たすか判定します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "bool" :desc "全てtrueの場合true"}
+   :examples ["(list/every? even? [2 4 6 8]) ;=> true"
+              "(list/every? even? [2 4 5 8]) ;=> false"]})
 
-(def __doc__empty?
-  {:desc "コレクションが空かチェックする"
-   :params [{:name "coll" :type "collection" :desc "チェックするコレクション"}]
-   :returns {:type "boolean" :desc "空ならtrue"}
-   :examples ["(empty? []) ;=> true"
-              "(empty? [1 2 3]) ;=> false"]})
+(def __doc__list/some?
+  {:desc "少なくとも1つの要素が述語を満たすか判定します。"
+   :params [{:name "pred" :type "function" :desc "述語関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "bool" :desc "1つでもtrueがあればtrue"}
+   :examples ["(list/some? even? [1 3 5 6]) ;=> true"
+              "(list/some? even? [1 3 5 7]) ;=> false"]})
 
-(def __doc__coll?
-  {:desc "値がコレクションかチェックする"
-   :params [{:name "x" :type "any" :desc "チェックする値"}]
-   :returns {:type "boolean" :desc "コレクションならtrue"}
-   :examples ["(coll? [1 2 3]) ;=> true"
-              "(coll? {:a 1}) ;=> true"
-              "(coll? 42) ;=> false"]})
+(def __doc__list/zipmap
+  {:desc "2つのリストからマップを作成します（キーと値のペア）。"
+   :params [{:name "keys" :type "list|vector" :desc "キーのリスト"}
+            {:name "vals" :type "list|vector" :desc "値のリスト"}]
+   :returns {:type "map" :desc "キーと値のマップ"}
+   :examples ["(list/zipmap [:a :b :c] [1 2 3]) ;=> {:a 1, :b 2, :c 3}"]})
 
-(def __doc__sequential?
-  {:desc "値がシーケンシャルなコレクションかチェックする"
-   :params [{:name "x" :type "any" :desc "チェックする値"}]
-   :returns {:type "boolean" :desc "シーケンシャルならtrue"}
-   :examples ["(sequential? [1 2 3]) ;=> true"
-              "(sequential? '(1 2 3)) ;=> true"
-              "(sequential? {:a 1}) ;=> false"]})
+(def __doc__list/partition-by
+  {:desc "関数の戻り値が変わるたびにグループを分けます。"
+   :params [{:name "f" :type "function" :desc "グループ化キーを返す関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "グループのリスト"}
+   :examples ["(list/partition-by even? [1 1 2 2 2 3 3]) ;=> [[1 1] [2 2 2] [3 3]]"
+              "(list/partition-by count [\"a\" \"b\" \"cc\" \"dd\" \"e\"]) ;=> [[\"a\" \"b\"] [\"cc\" \"dd\"] [\"e\"]]"]})
 
-;; 集約
-(def __doc__sum
-  {:desc "数値コレクションの合計を計算する"
-   :params [{:name "coll" :type "collection" :desc "数値コレクション"}]
-   :returns {:type "number" :desc "全要素の合計"}
-   :examples ["(sum [1 2 3 4 5]) ;=> 15"
-              "(sum [10 20 30]) ;=> 60"]})
+(def __doc__list/take-nth
+  {:desc "n番目ごとの要素を取り出します。"
+   :params [{:name "n" :type "integer" :desc "間隔"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "n番目ごとの要素のリスト"}
+   :examples ["(list/take-nth 2 [1 2 3 4 5 6]) ;=> [1 3 5]"
+              "(list/take-nth 3 [1 2 3 4 5 6 7 8 9]) ;=> [1 4 7]"]})
 
-(def __doc__min
-  {:desc "コレクションの最小値を見つける"
-   :params [{:name "& args" :type "any" :desc "値またはコレクション"}]
-   :returns {:type "any" :desc "最小値"}
-   :examples ["(min 3 1 4 1 5) ;=> 1"
-              "(min [10 5 20 3]) ;=> 3"]})
+(def __doc__list/keep
+  {:desc "関数がnilでない値を返す要素のみを保持します。"
+   :params [{:name "f" :type "function" :desc "変換関数"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "nilでない結果のリスト"}
+   :examples ["(list/keep (fn [x] (if (even? x) x nil)) [1 2 3 4 5 6]) ;=> [2 4 6]"]})
 
-(def __doc__max
-  {:desc "コレクションの最大値を見つける"
-   :params [{:name "& args" :type "any" :desc "値またはコレクション"}]
-   :returns {:type "any" :desc "最大値"}
-   :examples ["(max 3 1 4 1 5) ;=> 5"
-              "(max [10 5 20 3]) ;=> 20"]})
+(def __doc__list/dedupe
+  {:desc "連続する重複要素を除去します。"
+   :params [{:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "重複除去されたリスト"}
+   :examples ["(list/dedupe [1 1 2 2 2 3 3 1 1]) ;=> [1 2 3 1]"]})
 
-;; その他のユーティリティ
-(def __doc__range
-  {:desc "数値の範囲を生成する"
-   :params [{:name "start" :type "number" :desc "開始値"}
-            {:name "end" :type "number" :desc "終了値（含まない）"}]
-   :returns {:type "list" :desc "数値のリスト"}
-   :examples ["(range 0 5) ;=> (0 1 2 3 4)"
-              "(range 5 10) ;=> (5 6 7 8 9)"]})
-
-(def __doc__repeat
-  {:desc "n個の繰り返し要素のリストを作成する"
-   :params [{:name "n" :type "number" :desc "繰り返し回数"}
-            {:name "x" :type "any" :desc "繰り返す要素"}]
-   :returns {:type "list" :desc "繰り返し要素のリスト"}
-   :examples ["(repeat 3 :x) ;=> (:x :x :x)"
-              "(repeat 5 0) ;=> (0 0 0 0 0)"]})
-
-(def __doc__cycle
-  {:desc "コレクションを循環させる無限遅延シーケンスを作成する"
-   :params [{:name "coll" :type "collection" :desc "循環するコレクション"}]
-   :returns {:type "sequence" :desc "無限循環シーケンス"}
-   :examples ["(take 5 (cycle [1 2 3])) ;=> (1 2 3 1 2)"]})
-
-(def __doc__inc
-  {:desc "数値を1増やす"
-   :params [{:name "n" :type "number" :desc "増やす数値"}]
-   :returns {:type "number" :desc "増加後の値"}
-   :examples ["(inc 5) ;=> 6"
-              "(inc -1) ;=> 0"]})
-
-(def __doc__dec
-  {:desc "数値を1減らす"
-   :params [{:name "n" :type "number" :desc "減らす数値"}]
-   :returns {:type "number" :desc "減少後の値"}
-   :examples ["(dec 5) ;=> 4"
-              "(dec 0) ;=> -1"]})
-
-(def __doc__abs
-  {:desc "絶対値を計算する"
-   :params [{:name "n" :type "number" :desc "数値"}]
-   :returns {:type "number" :desc "絶対値"}
-   :examples ["(abs -5) ;=> 5"
-              "(abs 3) ;=> 3"]})
-
-(def __doc__even?
-  {:desc "数値が偶数かチェックする"
-   :params [{:name "n" :type "number" :desc "チェックする数値"}]
-   :returns {:type "boolean" :desc "偶数ならtrue"}
-   :examples ["(even? 4) ;=> true"
-              "(even? 5) ;=> false"]})
-
-(def __doc__odd?
-  {:desc "数値が奇数かチェックする"
-   :params [{:name "n" :type "number" :desc "チェックする数値"}]
-   :returns {:type "boolean" :desc "奇数ならtrue"}
-   :examples ["(odd? 5) ;=> true"
-              "(odd? 4) ;=> false"]})
-
-(def __doc__zero?
-  {:desc "数値がゼロかチェックする"
-   :params [{:name "n" :type "number" :desc "チェックする数値"}]
-   :returns {:type "boolean" :desc "ゼロならtrue"}
-   :examples ["(zero? 0) ;=> true"
-              "(zero? 1) ;=> false"]})
-
-(def __doc__pos?
-  {:desc "数値が正かチェックする"
-   :params [{:name "n" :type "number" :desc "チェックする数値"}]
-   :returns {:type "boolean" :desc "正ならtrue"}
-   :examples ["(pos? 5) ;=> true"
-              "(pos? -1) ;=> false"]})
-
-(def __doc__neg?
-  {:desc "数値が負かチェックする"
-   :params [{:name "n" :type "number" :desc "チェックする数値"}]
-   :returns {:type "boolean" :desc "負ならtrue"}
-   :examples ["(neg? -5) ;=> true"
-              "(neg? 1) ;=> false"]})
+(def __doc__list/drop-last
+  {:desc "末尾からn個の要素を除外します。"
+   :params [{:name "n" :type "integer" :desc "除外する要素数（省略時は1）"}
+            {:name "coll" :type "list|vector" :desc "コレクション"}]
+   :returns {:type "list" :desc "残りの要素のリスト"}
+   :examples ["(list/drop-last [1 2 3 4 5]) ;=> [1 2 3 4]"
+              "(list/drop-last 2 [1 2 3 4 5]) ;=> [1 2 3]"]})

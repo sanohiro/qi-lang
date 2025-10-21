@@ -1,0 +1,18 @@
+;; Standard Library Documentation - Flow Control
+;; Flow Control Functions (1 function - flow/*)
+
+(def __doc__flow/branch
+  {:desc "Performs conditional branching within a pipeline. Each branch is specified as a vector of [condition handler]."
+   :params [{:name "branches" :type "vector..." :desc "Vector of branches [[condition1 handler1] [condition2 handler2] [:else default]]"}
+            {:name "data" :type "any" :desc "Data to process (passed from the pipeline)"}]
+   :returns {:type "any" :desc "Result of the matched handler's execution"}
+   :examples ["(42 |> (flow/branch"
+              "        [(fn [x] (< x 10)) (fn [x] \"small\")]"
+              "        [(fn [x] (< x 100)) (fn [x] \"medium\")]"
+              "        [:else (fn [x] \"large\")]))"
+              ";=> \"medium\""
+              ""
+              "(100 |> (flow/branch"
+              "         [(fn [x] (even? x)) (fn [x] (* x 2))]"
+              "         [:else (fn [x] (* x 3))]))"
+              ";=> 200"]})

@@ -1,0 +1,44 @@
+;; Standard Library Documentation - Logging
+;; Logging Functions (6 functions - log/*)
+
+(def __doc__log/debug
+  {:desc "Outputs a DEBUG level log message."
+   :params [{:name "& args" :type "any..." :desc "Log messages (variadic arguments)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/debug \"Variable value:\" x)"
+              "(log/debug \"Processing item\" item-id)"]})
+
+(def __doc__log/info
+  {:desc "Outputs an INFO level log message."
+   :params [{:name "& args" :type "any..." :desc "Log messages (variadic arguments)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/info \"Server started on port\" port)"
+              "(log/info \"Request completed\" status)"]})
+
+(def __doc__log/warn
+  {:desc "Outputs a WARN level log message."
+   :params [{:name "& args" :type "any..." :desc "Log messages (variadic arguments)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/warn \"Deprecated function used\")"
+              "(log/warn \"Slow query detected\" query-time)"]})
+
+(def __doc__log/error
+  {:desc "Outputs an ERROR level log message."
+   :params [{:name "& args" :type "any..." :desc "Log messages (variadic arguments)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/error \"Failed to connect to database\" error-msg)"
+              "(log/error \"Invalid input\" input-value)"]})
+
+(def __doc__log/set-level
+  {:desc "Sets the logging level."
+   :params [{:name "level" :type "keyword" :desc "Log level (:debug, :info, :warn, :error)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/set-level :debug)"
+              "(log/set-level :info)"]})
+
+(def __doc__log/set-format
+  {:desc "Sets the log format."
+   :params [{:name "format" :type "keyword" :desc "Format (:text, :json)"}]
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(log/set-format :json)"
+              "(log/set-format :text)"]})

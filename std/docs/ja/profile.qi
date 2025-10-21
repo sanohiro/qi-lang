@@ -1,24 +1,29 @@
-;; 標準ライブラリドキュメント (日本語)
-;; パフォーマンスプロファイリング関数
+;; 標準ライブラリドキュメント - プロファイリング
+;; Profiling Functions (4 functions - profile/*)
 
-;; プロファイリング制御
-(def __doc__profile/start
-  {:desc "関数実行時間のプロファイリングを開始する"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/start)"]})
+(def __doc__profile/enable
+  {:desc "プロファイリングを有効にします。"
+   :params []
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(profile/enable)"]})
 
-(def __doc__profile/stop
-  {:desc "プロファイリングを停止する"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/stop)"]})
+(def __doc__profile/disable
+  {:desc "プロファイリングを無効にします。"
+   :params []
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(profile/disable)"]})
 
-(def __doc__profile/clear
-  {:desc "プロファイリングデータをクリアする"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/clear)"]})
+(def __doc__profile/reset
+  {:desc "プロファイリング統計をリセットします。"
+   :params []
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(profile/reset)"]})
 
-;; プロファイリングレポート
 (def __doc__profile/report
-  {:desc "プロファイリングレポートを生成する"
-   :returns {:type "string" :desc "フォーマットされたプロファイリングレポート"}
-   :examples ["(profile/report)"]})
+  {:desc "プロファイリング結果をレポートします。"
+   :params []
+   :returns {:type "string" :desc "プロファイリングレポート"}
+   :examples ["(profile/enable)"
+              "(defn slow-fn [] (reduce + (range 100000)))"
+              "(slow-fn)"
+              "(println (profile/report))"]})

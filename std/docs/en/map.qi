@@ -1,0 +1,40 @@
+;; Standard Library Documentation - Map Advanced Operations
+;; Map Advanced Functions (5 functions - map/*)
+;; For basic map operations (get, keys, vals, assoc, dissoc, merge, get-in), see core.qi
+
+(def __doc__map/select-keys
+  {:desc "Creates a new map by selecting only specified keys from a map."
+   :params [{:name "m" :type "map" :desc "Original map"}
+            {:name "keys" :type "list|vector" :desc "List of keys to select"}]
+   :returns {:type "map" :desc "Map containing only selected keys"}
+   :examples ["(map/select-keys {:a 1 :b 2 :c 3} [:a :c]) ;=> {:a 1 :c 3}"]})
+
+(def __doc__map/assoc-in
+  {:desc "Sets a value at a deep position in a nested map."
+   :params [{:name "m" :type "map" :desc "Original map"}
+            {:name "path" :type "list|vector" :desc "Path of keys"}
+            {:name "value" :type "any" :desc "Value to set"}]
+   :returns {:type "map" :desc "Updated map"}
+   :examples ["(map/assoc-in {:a {:b {:c 1}}} [:a :b :c] 42) ;=> {:a {:b {:c 42}}}"
+              "(map/assoc-in {} [:a :b :c] 42) ;=> {:a {:b {:c 42}}}"]})
+
+(def __doc__map/dissoc-in
+  {:desc "Removes a key from a deep position in a nested map."
+   :params [{:name "m" :type "map" :desc "Original map"}
+            {:name "path" :type "list|vector" :desc "Path of keys"}]
+   :returns {:type "map" :desc "Updated map"}
+   :examples ["(map/dissoc-in {:a {:b {:c 1 :d 2}}} [:a :b :c]) ;=> {:a {:b {:d 2}}}"]})
+
+(def __doc__map/update-keys
+  {:desc "Creates a new map by applying a function to all keys."
+   :params [{:name "m" :type "map" :desc "Original map"}
+            {:name "f" :type "function" :desc "Function to apply to keys"}]
+   :returns {:type "map" :desc "Map with transformed keys"}
+   :examples ["(map/update-keys {:a 1 :b 2} str/upper) ;=> {:A 1 :B 2}"]})
+
+(def __doc__map/update-vals
+  {:desc "Creates a new map by applying a function to all values."
+   :params [{:name "m" :type "map" :desc "Original map"}
+            {:name "f" :type "function" :desc "Function to apply to values"}]
+   :returns {:type "map" :desc "Map with transformed values"}
+   :examples ["(map/update-vals {:a 1 :b 2} (fn [x] (* x 2))) ;=> {:a 2 :b 4}"]})

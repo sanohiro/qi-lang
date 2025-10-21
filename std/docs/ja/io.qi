@@ -1,123 +1,148 @@
-;; 標準ライブラリドキュメント (日本語)
-;; 入出力関数
+;; 標準ライブラリドキュメント - ファイルI/O
+;; File I/O Functions (19 functions)
 
-;; ファイル読み込み
 (def __doc__io/read-file
-  {:desc "ファイル全体を文字列として読み込む"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "string" :desc "ファイル内容"}
-   :examples ["(io/read-file \"data.txt\")"]})
-
-(def __doc__io/read-lines
-  {:desc "ファイルを行のリストとして読み込む"
-   :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "list" :desc "行のリスト"}
-   :examples ["(io/read-lines \"data.txt\")"]})
-
-;; ファイル書き込み
-(def __doc__io/write-file
-  {:desc "文字列をファイルに書き込む"
+  {:desc "ファイルの内容を文字列として読み込みます。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}
-            {:name "content" :type "string" :desc "書き込む内容"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/write-file \"output.txt\" \"Hello\")"]})
+            {:name ":encoding" :type "keyword" :desc "エンコーディング（省略時UTF-8）"}
+            {:name "encoding-name" :type "string" :desc "エンコーディング名"}]
+   :returns {:type "string" :desc "ファイルの内容"}
+   :examples ["(io/read-file \"data.txt\")"
+              "(io/read-file \"sjis.txt\" :encoding \"shift_jis\")"]})
+
+(def __doc__io/write-file
+  {:desc "文字列をファイルに書き込みます（上書き）。"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "content" :type "string" :desc "書き込む内容"}
+            {:name ":encoding" :type "keyword" :desc "エンコーディング（省略時UTF-8）"}
+            {:name "encoding-name" :type "string" :desc "エンコーディング名"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/write-file \"output.txt\" \"Hello, World!\")"
+              "(io/write-file \"sjis.txt\" content :encoding \"shift_jis\")"]})
 
 (def __doc__io/append-file
-  {:desc "文字列をファイルに追記する"
+  {:desc "文字列をファイルに追記します。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}
             {:name "content" :type "string" :desc "追記する内容"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/append-file \"log.txt\" \"New entry\\n\")"]})
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/append-file \"log.txt\" \"New log entry\\n\")"]})
 
-(def __doc__io/write-stream
-  {:desc "ストリームをファイルに書き込む"
+(def __doc__io/read-lines
+  {:desc "ファイルを行ごとに読み込んでベクターで返します。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}
-            {:name "stream" :type "stream" :desc "書き込むストリーム"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/write-stream \"output.txt\" stream)"]})
+            {:name ":encoding" :type "keyword" :desc "エンコーディング（省略時UTF-8）"}
+            {:name "encoding-name" :type "string" :desc "エンコーディング名"}]
+   :returns {:type "vector" :desc "行のベクター"}
+   :examples ["(io/read-lines \"data.txt\")"
+              "(io/read-lines \"file.csv\" :encoding \"shift_jis\")"]})
 
-;; ファイル操作
-(def __doc__io/copy-file
-  {:desc "ファイルを宛先にコピーする"
-   :params [{:name "src" :type "string" :desc "ソースパス"}
-            {:name "dest" :type "string" :desc "宛先パス"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/copy-file \"a.txt\" \"b.txt\")"]})
-
-(def __doc__io/move-file
-  {:desc "ファイルを移動/名前変更する"
-   :params [{:name "src" :type "string" :desc "ソースパス"}
-            {:name "dest" :type "string" :desc "宛先パス"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/move-file \"old.txt\" \"new.txt\")"]})
-
-(def __doc__io/delete-file
-  {:desc "ファイルを削除する"
+(def __doc__io/file-exists?
+  {:desc "ファイルが存在するかを判定します。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/delete-file \"temp.txt\")"]})
-
-;; ディレクトリ操作
-(def __doc__io/create-dir
-  {:desc "ディレクトリを作成する（必要に応じて親ディレクトリも作成）"
-   :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/create-dir \"data/cache\")"]})
+   :returns {:type "bool" :desc "存在する場合true"}
+   :examples ["(io/file-exists? \"data.txt\") ;=> true"
+              "(io/file-exists? \"missing.txt\") ;=> false"]})
 
 (def __doc__io/list-dir
-  {:desc "ディレクトリの内容をリストする"
+  {:desc "ディレクトリ内のファイル・ディレクトリ一覧を取得します。"
    :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
-   :returns {:type "list" :desc "ファイル/ディレクトリ名のリスト"}
-   :examples ["(io/list-dir \".\")"]})
+   :returns {:type "vector" :desc "ファイル名のベクター"}
+   :examples ["(io/list-dir \".\") ;=> [\"file1.txt\" \"dir1\" \"file2.txt\"]"
+              "(io/list-dir \"/tmp\")"]})
+
+(def __doc__io/create-dir
+  {:desc "ディレクトリを作成します（親ディレクトリも必要に応じて作成）。"
+   :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/create-dir \"output/data\")"
+              "(io/create-dir \"/tmp/test\")"]})
+
+(def __doc__io/delete-file
+  {:desc "ファイルを削除します。"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/delete-file \"temp.txt\")"]})
 
 (def __doc__io/delete-dir
-  {:desc "ディレクトリを削除する（空である必要がある）"
+  {:desc "ディレクトリを削除します（空でなければエラー）。"
    :params [{:name "path" :type "string" :desc "ディレクトリパス"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/delete-dir \"temp\")"]})
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/delete-dir \"temp-dir\")"]})
 
-;; ファイル/ディレクトリチェック
-(def __doc__io/file-exists?
-  {:desc "ファイルまたはディレクトリが存在するかチェックする"
-   :params [{:name "path" :type "string" :desc "チェックするパス"}]
-   :returns {:type "boolean" :desc "存在する場合true"}
-   :examples ["(io/file-exists? \"data.txt\")"]})
+(def __doc__io/copy-file
+  {:desc "ファイルをコピーします。"
+   :params [{:name "from" :type "string" :desc "元のファイルパス"}
+            {:name "to" :type "string" :desc "コピー先のファイルパス"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/copy-file \"source.txt\" \"dest.txt\")"]})
 
-(def __doc__io/is-file?
-  {:desc "パスがファイルかチェックする"
-   :params [{:name "path" :type "string" :desc "チェックするパス"}]
-   :returns {:type "boolean" :desc "ファイルの場合true"}
-   :examples ["(io/is-file? \"data.txt\")"]})
-
-(def __doc__io/is-dir?
-  {:desc "パスがディレクトリかチェックする"
-   :params [{:name "path" :type "string" :desc "チェックするパス"}]
-   :returns {:type "boolean" :desc "ディレクトリの場合true"}
-   :examples ["(io/is-dir? \"data\")"]})
+(def __doc__io/move-file
+  {:desc "ファイルを移動（リネーム）します。"
+   :params [{:name "from" :type "string" :desc "元のファイルパス"}
+            {:name "to" :type "string" :desc "移動先のファイルパス"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/move-file \"old-name.txt\" \"new-name.txt\")"]})
 
 (def __doc__io/file-info
-  {:desc "ファイルのメタデータを取得する"
+  {:desc "ファイルの情報（サイズ、変更日時等）を取得します。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "map" :desc "ファイル情報マップ（size, modifiedなど）"}
-   :examples ["(io/file-info \"data.txt\")"]})
+   :returns {:type "map" :desc "ファイル情報のマップ（:size, :modified, :is-dir等）"}
+   :examples ["(io/file-info \"data.txt\") ;=> {:size 1024 :modified 1729544123 :is-dir false}"]})
 
-;; 一時ファイル
+(def __doc__io/is-file?
+  {:desc "パスがファイルかを判定します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "bool" :desc "ファイルの場合true"}
+   :examples ["(io/is-file? \"data.txt\") ;=> true"
+              "(io/is-file? \".\") ;=> false"]})
+
+(def __doc__io/is-dir?
+  {:desc "パスがディレクトリかを判定します。"
+   :params [{:name "path" :type "string" :desc "パス"}]
+   :returns {:type "bool" :desc "ディレクトリの場合true"}
+   :examples ["(io/is-dir? \".\") ;=> true"
+              "(io/is-dir? \"file.txt\") ;=> false"]})
+
+(def __doc__io/stdin-line
+  {:desc "標準入力から1行読み込みます。"
+   :params []
+   :returns {:type "string" :desc "読み込んだ行"}
+   :examples ["(def input (io/stdin-line))"
+              "(println \"You entered:\" input)"]})
+
+(def __doc__io/stdin-lines
+  {:desc "標準入力からすべての行を読み込みます。"
+   :params []
+   :returns {:type "vector" :desc "行のベクター"}
+   :examples ["(def lines (io/stdin-lines))"
+              "(map process-line lines)"]})
+
+(def __doc__io/file-stream
+  {:desc "ファイルを行ごとに読み込むストリームを作成します。"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}]
+   :returns {:type "stream" :desc "行のストリーム"}
+   :examples ["(def s (io/file-stream \"large-file.txt\"))"
+              "(stream/take s 10) ;; 最初の10行"]})
+
+(def __doc__io/write-stream
+  {:desc "ストリームをファイルに書き込みます。"
+   :params [{:name "path" :type "string" :desc "ファイルパス"}
+            {:name "stream" :type "stream" :desc "ストリーム"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(io/write-stream \"output.txt\" data-stream)"]})
+
 (def __doc__io/temp-file
-  {:desc "一時ファイルを作成する（自動削除）"
-   :returns {:type "string" :desc "一時ファイルパス"}
-   :examples ["(io/temp-file)"]})
-
-(def __doc__io/temp-file-keep
-  {:desc "一時ファイルを作成する（自動削除されない）"
-   :returns {:type "string" :desc "一時ファイルパス"}
-   :examples ["(io/temp-file-keep)"]})
+  {:desc "一時ファイルを作成します（プログラム終了時に自動削除）。"
+   :params []
+   :returns {:type "string" :desc "一時ファイルのパス"}
+   :examples ["(def temp (io/temp-file))"
+              "(io/write-file temp \"temporary data\")"]
+   :feature "temp-files"})
 
 (def __doc__io/temp-dir
-  {:desc "一時ディレクトリを作成する（自動削除）"
-   :returns {:type "string" :desc "一時ディレクトリパス"}
-   :examples ["(io/temp-dir)"]})
-
-(def __doc__io/temp-dir-keep
-  {:desc "一時ディレクトリを作成する（自動削除されない）"
-   :returns {:type "string" :desc "一時ディレクトリパス"}
-   :examples ["(io/temp-dir-keep)"]})
+  {:desc "一時ディレクトリを作成します（プログラム終了時に自動削除）。"
+   :params []
+   :returns {:type "string" :desc "一時ディレクトリのパス"}
+   :examples ["(def temp-dir (io/temp-dir))"
+              "(io/write-file (str temp-dir \"/file.txt\") data)"]
+   :feature "temp-files"})

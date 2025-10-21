@@ -1,150 +1,92 @@
-;; Standard Library Documentation (English)
-;; Data Format Functions (JSON, YAML, CSV)
+;; Standard Library Documentation - Data Formats
+;; Data Format Functions (JSON/YAML/CSV - 11 functions)
 
-;; JSON Functions
+;; ========================================
+;; JSON (3 functions)
+;; ========================================
+
 (def __doc__json/parse
-  {:desc "Parse JSON string into Qi data structure"
-   :params [{:name "s" :type "string" :desc "JSON string"}]
-   :returns {:type "any" :desc "Parsed data"}
-   :examples ["(json/parse \"{\\\"name\\\": \\\"John\\\", \\\"age\\\": 30}\") ;=> {:name \"John\" :age 30}"
-              "(json/parse \"[1, 2, 3]\") ;=> [1 2 3]"]})
+  {:desc "Parses a JSON string and converts it to a Qi value."
+   :params [{:name "json-str" :type "string" :desc "JSON string"}]
+   :returns {:type "map" :desc "{:ok value} or {:error message}"}
+   :examples ["(json/parse \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\") ;=> {:ok {:name \"Alice\" :age 30}}"
+              "(json/parse \"[1,2,3]\") ;=> {:ok [1 2 3]}"]})
 
 (def __doc__json/stringify
-  {:desc "Convert Qi data structure to JSON string"
-   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+  {:desc "Converts a Qi value to a JSON string."
+   :params [{:name "value" :type "any" :desc "Value to convert to JSON"}]
    :returns {:type "string" :desc "JSON string"}
-   :examples ["(json/stringify {:name \"John\" :age 30}) ;=> \"{\\\"name\\\":\\\"John\\\",\\\"age\\\":30}\""
+   :examples ["(json/stringify {:name \"Alice\" :age 30}) ;=> \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\""
               "(json/stringify [1 2 3]) ;=> \"[1,2,3]\""]})
 
 (def __doc__json/pretty
-  {:desc "Convert data to pretty-printed JSON string"
-   :params [{:name "data" :type "any" :desc "Data to stringify"}]
-   :returns {:type "string" :desc "Pretty-printed JSON"}
-   :examples ["(json/pretty {:name \"John\" :age 30})"
-              ";=> \"{\\n  \\\"name\\\": \\\"John\\\",\\n  \\\"age\\\": 30\\n}\""]})
+  {:desc "Converts a Qi value to a pretty-printed JSON string."
+   :params [{:name "value" :type "any" :desc "Value to convert to JSON"}]
+   :returns {:type "string" :desc "Pretty-printed JSON string"}
+   :examples ["(json/pretty {:name \"Alice\" :age 30})"
+              ";; {\n;;   \"name\": \"Alice\",\n;;   \"age\": 30\n;; }"]})
 
-(def __doc__json/read-file
-  {:desc "Read and parse JSON file"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "any" :desc "Parsed data"}
-   :examples ["(json/read-file \"data.json\") ;=> {...}"]})
+;; ========================================
+;; YAML (3 functions)
+;; ========================================
 
-(def __doc__json/write-file
-  {:desc "Write data to JSON file"
-   :params [{:name "path" :type "string" :desc "File path"}
-            {:name "data" :type "any" :desc "Data to write"}]
-   :returns {:type "nil" :desc "nil on success"}
-   :examples ["(json/write-file \"output.json\" {:name \"John\"})"]}
-)
-
-;; YAML Functions
 (def __doc__yaml/parse
-  {:desc "Parse YAML string into Qi data structure"
-   :params [{:name "s" :type "string" :desc "YAML string"}]
-   :returns {:type "any" :desc "Parsed data"}
-   :examples ["(yaml/parse \"name: John\\nage: 30\") ;=> {:name \"John\" :age 30}"]})
+  {:desc "Parses a YAML string and converts it to a Qi value."
+   :params [{:name "yaml-str" :type "string" :desc "YAML string"}]
+   :returns {:type "map" :desc "{:ok value} or {:error message}"}
+   :examples ["(yaml/parse \"name: Alice\\nage: 30\")"
+              "(yaml/parse \"- apple\\n- banana\\n- cherry\")"]})
 
 (def __doc__yaml/stringify
-  {:desc "Convert Qi data structure to YAML string"
-   :params [{:name "data" :type "any" :desc "Data to stringify"}]
+  {:desc "Converts a Qi value to a YAML string."
+   :params [{:name "value" :type "any" :desc "Value to convert to YAML"}]
    :returns {:type "string" :desc "YAML string"}
-   :examples ["(yaml/stringify {:name \"John\" :age 30}) ;=> \"name: John\\nage: 30\\n\""]})
+   :examples ["(yaml/stringify {:name \"Alice\" :age 30})"
+              "(yaml/stringify [\"apple\" \"banana\" \"cherry\"])"]})
 
 (def __doc__yaml/pretty
-  {:desc "Convert data to pretty-printed YAML string"
-   :params [{:name "data" :type "any" :desc "Data to stringify"}]
-   :returns {:type "string" :desc "Pretty-printed YAML"}
-   :examples ["(yaml/pretty {:name \"John\" :items [\"a\" \"b\"]})"]})
+  {:desc "Converts a Qi value to a pretty-printed YAML string."
+   :params [{:name "value" :type "any" :desc "Value to convert to YAML"}]
+   :returns {:type "string" :desc "Pretty-printed YAML string"}
+   :examples ["(yaml/pretty {:name \"Alice\" :age 30})"
+              "(yaml/pretty complex-data)"]})
 
-(def __doc__yaml/read-file
-  {:desc "Read and parse YAML file"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "any" :desc "Parsed data"}
-   :examples ["(yaml/read-file \"config.yaml\") ;=> {...}"]})
+;; ========================================
+;; CSV (5 functions)
+;; ========================================
 
-(def __doc__yaml/write-file
-  {:desc "Write data to YAML file"
-   :params [{:name "path" :type "string" :desc "File path"}
-            {:name "data" :type "any" :desc "Data to write"}]
-   :returns {:type "nil" :desc "nil on success"}
-   :examples ["(yaml/write-file \"config.yaml\" {:debug true})"]}
-)
-
-;; CSV Functions
 (def __doc__csv/parse
-  {:desc "Parse CSV string into list of maps"
-   :params [{:name "s" :type "string" :desc "CSV string"}]
-   :returns {:type "list" :desc "List of row maps"}
-   :examples ["(csv/parse \"name,age\\nJohn,30\\nJane,25\") ;=> [{:name \"John\" :age \"30\"} {:name \"Jane\" :age \"25\"}]"]})
+  {:desc "Parses a CSV string and converts it to a vector."
+   :params [{:name "csv-str" :type "string" :desc "CSV string"}]
+   :returns {:type "vector" :desc "Vector of rows (each row is a vector)"}
+   :examples ["(csv/parse \"a,b,c\\n1,2,3\") ;=> [[\"a\" \"b\" \"c\"] [\"1\" \"2\" \"3\"]]"
+              "(csv/parse \"name,age\\nAlice,30\\nBob,25\")"]})
 
 (def __doc__csv/stringify
-  {:desc "Convert list of maps to CSV string"
-   :params [{:name "data" :type "list" :desc "List of maps"}]
+  {:desc "Converts a vector to a CSV string."
+   :params [{:name "rows" :type "vector" :desc "Vector of rows"}]
    :returns {:type "string" :desc "CSV string"}
-   :examples ["(csv/stringify [{:name \"John\" :age 30}]) ;=> \"name,age\\nJohn,30\\n\""]})
+   :examples ["(csv/stringify [[\"a\" \"b\" \"c\"] [\"1\" \"2\" \"3\"]]) ;=> \"a,b,c\\n1,2,3\""
+              "(csv/stringify [[\"name\" \"age\"] [\"Alice\" \"30\"]])"]})
 
 (def __doc__csv/read-file
-  {:desc "Read and parse CSV file"
+  {:desc "Reads and parses a CSV file."
    :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "list" :desc "List of row maps"}
-   :examples ["(csv/read-file \"data.csv\") ;=> [{...} {...}]"]})
+   :returns {:type "vector" :desc "Vector of rows"}
+   :examples ["(csv/read-file \"data.csv\")"
+              "(csv/read-file \"users.csv\")"]})
 
 (def __doc__csv/write-file
-  {:desc "Write data to CSV file"
+  {:desc "Writes data to a CSV file."
    :params [{:name "path" :type "string" :desc "File path"}
-            {:name "data" :type "list" :desc "List of maps to write"}]
-   :returns {:type "nil" :desc "nil on success"}
-   :examples ["(csv/write-file \"output.csv\" [{:name \"John\" :age 30}])"]}
-)
+            {:name "rows" :type "vector" :desc "Vector of rows"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(csv/write-file \"output.csv\" data)"
+              "(csv/write-file \"export.csv\" [[\"name\" \"age\"] [\"Alice\" \"30\"]])"]})
 
 (def __doc__csv/read-stream
-  {:desc "Read CSV file as a stream"
+  {:desc "Reads a CSV file as a stream (for large files)."
    :params [{:name "path" :type "string" :desc "File path"}]
    :returns {:type "stream" :desc "Stream of rows"}
-   :examples ["(csv/read-stream \"large.csv\")"]})
-
-;; Conversion Utilities
-(def __doc__to-int
-  {:desc "Convert value to integer"
-   :params [{:name "x" :type "any" :desc "Value to convert"}]
-   :returns {:type "number" :desc "Integer value"}
-   :examples ["(to-int \"42\") ;=> 42"
-              "(to-int 3.14) ;=> 3"]})
-
-(def __doc__to-float
-  {:desc "Convert value to floating point number"
-   :params [{:name "x" :type "any" :desc "Value to convert"}]
-   :returns {:type "number" :desc "Float value"}
-   :examples ["(to-float \"3.14\") ;=> 3.14"
-              "(to-float 42) ;=> 42.0"]})
-
-(def __doc__to-string
-  {:desc "Convert value to string"
-   :params [{:name "x" :type "any" :desc "Value to convert"}]
-   :returns {:type "string" :desc "String representation"}
-   :examples ["(to-string 42) ;=> \"42\""
-              "(to-string true) ;=> \"true\""]})
-
-(def __doc__true?
-  {:desc "Check if value is true"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if value is true"}
-   :examples ["(true? true) ;=> true"
-              "(true? false) ;=> false"
-              "(true? 1) ;=> false"]})
-
-(def __doc__false?
-  {:desc "Check if value is false"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if value is false"}
-   :examples ["(false? false) ;=> true"
-              "(false? true) ;=> false"
-              "(false? 0) ;=> false"]})
-
-(def __doc__boolean?
-  {:desc "Check if value is a boolean"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if boolean"}
-   :examples ["(boolean? true) ;=> true"
-              "(boolean? false) ;=> true"
-              "(boolean? 1) ;=> false"]})
+   :examples ["(def s (csv/read-stream \"large-data.csv\"))"
+              "(stream/take s 100) ;; First 100 rows"]})

@@ -1,123 +1,148 @@
-;; Standard Library Documentation (English)
-;; Input/Output Functions
+;; Standard Library Documentation - File I/O
+;; File I/O Functions (19 functions)
 
-;; File Reading
 (def __doc__io/read-file
-  {:desc "Read entire file as string"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "string" :desc "File contents"}
-   :examples ["(io/read-file \"data.txt\")"]})
-
-(def __doc__io/read-lines
-  {:desc "Read file as list of lines"
-   :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "list" :desc "List of lines"}
-   :examples ["(io/read-lines \"data.txt\")"]})
-
-;; File Writing
-(def __doc__io/write-file
-  {:desc "Write string to file"
+  {:desc "Reads the contents of a file as a string."
    :params [{:name "path" :type "string" :desc "File path"}
-            {:name "content" :type "string" :desc "Content to write"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/write-file \"output.txt\" \"Hello\")"]})
+            {:name ":encoding" :type "keyword" :desc "Encoding (defaults to UTF-8)"}
+            {:name "encoding-name" :type "string" :desc "Encoding name"}]
+   :returns {:type "string" :desc "File contents"}
+   :examples ["(io/read-file \"data.txt\")"
+              "(io/read-file \"sjis.txt\" :encoding \"shift_jis\")"]})
+
+(def __doc__io/write-file
+  {:desc "Writes a string to a file (overwrites)."
+   :params [{:name "path" :type "string" :desc "File path"}
+            {:name "content" :type "string" :desc "Content to write"}
+            {:name ":encoding" :type "keyword" :desc "Encoding (defaults to UTF-8)"}
+            {:name "encoding-name" :type "string" :desc "Encoding name"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/write-file \"output.txt\" \"Hello, World!\")"
+              "(io/write-file \"sjis.txt\" content :encoding \"shift_jis\")"]})
 
 (def __doc__io/append-file
-  {:desc "Append string to file"
+  {:desc "Appends a string to a file."
    :params [{:name "path" :type "string" :desc "File path"}
             {:name "content" :type "string" :desc "Content to append"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/append-file \"log.txt\" \"New entry\\n\")"]})
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/append-file \"log.txt\" \"New log entry\\n\")"]})
 
-(def __doc__io/write-stream
-  {:desc "Write stream to file"
+(def __doc__io/read-lines
+  {:desc "Reads a file line by line and returns a vector."
    :params [{:name "path" :type "string" :desc "File path"}
-            {:name "stream" :type "stream" :desc "Stream to write"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/write-stream \"output.txt\" stream)"]})
+            {:name ":encoding" :type "keyword" :desc "Encoding (defaults to UTF-8)"}
+            {:name "encoding-name" :type "string" :desc "Encoding name"}]
+   :returns {:type "vector" :desc "Vector of lines"}
+   :examples ["(io/read-lines \"data.txt\")"
+              "(io/read-lines \"file.csv\" :encoding \"shift_jis\")"]})
 
-;; File Operations
-(def __doc__io/copy-file
-  {:desc "Copy file to destination"
-   :params [{:name "src" :type "string" :desc "Source path"}
-            {:name "dest" :type "string" :desc "Destination path"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/copy-file \"a.txt\" \"b.txt\")"]})
-
-(def __doc__io/move-file
-  {:desc "Move/rename file"
-   :params [{:name "src" :type "string" :desc "Source path"}
-            {:name "dest" :type "string" :desc "Destination path"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/move-file \"old.txt\" \"new.txt\")"]})
-
-(def __doc__io/delete-file
-  {:desc "Delete file"
+(def __doc__io/file-exists?
+  {:desc "Checks if a file exists."
    :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/delete-file \"temp.txt\")"]})
-
-;; Directory Operations
-(def __doc__io/create-dir
-  {:desc "Create directory (with parents if needed)"
-   :params [{:name "path" :type "string" :desc "Directory path"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/create-dir \"data/cache\")"]})
+   :returns {:type "bool" :desc "true if exists"}
+   :examples ["(io/file-exists? \"data.txt\") ;=> true"
+              "(io/file-exists? \"missing.txt\") ;=> false"]})
 
 (def __doc__io/list-dir
-  {:desc "List directory contents"
+  {:desc "Lists files and directories in a directory."
    :params [{:name "path" :type "string" :desc "Directory path"}]
-   :returns {:type "list" :desc "List of file/directory names"}
-   :examples ["(io/list-dir \".\")"]})
+   :returns {:type "vector" :desc "Vector of file names"}
+   :examples ["(io/list-dir \".\") ;=> [\"file1.txt\" \"dir1\" \"file2.txt\"]"
+              "(io/list-dir \"/tmp\")"]})
+
+(def __doc__io/create-dir
+  {:desc "Creates a directory (creates parent directories if needed)."
+   :params [{:name "path" :type "string" :desc "Directory path"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/create-dir \"output/data\")"
+              "(io/create-dir \"/tmp/test\")"]})
+
+(def __doc__io/delete-file
+  {:desc "Deletes a file."
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/delete-file \"temp.txt\")"]})
 
 (def __doc__io/delete-dir
-  {:desc "Delete directory (must be empty)"
+  {:desc "Deletes a directory (errors if not empty)."
    :params [{:name "path" :type "string" :desc "Directory path"}]
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(io/delete-dir \"temp\")"]})
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/delete-dir \"temp-dir\")"]})
 
-;; File/Directory Checks
-(def __doc__io/file-exists?
-  {:desc "Check if file or directory exists"
-   :params [{:name "path" :type "string" :desc "Path to check"}]
-   :returns {:type "boolean" :desc "true if exists"}
-   :examples ["(io/file-exists? \"data.txt\")"]})
+(def __doc__io/copy-file
+  {:desc "Copies a file."
+   :params [{:name "from" :type "string" :desc "Source file path"}
+            {:name "to" :type "string" :desc "Destination file path"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/copy-file \"source.txt\" \"dest.txt\")"]})
 
-(def __doc__io/is-file?
-  {:desc "Check if path is a file"
-   :params [{:name "path" :type "string" :desc "Path to check"}]
-   :returns {:type "boolean" :desc "true if file"}
-   :examples ["(io/is-file? \"data.txt\")"]})
-
-(def __doc__io/is-dir?
-  {:desc "Check if path is a directory"
-   :params [{:name "path" :type "string" :desc "Path to check"}]
-   :returns {:type "boolean" :desc "true if directory"}
-   :examples ["(io/is-dir? \"data\")"]})
+(def __doc__io/move-file
+  {:desc "Moves (renames) a file."
+   :params [{:name "from" :type "string" :desc "Source file path"}
+            {:name "to" :type "string" :desc "Destination file path"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/move-file \"old-name.txt\" \"new-name.txt\")"]})
 
 (def __doc__io/file-info
-  {:desc "Get file metadata"
+  {:desc "Gets file information (size, modification time, etc.)."
    :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "map" :desc "File info map (size, modified, etc.)"}
-   :examples ["(io/file-info \"data.txt\")"]})
+   :returns {:type "map" :desc "Map of file info (:size, :modified, :is-dir, etc.)"}
+   :examples ["(io/file-info \"data.txt\") ;=> {:size 1024 :modified 1729544123 :is-dir false}"]})
 
-;; Temporary Files
+(def __doc__io/is-file?
+  {:desc "Checks if a path is a file."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "bool" :desc "true if file"}
+   :examples ["(io/is-file? \"data.txt\") ;=> true"
+              "(io/is-file? \".\") ;=> false"]})
+
+(def __doc__io/is-dir?
+  {:desc "Checks if a path is a directory."
+   :params [{:name "path" :type "string" :desc "Path"}]
+   :returns {:type "bool" :desc "true if directory"}
+   :examples ["(io/is-dir? \".\") ;=> true"
+              "(io/is-dir? \"file.txt\") ;=> false"]})
+
+(def __doc__io/stdin-line
+  {:desc "Reads one line from standard input."
+   :params []
+   :returns {:type "string" :desc "Line read"}
+   :examples ["(def input (io/stdin-line))"
+              "(println \"You entered:\" input)"]})
+
+(def __doc__io/stdin-lines
+  {:desc "Reads all lines from standard input."
+   :params []
+   :returns {:type "vector" :desc "Vector of lines"}
+   :examples ["(def lines (io/stdin-lines))"
+              "(map process-line lines)"]})
+
+(def __doc__io/file-stream
+  {:desc "Creates a stream that reads a file line by line."
+   :params [{:name "path" :type "string" :desc "File path"}]
+   :returns {:type "stream" :desc "Stream of lines"}
+   :examples ["(def s (io/file-stream \"large-file.txt\"))"
+              "(stream/take s 10) ;; First 10 lines"]})
+
+(def __doc__io/write-stream
+  {:desc "Writes a stream to a file."
+   :params [{:name "path" :type "string" :desc "File path"}
+            {:name "stream" :type "stream" :desc "Stream"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(io/write-stream \"output.txt\" data-stream)"]})
+
 (def __doc__io/temp-file
-  {:desc "Create temporary file (auto-deleted)"
+  {:desc "Creates a temporary file (automatically deleted on program exit)."
+   :params []
    :returns {:type "string" :desc "Temporary file path"}
-   :examples ["(io/temp-file)"]})
-
-(def __doc__io/temp-file-keep
-  {:desc "Create temporary file (not auto-deleted)"
-   :returns {:type "string" :desc "Temporary file path"}
-   :examples ["(io/temp-file-keep)"]})
+   :examples ["(def temp (io/temp-file))"
+              "(io/write-file temp \"temporary data\")"]
+   :feature "temp-files"})
 
 (def __doc__io/temp-dir
-  {:desc "Create temporary directory (auto-deleted)"
+  {:desc "Creates a temporary directory (automatically deleted on program exit)."
+   :params []
    :returns {:type "string" :desc "Temporary directory path"}
-   :examples ["(io/temp-dir)"]})
-
-(def __doc__io/temp-dir-keep
-  {:desc "Create temporary directory (not auto-deleted)"
-   :returns {:type "string" :desc "Temporary directory path"}
-   :examples ["(io/temp-dir-keep)"]})
+   :examples ["(def temp-dir (io/temp-dir))"
+              "(io/write-file (str temp-dir \"/file.txt\") data)"]
+   :feature "temp-files"})

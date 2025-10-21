@@ -1,0 +1,33 @@
+;; Standard Library Documentation - Command Line Arguments
+;; Command Line Arguments Functions (4 functions - args/*)
+
+(def __doc__args/all
+  {:desc "Retrieves all command line arguments as a list."
+   :params []
+   :returns {:type "list" :desc "List of arguments (including program name)"}
+   :examples ["(args/all) ;=> (\"./qi\" \"script.qi\" \"arg1\" \"arg2\")"]})
+
+(def __doc__args/get
+  {:desc "Retrieves the command line argument at the specified position. Returns default value or nil if it doesn't exist."
+   :params [{:name "index" :type "integer" :desc "Argument index (0 is program name)"}
+            {:name "default" :type "any" :desc "Default value (optional)"}]
+   :returns {:type "string|any" :desc "Argument value, or default value, or nil"}
+   :examples ["(args/get 0) ;=> \"./qi\""
+              "(args/get 1) ;=> \"script.qi\""
+              "(args/get 10 \"default\") ;=> \"default\""]})
+
+(def __doc__args/parse
+  {:desc "Parses command line arguments into flags, options, and positional arguments."
+   :params []
+   :returns {:type "map" :desc "Format: {:flags [...] :options {...} :args [...]}"}
+   :examples ["(args/parse)"
+              ";; Execution: ./qi script.qi --verbose --port 3000 -df input.txt"
+              ";=> {:flags [\"verbose\" \"d\" \"f\"]"
+              ";    :options {\"port\" \"3000\"}"
+              ";    :args [\"./qi\" \"script.qi\" \"input.txt\"]}"]})
+
+(def __doc__args/count
+  {:desc "Returns the number of command line arguments (including program name)."
+   :params []
+   :returns {:type "integer" :desc "Number of arguments"}
+   :examples ["(args/count) ;=> 3"]})

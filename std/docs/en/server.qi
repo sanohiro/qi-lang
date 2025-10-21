@@ -1,107 +1,75 @@
-;; Standard Library Documentation (English)
-;; HTTP Server Functions
+;; Standard Library Documentation - HTTP Server
+;; HTTP Server Functions (11 functions - server/*)
 
-;; Server Core
 (def __doc__server/serve
-  {:desc "Start HTTP server with given router"
-   :params [{:name "router" :type "function" :desc "Request router function"}
-            {:name "opts" :type "map" :desc "Server options (port, host, etc.)"}]
-   :returns {:type "server" :desc "Running server instance"}
-   :examples ["(server/serve my-router {:port 3000})"]})
+  {:desc "Starts an HTTP server."
+   :params [{:name "handler" :type "function" :desc "Request handler function"}
+            {:name "options" :type "map" :desc "Server options {:port 3000}"}]
+   :returns {:type "nil" :desc "Always nil (blocking)"}
+   :examples ["(server/serve (fn [req] (server/ok \"Hello\")) {:port 3000})"]})
 
 (def __doc__server/router
-  {:desc "Create HTTP router from route definitions"
-   :params [{:name "routes" :type "list" :desc "List of [method path handler] vectors"}]
-   :returns {:type "function" :desc "Router function"}
-   :examples ["(server/router [[\"GET\" \"/\" home-handler]])"]})
+  {:desc "Creates a routing handler."
+   :params [{:name "routes" :type "map" :desc "Map of route definitions {[\"GET\" \"/\"] handler1 ...}"}]
+   :returns {:type "function" :desc "Router handler function"}
+   :examples ["(def handler (server/router {[\"GET\" \"/\"] home-handler"
+              "                              [\"POST\" \"/api\"] api-handler}))"]})
 
-;; Response Helpers
 (def __doc__server/ok
-  {:desc "Create 200 OK response"
-   :params [{:name "body" :type "any" :desc "Response body"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(server/ok \"Hello\") ;=> {:status 200 :body \"Hello\"}"]})
+  {:desc "Generates a 200 OK response."
+   :params [{:name "body" :type "any" :desc "Response body"}
+            {:name "headers" :type "map" :desc "Headers (optional)"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(server/ok \"Hello World\")"
+              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"]})
 
 (def __doc__server/json
-  {:desc "Create JSON response"
+  {:desc "Generates a JSON response."
    :params [{:name "data" :type "any" :desc "Data to serialize as JSON"}]
-   :returns {:type "map" :desc "HTTP response with JSON content-type"}
-   :examples ["(server/json {:msg \"Hello\"})"]})
+   :returns {:type "map" :desc "JSON response map"}
+   :examples ["(server/json {:status :ok :data [1 2 3]})"
+              "(server/json {:message \"Success\"})"]})
 
 (def __doc__server/not-found
-  {:desc "Create 404 Not Found response"
-   :params [{:name "body" :type "string" :desc "Optional error message"}]
-   :returns {:type "map" :desc "HTTP response"}
-   :examples ["(server/not-found \"Page not found\")"]})
+  {:desc "Generates a 404 Not Found response."
+   :params [{:name "body" :type "string" :desc "Response body (optional)"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(server/not-found)"
+              "(server/not-found \"Page not found\")"]})
 
 (def __doc__server/no-content
-  {:desc "Create 204 No Content response"
-   :returns {:type "map" :desc "HTTP response"}
+  {:desc "Generates a 204 No Content response."
+   :params []
+   :returns {:type "map" :desc "Response map"}
    :examples ["(server/no-content)"]})
 
-;; Static File Serving
+(def __doc__server/with-logging
+  {:desc "Adds request logging middleware."
+   :params [{:name "handler" :type "function" :desc "Handler function"}]
+   :returns {:type "function" :desc "Handler with logging"}
+   :examples ["(server/serve (server/with-logging my-handler) {:port 3000})"]})
+
+(def __doc__server/with-cors
+  {:desc "Adds CORS middleware."
+   :params [{:name "handler" :type "function" :desc "Handler function"}
+            {:name "options" :type "map" :desc "CORS options (optional)"}]
+   :returns {:type "function" :desc "Handler with CORS"}
+   :examples ["(server/with-cors my-handler {:origin \"*\"})"]})
+
+(def __doc__server/with-json-body
+  {:desc "Adds JSON body parser middleware."
+   :params [{:name "handler" :type "function" :desc "Handler function"}]
+   :returns {:type "function" :desc "Handler with JSON parsing"}
+   :examples ["(server/with-json-body (fn [req] (get req :body)))"]})
+
 (def __doc__server/static-file
-  {:desc "Serve static file"
+  {:desc "Creates a handler that returns a static file."
    :params [{:name "path" :type "string" :desc "File path"}]
-   :returns {:type "map" :desc "HTTP response with file content"}
+   :returns {:type "function" :desc "Handler function"}
    :examples ["(server/static-file \"public/index.html\")"]})
 
 (def __doc__server/static-dir
-  {:desc "Serve static directory"
-   :params [{:name "dir" :type "string" :desc "Directory path"}
-            {:name "prefix" :type "string" :desc "URL prefix"}]
+  {:desc "Creates a handler that serves a static file directory."
+   :params [{:name "dir" :type "string" :desc "Directory path"}]
    :returns {:type "function" :desc "Handler function"}
-   :examples ["(server/static-dir \"public\" \"/static\")"]})
-
-;; Middleware
-(def __doc__server/with-logging
-  {:desc "Add request logging middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-logging my-handler)"]})
-
-(def __doc__server/with-cors
-  {:desc "Add CORS headers middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}
-            {:name "opts" :type "map" :desc "CORS options"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-cors handler {:origins [\"*\"]})"]})
-
-(def __doc__server/with-compression
-  {:desc "Add response compression middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-compression my-handler)"]})
-
-(def __doc__server/with-json-body
-  {:desc "Parse JSON request body middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-json-body my-handler)"]})
-
-(def __doc__server/with-cache-control
-  {:desc "Add cache-control headers middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}
-            {:name "max-age" :type "number" :desc "Max age in seconds"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-cache-control handler 3600)"]})
-
-(def __doc__server/with-no-cache
-  {:desc "Add no-cache headers middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-no-cache my-handler)"]})
-
-(def __doc__server/with-basic-auth
-  {:desc "Add basic authentication middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}
-            {:name "credentials" :type "map" :desc "Username/password map"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-basic-auth handler {\"user\" \"pass\"})"]})
-
-(def __doc__server/with-bearer
-  {:desc "Add bearer token authentication middleware"
-   :params [{:name "handler" :type "function" :desc "Handler to wrap"}
-            {:name "token" :type "string" :desc "Valid bearer token"}]
-   :returns {:type "function" :desc "Wrapped handler"}
-   :examples ["(server/with-bearer handler \"secret-token\")"]})
+   :examples ["(server/static-dir \"public/\")"]})

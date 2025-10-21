@@ -1,107 +1,75 @@
-;; 標準ライブラリドキュメント (日本語)
-;; HTTPサーバー関数
+;; 標準ライブラリドキュメント - HTTPサーバー
+;; HTTP Server Functions (11 functions - server/*)
 
-;; サーバーコア
 (def __doc__server/serve
-  {:desc "指定されたルーターでHTTPサーバーを起動する"
-   :params [{:name "router" :type "function" :desc "リクエストルーター関数"}
-            {:name "opts" :type "map" :desc "サーバーオプション（port, hostなど）"}]
-   :returns {:type "server" :desc "実行中のサーバーインスタンス"}
-   :examples ["(server/serve my-router {:port 3000})"]})
+  {:desc "HTTPサーバーを起動します。"
+   :params [{:name "handler" :type "function" :desc "リクエストハンドラー関数"}
+            {:name "options" :type "map" :desc "サーバーオプション {:port 3000}"}]
+   :returns {:type "nil" :desc "常にnil（ブロッキング）"}
+   :examples ["(server/serve (fn [req] (server/ok \"Hello\")) {:port 3000})"]})
 
 (def __doc__server/router
-  {:desc "ルート定義からHTTPルーターを作成する"
-   :params [{:name "routes" :type "list" :desc "[method path handler]ベクターのリスト"}]
-   :returns {:type "function" :desc "ルーター関数"}
-   :examples ["(server/router [[\"GET\" \"/\" home-handler]])"]})
+  {:desc "ルーティングハンドラーを作成します。"
+   :params [{:name "routes" :type "map" :desc "ルート定義のマップ {[\"GET\" \"/\"] handler1 ...}"}]
+   :returns {:type "function" :desc "ルーターハンドラー関数"}
+   :examples ["(def handler (server/router {[\"GET\" \"/\"] home-handler"
+              "                              [\"POST\" \"/api\"] api-handler}))"]})
 
-;; レスポンスヘルパー
 (def __doc__server/ok
-  {:desc "200 OKレスポンスを作成する"
-   :params [{:name "body" :type "any" :desc "レスポンスボディ"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(server/ok \"Hello\") ;=> {:status 200 :body \"Hello\"}"]})
+  {:desc "200 OKレスポンスを生成します。"
+   :params [{:name "body" :type "any" :desc "レスポンスボディ"}
+            {:name "headers" :type "map" :desc "ヘッダー（省略可）"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(server/ok \"Hello World\")"
+              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"]})
 
 (def __doc__server/json
-  {:desc "JSONレスポンスを作成する"
-   :params [{:name "data" :type "any" :desc "JSONとしてシリアライズするデータ"}]
-   :returns {:type "map" :desc "JSON content-typeのHTTPレスポンス"}
-   :examples ["(server/json {:msg \"Hello\"})"]})
+  {:desc "JSONレスポンスを生成します。"
+   :params [{:name "data" :type "any" :desc "JSONシリアライズするデータ"}]
+   :returns {:type "map" :desc "JSONレスポンスマップ"}
+   :examples ["(server/json {:status :ok :data [1 2 3]})"
+              "(server/json {:message \"Success\"})"]})
 
 (def __doc__server/not-found
-  {:desc "404 Not Foundレスポンスを作成する"
-   :params [{:name "body" :type "string" :desc "オプションのエラーメッセージ"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(server/not-found \"Page not found\")"]})
+  {:desc "404 Not Foundレスポンスを生成します。"
+   :params [{:name "body" :type "string" :desc "レスポンスボディ（省略可）"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(server/not-found)"
+              "(server/not-found \"Page not found\")"]})
 
 (def __doc__server/no-content
-  {:desc "204 No Contentレスポンスを作成する"
-   :returns {:type "map" :desc "HTTPレスポンス"}
+  {:desc "204 No Contentレスポンスを生成します。"
+   :params []
+   :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(server/no-content)"]})
 
-;; 静的ファイル配信
+(def __doc__server/with-logging
+  {:desc "リクエストロギングミドルウェアを追加します。"
+   :params [{:name "handler" :type "function" :desc "ハンドラー関数"}]
+   :returns {:type "function" :desc "ロギング付きハンドラー"}
+   :examples ["(server/serve (server/with-logging my-handler) {:port 3000})"]})
+
+(def __doc__server/with-cors
+  {:desc "CORSミドルウェアを追加します。"
+   :params [{:name "handler" :type "function" :desc "ハンドラー関数"}
+            {:name "options" :type "map" :desc "CORSオプション（省略可）"}]
+   :returns {:type "function" :desc "CORS付きハンドラー"}
+   :examples ["(server/with-cors my-handler {:origin \"*\"})"]})
+
+(def __doc__server/with-json-body
+  {:desc "JSONボディパーサーミドルウェアを追加します。"
+   :params [{:name "handler" :type "function" :desc "ハンドラー関数"}]
+   :returns {:type "function" :desc "JSONパース付きハンドラー"}
+   :examples ["(server/with-json-body (fn [req] (get req :body)))"]})
+
 (def __doc__server/static-file
-  {:desc "静的ファイルを配信する"
+  {:desc "静的ファイルを返すハンドラーを作成します。"
    :params [{:name "path" :type "string" :desc "ファイルパス"}]
-   :returns {:type "map" :desc "ファイルコンテンツを含むHTTPレスポンス"}
+   :returns {:type "function" :desc "ハンドラー関数"}
    :examples ["(server/static-file \"public/index.html\")"]})
 
 (def __doc__server/static-dir
-  {:desc "静的ディレクトリを配信する"
-   :params [{:name "dir" :type "string" :desc "ディレクトリパス"}
-            {:name "prefix" :type "string" :desc "URLプレフィックス"}]
+  {:desc "静的ファイルディレクトリを提供するハンドラーを作成します。"
+   :params [{:name "dir" :type "string" :desc "ディレクトリパス"}]
    :returns {:type "function" :desc "ハンドラー関数"}
-   :examples ["(server/static-dir \"public\" \"/static\")"]})
-
-;; ミドルウェア
-(def __doc__server/with-logging
-  {:desc "リクエストログミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-logging my-handler)"]})
-
-(def __doc__server/with-cors
-  {:desc "CORSヘッダーミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}
-            {:name "opts" :type "map" :desc "CORSオプション"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-cors handler {:origins [\"*\"]})"]})
-
-(def __doc__server/with-compression
-  {:desc "レスポンス圧縮ミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-compression my-handler)"]})
-
-(def __doc__server/with-json-body
-  {:desc "JSONリクエストボディパースミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-json-body my-handler)"]})
-
-(def __doc__server/with-cache-control
-  {:desc "cache-controlヘッダーミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}
-            {:name "max-age" :type "number" :desc "最大age（秒）"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-cache-control handler 3600)"]})
-
-(def __doc__server/with-no-cache
-  {:desc "no-cacheヘッダーミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-no-cache my-handler)"]})
-
-(def __doc__server/with-basic-auth
-  {:desc "Basic認証ミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}
-            {:name "credentials" :type "map" :desc "ユーザー名/パスワードのマップ"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-basic-auth handler {\"user\" \"pass\"})"]})
-
-(def __doc__server/with-bearer
-  {:desc "Bearerトークン認証ミドルウェアを追加する"
-   :params [{:name "handler" :type "function" :desc "ラップするハンドラー"}
-            {:name "token" :type "string" :desc "有効なBearerトークン"}]
-   :returns {:type "function" :desc "ラップされたハンドラー"}
-   :examples ["(server/with-bearer handler \"secret-token\")"]})
+   :examples ["(server/static-dir \"public/\")"]})

@@ -1,0 +1,44 @@
+;; 標準ライブラリドキュメント - ログ出力
+;; Logging Functions (6 functions - log/*)
+
+(def __doc__log/debug
+  {:desc "DEBUGレベルのログを出力します。"
+   :params [{:name "& args" :type "any..." :desc "ログメッセージ（可変長引数）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/debug \"Variable value:\" x)"
+              "(log/debug \"Processing item\" item-id)"]})
+
+(def __doc__log/info
+  {:desc "INFOレベルのログを出力します。"
+   :params [{:name "& args" :type "any..." :desc "ログメッセージ（可変長引数）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/info \"Server started on port\" port)"
+              "(log/info \"Request completed\" status)"]})
+
+(def __doc__log/warn
+  {:desc "WARNレベルのログを出力します。"
+   :params [{:name "& args" :type "any..." :desc "ログメッセージ（可変長引数）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/warn \"Deprecated function used\")"
+              "(log/warn \"Slow query detected\" query-time)"]})
+
+(def __doc__log/error
+  {:desc "ERRORレベルのログを出力します。"
+   :params [{:name "& args" :type "any..." :desc "ログメッセージ（可変長引数）"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/error \"Failed to connect to database\" error-msg)"
+              "(log/error \"Invalid input\" input-value)"]})
+
+(def __doc__log/set-level
+  {:desc "ログレベルを設定します。"
+   :params [{:name "level" :type "keyword" :desc "ログレベル (:debug, :info, :warn, :error)"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/set-level :debug)"
+              "(log/set-level :info)"]})
+
+(def __doc__log/set-format
+  {:desc "ログフォーマットを設定します。"
+   :params [{:name "format" :type "keyword" :desc "フォーマット (:text, :json)"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(log/set-format :json)"
+              "(log/set-format :text)"]})

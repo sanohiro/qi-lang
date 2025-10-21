@@ -1,88 +1,78 @@
-;; 標準ライブラリドキュメント (日本語)
-;; HTTPクライアント関数
+;; 標準ライブラリドキュメント - HTTPクライアント
+;; HTTP Client Functions (11 functions)
 
-;; HTTPメソッド
 (def __doc__http/get
-  {:desc "HTTP GETリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/get \"https://api.example.com/data\")"]})
+  {:desc "HTTP GETリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ（:status, :headers, :body）"}
+   :examples ["(http/get \"https://api.example.com/data\")"
+              "(http/get \"http://localhost:3000/api/users\")"]})
 
 (def __doc__http/post
-  {:desc "HTTP POSTリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"]})
+  {:desc "HTTP POSTリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"
+              "(http/post url (json/stringify data))"]})
 
 (def __doc__http/put
-  {:desc "HTTP PUTリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
+  {:desc "HTTP PUTリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
 
-(def __doc__http/patch
-  {:desc "HTTP PATCHリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
-
 (def __doc__http/delete
-  {:desc "HTTP DELETEリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
+  {:desc "HTTP DELETEリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/delete \"https://api.example.com/users/1\")"]})
 
+(def __doc__http/patch
+  {:desc "HTTP PATCHリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+
 (def __doc__http/head
-  {:desc "HTTP HEADリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/head \"https://api.example.com/data\")"]})
+  {:desc "HTTP HEADリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ（ボディなし）"}
+   :examples ["(http/head \"https://example.com\")"]})
 
 (def __doc__http/options
-  {:desc "HTTP OPTIONSリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
+  {:desc "HTTP OPTIONSリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/options \"https://api.example.com\")"]})
 
-;; 汎用リクエスト
 (def __doc__http/request
-  {:desc "汎用HTTPリクエストを送る"
-   :params [{:name "method" :type "string" :desc "HTTPメソッド"}
-            {:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "リクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/request \"POST\" \"https://api.example.com/data\" {:body data})"]})
+  {:desc "詳細なHTTPリクエストを送信します。"
+   :params [{:name "options" :type "map" :desc "リクエストオプション（:method, :url, :headers, :body, :timeout等）"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/request {:method :get :url \"https://example.com\" :headers {:Authorization \"Bearer token\"}})"
+              "(http/request {:method :post :url url :body data :timeout 5000})"]})
 
-;; ストリーミングリクエスト
+(def __doc__http/get-async
+  {:desc "非同期HTTP GETリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "channel" :desc "レスポンスのPromise"}
+   :examples ["(def p (http/get-async \"https://api.example.com/data\"))"
+              "(go/await p)"]})
+
+(def __doc__http/post-async
+  {:desc "非同期HTTP POSTリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ"}]
+   :returns {:type "channel" :desc "レスポンスのPromise"}
+   :examples ["(def p (http/post-async url data))"
+              "(go/await p)"]})
+
 (def __doc__http/get-stream
-  {:desc "ストリーミングレスポンスのHTTP GETリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
+  {:desc "ストリーミングHTTP GETリクエストを送信します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
    :returns {:type "stream" :desc "レスポンスストリーム"}
-   :examples ["(http/get-stream \"https://example.com/large-file.zip\")"]})
-
-(def __doc__http/post-stream
-  {:desc "ストリーミングボディのHTTP POSTリクエストを送る"
-   :params [{:name "url" :type "string" :desc "リクエストURL"}
-            {:name "stream" :type "stream" :desc "リクエストボディストリーム"}
-            {:name "opts" :type "map" :desc "オプションのリクエストオプション"}]
-   :returns {:type "map" :desc "HTTPレスポンス"}
-   :examples ["(http/post-stream \"https://api.example.com/upload\" file-stream)"]})
-
-(def __doc__http/request-stream
-  {:desc "ストリーミングの汎用HTTPリクエストを送る"
-   :params [{:name "method" :type "string" :desc "HTTPメソッド"}
-            {:name "url" :type "string" :desc "リクエストURL"}
-            {:name "opts" :type "map" :desc "リクエストオプション"}]
-   :returns {:type "stream" :desc "レスポンスストリーム"}
-   :examples ["(http/request-stream \"GET\" \"https://example.com/stream\")"]})
+   :examples ["(def stream (http/get-stream \"https://example.com/large-file\"))"
+              "(stream/realize stream 10)"]})

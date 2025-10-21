@@ -1,24 +1,29 @@
-;; Standard Library Documentation (English)
-;; Performance Profiling Functions
+;; Standard Library Documentation - Profiling
+;; Profiling Functions (4 functions - profile/*)
 
-;; Profiling Control
-(def __doc__profile/start
-  {:desc "Start profiling function execution times"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/start)"]})
+(def __doc__profile/enable
+  {:desc "Enables profiling."
+   :params []
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(profile/enable)"]})
 
-(def __doc__profile/stop
-  {:desc "Stop profiling"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/stop)"]})
+(def __doc__profile/disable
+  {:desc "Disables profiling."
+   :params []
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(profile/disable)"]})
 
-(def __doc__profile/clear
-  {:desc "Clear profiling data"
-   :returns {:type "nil" :desc "nil"}
-   :examples ["(profile/clear)"]})
+(def __doc__profile/reset
+  {:desc "Resets profiling statistics."
+   :params []
+   :returns {:type "nil" :desc "Always returns nil"}
+   :examples ["(profile/reset)"]})
 
-;; Profiling Reports
 (def __doc__profile/report
-  {:desc "Generate profiling report"
-   :returns {:type "string" :desc "Formatted profiling report"}
-   :examples ["(profile/report)"]})
+  {:desc "Reports profiling results."
+   :params []
+   :returns {:type "string" :desc "Profiling report"}
+   :examples ["(profile/enable)"
+              "(defn slow-fn [] (reduce + (range 100000)))"
+              "(slow-fn)"
+              "(println (profile/report))"]})

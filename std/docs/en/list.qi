@@ -1,229 +1,150 @@
-;; Standard Library Documentation (English)
-;; List and Collection Functions
+;; Standard Library Documentation - List Extended Operations
+;; List Extended Functions (19 functions - list/*)
 
-;; Higher-Order Functions
-(def __doc__map
-  {:desc "Apply function to each element of collection"
-   :params [{:name "f" :type "function" :desc "Function to apply"}
-            {:name "coll" :type "collection" :desc "Target collection"}]
-   :returns {:type "list" :desc "Transformed list"}
-   :examples ["(map inc [1 2 3]) ;=> (2 3 4)"
-              "(map str [1 2 3]) ;=> (\"1\" \"2\" \"3\")"]})
-
-(def __doc__filter
-  {:desc "Filter collection by predicate function"
+(def __doc__list/take-while
+  {:desc "Takes elements from the beginning while the predicate returns true."
    :params [{:name "pred" :type "function" :desc "Predicate function"}
-            {:name "coll" :type "collection" :desc "Target collection"}]
-   :returns {:type "list" :desc "Filtered list"}
-   :examples ["(filter even? [1 2 3 4 5 6]) ;=> (2 4 6)"
-              "(filter (fn [x] (> x 5)) [1 3 5 7 9]) ;=> (7 9)"]})
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of taken elements"}
+   :examples ["(list/take-while (fn [x] (< x 5)) [1 2 3 4 5 6 2 1]) ;=> [1 2 3 4]"]})
 
-(def __doc__reduce
-  {:desc "Reduce collection to single value using function"
-   :params [{:name "f" :type "function" :desc "Binary function"}
-            {:name "init" :type "any" :desc "Initial value"}
-            {:name "coll" :type "collection" :desc "Target collection"}]
-   :returns {:type "any" :desc "Reduced value"}
-   :examples ["(reduce + 0 [1 2 3 4]) ;=> 10"
-              "(reduce * 1 [1 2 3 4]) ;=> 24"]})
+(def __doc__list/drop-while
+  {:desc "Drops elements from the beginning while the predicate returns true."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of remaining elements"}
+   :examples ["(list/drop-while (fn [x] (< x 5)) [1 2 3 4 5 6 2 1]) ;=> [5 6 2 1]"]})
 
-(def __doc__apply
-  {:desc "Apply function with list of arguments"
-   :params [{:name "f" :type "function" :desc "Function to apply"}
-            {:name "args" :type "list" :desc "List of arguments"}]
-   :returns {:type "any" :desc "Result of function call"}
-   :examples ["(apply + [1 2 3]) ;=> 6"
-              "(apply max [5 2 8 3]) ;=> 8"]})
+(def __doc__list/split-at
+  {:desc "Splits a list into two at the specified position."
+   :params [{:name "n" :type "integer" :desc "Split position"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "vector" :desc "Vector of [first-half, second-half]"}
+   :examples ["(list/split-at 3 [1 2 3 4 5]) ;=> [[1 2 3] [4 5]]"]})
 
-;; Collection Transformation
-(def __doc__distinct
-  {:desc "Return collection with duplicate values removed"
-   :params [{:name "coll" :type "collection" :desc "Target collection"}]
-   :returns {:type "list" :desc "List with unique elements"}
-   :examples ["(distinct [1 2 2 3 3 3]) ;=> (1 2 3)"
-              "(distinct [\"a\" \"b\" \"a\"]) ;=> (\"a\" \"b\")"]})
+(def __doc__list/interleave
+  {:desc "Interleaves elements from multiple lists."
+   :params [{:name "& colls" :type "list|vector..." :desc "Collections (variadic arguments)"}]
+   :returns {:type "list" :desc "List of interleaved elements"}
+   :examples ["(list/interleave [1 2 3] [:a :b :c]) ;=> [1 :a 2 :b 3 :c]"
+              "(list/interleave [1 2] [10 20] [100 200]) ;=> [1 10 100 2 20 200]"]})
 
-(def __doc__flatten
-  {:desc "Flatten nested collection structure"
-   :params [{:name "coll" :type "collection" :desc "Nested collection"}]
-   :returns {:type "list" :desc "Flattened list"}
-   :examples ["(flatten [[1 2] [3 4]]) ;=> (1 2 3 4)"
-              "(flatten [1 [2 [3 4]]]) ;=> (1 2 3 4)"]})
+(def __doc__list/frequencies
+  {:desc "Counts the number of occurrences of each element."
+   :params [{:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "map" :desc "Map of elements and their occurrence counts"}
+   :examples ["(list/frequencies [1 2 1 3 2 1]) ;=> {1 3, 2 2, 3 1}"
+              "(list/frequencies [\"a\" \"b\" \"a\" \"c\" \"b\" \"a\"]) ;=> {\"a\" 3, \"b\" 2, \"c\" 1}"]})
 
-(def __doc__zip
-  {:desc "Combine multiple collections element-wise"
-   :params [{:name "& colls" :type "collection" :desc "Collections to zip"}]
-   :returns {:type "list" :desc "List of tuples"}
-   :examples ["(zip [1 2 3] [\"a\" \"b\" \"c\"]) ;=> ((1 \"a\") (2 \"b\") (3 \"c\"))"
-              "(zip [1 2] [10 20] [100 200]) ;=> ((1 10 100) (2 20 200))"]})
+(def __doc__list/sort-by
+  {:desc "Sorts by the return value of a function."
+   :params [{:name "f" :type "function" :desc "Function that returns sort key"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "Sorted list"}
+   :examples ["(list/sort-by count [\"aaa\" \"b\" \"cc\"]) ;=> [\"b\" \"cc\" \"aaa\"]"
+              "(list/sort-by :age [{:name \"Alice\" :age 30} {:name \"Bob\" :age 25}]) ;=> [{:name \"Bob\" :age 25} {:name \"Alice\" :age 30}]"]})
 
-(def __doc__interleave
-  {:desc "Interleave elements from multiple collections"
-   :params [{:name "& colls" :type "collection" :desc "Collections to interleave"}]
-   :returns {:type "list" :desc "Interleaved list"}
-   :examples ["(interleave [1 2 3] [:a :b :c]) ;=> (1 :a 2 :b 3 :c)"
-              "(interleave [1 2] [10 20] [100 200]) ;=> (1 10 100 2 20 200)"]})
-
-(def __doc__partition
-  {:desc "Split collection into chunks of size n"
-   :params [{:name "n" :type "number" :desc "Chunk size"}
-            {:name "coll" :type "collection" :desc "Collection to list/partition"}]
+(def __doc__list/chunk
+  {:desc "Splits into chunks of specified size (last chunk can be smaller)."
+   :params [{:name "n" :type "integer" :desc "Chunk size"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
    :returns {:type "list" :desc "List of chunks"}
-   :examples ["(list/partition 2 [1 2 3 4 5 6]) ;=> ((1 2) (3 4) (5 6))"
-              "(list/partition 3 [1 2 3 4 5]) ;=> ((1 2 3))"]})
+   :examples ["(list/chunk 3 [1 2 3 4 5 6 7]) ;=> [[1 2 3] [4 5 6] [7]]"]})
 
-(def __doc__group-by
-  {:desc "Group collection elements by key function"
-   :params [{:name "f" :type "function" :desc "Key function"}
-            {:name "coll" :type "collection" :desc "Collection to group"}]
-   :returns {:type "map" :desc "Map of grouped elements"}
-   :examples ["(list/group-by even? [1 2 3 4 5 6]) ;=> {true [2 4 6] false [1 3 5]}"
-              "(list/group-by count [\"a\" \"as\" \"asd\"]) ;=> {1 [\"a\"] 2 [\"as\"] 3 [\"asd\"]}"]})
+(def __doc__list/max-by
+  {:desc "Returns the element with the maximum function return value."
+   :params [{:name "f" :type "function" :desc "Function that returns comparison value"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "any" :desc "Maximum element"}
+   :examples ["(list/max-by count [\"a\" \"bbb\" \"cc\"]) ;=> \"bbb\""
+              "(list/max-by :score [{:name \"A\" :score 80} {:name \"B\" :score 95}]) ;=> {:name \"B\" :score 95}"]})
 
-;; Collection Testing
-(def __doc__some
-  {:desc "Test if predicate is true for any element"
+(def __doc__list/min-by
+  {:desc "Returns the element with the minimum function return value."
+   :params [{:name "f" :type "function" :desc "Function that returns comparison value"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "any" :desc "Minimum element"}
+   :examples ["(list/min-by count [\"a\" \"bbb\" \"cc\"]) ;=> \"a\""]})
+
+(def __doc__list/sum-by
+  {:desc "Calculates the sum of function return values."
+   :params [{:name "f" :type "function" :desc "Function that returns numeric value"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "number" :desc "Sum"}
+   :examples ["(list/sum-by count [\"a\" \"bb\" \"ccc\"]) ;=> 6"
+              "(list/sum-by :price [{:item \"A\" :price 100} {:item \"B\" :price 200}]) ;=> 300"]})
+
+(def __doc__list/find
+  {:desc "Returns the first element where the predicate returns true."
    :params [{:name "pred" :type "function" :desc "Predicate function"}
-            {:name "coll" :type "collection" :desc "Collection to test"}]
-   :returns {:type "boolean" :desc "true if any element matches"}
-   :examples ["(some even? [1 3 5 6 7]) ;=> true"
-              "(some even? [1 3 5]) ;=> false"]})
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "any|nil" :desc "First matching element, or nil if not found"}
+   :examples ["(list/find even? [1 3 5 6 7 8]) ;=> 6"
+              "(list/find (fn [x] (> x 10)) [1 2 3]) ;=> nil"]})
 
-(def __doc__every
-  {:desc "Test if predicate is true for all elements"
+(def __doc__list/find-index
+  {:desc "Returns the index of the first element where the predicate returns true."
    :params [{:name "pred" :type "function" :desc "Predicate function"}
-            {:name "coll" :type "collection" :desc "Collection to test"}]
-   :returns {:type "boolean" :desc "true if all elements match"}
-   :examples ["(every even? [2 4 6 8]) ;=> true"
-              "(every even? [2 4 5 8]) ;=> false"]})
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "integer|nil" :desc "Index, or nil if not found"}
+   :examples ["(list/find-index even? [1 3 5 6 7 8]) ;=> 3"]})
 
-(def __doc__some?
-  {:desc "Check if value is not nil"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if not nil"}
-   :examples ["(some? 0) ;=> true"
-              "(some? nil) ;=> false"]})
+(def __doc__list/every?
+  {:desc "Determines if all elements satisfy the predicate."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "bool" :desc "true if all elements are true"}
+   :examples ["(list/every? even? [2 4 6 8]) ;=> true"
+              "(list/every? even? [2 4 5 8]) ;=> false"]})
 
-(def __doc__empty?
-  {:desc "Check if collection is empty"
-   :params [{:name "coll" :type "collection" :desc "Collection to check"}]
-   :returns {:type "boolean" :desc "true if empty"}
-   :examples ["(empty? []) ;=> true"
-              "(empty? [1 2 3]) ;=> false"]})
+(def __doc__list/some?
+  {:desc "Determines if at least one element satisfies the predicate."
+   :params [{:name "pred" :type "function" :desc "Predicate function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "bool" :desc "true if at least one element is true"}
+   :examples ["(list/some? even? [1 3 5 6]) ;=> true"
+              "(list/some? even? [1 3 5 7]) ;=> false"]})
 
-(def __doc__coll?
-  {:desc "Check if value is a collection"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if collection"}
-   :examples ["(coll? [1 2 3]) ;=> true"
-              "(coll? {:a 1}) ;=> true"
-              "(coll? 42) ;=> false"]})
+(def __doc__list/zipmap
+  {:desc "Creates a map from two lists (key-value pairs)."
+   :params [{:name "keys" :type "list|vector" :desc "List of keys"}
+            {:name "vals" :type "list|vector" :desc "List of values"}]
+   :returns {:type "map" :desc "Map of keys and values"}
+   :examples ["(list/zipmap [:a :b :c] [1 2 3]) ;=> {:a 1, :b 2, :c 3}"]})
 
-(def __doc__sequential?
-  {:desc "Check if value is a sequential collection"
-   :params [{:name "x" :type "any" :desc "Value to check"}]
-   :returns {:type "boolean" :desc "true if sequential"}
-   :examples ["(sequential? [1 2 3]) ;=> true"
-              "(sequential? '(1 2 3)) ;=> true"
-              "(sequential? {:a 1}) ;=> false"]})
+(def __doc__list/partition-by
+  {:desc "Splits into groups each time the function return value changes."
+   :params [{:name "f" :type "function" :desc "Function that returns grouping key"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of groups"}
+   :examples ["(list/partition-by even? [1 1 2 2 2 3 3]) ;=> [[1 1] [2 2 2] [3 3]]"
+              "(list/partition-by count [\"a\" \"b\" \"cc\" \"dd\" \"e\"]) ;=> [[\"a\" \"b\"] [\"cc\" \"dd\"] [\"e\"]]"]})
 
-;; Aggregation
-(def __doc__sum
-  {:desc "Calculate sum of numeric collection"
-   :params [{:name "coll" :type "collection" :desc "Numeric collection"}]
-   :returns {:type "number" :desc "Sum of all elements"}
-   :examples ["(sum [1 2 3 4 5]) ;=> 15"
-              "(sum [10 20 30]) ;=> 60"]})
+(def __doc__list/take-nth
+  {:desc "Takes every nth element."
+   :params [{:name "n" :type "integer" :desc "Interval"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of every nth element"}
+   :examples ["(list/take-nth 2 [1 2 3 4 5 6]) ;=> [1 3 5]"
+              "(list/take-nth 3 [1 2 3 4 5 6 7 8 9]) ;=> [1 4 7]"]})
 
-(def __doc__min
-  {:desc "Find minimum value in collection"
-   :params [{:name "& args" :type "any" :desc "Values or collection"}]
-   :returns {:type "any" :desc "Minimum value"}
-   :examples ["(min 3 1 4 1 5) ;=> 1"
-              "(min [10 5 20 3]) ;=> 3"]})
+(def __doc__list/keep
+  {:desc "Keeps only elements where the function returns non-nil values."
+   :params [{:name "f" :type "function" :desc "Transformation function"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of non-nil results"}
+   :examples ["(list/keep (fn [x] (if (even? x) x nil)) [1 2 3 4 5 6]) ;=> [2 4 6]"]})
 
-(def __doc__max
-  {:desc "Find maximum value in collection"
-   :params [{:name "& args" :type "any" :desc "Values or collection"}]
-   :returns {:type "any" :desc "Maximum value"}
-   :examples ["(max 3 1 4 1 5) ;=> 5"
-              "(max [10 5 20 3]) ;=> 20"]})
+(def __doc__list/dedupe
+  {:desc "Removes consecutive duplicate elements."
+   :params [{:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List with duplicates removed"}
+   :examples ["(list/dedupe [1 1 2 2 2 3 3 1 1]) ;=> [1 2 3 1]"]})
 
-;; Other Utilities
-(def __doc__range
-  {:desc "Generate range of numbers"
-   :params [{:name "start" :type "number" :desc "Start value"}
-            {:name "end" :type "number" :desc "End value (exclusive)"}]
-   :returns {:type "list" :desc "List of numbers"}
-   :examples ["(range 0 5) ;=> (0 1 2 3 4)"
-              "(range 5 10) ;=> (5 6 7 8 9)"]})
-
-(def __doc__repeat
-  {:desc "Create list of n repeated elements"
-   :params [{:name "n" :type "number" :desc "Number of repetitions"}
-            {:name "x" :type "any" :desc "Element to repeat"}]
-   :returns {:type "list" :desc "List with repeated elements"}
-   :examples ["(repeat 3 :x) ;=> (:x :x :x)"
-              "(repeat 5 0) ;=> (0 0 0 0 0)"]})
-
-(def __doc__cycle
-  {:desc "Create infinite lazy sequence by cycling collection"
-   :params [{:name "coll" :type "collection" :desc "Collection to cycle"}]
-   :returns {:type "sequence" :desc "Infinite cycled sequence"}
-   :examples ["(take 5 (cycle [1 2 3])) ;=> (1 2 3 1 2)"]})
-
-(def __doc__inc
-  {:desc "Increment number by 1"
-   :params [{:name "n" :type "number" :desc "Number to increment"}]
-   :returns {:type "number" :desc "Incremented value"}
-   :examples ["(inc 5) ;=> 6"
-              "(inc -1) ;=> 0"]})
-
-(def __doc__dec
-  {:desc "Decrement number by 1"
-   :params [{:name "n" :type "number" :desc "Number to decrement"}]
-   :returns {:type "number" :desc "Decremented value"}
-   :examples ["(dec 5) ;=> 4"
-              "(dec 0) ;=> -1"]})
-
-(def __doc__abs
-  {:desc "Calculate absolute value"
-   :params [{:name "n" :type "number" :desc "Number"}]
-   :returns {:type "number" :desc "Absolute value"}
-   :examples ["(abs -5) ;=> 5"
-              "(abs 3) ;=> 3"]})
-
-(def __doc__even?
-  {:desc "Check if number is even"
-   :params [{:name "n" :type "number" :desc "Number to check"}]
-   :returns {:type "boolean" :desc "true if even"}
-   :examples ["(even? 4) ;=> true"
-              "(even? 5) ;=> false"]})
-
-(def __doc__odd?
-  {:desc "Check if number is odd"
-   :params [{:name "n" :type "number" :desc "Number to check"}]
-   :returns {:type "boolean" :desc "true if odd"}
-   :examples ["(odd? 5) ;=> true"
-              "(odd? 4) ;=> false"]})
-
-(def __doc__zero?
-  {:desc "Check if number is zero"
-   :params [{:name "n" :type "number" :desc "Number to check"}]
-   :returns {:type "boolean" :desc "true if zero"}
-   :examples ["(zero? 0) ;=> true"
-              "(zero? 1) ;=> false"]})
-
-(def __doc__pos?
-  {:desc "Check if number is positive"
-   :params [{:name "n" :type "number" :desc "Number to check"}]
-   :returns {:type "boolean" :desc "true if positive"}
-   :examples ["(pos? 5) ;=> true"
-              "(pos? -1) ;=> false"]})
-
-(def __doc__neg?
-  {:desc "Check if number is negative"
-   :params [{:name "n" :type "number" :desc "Number to check"}]
-   :returns {:type "boolean" :desc "true if negative"}
-   :examples ["(neg? -5) ;=> true"
-              "(neg? 1) ;=> false"]})
+(def __doc__list/drop-last
+  {:desc "Drops n elements from the end."
+   :params [{:name "n" :type "integer" :desc "Number of elements to drop (defaults to 1)"}
+            {:name "coll" :type "list|vector" :desc "Collection"}]
+   :returns {:type "list" :desc "List of remaining elements"}
+   :examples ["(list/drop-last [1 2 3 4 5]) ;=> [1 2 3 4]"
+              "(list/drop-last 2 [1 2 3 4 5]) ;=> [1 2 3]"]})
