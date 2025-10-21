@@ -15,7 +15,7 @@ use tokio_postgres::{NoTls, Row};
 /// - query: SQLクエリ
 /// - params: パラメータ（オプション、ベクタ）
 ///
-/// 戻り値: Result型マップ {:ok rows} または {:error message}
+/// 戻り値: rows（ベクタ）または {:error message}
 pub fn native_pg_query(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["db/pg-query", "2-3"]));
@@ -110,9 +110,7 @@ pub fn native_pg_query(args: &[Value]) -> Result<Value, String> {
         // 結果を変換
         let result_rows = rows_to_value(&rows);
 
-        let mut result = im::HashMap::new();
-        result.insert(":ok".to_string(), result_rows);
-        Ok(Value::Map(result))
+        Ok(result_rows)
     })
 }
 
@@ -123,7 +121,7 @@ pub fn native_pg_query(args: &[Value]) -> Result<Value, String> {
 /// - command: SQLコマンド
 /// - params: パラメータ（オプション、ベクタ）
 ///
-/// 戻り値: Result型マップ {:ok affected_rows} または {:error message}
+/// 戻り値: affected_rows（整数）または {:error message}
 pub fn native_pg_exec(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["db/pg-exec", "2-3"]));
@@ -215,9 +213,7 @@ pub fn native_pg_exec(args: &[Value]) -> Result<Value, String> {
             Err(e) => return Ok(Value::error(format!("Execute error: {}", e))),
         };
 
-        let mut result = im::HashMap::new();
-        result.insert(":ok".to_string(), Value::Integer(affected as i64));
-        Ok(Value::Map(result))
+        Ok(Value::Integer(affected as i64))
     })
 }
 

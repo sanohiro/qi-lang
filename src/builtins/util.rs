@@ -28,16 +28,15 @@ pub fn to_map_key(key: &str) -> String {
 
 /// _railway-pipe - Railway Oriented Programming用の内部関数
 ///
-/// **新仕様: {:error}以外は全て成功**
+/// **仕様: {:error}以外は全て成功**
 ///
 /// 入力値の処理:
 /// - {:error ...} → ショートサーキット（関数を実行しない）
-/// - {:ok value} → valueを取り出して関数に渡す（後方互換性）
 /// - その他 → そのまま関数に渡す
 ///
 /// 出力値の処理:
 /// - {:error ...} → そのまま返す（エラー伝播）
-/// - その他 → そのまま返す（値そのまま！:okラップなし）
+/// - その他 → そのまま返す（値そのまま）
 ///
 /// # 例
 /// ```ignore
@@ -61,10 +60,6 @@ pub fn native_railway_pipe(
             // {:error ...}ならショートサーキット
             if m.contains_key(":error") {
                 return Ok(input.clone());
-            }
-            // {:ok value}なら値を取り出す（後方互換性）
-            else if let Some(ok_val) = m.get(":ok") {
-                ok_val
             }
             // その他のマップはそのまま渡す
             else {

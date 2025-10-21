@@ -17,7 +17,7 @@ use serde_json::Value as JsonValue;
 /// - algorithm: アルゴリズム（オプション、デフォルト: "HS256"）
 /// - exp: 有効期限（秒数、オプション）
 ///
-/// 戻り値: Result型マップ {:ok token} または {:error message}
+/// 戻り値: トークン文字列 または {:error message}
 pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/sign", "2-4"]));
@@ -85,11 +85,7 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     let encoding_key = EncodingKey::from_secret(secret.as_bytes());
 
     match encode(&header, &claims, &encoding_key) {
-        Ok(token) => {
-            let mut result = im::HashMap::new();
-            result.insert(":ok".to_string(), Value::String(token));
-            Ok(Value::Map(result))
-        }
+        Ok(token) => Ok(Value::String(token)),
         Err(e) => Ok(Value::error(e.to_string())),
     }
 }
@@ -101,7 +97,7 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
 /// - secret: シークレットキー（文字列）
 /// - algorithm: アルゴリズム（オプション、デフォルト: "HS256"）
 ///
-/// 戻り値: Result型マップ {:ok payload} または {:error message}
+/// 戻り値: ペイロードマップ または {:error message}
 pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/verify", "2-3"]));
@@ -153,9 +149,7 @@ pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
     match decode::<JsonValue>(token, &decoding_key, &validation) {
         Ok(token_data) => {
             let payload = json_to_qi_value(&token_data.claims)?;
-            let mut result = im::HashMap::new();
-            result.insert(":ok".to_string(), payload);
-            Ok(Value::Map(result))
+            Ok(payload)
         }
         Err(e) => Ok(Value::error(e.to_string())),
     }
@@ -166,7 +160,7 @@ pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
 /// 引数:
 /// - token: JWTトークン（文字列）
 ///
-/// 戻り値: Result型マップ {:ok {:header ... :payload ...}} または {:error message}
+/// 戻り値: {:header ... :payload ...} マップ または {:error message}
 pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["jwt/decode"]));
@@ -187,6 +181,7 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
     let mut validation = Validation::default();
     validation.insecure_disable_signature_validation();
     validation.validate_exp = false;
+    validation.required_spec_claims.clear(); // 必須クレームをクリア
 
     match decode::<JsonValue>(token, &DecodingKey::from_secret(&[]), &validation) {
         Ok(token_data) => {
@@ -197,9 +192,7 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
             result_map.insert(":header".to_string(), header);
             result_map.insert(":payload".to_string(), payload);
 
-            let mut result = im::HashMap::new();
-            result.insert(":ok".to_string(), Value::Map(result_map));
-            Ok(Value::Map(result))
+            Ok(Value::Map(result_map))
         }
         Err(e) => Ok(Value::error(e.to_string())),
     }
@@ -335,25 +328,21 @@ mod tests {
         // トークン生成
         let sign_result = native_jwt_sign(&[Value::Map(payload), secret.clone()]).unwrap();
 
+        // 成功時はトークン文字列を直接返す
         let token = match sign_result {
-            Value::Map(m) => match m.get(":ok") {
-                Some(Value::String(t)) => t.clone(),
-                _ => panic!("Expected {{:ok token}}"),
-            },
-            _ => panic!("Expected map"),
+            Value::String(t) => t.clone(),
+            _ => panic!("Expected token string, got {:?}", sign_result),
         };
 
         // トークン検証
         let verify_result = native_jwt_verify(&[Value::String(token), secret]).unwrap();
 
+        // 成功時はペイロードマップを直接返す
         match verify_result {
-            Value::Map(m) => match m.get(":ok") {
-                Some(Value::Map(payload)) => {
-                    assert_eq!(payload.get(":user_id"), Some(&Value::Integer(123)));
-                }
-                _ => panic!("Expected {{:ok payload}}"),
-            },
-            _ => panic!("Expected map"),
+            Value::Map(payload) => {
+                assert_eq!(payload.get(":user_id"), Some(&Value::Integer(123)));
+            }
+            _ => panic!("Expected payload map, got {:?}", verify_result),
         }
     }
 
@@ -367,26 +356,22 @@ mod tests {
         // トークン生成
         let sign_result = native_jwt_sign(&[Value::Map(payload), secret]).unwrap();
 
+        // 成功時はトークン文字列を直接返す
         let token = match sign_result {
-            Value::Map(m) => match m.get(":ok") {
-                Some(Value::String(t)) => t.clone(),
-                _ => panic!("Expected {{:ok token}}"),
-            },
-            _ => panic!("Expected map"),
+            Value::String(t) => t.clone(),
+            _ => panic!("Expected token string, got {:?}", sign_result),
         };
 
         // デコード（検証なし）
         let decode_result = native_jwt_decode(&[Value::String(token)]).unwrap();
 
+        // 成功時は {:header ... :payload ...} マップを直接返す
         match decode_result {
-            Value::Map(m) => match m.get(":ok") {
-                Some(Value::Map(data)) => {
-                    assert!(data.contains_key(":header"));
-                    assert!(data.contains_key(":payload"));
-                }
-                _ => panic!("Expected {{:ok {{:header ... :payload ...}}}}"),
-            },
-            _ => panic!("Expected map"),
+            Value::Map(data) => {
+                assert!(data.contains_key(":header"));
+                assert!(data.contains_key(":payload"));
+            }
+            _ => panic!("Expected map with :header and :payload, got {:?}", decode_result),
         }
     }
 

@@ -56,11 +56,12 @@
 
 ;; 認証が必要なリソースにアクセス
 (defn get-protected-resource [token]
-  (match (authenticate token)
-    {:ok payload} -> {:status 200
-                     :body (str "Hello, " (get payload :username) "!")}
-    {:error e} -> {:status 401
-                  :body "Unauthorized"}))
+  (let [result (authenticate token)]
+    (if (map? result)
+      (if (get result :error)
+        {:status 401 :body "Unauthorized"}
+        {:status 200 :body (str "Hello, " (get result :username) "!")})
+      {:status 500 :body "Invalid response"})))
 
 ;; ========================================
 ;; 6. 実行例
@@ -71,37 +72,54 @@
 ;; ログイン試行（成功）
 (println "1. Alice でログイン:")
 (def login-result (login "alice" "secret123"))
-(match login-result
-  {:ok token} -> (do
-                   (println "  ✓ ログイン成功")
-                   (println "  Token:" token)
+(if (string? login-result)
+  (do
+    (println "  ✓ ログイン成功")
+    (println "  Token:" login-result)
 
-                   ;; トークンを使ってリソースにアクセス
-                   (println "\n2. 保護されたリソースにアクセス:")
-                   (def resource (get-protected-resource token))
-                   (println "  Status:" (get resource :status))
-                   (println "  Body:" (get resource :body))
+    ;; トークンを使ってリソースにアクセス
+    (println "\n2. 保護されたリソースにアクセス:")
+    (def resource (get-protected-resource login-result))
+    (println "  Status:" (get resource :status))
+    (println "  Body:" (get resource :body))
 
-                   ;; トークンをデコード（デバッグ用）
-                   (println "\n3. トークンをデコード（デバッグ）:")
-                   (match (jwt/decode token)
-                     {:ok data} -> (do
-                                    (println "  Header:" (get data :header))
-                                    (println "  Payload:" (get data :payload)))
-                     {:error e} -> (println "  デコードエラー:" e)))
-  {:error e} -> (println "  ✗ ログイン失敗:" e))
+    ;; トークンをデコード（デバッグ用）
+    (println "\n3. トークンをデコード（デバッグ）:")
+    (let [decode-result (jwt/decode login-result)]
+      (if (map? decode-result)
+        (if (get decode-result :error)
+          (println "  デコードエラー:" (get decode-result :error))
+          (do
+            (println "  Header:" (get decode-result :header))
+            (println "  Payload:" (get decode-result :payload))))
+        (println "  Invalid decode result"))))
+  (if (map? login-result)
+    (if (get login-result :error)
+      (println "  ✗ ログイン失敗:" (get login-result :error))
+      (println "  Unexpected result"))
+    (println "  Invalid login result")))
 
 ;; ログイン試行（パスワード間違い）
 (println "\n4. 間違ったパスワードでログイン:")
-(match (login "alice" "wrong-password")
-  {:ok _} -> (println "  ✓ ログイン成功")
-  {:error e} -> (println "  ✗ ログイン失敗:" e))
+(let [result (login "alice" "wrong-password")]
+  (if (string? result)
+    (println "  ✓ ログイン成功")
+    (if (map? result)
+      (if (get result :error)
+        (println "  ✗ ログイン失敗:" (get result :error))
+        (println "  Unexpected result"))
+      (println "  Invalid result"))))
 
 ;; ログイン試行（ユーザーが存在しない）
 (println "\n5. 存在しないユーザーでログイン:")
-(match (login "charlie" "password")
-  {:ok _} -> (println "  ✓ ログイン成功")
-  {:error e} -> (println "  ✗ ログイン失敗:" e))
+(let [result (login "charlie" "password")]
+  (if (string? result)
+    (println "  ✓ ログイン成功")
+    (if (map? result)
+      (if (get result :error)
+        (println "  ✗ ログイン失敗:" (get result :error))
+        (println "  Unexpected result"))
+      (println "  Invalid result"))))
 
 ;; 無効なトークンでアクセス
 (println "\n6. 無効なトークンでリソースにアクセス:")
