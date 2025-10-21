@@ -1,0 +1,229 @@
+#!/usr/bin/env qi
+;; KVS統一API Examples（統一インターフェース）
+;;
+;; Prerequisites:
+;; - Redis server running on localhost:6379
+;; - Build with: cargo build (kvs-redis is default)
+;; - Run with: ./target/debug/qi examples/kvs.qi
+;;
+;; または: QI_LANG=ja ./target/debug/qi examples/kvs.qi
+
+(println "=== KVS統一API Examples ===\n")
+
+;; ========================================
+;; 接続（バックエンドは自動判別）
+;; ========================================
+(def kvs (kvs/connect "redis://localhost:6379"))
+(println (str "接続完了: " kvs "\n"))
+
+;; ========================================
+;; 1. Basic Operations（基本操作）
+;; ========================================
+(println "1. Basic Operations")
+(println "-------------------")
+
+;; Set and Get
+(kvs/set kvs "greeting" "Hello, Redis!")
+(println "Set: greeting = Hello, Redis!")
+(def greeting (kvs/get kvs "greeting"))
+(println (str "Get: greeting = " greeting))
+
+;; Check existence
+(def exists (kvs/exists? kvs "greeting"))
+(println (str "Exists: greeting? " exists))
+
+;; Delete
+(kvs/delete kvs "greeting")
+(println "Deleted: greeting")
+(def after-delete (kvs/get kvs "greeting"))
+(println (str "After delete: " (if (nil? after-delete) "nil" after-delete)))
+
+(println)
+
+;; ========================================
+;; 2. Expiration（有効期限）
+;; ========================================
+(println "2. Expiration (TTL)")
+(println "-------------------")
+
+(kvs/set kvs "session:abc" "user-data")
+(kvs/expire kvs "session:abc" 60)
+(def ttl (kvs/ttl kvs "session:abc"))
+(println (str "Session TTL: " ttl " seconds (should be ~60)"))
+(kvs/delete kvs "session:abc")
+
+(println)
+
+;; ========================================
+;; 3. Numeric Operations（数値操作）
+;; ========================================
+(println "3. Numeric Operations (Counter)")
+(println "-------------------------------")
+
+(kvs/set kvs "page-views" 0)
+(println "Initial counter: 0")
+
+(def count1 (kvs/incr kvs "page-views"))
+(println (str "After incr: " count1))
+
+(def count2 (kvs/incr kvs "page-views"))
+(println (str "After incr: " count2))
+
+(def count3 (kvs/decr kvs "page-views"))
+(println (str "After decr: " count3))
+
+(kvs/delete kvs "page-views")
+
+(println)
+
+;; ========================================
+;; 4. List Operations（リスト操作）
+;; ========================================
+(println "4. List Operations (Queue)")
+(println "--------------------------")
+
+;; FIFO Queue (rpush + lpop)
+(println "Building a queue (FIFO):")
+(kvs/rpush kvs "queue" "task1")
+(kvs/rpush kvs "queue" "task2")
+(kvs/rpush kvs "queue" "task3")
+(println "  Pushed: task1, task2, task3")
+
+(def task1 (kvs/lpop kvs "queue"))
+(println (str "  Popped: " task1))
+
+(def task2 (kvs/lpop kvs "queue"))
+(println (str "  Popped: " task2))
+
+(def task3 (kvs/lpop kvs "queue"))
+(println (str "  Popped: " task3))
+
+;; LIFO Stack (lpush + lpop)
+(println "\nBuilding a stack (LIFO):")
+(kvs/lpush kvs "stack" "item1")
+(kvs/lpush kvs "stack" "item2")
+(kvs/lpush kvs "stack" "item3")
+(println "  Pushed: item1, item2, item3")
+
+(def item1 (kvs/lpop kvs "stack"))
+(println (str "  Popped: " item1))
+
+(kvs/delete kvs "stack")
+
+(println)
+
+;; ========================================
+;; 5. Hash Operations（ハッシュ操作）
+;; ========================================
+(println "5. Hash Operations (User Profile)")
+(println "---------------------------------")
+
+;; Create user profile
+(kvs/hset kvs "user:100" "name" "Alice")
+(kvs/hset kvs "user:100" "email" "alice@example.com")
+(kvs/hset kvs "user:100" "age" 30)
+(println "Created user profile:")
+
+;; Get individual field
+(def name (kvs/hget kvs "user:100" "name"))
+(println (str "  Name: " name))
+
+;; Get all fields
+(def user (kvs/hgetall kvs "user:100"))
+(println "  Full profile:")
+(println (str "    " user))
+
+(kvs/delete kvs "user:100")
+
+(println)
+
+;; ========================================
+;; 6. Set Operations（セット操作）
+;; ========================================
+(println "6. Set Operations (Tags)")
+(println "------------------------")
+
+;; Add tags
+(kvs/sadd kvs "tags:post:1" "redis")
+(kvs/sadd kvs "tags:post:1" "cache")
+(kvs/sadd kvs "tags:post:1" "nosql")
+(println "Added tags: redis, cache, nosql")
+
+;; Get all members
+(def tags (kvs/smembers kvs "tags:post:1"))
+(println (str "All tags: " tags))
+
+(kvs/delete kvs "tags:post:1")
+
+(println)
+
+;; ========================================
+;; 7. Pattern Matching（パターンマッチング）
+;; ========================================
+(println "7. Pattern Matching (Keys)")
+(println "--------------------------")
+
+;; Create some test keys
+(kvs/set kvs "user:1:name" "Alice")
+(kvs/set kvs "user:2:name" "Bob")
+(kvs/set kvs "user:3:name" "Carol")
+(kvs/set kvs "session:abc" "data1")
+(kvs/set kvs "session:xyz" "data2")
+
+;; Find all user keys
+(def user-keys (kvs/keys kvs "user:*"))
+(println (str "User keys: " user-keys))
+
+;; Find all session keys
+(def session-keys (kvs/keys kvs "session:*"))
+(println (str "Session keys: " session-keys))
+
+;; Cleanup
+(kvs/delete kvs "user:1:name")
+(kvs/delete kvs "user:2:name")
+(kvs/delete kvs "user:3:name")
+(kvs/delete kvs "session:abc")
+(kvs/delete kvs "session:xyz")
+
+(println)
+
+;; ========================================
+;; 8. Real-World Use Case: Session Cache
+;; ========================================
+(println "8. Real-World Use Case: Session Cache")
+(println "-------------------------------------")
+
+(defn create-session [kvs user-id]
+  (def session-id (str "session:" user-id))
+  (def session-data (str "{\"user_id\":" user-id ",\"created_at\":\"2025-01-01\"}"))
+  (kvs/set kvs session-id session-data)
+  (kvs/expire kvs session-id 1800) ;; 30 minutes
+  (println (str "Created session: " session-id))
+  session-id)
+
+(defn get-session [kvs session-id]
+  (def data (kvs/get kvs session-id))
+  (if (nil? data)
+    (println "Session not found or expired")
+    (do
+      (println (str "Session data: " data))
+      (def ttl (kvs/ttl kvs session-id))
+      (println (str "Time remaining: " ttl " seconds")))))
+
+(defn delete-session [kvs session-id]
+  (kvs/delete kvs session-id)
+  (println (str "Deleted session: " session-id)))
+
+;; Test session management
+(def sid (create-session kvs 42))
+(get-session kvs sid)
+(delete-session kvs sid)
+(get-session kvs sid)
+
+(println)
+(println "=== All examples completed! ===")
+(println)
+(println "💡 Notice: このコードは統一インターフェースを使用しています。")
+(println "   バックエンドをRedis → Memcachedに変更する場合:")
+(println "   (def kvs (kvs/connect \"memcached://localhost:11211\"))")
+(println "   と書き換えるだけで、他のコードは変更不要です！")

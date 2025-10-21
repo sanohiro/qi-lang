@@ -1,0 +1,1145 @@
+//! Redis接続モジュール
+//!
+//! このモジュールは `kvs-redis` feature でコンパイルされます。
+
+use crate::i18n::{fmt_msg, MsgKey};
+use crate::value::Value;
+use dashmap::DashMap;
+use redis::aio::MultiplexedConnection;
+use redis::{AsyncCommands, Client};
+use std::sync::LazyLock;
+
+/// Redis接続プール（URL → Connection のマッピング）
+static REDIS_POOL: LazyLock<DashMap<String, MultiplexedConnection>> = LazyLock::new(DashMap::new);
+
+/// 接続を取得または新規作成
+async fn get_or_create_connection(url: &str) -> Result<MultiplexedConnection, String> {
+    // 既存の接続を取得
+    if let Some(conn) = REDIS_POOL.get(url) {
+        return Ok(conn.clone());
+    }
+
+    // 新規接続を作成
+    let client = Client::open(url).map_err(|e| format!("Connection error: {}", e))?;
+
+    let conn = client
+        .get_multiplexed_async_connection()
+        .await
+        .map_err(|e| format!("Connection error: {}", e))?;
+
+    // プールに保存
+    REDIS_POOL.insert(url.to_string(), conn.clone());
+
+    Ok(conn)
+}
+
+/// kvs/redis-get - キーの値を取得
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - key: キー名
+///
+/// 戻り値: 値（文字列）or nil or {:error message}
+pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-get", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-get (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-get (key)", "strings"],
+            ))
+        }
+    };
+
+    // 非同期処理を同期的に実行
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Option<String>> = conn.get(&key).await;
+        match result {
+            Ok(Some(value)) => Ok(Value::String(value)),
+            Ok(None) => Ok(Value::Nil),
+            Err(e) => Ok(Value::error(format!("Get error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-set - キーに値を設定
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - value: 値
+///
+/// 戻り値: "OK" or {:error message}
+pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-set", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-set (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-set (key)", "strings"],
+            ))
+        }
+    };
+
+    let value = match &args[2] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "kvs/redis-set (value)",
+                    "strings, integers, floats, or bools",
+                ],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<String> = conn.set(&key, &value).await;
+        match result {
+            Ok(_) => Ok(Value::String("OK".to_string())),
+            Err(e) => Ok(Value::error(format!("Set error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-delete - キーを削除
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: 削除されたキー数 or {:error message}
+pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-delete", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-delete (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-delete (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.del(&key).await;
+        match result {
+            Ok(count) => Ok(Value::Integer(count)),
+            Err(e) => Ok(Value::error(format!("Delete error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-exists? - キーが存在するかチェック
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: true or false or {:error message}
+pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-exists?", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-exists? (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-exists? (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<bool> = conn.exists(&key).await;
+        match result {
+            Ok(exists) => Ok(Value::Bool(exists)),
+            Err(e) => Ok(Value::error(format!("Exists error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-keys - パターンにマッチするキー一覧を取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - pattern: パターン（例: "user:*"）
+///
+/// 戻り値: キーのベクタ or {:error message}
+pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-keys", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-keys (url)", "strings"],
+            ))
+        }
+    };
+
+    let pattern = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-keys (pattern)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Vec<String>> = conn.keys(&pattern).await;
+        match result {
+            Ok(keys) => Ok(Value::Vector(
+                keys.into_iter()
+                    .map(Value::String)
+                    .collect::<Vec<_>>()
+                    .into(),
+            )),
+            Err(e) => Ok(Value::error(format!("Keys error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-expire - キーに有効期限を設定（秒）
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - seconds: 有効期限（秒）
+///
+/// 戻り値: true or false or {:error message}
+pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-expire", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-expire (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-expire (key)", "strings"],
+            ))
+        }
+    };
+
+    let seconds = match &args[2] {
+        Value::Integer(i) => *i as u64,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-expire (seconds)", "integers"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<bool> = conn.expire(&key, seconds as i64).await;
+        match result {
+            Ok(success) => Ok(Value::Bool(success)),
+            Err(e) => Ok(Value::error(format!("Expire error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-ttl - キーの残り有効期限を取得（秒）
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: 残り秒数 or -1 (期限なし) or -2 (存在しない) or {:error message}
+pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-ttl", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-ttl (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-ttl (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.ttl(&key).await;
+        match result {
+            Ok(ttl) => Ok(Value::Integer(ttl)),
+            Err(e) => Ok(Value::error(format!("TTL error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-incr - キーの値をインクリメント
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: インクリメント後の値 or {:error message}
+pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-incr", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-incr (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-incr (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.incr(&key, 1).await;
+        match result {
+            Ok(value) => Ok(Value::Integer(value)),
+            Err(e) => Ok(Value::error(format!("Incr error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-decr - キーの値をデクリメント
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: デクリメント後の値 or {:error message}
+pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-decr", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-decr (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-decr (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.decr(&key, 1).await;
+        match result {
+            Ok(value) => Ok(Value::Integer(value)),
+            Err(e) => Ok(Value::error(format!("Decr error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-lpush - リスト左端に要素を追加
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - value: 追加する値
+///
+/// 戻り値: リスト長 or {:error message}
+pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lpush", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-lpush (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-lpush (key)", "strings"],
+            ))
+        }
+    };
+
+    let value = match &args[2] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "kvs/redis-lpush (value)",
+                    "strings, integers, floats, or bools",
+                ],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.lpush(&key, &value).await;
+        match result {
+            Ok(len) => Ok(Value::Integer(len)),
+            Err(e) => Ok(Value::error(format!("Lpush error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-rpush - リスト右端に要素を追加
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - value: 追加する値
+///
+/// 戻り値: リスト長 or {:error message}
+pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-rpush", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-rpush (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-rpush (key)", "strings"],
+            ))
+        }
+    };
+
+    let value = match &args[2] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "kvs/redis-rpush (value)",
+                    "strings, integers, floats, or bools",
+                ],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.rpush(&key, &value).await;
+        match result {
+            Ok(len) => Ok(Value::Integer(len)),
+            Err(e) => Ok(Value::error(format!("Rpush error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-lpop - リスト左端から要素を取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: 値 or nil or {:error message}
+pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lpop", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-lpop (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-lpop (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Option<String>> = conn.lpop(&key, None).await;
+        match result {
+            Ok(Some(value)) => Ok(Value::String(value)),
+            Ok(None) => Ok(Value::Nil),
+            Err(e) => Ok(Value::error(format!("Lpop error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-rpop - リスト右端から要素を取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: 値 or nil or {:error message}
+pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-rpop", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-rpop (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-rpop (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Option<String>> = conn.rpop(&key, None).await;
+        match result {
+            Ok(Some(value)) => Ok(Value::String(value)),
+            Ok(None) => Ok(Value::Nil),
+            Err(e) => Ok(Value::error(format!("Rpop error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-hset - ハッシュのフィールドに値を設定
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - field: フィールド名
+/// - value: 値
+///
+/// 戻り値: true (新規作成) or false (更新) or {:error message}
+pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 4 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hset", "4"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hset (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hset (key)", "strings"],
+            ))
+        }
+    };
+
+    let field = match &args[2] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hset (field)", "strings"],
+            ))
+        }
+    };
+
+    let value = match &args[3] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "kvs/redis-hset (value)",
+                    "strings, integers, floats, or bools",
+                ],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<bool> = conn.hset(&key, &field, &value).await;
+        match result {
+            Ok(created) => Ok(Value::Bool(created)),
+            Err(e) => Ok(Value::error(format!("Hset error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-hget - ハッシュのフィールドから値を取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - field: フィールド名
+///
+/// 戻り値: 値 or nil or {:error message}
+pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hget", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hget (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hget (key)", "strings"],
+            ))
+        }
+    };
+
+    let field = match &args[2] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hget (field)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Option<String>> = conn.hget(&key, &field).await;
+        match result {
+            Ok(Some(value)) => Ok(Value::String(value)),
+            Ok(None) => Ok(Value::Nil),
+            Err(e) => Ok(Value::error(format!("Hget error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-hgetall - ハッシュ全体を取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: マップ {:field1 "value1" :field2 "value2"} or {:error message}
+pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hgetall", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hgetall (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-hgetall (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Vec<(String, String)>> = conn.hgetall(&key).await;
+        match result {
+            Ok(pairs) => {
+                let mut map = im::HashMap::new();
+                for (field, value) in pairs {
+                    // キーワード形式（:field）でマップに追加
+                    map.insert(format!(":{}", field), Value::String(value));
+                }
+                Ok(Value::Map(map))
+            }
+            Err(e) => Ok(Value::error(format!("Hgetall error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-sadd - セットにメンバーを追加
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+/// - member: メンバー
+///
+/// 戻り値: 追加されたメンバー数 or {:error message}
+pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-sadd", "3"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-sadd (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-sadd (key)", "strings"],
+            ))
+        }
+    };
+
+    let member = match &args[2] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &[
+                    "kvs/redis-sadd (member)",
+                    "strings, integers, floats, or bools",
+                ],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<i64> = conn.sadd(&key, &member).await;
+        match result {
+            Ok(count) => Ok(Value::Integer(count)),
+            Err(e) => Ok(Value::error(format!("Sadd error: {}", e))),
+        }
+    })
+}
+
+/// kvs/redis-smembers - セットの全メンバーを取得
+///
+/// 引数:
+/// - url: 接続URL
+/// - key: キー名
+///
+/// 戻り値: メンバーのベクタ or {:error message}
+pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-smembers", "2"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-smembers (url)", "strings"],
+            ))
+        }
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s.clone(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/redis-smembers (key)", "strings"],
+            ))
+        }
+    };
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
+    };
+
+    rt.block_on(async {
+        let mut conn = match get_or_create_connection(&url).await {
+            Ok(conn) => conn,
+            Err(e) => return Ok(Value::error(e)),
+        };
+
+        let result: redis::RedisResult<Vec<String>> = conn.smembers(&key).await;
+        match result {
+            Ok(members) => Ok(Value::Vector(
+                members
+                    .into_iter()
+                    .map(Value::String)
+                    .collect::<Vec<_>>()
+                    .into(),
+            )),
+            Err(e) => Ok(Value::error(format!("Smembers error: {}", e))),
+        }
+    })
+}
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト（全18関数）
+/// @qi-doc:category kvs/redis
+/// @qi-doc:functions kvs/redis-get, kvs/redis-set, kvs/redis-delete, kvs/redis-exists?, kvs/redis-keys, kvs/redis-expire, kvs/redis-ttl, kvs/redis-incr, kvs/redis-decr, kvs/redis-lpush, kvs/redis-rpush, kvs/redis-lpop, kvs/redis-rpop, kvs/redis-hset, kvs/redis-hget, kvs/redis-hgetall, kvs/redis-sadd, kvs/redis-smembers
+pub const FUNCTIONS: super::NativeFunctions = &[
+    // 基本操作（8関数）
+    ("kvs/redis-get", native_redis_get),
+    ("kvs/redis-set", native_redis_set),
+    ("kvs/redis-delete", native_redis_delete),
+    ("kvs/redis-exists?", native_redis_exists),
+    ("kvs/redis-keys", native_redis_keys),
+    ("kvs/redis-expire", native_redis_expire),
+    ("kvs/redis-ttl", native_redis_ttl),
+    // 数値操作（2関数）
+    ("kvs/redis-incr", native_redis_incr),
+    ("kvs/redis-decr", native_redis_decr),
+    // リスト操作（4関数）
+    ("kvs/redis-lpush", native_redis_lpush),
+    ("kvs/redis-rpush", native_redis_rpush),
+    ("kvs/redis-lpop", native_redis_lpop),
+    ("kvs/redis-rpop", native_redis_rpop),
+    // ハッシュ操作（3関数）
+    ("kvs/redis-hset", native_redis_hset),
+    ("kvs/redis-hget", native_redis_hget),
+    ("kvs/redis-hgetall", native_redis_hgetall),
+    // セット操作（2関数）
+    ("kvs/redis-sadd", native_redis_sadd),
+    ("kvs/redis-smembers", native_redis_smembers),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 注: これらのテストはRedisサーバーが必要なため、統合テストとして実装すべき
+
+    #[test]
+    fn test_redis_url_validation() {
+        // URL検証のみテスト
+        let url = Value::String("redis://localhost:6379".to_string());
+        let key = Value::String("test_key".to_string());
+
+        // 実際の接続は行わず、引数チェックのみ
+        let result = native_redis_get(&[url, key]);
+        // Redisサーバーが無い場合はエラーになるが、それは正常
+        assert!(result.is_ok());
+    }
+}

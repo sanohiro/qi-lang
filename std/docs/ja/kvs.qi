@@ -1,0 +1,234 @@
+;; 標準ライブラリドキュメント - KVS統一API
+;; KVS Functions (19 functions - kvs/*)
+;; このモジュールは `kvs-redis` feature でコンパイルされます
+
+;; ========== 統一インターフェース（19個） ==========
+;; バックエンド（Redis, Memcached等）の違いを隠蔽し、同じAPIで操作できます。
+
+;; --- 接続 (1個) ---
+
+(def __doc__kvs/connect
+  {:desc "KVSに接続し、接続オブジェクトを返します。URLからバックエンドを自動判別します。"
+   :params [{:name "url" :type "string" :desc "接続URL（例: \"redis://localhost:6379\"）"}]
+   :returns {:type "string" :desc "接続ID（文字列）"}
+   :examples ["(def kvs (kvs/connect \"redis://localhost:6379\"))"
+              "(def kvs (kvs/connect \"memcached://localhost:11211\")) ;; 将来対応"]})
+
+;; --- 基本操作 (7個) ---
+
+(def __doc__kvs/get
+  {:desc "キーの値を取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID（kvs/connectの戻り値）"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "string|nil" :desc "値（文字列）、キーが存在しない場合はnil"}
+   :examples ["(kvs/get kvs \"user:1\")"
+              "(def value (kvs/get kvs \"cache:data\"))"]})
+
+(def __doc__kvs/set
+  {:desc "キーに値を設定します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "value" :type "string|integer|float|bool" :desc "設定する値"}]
+   :returns {:type "string" :desc "成功時は\"OK\""}
+   :examples ["(kvs/set kvs \"user:1\" \"Alice\")"
+              "(kvs/set kvs \"counter\" 42)"
+              "(kvs/set kvs \"ratio\" 3.14)"
+              "(kvs/set kvs \"active\" true)"]})
+
+(def __doc__kvs/delete
+  {:desc "キーを削除します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "integer" :desc "削除されたキーの数（0または1）"}
+   :examples ["(kvs/delete kvs \"user:1\")"
+              "(kvs/delete kvs \"old-key\")"]})
+
+(def __doc__kvs/exists?
+  {:desc "キーが存在するかチェックします。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "bool" :desc "存在する場合true、存在しない場合false"}
+   :examples ["(kvs/exists? kvs \"user:1\")"
+              "(if (kvs/exists? kvs \"cache:data\") ...)"]})
+
+(def __doc__kvs/keys
+  {:desc "パターンにマッチするキー一覧を取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "pattern" :type "string" :desc "パターン（\"*\"でワイルドカード）"}]
+   :returns {:type "vector" :desc "キー名のベクタ"}
+   :examples ["(kvs/keys kvs \"user:*\")"
+              "(kvs/keys kvs \"session:*\")"
+              "(kvs/keys kvs \"*\") ;; 全キー"]})
+
+(def __doc__kvs/expire
+  {:desc "キーに有効期限を設定します（秒単位）。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "seconds" :type "integer" :desc "有効期限（秒）"}]
+   :returns {:type "bool" :desc "設定成功時true"}
+   :examples ["(kvs/expire kvs \"session:abc\" 3600) ;; 1時間"
+              "(kvs/expire kvs \"cache:data\" 300) ;; 5分"]})
+
+(def __doc__kvs/ttl
+  {:desc "キーの残り有効期限を取得します（秒単位）。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "integer" :desc "残り秒数、期限なしは-1、存在しないは-2"}
+   :examples ["(kvs/ttl kvs \"session:abc\")"
+              "(def ttl (kvs/ttl kvs \"cache:data\"))"]})
+
+;; --- 数値操作 (2個) ---
+
+(def __doc__kvs/incr
+  {:desc "キーの値をインクリメント（+1）します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "integer" :desc "インクリメント後の値"}
+   :examples ["(kvs/incr kvs \"counter\")"
+              "(kvs/incr kvs \"page-views\")"]})
+
+(def __doc__kvs/decr
+  {:desc "キーの値をデクリメント（-1）します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "integer" :desc "デクリメント後の値"}
+   :examples ["(kvs/decr kvs \"stock\")"
+              "(kvs/decr kvs \"remaining\")"]})
+
+;; --- リスト操作 (4個) ---
+
+(def __doc__kvs/lpush
+  {:desc "リストの左端（先頭）に要素を追加します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "value" :type "string|integer|float|bool" :desc "追加する値"}]
+   :returns {:type "integer" :desc "リストの長さ"}
+   :examples ["(kvs/lpush kvs \"queue\" \"task1\")"
+              "(kvs/lpush kvs \"tasks\" 42)"]})
+
+(def __doc__kvs/rpush
+  {:desc "リストの右端（末尾）に要素を追加します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "value" :type "string|integer|float|bool" :desc "追加する値"}]
+   :returns {:type "integer" :desc "リストの長さ"}
+   :examples ["(kvs/rpush kvs \"log\" \"event1\")"
+              "(kvs/rpush kvs \"history\" \"action\")"]})
+
+(def __doc__kvs/lpop
+  {:desc "リストの左端（先頭）から要素を取得・削除します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "string|nil" :desc "取得した値、リストが空の場合nil"}
+   :examples ["(kvs/lpop kvs \"queue\")"
+              "(def task (kvs/lpop kvs \"tasks\"))"]})
+
+(def __doc__kvs/rpop
+  {:desc "リストの右端（末尾）から要素を取得・削除します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "string|nil" :desc "取得した値、リストが空の場合nil"}
+   :examples ["(kvs/rpop kvs \"history\")"
+              "(def last (kvs/rpop kvs \"log\"))"]})
+
+;; --- ハッシュ操作 (3個) ---
+
+(def __doc__kvs/hset
+  {:desc "ハッシュのフィールドに値を設定します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "field" :type "string" :desc "フィールド名"}
+            {:name "value" :type "string|integer|float|bool" :desc "設定する値"}]
+   :returns {:type "bool" :desc "新規作成の場合true、更新の場合false"}
+   :examples ["(kvs/hset kvs \"user:1\" \"name\" \"Alice\")"
+              "(kvs/hset kvs \"user:1\" \"age\" 30)"]})
+
+(def __doc__kvs/hget
+  {:desc "ハッシュのフィールドから値を取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "field" :type "string" :desc "フィールド名"}]
+   :returns {:type "string|nil" :desc "値、フィールドが存在しない場合nil"}
+   :examples ["(kvs/hget kvs \"user:1\" \"name\")"
+              "(def age (kvs/hget kvs \"user:1\" \"age\"))"]})
+
+(def __doc__kvs/hgetall
+  {:desc "ハッシュ全体をマップとして取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "map" :desc "フィールド名をキーとするマップ（キーワード形式 :field）"}
+   :examples ["(kvs/hgetall kvs \"user:1\")"
+              "(def user (kvs/hgetall kvs \"user:1\"))"]})
+
+;; --- セット操作 (2個) ---
+
+(def __doc__kvs/sadd
+  {:desc "セットにメンバーを追加します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "member" :type "string|integer|float|bool" :desc "追加するメンバー"}]
+   :returns {:type "integer" :desc "追加されたメンバー数（既存の場合0）"}
+   :examples ["(kvs/sadd kvs \"tags\" \"redis\")"
+              "(kvs/sadd kvs \"tags\" \"cache\")"]})
+
+(def __doc__kvs/smembers
+  {:desc "セットの全メンバーを取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}]
+   :returns {:type "vector" :desc "メンバーのベクタ"}
+   :examples ["(kvs/smembers kvs \"tags\")"
+              "(def tags (kvs/smembers kvs \"user:1:tags\"))"]})
+
+;; ========== 使用例 ==========
+
+;; 統一インターフェースの利点
+(def unified-interface-example
+  (do
+    ;; バックエンドはURLで自動判別
+    (def kvs (kvs/connect "redis://localhost:6379"))
+
+    ;; 以降のコードは同じ
+    (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
+    (kvs/expire kvs "cache:user:1" 3600)
+    (kvs/get kvs "cache:user:1")
+
+    ;; バックエンドを変更する場合も、connectのURLだけ変えればOK
+    ;; (def kvs (kvs/connect "memcached://localhost:11211"))
+    ;; 以降のコード（kvs/get, kvs/setなど）は変更不要！
+    ))
+
+;; キャッシュパターン
+(def cache-example
+  (do
+    (def kvs (kvs/connect "redis://localhost:6379"))
+    (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
+    (kvs/expire kvs "cache:user:1" 3600)
+    (kvs/get kvs "cache:user:1")))
+
+;; キューパターン（FIFO）
+(def queue-example
+  (do
+    (def kvs (kvs/connect "redis://localhost:6379"))
+    (kvs/rpush kvs "tasks" "task1")
+    (kvs/rpush kvs "tasks" "task2")
+    (kvs/lpop kvs "tasks") ;=> "task1"
+    (kvs/lpop kvs "tasks") ;=> "task2"
+    ))
+
+;; カウンターパターン
+(def counter-example
+  (do
+    (def kvs (kvs/connect "redis://localhost:6379"))
+    (kvs/set kvs "page-views" 0)
+    (kvs/incr kvs "page-views")
+    (kvs/incr kvs "page-views")
+    (kvs/get kvs "page-views"))) ;=> "2"
+
+;; ユーザープロファイルパターン（ハッシュ）
+(def profile-example
+  (do
+    (def kvs (kvs/connect "redis://localhost:6379"))
+    (kvs/hset kvs "user:1" "name" "Alice")
+    (kvs/hset kvs "user:1" "email" "alice@example.com")
+    (kvs/hset kvs "user:1" "age" 30)
+    (kvs/hgetall kvs "user:1"))) ;=> {:name "Alice" :email "alice@example.com" :age "30"}

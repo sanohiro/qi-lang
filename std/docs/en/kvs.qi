@@ -1,0 +1,208 @@
+;; Standard Library Documentation - KVS (Key-Value Store) API
+;; KVS Functions (18 functions - kvs/redis-*)
+;; This module is compiled with the `kvs-redis` feature
+
+;; ========== Phase 1: Redis Implementation (18 functions) ==========
+
+;; --- Basic Operations (7 functions) ---
+
+(def __doc__kvs/redis-get
+  {:desc "Get the value of a key from Redis."
+   :params [{:name "url" :type "string" :desc "Redis connection URL (e.g., \"redis://localhost:6379\")"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "string|nil" :desc "Value (string) or nil if the key does not exist"}
+   :examples ["(kvs/redis-get \"redis://localhost:6379\" \"user:1\")"
+              "(kvs/redis-get url \"session:abc123\")"]})
+
+(def __doc__kvs/redis-set
+  {:desc "Set the value of a key in Redis."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "value" :type "string|integer|float|bool" :desc "Value to set"}]
+   :returns {:type "string" :desc "\"OK\" on success"}
+   :examples ["(kvs/redis-set url \"user:1\" \"Alice\")"
+              "(kvs/redis-set url \"counter\" 42)"
+              "(kvs/redis-set url \"ratio\" 3.14)"
+              "(kvs/redis-set url \"active\" true)"]})
+
+(def __doc__kvs/redis-delete
+  {:desc "Delete a key from Redis."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "integer" :desc "Number of keys deleted (0 or 1)"}
+   :examples ["(kvs/redis-delete url \"user:1\")"
+              "(kvs/redis-delete url \"old-key\")"]})
+
+(def __doc__kvs/redis-exists?
+  {:desc "Check if a key exists in Redis."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "bool" :desc "true if the key exists, false otherwise"}
+   :examples ["(kvs/redis-exists? url \"user:1\")"
+              "(if (kvs/redis-exists? url \"cache:data\") ...)"]})
+
+(def __doc__kvs/redis-keys
+  {:desc "Get a list of keys matching a pattern."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "pattern" :type "string" :desc "Pattern (use \"*\" for wildcard)"}]
+   :returns {:type "vector" :desc "Vector of key names"}
+   :examples ["(kvs/redis-keys url \"user:*\")"
+              "(kvs/redis-keys url \"session:*\")"
+              "(kvs/redis-keys url \"*\") ;; All keys"]})
+
+(def __doc__kvs/redis-expire
+  {:desc "Set an expiration time on a key (in seconds)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "seconds" :type "integer" :desc "Expiration time in seconds"}]
+   :returns {:type "bool" :desc "true if the expiration was set successfully"}
+   :examples ["(kvs/redis-expire url \"session:abc\" 3600) ;; 1 hour"
+              "(kvs/redis-expire url \"cache:data\" 300) ;; 5 minutes"]})
+
+(def __doc__kvs/redis-ttl
+  {:desc "Get the remaining time to live of a key (in seconds)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "integer" :desc "Remaining seconds, -1 if no expiration, -2 if key does not exist"}
+   :examples ["(kvs/redis-ttl url \"session:abc\")"
+              "(def ttl (kvs/redis-ttl url \"cache:data\"))"]})
+
+;; --- Numeric Operations (2 functions) ---
+
+(def __doc__kvs/redis-incr
+  {:desc "Increment the value of a key by 1."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "integer" :desc "Value after increment"}
+   :examples ["(kvs/redis-incr url \"counter\")"
+              "(kvs/redis-incr url \"page-views\")"]})
+
+(def __doc__kvs/redis-decr
+  {:desc "Decrement the value of a key by 1."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "integer" :desc "Value after decrement"}
+   :examples ["(kvs/redis-decr url \"stock\")"
+              "(kvs/redis-decr url \"remaining\")"]})
+
+;; --- List Operations (4 functions) ---
+
+(def __doc__kvs/redis-lpush
+  {:desc "Prepend one element to a list (push to the left)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "value" :type "string|integer|float|bool" :desc "Value to add"}]
+   :returns {:type "integer" :desc "Length of the list"}
+   :examples ["(kvs/redis-lpush url \"queue\" \"task1\")"
+              "(kvs/redis-lpush url \"tasks\" 42)"]})
+
+(def __doc__kvs/redis-rpush
+  {:desc "Append one element to a list (push to the right)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "value" :type "string|integer|float|bool" :desc "Value to add"}]
+   :returns {:type "integer" :desc "Length of the list"}
+   :examples ["(kvs/redis-rpush url \"log\" \"event1\")"
+              "(kvs/redis-rpush url \"history\" \"action\")"]})
+
+(def __doc__kvs/redis-lpop
+  {:desc "Remove and get the first element of a list (pop from the left)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "string|nil" :desc "Value retrieved, or nil if the list is empty"}
+   :examples ["(kvs/redis-lpop url \"queue\")"
+              "(def task (kvs/redis-lpop url \"tasks\"))"]})
+
+(def __doc__kvs/redis-rpop
+  {:desc "Remove and get the last element of a list (pop from the right)."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "string|nil" :desc "Value retrieved, or nil if the list is empty"}
+   :examples ["(kvs/redis-rpop url \"history\")"
+              "(def last (kvs/redis-rpop url \"log\"))"]})
+
+;; --- Hash Operations (3 functions) ---
+
+(def __doc__kvs/redis-hset
+  {:desc "Set the value of a field in a hash."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "field" :type "string" :desc "Field name"}
+            {:name "value" :type "string|integer|float|bool" :desc "Value to set"}]
+   :returns {:type "bool" :desc "true if a new field was created, false if updated"}
+   :examples ["(kvs/redis-hset url \"user:1\" \"name\" \"Alice\")"
+              "(kvs/redis-hset url \"user:1\" \"age\" 30)"]})
+
+(def __doc__kvs/redis-hget
+  {:desc "Get the value of a field from a hash."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "field" :type "string" :desc "Field name"}]
+   :returns {:type "string|nil" :desc "Value, or nil if the field does not exist"}
+   :examples ["(kvs/redis-hget url \"user:1\" \"name\")"
+              "(def age (kvs/redis-hget url \"user:1\" \"age\"))"]})
+
+(def __doc__kvs/redis-hgetall
+  {:desc "Get all fields and values of a hash as a map."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "map" :desc "Map with field names as keywords (e.g., :field)"}
+   :examples ["(kvs/redis-hgetall url \"user:1\")"
+              "(def user (kvs/redis-hgetall url \"user:1\"))"]})
+
+;; --- Set Operations (2 functions) ---
+
+(def __doc__kvs/redis-sadd
+  {:desc "Add a member to a set."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "member" :type "string|integer|float|bool" :desc "Member to add"}]
+   :returns {:type "integer" :desc "Number of members added (0 if already exists)"}
+   :examples ["(kvs/redis-sadd url \"tags\" \"redis\")"
+              "(kvs/redis-sadd url \"tags\" \"cache\")"]})
+
+(def __doc__kvs/redis-smembers
+  {:desc "Get all members of a set."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}]
+   :returns {:type "vector" :desc "Vector of members"}
+   :examples ["(kvs/redis-smembers url \"tags\")"
+              "(def tags (kvs/redis-smembers url \"user:1:tags\"))"]})
+
+;; ========== Usage Examples ==========
+
+;; Cache pattern
+(def cache-example
+  (do
+    (def url "redis://localhost:6379")
+    (kvs/redis-set url "cache:user:1" "{\"name\":\"Alice\"}")
+    (kvs/redis-expire url "cache:user:1" 3600)
+    (kvs/redis-get url "cache:user:1")))
+
+;; Queue pattern (FIFO)
+(def queue-example
+  (do
+    (def url "redis://localhost:6379")
+    (kvs/redis-rpush url "tasks" "task1")
+    (kvs/redis-rpush url "tasks" "task2")
+    (kvs/redis-lpop url "tasks") ;=> "task1"
+    (kvs/redis-lpop url "tasks") ;=> "task2"
+    ))
+
+;; Counter pattern
+(def counter-example
+  (do
+    (def url "redis://localhost:6379")
+    (kvs/redis-set url "page-views" 0)
+    (kvs/redis-incr url "page-views")
+    (kvs/redis-incr url "page-views")
+    (kvs/redis-get url "page-views"))) ;=> "2"
+
+;; User profile pattern (hash)
+(def profile-example
+  (do
+    (def url "redis://localhost:6379")
+    (kvs/redis-hset url "user:1" "name" "Alice")
+    (kvs/redis-hset url "user:1" "email" "alice@example.com")
+    (kvs/redis-hset url "user:1" "age" 30)
+    (kvs/redis-hgetall url "user:1"))) ;=> {:name "Alice" :email "alice@example.com" :age "30"}

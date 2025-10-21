@@ -119,6 +119,12 @@ pub mod postgres;
 #[cfg(feature = "db-mysql")]
 pub mod mysql;
 
+#[cfg(feature = "kvs-redis")]
+pub mod redis;
+
+#[cfg(feature = "kvs-redis")]
+pub mod kvs;
+
 #[cfg(feature = "http-server")]
 pub mod server;
 
@@ -259,6 +265,11 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "db-mysql")]
     register_functions(&mut env_write, mysql::FUNCTIONS);
+
+    // KVS統一インターフェース（kvs/*）のみ公開
+    // redis::FUNCTIONSは内部実装用で、統一インターフェースから外れたRedis固有機能が必要な場合のみ追加
+    #[cfg(feature = "kvs-redis")]
+    register_functions(&mut env_write, kvs::FUNCTIONS);
 
     #[cfg(feature = "auth-jwt")]
     register_functions(&mut env_write, jwt::FUNCTIONS);

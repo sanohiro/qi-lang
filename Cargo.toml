@@ -29,6 +29,9 @@ default = [
     # "db-postgres",  # TODO: Phase 4で実装
     # "db-mysql",     # TODO: Phase 4で実装
 
+    # KVS（Key-Value Store）
+    "kvs-redis",
+
     # Web通信
     "http-client",
     "http-server",
@@ -83,6 +86,10 @@ db-mysql = ["dep:mysql_async", "dep:tokio", "format-json"]  # MySQL対応（非�
 # db-odbc = ["dep:odbc-api"]  # Optional, C依存
 # db-duckdb = ["dep:duckdb"]  # Optional, C++依存、サイズ巨大
 
+kvs-redis = ["dep:redis", "dep:tokio", "format-json"]  # Redis対応（非同期）
+# kvs-memcached = ["dep:memcache"]  # TODO: Memcached対応（将来）
+# kvs-dynamodb = ["dep:rusoto_dynamodb"]  # TODO: DynamoDB対応（将来、C依存）
+
 http-client = ["dep:reqwest", "format-json", "string-encoding", "util-zip"]  # JSON、base64、gzip圧縮が必要
 http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio", "dep:tokio-util", "dep:tokio-stream", "format-json", "string-encoding", "util-zip"]  # JSON、URL/base64、gzip圧縮、ストリーミングが必要
 
@@ -134,6 +141,7 @@ toml = "0.8"  # qi.tomlの読み書き用
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 tokio-postgres = { version = "0.7", optional = true }
 mysql_async = { version = "0.34", optional = true }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 # odbc-api = { version = "8.1", optional = true }  # Optional, C依存
 
 reqwest = { version = "0.12", features = ["json", "blocking", "gzip", "deflate", "brotli"], optional = true }

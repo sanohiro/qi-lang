@@ -1,14 +1,18 @@
-# データベース
+# データベース & KVS
 
-**PostgreSQLデータベース接続とクエリ実行**
+**データベース（PostgreSQL/MySQL/SQLite）とKVS（Redis）の統一インターフェース**
 
-Qiは、PostgreSQLデータベースへの接続とクエリ実行機能を標準ライブラリとして提供します。
+Qiは、リレーショナルデータベースとキーバリューストアへの統一的なアクセスを提供します。
 
 ---
 
 ## 目次
 
 - [概要](#概要)
+- [KVS（Key-Value Store）](#kvskey-value-store)
+  - [kvs/connect - 接続](#kvsconnect---接続)
+  - [基本操作](#基本操作)
+  - [実用例](#kvs実用例)
 - [PostgreSQL](#postgresql)
   - [db/pg-query - クエリ実行](#dbpg-query---クエリ実行)
   - [db/pg-exec - コマンド実行](#dbpg-exec---コマンド実行)
@@ -21,6 +25,13 @@ Qiは、PostgreSQLデータベースへの接続とクエリ実行機能を標�
 
 ### 提供機能
 
+**KVS（Key-Value Store）**:
+- **Redis**: キャッシュ、セッション管理、キュー
+  - 統一インターフェース（`kvs/*`）
+  - 基本操作、数値操作、リスト、ハッシュ、セット
+  - バックエンド自動判別（URL解析）
+
+**データベース**:
 - **PostgreSQL**: 非同期PostgreSQL接続
   - クエリ実行（SELECT）
   - コマンド実行（INSERT/UPDATE/DELETE）
@@ -31,15 +42,351 @@ Qiは、PostgreSQLデータベースへの接続とクエリ実行機能を標�
 
 ```toml
 # Cargo.toml
-features = ["db-postgres"]
+features = ["kvs-redis", "db-postgres"]
 ```
 
 デフォルトで有効です。
 
 ### 依存クレート
 
+**KVS**:
+- **redis** (v0.27) - Pure Rust Redisクライアント
+- **tokio** - 非同期ランタイム
+
+**データベース**:
 - **tokio-postgres** (v0.7) - Pure Rust PostgreSQLクライアント
 - **tokio** - 非同期ランタイム（同期APIでラップ）
+
+---
+
+## KVS（Key-Value Store）
+
+### 統一インターフェース設計
+
+データベースの`db/connect`と同じパターンで、KVSバックエンドを透過的に扱えます。
+
+```qi
+;; バックエンドはURLから自動判別
+(def kvs (kvs/connect "redis://localhost:6379"))
+
+;; 以降のコードはバックエンド非依存
+(kvs/set kvs "key" "value")
+(kvs/get kvs "key")
+
+;; バックエンドを変更する場合も、接続URLだけ変えればOK
+;; (def kvs (kvs/connect "memcached://localhost:11211"))  ;; 将来対応
+```
+
+---
+
+### kvs/connect - 接続
+
+**KVSに接続し、接続オブジェクトを返します。**
+
+```qi
+(kvs/connect url)
+```
+
+#### 引数
+
+- `url`: 文字列（接続URL）
+  - Redis: `"redis://localhost:6379"`
+  - Memcached: `"memcached://localhost:11211"` （将来対応）
+
+#### 戻り値
+
+- 接続ID（文字列）
+
+#### 使用例
+
+```qi
+;; Redis接続
+(def kvs (kvs/connect "redis://localhost:6379"))
+
+;; 認証付きRedis
+(def kvs (kvs/connect "redis://:password@localhost:6379"))
+```
+
+---
+
+### 基本操作
+
+#### kvs/set - 値の設定
+
+```qi
+(kvs/set conn key value)
+```
+
+**例**:
+```qi
+(kvs/set kvs "user:1" "Alice")
+;; => "OK"
+
+(kvs/set kvs "counter" 42)
+;; => "OK"
+```
+
+#### kvs/get - 値の取得
+
+```qi
+(kvs/get conn key)
+```
+
+**例**:
+```qi
+(kvs/get kvs "user:1")
+;; => "Alice"
+
+(kvs/get kvs "nonexistent")
+;; => nil
+```
+
+#### kvs/delete - キーの削除
+
+```qi
+(kvs/delete conn key)
+```
+
+**例**:
+```qi
+(kvs/delete kvs "user:1")
+;; => 1  ;; 削除されたキー数
+```
+
+#### kvs/exists? - 存在確認
+
+```qi
+(kvs/exists? conn key)
+```
+
+**例**:
+```qi
+(kvs/exists? kvs "user:1")
+;; => true
+```
+
+#### kvs/keys - パターンマッチ
+
+```qi
+(kvs/keys conn pattern)
+```
+
+**例**:
+```qi
+(kvs/keys kvs "user:*")
+;; => ["user:1" "user:2" "user:3"]
+```
+
+#### kvs/expire - 有効期限設定
+
+```qi
+(kvs/expire conn key seconds)
+```
+
+**例**:
+```qi
+(kvs/expire kvs "session:abc" 3600)  ;; 1時間
+;; => true
+```
+
+#### kvs/ttl - 残り時間取得
+
+```qi
+(kvs/ttl conn key)
+```
+
+**例**:
+```qi
+(kvs/ttl kvs "session:abc")
+;; => 3599  ;; -1: 期限なし、-2: 存在しない
+```
+
+---
+
+### 数値操作
+
+#### kvs/incr - インクリメント
+
+```qi
+(kvs/incr conn key)
+```
+
+**例**:
+```qi
+(kvs/set kvs "page-views" 0)
+(kvs/incr kvs "page-views")  ;; => 1
+(kvs/incr kvs "page-views")  ;; => 2
+```
+
+#### kvs/decr - デクリメント
+
+```qi
+(kvs/decr conn key)
+```
+
+---
+
+### リスト操作
+
+#### kvs/lpush / kvs/rpush - 要素追加
+
+```qi
+(kvs/lpush conn key value)  ;; 左端（先頭）に追加
+(kvs/rpush conn key value)  ;; 右端（末尾）に追加
+```
+
+**例（キュー - FIFO）**:
+```qi
+(kvs/rpush kvs "tasks" "task1")
+(kvs/rpush kvs "tasks" "task2")
+(kvs/lpop kvs "tasks")  ;; => "task1"
+(kvs/lpop kvs "tasks")  ;; => "task2"
+```
+
+**例（スタック - LIFO）**:
+```qi
+(kvs/lpush kvs "stack" "item1")
+(kvs/lpush kvs "stack" "item2")
+(kvs/lpop kvs "stack")  ;; => "item2"
+```
+
+#### kvs/lpop / kvs/rpop - 要素取得・削除
+
+```qi
+(kvs/lpop conn key)  ;; 左端から取得
+(kvs/rpop conn key)  ;; 右端から取得
+```
+
+---
+
+### ハッシュ操作
+
+#### kvs/hset - フィールド設定
+
+```qi
+(kvs/hset conn key field value)
+```
+
+**例**:
+```qi
+(kvs/hset kvs "user:1" "name" "Alice")
+(kvs/hset kvs "user:1" "email" "alice@example.com")
+```
+
+#### kvs/hget - フィールド取得
+
+```qi
+(kvs/hget conn key field)
+```
+
+**例**:
+```qi
+(kvs/hget kvs "user:1" "name")
+;; => "Alice"
+```
+
+#### kvs/hgetall - ハッシュ全体取得
+
+```qi
+(kvs/hgetall conn key)
+```
+
+**例**:
+```qi
+(kvs/hgetall kvs "user:1")
+;; => {:name "Alice" :email "alice@example.com"}
+```
+
+---
+
+### セット操作
+
+#### kvs/sadd - メンバー追加
+
+```qi
+(kvs/sadd conn key member)
+```
+
+**例**:
+```qi
+(kvs/sadd kvs "tags" "redis")
+(kvs/sadd kvs "tags" "cache")
+```
+
+#### kvs/smembers - 全メンバー取得
+
+```qi
+(kvs/smembers conn key)
+```
+
+**例**:
+```qi
+(kvs/smembers kvs "tags")
+;; => ["redis" "cache" "nosql"]
+```
+
+---
+
+### KVS実用例
+
+#### セッションキャッシュ
+
+```qi
+(def kvs (kvs/connect "redis://localhost:6379"))
+
+(defn create-session [user-id]
+  (def session-id (str "session:" user-id))
+  (def session-data (json/stringify {:user_id user-id :created_at (now)}))
+  (kvs/set kvs session-id session-data)
+  (kvs/expire kvs session-id 1800)  ;; 30分
+  session-id)
+
+(defn get-session [session-id]
+  (kvs/get kvs session-id)
+  |> (fn [data]
+       (if (nil? data)
+         {:error "Session not found"}
+         (json/parse data))))
+
+;; 使用例
+(def sid (create-session 42))
+(get-session sid)
+;; => {:user_id 42 :created_at "2025-01-22T..."}
+```
+
+#### カウンター（ページビュー）
+
+```qi
+(defn track-page-view [page-url]
+  (kvs/incr kvs (str "page-views:" page-url)))
+
+(defn get-page-views [page-url]
+  (kvs/get kvs (str "page-views:" page-url)))
+
+;; 使用例
+(track-page-view "/home")  ;; => 1
+(track-page-view "/home")  ;; => 2
+(get-page-views "/home")   ;; => "2"
+```
+
+#### タスクキュー
+
+```qi
+(defn enqueue-task [task-data]
+  (kvs/rpush kvs "task-queue" (json/stringify task-data)))
+
+(defn dequeue-task []
+  (kvs/lpop kvs "task-queue")
+  |> (fn [data]
+       (if (nil? data)
+         nil
+         (json/parse data))))
+
+;; 使用例
+(enqueue-task {:type "send-email" :to "user@example.com"})
+(dequeue-task)
+;; => {:type "send-email" :to "user@example.com"}
+```
 
 ---
 

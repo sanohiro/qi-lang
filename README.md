@@ -13,7 +13,8 @@
 - **並行・並列**: goroutine風の並行処理とチャネル、並列パイプライン
 - **Web開発**: JSON/HTTP対応、Railway Pipelineでエラーハンドリング
 - **認証・認可**: JWT認証、Argon2パスワードハッシュ、認証ミドルウェア
-- **データベース**: PostgreSQL対応（パラメータ化クエリ、トランザクション）
+- **データベース**: PostgreSQL/MySQL/SQLite対応（統一インターフェース）
+- **KVS**: Redis対応（統一インターフェース、将来Memcached/InMemory対応予定）
 - **f-string**: 文字列補間と複数行文字列（`"""..."""`）
 - **多言語対応**: 英語・日本語のエラーメッセージ（`QI_LANG=ja`）
 
