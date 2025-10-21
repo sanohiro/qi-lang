@@ -119,6 +119,9 @@ pub mod server;
 #[cfg(feature = "auth-jwt")]
 pub mod jwt;
 
+#[cfg(feature = "auth-password")]
+pub mod password;
+
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
 use parking_lot::RwLock;
@@ -247,6 +250,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "auth-jwt")]
     register_functions(&mut env_write, jwt::FUNCTIONS);
+
+    #[cfg(feature = "auth-password")]
+    register_functions(&mut env_write, password::FUNCTIONS);
 }
 
 // ========================================

@@ -110,7 +110,7 @@ std-stats = []  # Pure Rust自前実装
 std-set = []    # Pure Rust自前実装
 
 auth-jwt = ["dep:jsonwebtoken", "format-json"]  # JWT生成・検証（JSON依存）
-auth-password = ["dep:argon2"]  # パスワードハッシュ（argon2、bcryptより推奨）
+auth-password = ["dep:argon2", "dep:rand_core"]  # パスワードハッシュ（argon2、bcryptより推奨）
 
 # =====================================
 # 依存関係
@@ -168,6 +168,7 @@ rand = { version = "0.9", optional = true }
 
 jsonwebtoken = { version = "9.2", optional = true }
 argon2 = { version = "0.5", optional = true }
+rand_core = { version = "0.6", features = ["getrandom"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

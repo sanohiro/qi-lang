@@ -196,6 +196,9 @@ pub enum MsgKey {
     InvalidFloat,     // {0}: invalid float value
     InvalidNumber,    // {0}: invalid number value
 
+    // パスワードハッシュエラー
+    PasswordHashError, // {0}: password hash error: {1}
+
     // 警告
     RedefineBuiltin,  // warning: redefining builtin function: {0} ({1})
     RedefineFunction, // warning: redefining function: {0}
@@ -661,6 +664,8 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidAlgorithm, "{0}: invalid algorithm '{1}' (supported: {2})"),
         (InvalidFloat, "{0}: invalid float value"),
         (InvalidNumber, "{0}: invalid number value"),
+        // パスワードハッシュエラー
+        (PasswordHashError, "{0}: password hash error: {1}"),
         // 警告
         (
             RedefineBuiltin,
@@ -1228,6 +1233,8 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidAlgorithm, "{0}: 不正なアルゴリズム'{1}'（サポート: {2}）"),
         (InvalidFloat, "{0}: 不正な浮動小数点数値です"),
         (InvalidNumber, "{0}: 不正な数値です"),
+        // パスワードハッシュエラー
+        (PasswordHashError, "{0}: パスワードハッシュエラー: {1}"),
         // 警告
         (RedefineBuiltin, "警告: ビルトイン関数'{0}'を再定義しています ({1})"),
         (RedefineFunction, "警告: 関数'{0}'を再定義しています"),
