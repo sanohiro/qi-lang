@@ -113,6 +113,9 @@ pub mod db;
 #[cfg(feature = "db-sqlite")]
 pub mod sqlite;
 
+#[cfg(feature = "db-postgres")]
+pub mod postgres;
+
 #[cfg(feature = "http-server")]
 pub mod server;
 
@@ -247,6 +250,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "db-sqlite")]
     register_functions(&mut env_write, db::FUNCTIONS);
+
+    #[cfg(feature = "db-postgres")]
+    register_functions(&mut env_write, postgres::FUNCTIONS);
 
     #[cfg(feature = "auth-jwt")]
     register_functions(&mut env_write, jwt::FUNCTIONS);

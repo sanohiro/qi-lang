@@ -78,7 +78,7 @@ data-processing = ["db-sqlite", "format-json", "format-csv", "io-glob"]  # list-
 
 # 個別機能フラグ
 db-sqlite = ["dep:rusqlite", "string-encoding"]  # BLOBデータのbase64エンコードにstring-encodingが必要
-# db-postgres = ["dep:tokio-postgres", "dep:postgres-types"]  # TODO: Phase 4
+db-postgres = ["dep:tokio-postgres", "dep:tokio", "format-json"]  # PostgreSQL対応（非同期）
 # db-mysql = ["dep:mysql_async"]  # TODO: Phase 4
 # db-odbc = ["dep:odbc-api"]  # Optional, C依存
 # db-duckdb = ["dep:duckdb"]  # Optional, C++依存、サイズ巨大
@@ -132,8 +132,7 @@ toml = "0.8"  # qi.tomlの読み書き用
 
 # Optional（feature-gated）
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }
-# tokio-postgres = { version = "0.7", optional = true }  # TODO: Phase 4
-# postgres-types = { version = "0.2", optional = true }  # TODO: Phase 4
+tokio-postgres = { version = "0.7", optional = true }
 # mysql_async = { version = "0.34", optional = true }  # TODO: Phase 4
 # odbc-api = { version = "8.1", optional = true }  # Optional, C依存
 
