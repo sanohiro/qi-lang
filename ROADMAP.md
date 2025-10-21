@@ -8,15 +8,6 @@
 
 ## 📋 優先度高（次期実装予定）
 
-### フェーズ6: 統計・高度な処理
-
-```qi
-;; 基本統計関数
-(mean [1 2 3 4 5])      ;; => 3.0
-(median [1 2 3 4 5])    ;; => 3.0
-(stddev [1 2 3 4 5])    ;; => 1.414...
-```
-
 ### APIサーバー・アプリケーション開発機能
 
 #### 1. HTTPサーバー拡張 🔥
@@ -366,6 +357,20 @@ finished in 0.05s
 - ✅ ZIP圧縮・解凍モジュール（`zip/create`, `zip/extract`, `zip/list`, `zip/add`, `zip/gzip`, `zip/gunzip`）
 - ✅ コマンドライン引数パースモジュール（`args/all`, `args/get`, `args/parse`, `args/count`）
 
+### フェーズ6: 統計・データ分析
+
+- ✅ 基本統計関数（`stats/mean`, `stats/median`, `stats/mode`）
+- ✅ 分散・標準偏差（`stats/variance`, `stats/stddev`）
+- ✅ パーセンタイル（`stats/percentile`）
+
+**実装済み機能例**:
+```qi
+(stats/mean [1 2 3 4 5])        ;; => 3.0
+(stats/median [1 2 3 4 5])      ;; => 3.0
+(stats/stddev [1 2 3 4 5])      ;; => 1.414...
+(stats/percentile [1 2 3 4 5] 95)  ;; => 4.8
+```
+
 ---
 
 ## 📚 関連ドキュメント
@@ -379,4 +384,5 @@ finished in 0.05s
 
 ## 📝 ドキュメント更新履歴
 
+- 2025-10-21: フェーズ6（統計・データ分析）を完了フェーズに移動
 - 2025-01-XX: 初版作成（SPEC.mdから未実装機能を抽出）
