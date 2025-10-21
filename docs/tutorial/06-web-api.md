@@ -360,6 +360,69 @@ curl -X DELETE http://localhost:3000/api/users/1
 (server/serve 3000 app)
 ```
 
+### 認証ミドルウェア（JWT）
+
+JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
+
+```qi
+;; Authorizationヘッダーからトークンを抽出
+(defn extract-auth-token [request]
+  (let [auth-header (get-in request [:headers :authorization])]
+    (if (nil? auth-header)
+      nil
+      (if (string/starts-with? auth-header "Bearer ")
+        (string/replace-first auth-header "Bearer " "")
+        nil))))
+
+;; 認証が必要なエンドポイント用ミドルウェア
+(defn require-auth [handler]
+  (fn [request]
+    (let [token (extract-auth-token request)]
+      (if (nil? token)
+        {:status 401
+         :headers {:content-type "application/json"}
+         :body (json/stringify {:error "Missing authorization token"})}
+        (match (jwt/verify token "my-secret-key")
+          {:ok payload} -> (handler (assoc request :user payload))
+          {:error _} -> {:status 401
+                        :headers {:content-type "application/json"}
+                        :body (json/stringify {:error "Invalid token"})})))))
+
+;; 保護されたエンドポイント
+(defn handle-profile [request]
+  (let [user (get request :user)]
+    (server/json {:user user :message "This is a protected resource"})))
+
+;; ルーティング
+(defn handler [req]
+  (match [(get req :method) (get req :path)]
+    ["POST" "/api/login"] -> (handle-login req)
+    ["GET" "/api/profile"] -> ((require-auth handle-profile) req)
+    _ -> (server/response 404 "Not Found")))
+
+(server/serve 3000 handler)
+```
+
+**認証フローの例**:
+```bash
+# 1. ログインしてトークンを取得
+curl -X POST http://localhost:3000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"secret123"}'
+# => {"token":"eyJ0eXAi..."}
+
+# 2. トークンを使って保護されたリソースにアクセス
+curl http://localhost:3000/api/profile \
+  -H "Authorization: Bearer eyJ0eXAi..."
+# => {"user":{"user_id":1,"username":"alice"},"message":"This is a protected resource"}
+
+# 3. トークンなしでアクセス（401エラー）
+curl http://localhost:3000/api/profile
+# => {"error":"Missing authorization token"}
+```
+
+**詳細な実装例**: `examples/17-jwt-auth.qi` および `examples/19-auth-api.qi` を参照してください。
+
 ---
 
 ## 実用例: シンプルなブログAPI
@@ -504,6 +567,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 - ✅ JSON APIの構築
 - ✅ CRUDエンドポイントの実装
 - ✅ ミドルウェアパターン
+- ✅ JWT認証ミドルウェア
 - ✅ エラーハンドリング
 
 ---
