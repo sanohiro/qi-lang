@@ -7,12 +7,12 @@
    :params [{:name "payload" :type "map" :desc "トークンに含めるペイロード（マップ）"}
             {:name "secret" :type "string" :desc "署名用の秘密鍵"}
             {:name "algorithm" :type "string" :desc "署名アルゴリズム（省略可、デフォルト: \"HS256\"）"}
-            {:name "exp" :type "integer" :desc "有効期限（秒、省略可）"}]
+            {:name "exp" :type "integer" :desc "有効期限（秒数、省略可）"}]
    :returns {:type "map" :desc "Result型マップ {:ok \"トークン\"} または {:error \"メッセージ\"}"}
    :examples ["(jwt/sign {:user_id 123 :name \"Alice\"} \"my-secret\")"
               "(jwt/sign {:role \"admin\"} \"secret\" \"HS384\")"
               "(jwt/sign {:user_id 42} \"secret\" \"HS256\" 3600)"]
-   :note "サポートされるアルゴリズム: HS256, HS384, HS512"})
+   :note "サポートされるアルゴリズム: HS256, HS384, HS512。有効期限を指定すると現在時刻にexpクレームが追加されます。"})
 
 (def __doc__jwt/verify
   {:desc "JWTトークンを検証し、ペイロードを取得します。"

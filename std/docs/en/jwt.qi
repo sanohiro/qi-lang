@@ -12,7 +12,7 @@
    :examples ["(jwt/sign {:user_id 123 :name \"Alice\"} \"my-secret\")"
               "(jwt/sign {:role \"admin\"} \"secret\" \"HS384\")"
               "(jwt/sign {:user_id 42} \"secret\" \"HS256\" 3600)"]
-   :note "Supported algorithms: HS256, HS384, HS512"})
+   :note "Supported algorithms: HS256, HS384, HS512. When exp is specified, an exp claim is added with current time + seconds."})
 
 (def __doc__jwt/verify
   {:desc "Verifies a JWT token and retrieves the payload."

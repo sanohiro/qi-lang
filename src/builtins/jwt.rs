@@ -15,11 +15,12 @@ use serde_json::Value as JsonValue;
 /// - payload: マップ（クレーム）
 /// - secret: シークレットキー（文字列）
 /// - algorithm: アルゴリズム（オプション、デフォルト: "HS256"）
+/// - exp: 有効期限（秒数、オプション）
 ///
 /// 戻り値: Result型マップ {:ok token} または {:error message}
 pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 || args.len() > 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/sign", "2-3"]));
+    if args.len() < 2 || args.len() > 4 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/sign", "2-4"]));
     }
 
     // ペイロード（マップ）
@@ -35,7 +36,7 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     };
 
     // アルゴリズム（オプション、デフォルト: HS256）
-    let algorithm = if args.len() == 3 {
+    let algorithm = if args.len() >= 3 {
         match &args[2] {
             Value::String(s) => parse_algorithm(s.as_str())?,
             _ => {
@@ -49,8 +50,35 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
         Algorithm::HS256
     };
 
+    // 有効期限（オプション、秒数）
+    let exp_seconds = if args.len() == 4 {
+        match &args[3] {
+            Value::Integer(i) => Some(*i),
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["jwt/sign (exp)", "integers"],
+                ))
+            }
+        }
+    } else {
+        None
+    };
+
     // QiのマップをJSON Valueに変換
-    let claims = qi_map_to_json(payload)?;
+    let mut claims = qi_map_to_json(payload)?;
+
+    // 有効期限を追加
+    if let Some(exp_secs) = exp_seconds {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let exp = now + (exp_secs as u64);
+        if let JsonValue::Object(ref mut map) = claims {
+            map.insert("exp".to_string(), JsonValue::Number(exp.into()));
+        }
+    }
 
     // JWTトークン生成
     let header = Header::new(algorithm);

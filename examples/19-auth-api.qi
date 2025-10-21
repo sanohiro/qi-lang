@@ -54,13 +54,14 @@
 ;; ========================================
 ;; 3. 認証関数
 ;; ========================================
-;; JWTトークンを生成
+;; JWTトークンを生成（有効期限1時間）
 (defn generate-token [user]
   (jwt/sign
     {:user_id (get user :id)
      :username (get user :username)}
     jwt-secret
-    "HS256"))
+    "HS256"
+    3600))
 ;; JWTトークンを検証
 (defn verify-token [token]
   (jwt/verify token jwt-secret))

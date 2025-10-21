@@ -33,12 +33,13 @@
     (if (nil? user)
       {:error "User not found"}
       (if (password/verify password (get user :password_hash))
-        ;; パスワードが正しい場合、JWTトークンを生成
+        ;; パスワードが正しい場合、JWTトークンを生成（有効期限1時間）
         (jwt/sign
           {:user_id (get user :id)
            :username (get user :username)}
           "my-secret-key"
-          "HS256")
+          "HS256"
+          3600)
         {:error "Invalid password"}))))
 
 ;; ========================================
@@ -81,30 +82,35 @@
                    (println "  Status:" (get resource :status))
                    (println "  Body:" (get resource :body))
 
-                   ;; 注: jwt/decodeは現在の実装でexpクレームが必要なため、スキップ
-                   )
+                   ;; トークンをデコード（デバッグ用）
+                   (println "\n3. トークンをデコード（デバッグ）:")
+                   (match (jwt/decode token)
+                     {:ok data} -> (do
+                                    (println "  Header:" (get data :header))
+                                    (println "  Payload:" (get data :payload)))
+                     {:error e} -> (println "  デコードエラー:" e)))
   {:error e} -> (println "  ✗ ログイン失敗:" e))
 
 ;; ログイン試行（パスワード間違い）
-(println "\n3. 間違ったパスワードでログイン:")
+(println "\n4. 間違ったパスワードでログイン:")
 (match (login "alice" "wrong-password")
   {:ok _} -> (println "  ✓ ログイン成功")
   {:error e} -> (println "  ✗ ログイン失敗:" e))
 
 ;; ログイン試行（ユーザーが存在しない）
-(println "\n4. 存在しないユーザーでログイン:")
+(println "\n5. 存在しないユーザーでログイン:")
 (match (login "charlie" "password")
   {:ok _} -> (println "  ✓ ログイン成功")
   {:error e} -> (println "  ✗ ログイン失敗:" e))
 
 ;; 無効なトークンでアクセス
-(println "\n5. 無効なトークンでリソースにアクセス:")
+(println "\n6. 無効なトークンでリソースにアクセス:")
 (def invalid-resource (get-protected-resource "invalid-token"))
 (println "  Status:" (get invalid-resource :status))
 (println "  Body:" (get invalid-resource :body))
 
 ;; ========================================
-;; 6. パスワードハッシュのテスト
+;; 7. パスワードハッシュのテスト
 ;; ========================================
 
 (println "\n=== パスワードハッシュのテスト ===\n")
@@ -123,7 +129,7 @@
 (println "  間違ったパスワード:" (password/verify "wrong" hash1))  ;; => false
 
 ;; ========================================
-;; 7. まとめ
+;; 8. まとめ
 ;; ========================================
 
 (println "\n=== まとめ ===")
