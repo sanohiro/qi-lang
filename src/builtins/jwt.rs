@@ -1,0 +1,379 @@
+//! JWT（JSON Web Token）認証機能
+//!
+//! このモジュールは `auth-jwt` feature でコンパイルされます。
+
+#![cfg(feature = "auth-jwt")]
+
+use crate::i18n::{fmt_msg, MsgKey};
+use crate::value::Value;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use serde_json::Value as JsonValue;
+
+/// jwt/sign - JWTトークンを生成
+///
+/// 引数:
+/// - payload: マップ（クレーム）
+/// - secret: シークレットキー（文字列）
+/// - algorithm: アルゴリズム（オプション、デフォルト: "HS256"）
+///
+/// 戻り値: Result型マップ {:ok token} または {:error message}
+pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/sign", "2-3"]));
+    }
+
+    // ペイロード（マップ）
+    let payload = match &args[0] {
+        Value::Map(m) => m,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["jwt/sign (payload)", "maps"])),
+    };
+
+    // シークレットキー
+    let secret = match &args[1] {
+        Value::String(s) => s.as_str(),
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["jwt/sign (secret)", "strings"])),
+    };
+
+    // アルゴリズム（オプション、デフォルト: HS256）
+    let algorithm = if args.len() == 3 {
+        match &args[2] {
+            Value::String(s) => parse_algorithm(s.as_str())?,
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["jwt/sign (algorithm)", "strings"],
+                ))
+            }
+        }
+    } else {
+        Algorithm::HS256
+    };
+
+    // QiのマップをJSON Valueに変換
+    let claims = qi_map_to_json(payload)?;
+
+    // JWTトークン生成
+    let header = Header::new(algorithm);
+    let encoding_key = EncodingKey::from_secret(secret.as_bytes());
+
+    match encode(&header, &claims, &encoding_key) {
+        Ok(token) => {
+            let mut result = im::HashMap::new();
+            result.insert(":ok".to_string(), Value::String(token));
+            Ok(Value::Map(result))
+        }
+        Err(e) => Ok(Value::error(e.to_string())),
+    }
+}
+
+/// jwt/verify - JWTトークンを検証してペイロードを取得
+///
+/// 引数:
+/// - token: JWTトークン（文字列）
+/// - secret: シークレットキー（文字列）
+/// - algorithm: アルゴリズム（オプション、デフォルト: "HS256"）
+///
+/// 戻り値: Result型マップ {:ok payload} または {:error message}
+pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["jwt/verify", "2-3"]));
+    }
+
+    // トークン
+    let token = match &args[0] {
+        Value::String(s) => s.as_str(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["jwt/verify (token)", "strings"],
+            ))
+        }
+    };
+
+    // シークレットキー
+    let secret = match &args[1] {
+        Value::String(s) => s.as_str(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["jwt/verify (secret)", "strings"],
+            ))
+        }
+    };
+
+    // アルゴリズム（オプション、デフォルト: HS256）
+    let algorithm = if args.len() == 3 {
+        match &args[2] {
+            Value::String(s) => parse_algorithm(s.as_str())?,
+            _ => {
+                return Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["jwt/verify (algorithm)", "strings"],
+                ))
+            }
+        }
+    } else {
+        Algorithm::HS256
+    };
+
+    // JWTトークン検証
+    let decoding_key = DecodingKey::from_secret(secret.as_bytes());
+    let mut validation = Validation::new(algorithm);
+    validation.validate_exp = false; // 有効期限チェックはデフォルトで無効（expクレームがオプション）
+    validation.required_spec_claims.clear(); // 必須クレームをクリア
+
+    match decode::<JsonValue>(token, &decoding_key, &validation) {
+        Ok(token_data) => {
+            let payload = json_to_qi_value(&token_data.claims)?;
+            let mut result = im::HashMap::new();
+            result.insert(":ok".to_string(), payload);
+            Ok(Value::Map(result))
+        }
+        Err(e) => Ok(Value::error(e.to_string())),
+    }
+}
+
+/// jwt/decode - JWTトークンをデコード（検証なし）
+///
+/// 引数:
+/// - token: JWTトークン（文字列）
+///
+/// 戻り値: Result型マップ {:ok {:header ... :payload ...}} または {:error message}
+pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["jwt/decode"]));
+    }
+
+    // トークン
+    let token = match &args[0] {
+        Value::String(s) => s.as_str(),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["jwt/decode (token)", "strings"],
+            ))
+        }
+    };
+
+    // デコード（検証なし）
+    let mut validation = Validation::default();
+    validation.insecure_disable_signature_validation();
+    validation.validate_exp = false;
+
+    match decode::<JsonValue>(token, &DecodingKey::from_secret(&[]), &validation) {
+        Ok(token_data) => {
+            let header = json_to_qi_value(&serde_json::to_value(&token_data.header).unwrap())?;
+            let payload = json_to_qi_value(&token_data.claims)?;
+
+            let mut result_map = im::HashMap::new();
+            result_map.insert(":header".to_string(), header);
+            result_map.insert(":payload".to_string(), payload);
+
+            let mut result = im::HashMap::new();
+            result.insert(":ok".to_string(), Value::Map(result_map));
+            Ok(Value::Map(result))
+        }
+        Err(e) => Ok(Value::error(e.to_string())),
+    }
+}
+
+// ========================================
+// ヘルパー関数
+// ========================================
+
+/// アルゴリズム名をパース
+fn parse_algorithm(alg: &str) -> Result<Algorithm, String> {
+    match alg.to_uppercase().as_str() {
+        "HS256" => Ok(Algorithm::HS256),
+        "HS384" => Ok(Algorithm::HS384),
+        "HS512" => Ok(Algorithm::HS512),
+        "RS256" => Ok(Algorithm::RS256),
+        "RS384" => Ok(Algorithm::RS384),
+        "RS512" => Ok(Algorithm::RS512),
+        "ES256" => Ok(Algorithm::ES256),
+        "ES384" => Ok(Algorithm::ES384),
+        "PS256" => Ok(Algorithm::PS256),
+        "PS384" => Ok(Algorithm::PS384),
+        "PS512" => Ok(Algorithm::PS512),
+        "EDDSA" => Ok(Algorithm::EdDSA),
+        _ => Err(fmt_msg(
+            MsgKey::InvalidAlgorithm,
+            &["jwt", alg, "HS256, HS384, HS512, RS256, etc."],
+        )),
+    }
+}
+
+/// QiのマップをJSON Valueに変換
+fn qi_map_to_json(map: &im::HashMap<String, Value>) -> Result<JsonValue, String> {
+    let mut json_map = serde_json::Map::new();
+
+    for (key, value) in map.iter() {
+        // キーワード形式（":name"）を通常の文字列（"name"）に変換
+        let key_str = if let Some(stripped) = key.strip_prefix(':') {
+            stripped.to_string()
+        } else if let Some(stripped) = key.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+            stripped.to_string()
+        } else {
+            key.clone()
+        };
+
+        let json_value = qi_value_to_json(value)?;
+        json_map.insert(key_str, json_value);
+    }
+
+    Ok(JsonValue::Object(json_map))
+}
+
+/// QiのValueをJSON Valueに変換
+fn qi_value_to_json(value: &Value) -> Result<JsonValue, String> {
+    match value {
+        Value::Nil => Ok(JsonValue::Null),
+        Value::Bool(b) => Ok(JsonValue::Bool(*b)),
+        Value::Integer(i) => Ok(JsonValue::Number((*i).into())),
+        Value::Float(f) => serde_json::Number::from_f64(*f)
+            .map(JsonValue::Number)
+            .ok_or_else(|| fmt_msg(MsgKey::InvalidFloat, &["jwt/sign"])),
+        Value::String(s) | Value::Keyword(s) => Ok(JsonValue::String(s.clone())),
+        Value::Vector(items) | Value::List(items) => {
+            let json_items: Result<Vec<JsonValue>, String> =
+                items.iter().map(qi_value_to_json).collect();
+            Ok(JsonValue::Array(json_items?))
+        }
+        Value::Map(m) => qi_map_to_json(m),
+        _ => Err(fmt_msg(
+            MsgKey::TypeOnly,
+            &["jwt/sign (values)", "primitives, vectors, or maps"],
+        )),
+    }
+}
+
+/// JSON ValueをQiのValueに変換
+fn json_to_qi_value(json: &JsonValue) -> Result<Value, String> {
+    match json {
+        JsonValue::Null => Ok(Value::Nil),
+        JsonValue::Bool(b) => Ok(Value::Bool(*b)),
+        JsonValue::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Ok(Value::Integer(i))
+            } else if let Some(f) = n.as_f64() {
+                Ok(Value::Float(f))
+            } else {
+                Err(fmt_msg(MsgKey::InvalidNumber, &["jwt/verify"]))
+            }
+        }
+        JsonValue::String(s) => Ok(Value::String(s.clone())),
+        JsonValue::Array(arr) => {
+            let items: Result<Vec<Value>, String> = arr.iter().map(json_to_qi_value).collect();
+            Ok(Value::Vector(items?.into()))
+        }
+        JsonValue::Object(obj) => {
+            let mut map = im::HashMap::new();
+            for (k, v) in obj.iter() {
+                // JSONキーをキーワード形式（":name"）に変換
+                let key = format!(":{}", k);
+                let value = json_to_qi_value(v)?;
+                map.insert(key, value);
+            }
+            Ok(Value::Map(map))
+        }
+    }
+}
+
+// ========================================
+// 関数登録テーブル
+// ========================================
+
+/// 登録すべき関数のリスト
+/// @qi-doc:category auth/jwt
+/// @qi-doc:functions jwt/sign, jwt/verify, jwt/decode
+pub const FUNCTIONS: super::NativeFunctions = &[
+    ("jwt/sign", native_jwt_sign),
+    ("jwt/verify", native_jwt_verify),
+    ("jwt/decode", native_jwt_decode),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_jwt_sign_and_verify() {
+        let mut payload = im::HashMap::new();
+        payload.insert(":user_id".to_string(), Value::Integer(123));
+        payload.insert(":name".to_string(), Value::String("Alice".to_string()));
+
+        let secret = Value::String("my-secret-key".to_string());
+
+        // トークン生成
+        let sign_result = native_jwt_sign(&[Value::Map(payload), secret.clone()]).unwrap();
+
+        let token = match sign_result {
+            Value::Map(m) => match m.get(":ok") {
+                Some(Value::String(t)) => t.clone(),
+                _ => panic!("Expected {{:ok token}}"),
+            },
+            _ => panic!("Expected map"),
+        };
+
+        // トークン検証
+        let verify_result = native_jwt_verify(&[Value::String(token), secret]).unwrap();
+
+        match verify_result {
+            Value::Map(m) => match m.get(":ok") {
+                Some(Value::Map(payload)) => {
+                    assert_eq!(payload.get(":user_id"), Some(&Value::Integer(123)));
+                }
+                _ => panic!("Expected {{:ok payload}}"),
+            },
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_jwt_decode() {
+        let mut payload = im::HashMap::new();
+        payload.insert(":user_id".to_string(), Value::Integer(123));
+
+        let secret = Value::String("my-secret-key".to_string());
+
+        // トークン生成
+        let sign_result = native_jwt_sign(&[Value::Map(payload), secret]).unwrap();
+
+        let token = match sign_result {
+            Value::Map(m) => match m.get(":ok") {
+                Some(Value::String(t)) => t.clone(),
+                _ => panic!("Expected {{:ok token}}"),
+            },
+            _ => panic!("Expected map"),
+        };
+
+        // デコード（検証なし）
+        let decode_result = native_jwt_decode(&[Value::String(token)]).unwrap();
+
+        match decode_result {
+            Value::Map(m) => match m.get(":ok") {
+                Some(Value::Map(data)) => {
+                    assert!(data.contains_key(":header"));
+                    assert!(data.contains_key(":payload"));
+                }
+                _ => panic!("Expected {{:ok {{:header ... :payload ...}}}}"),
+            },
+            _ => panic!("Expected map"),
+        }
+    }
+
+    #[test]
+    fn test_jwt_verify_invalid_token() {
+        let token = Value::String("invalid.token.here".to_string());
+        let secret = Value::String("my-secret-key".to_string());
+
+        let result = native_jwt_verify(&[token, secret]).unwrap();
+
+        match result {
+            Value::Map(m) => {
+                assert!(m.contains_key(":error"));
+            }
+            _ => panic!("Expected {{:error ...}}"),
+        }
+    }
+}

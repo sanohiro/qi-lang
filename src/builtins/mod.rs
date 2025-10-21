@@ -116,6 +116,9 @@ pub mod sqlite;
 #[cfg(feature = "http-server")]
 pub mod server;
 
+#[cfg(feature = "auth-jwt")]
+pub mod jwt;
+
 use crate::eval::Evaluator;
 use crate::value::{Env, NativeFunc, Value};
 use parking_lot::RwLock;
@@ -241,6 +244,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "db-sqlite")]
     register_functions(&mut env_write, db::FUNCTIONS);
+
+    #[cfg(feature = "auth-jwt")]
+    register_functions(&mut env_write, jwt::FUNCTIONS);
 }
 
 // ========================================

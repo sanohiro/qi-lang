@@ -190,6 +190,12 @@ pub enum MsgKey {
     CannotConvertToJson,    // Cannot convert {0} to JSON
     InvalidRegex,           // {0}: invalid regex: {1}
 
+    // JWT エラー
+    NeedNArgs,        // {0} requires {1} arguments
+    InvalidAlgorithm, // {0}: invalid algorithm: {1} (supported: {2})
+    InvalidFloat,     // {0}: invalid float value
+    InvalidNumber,    // {0}: invalid number value
+
     // 警告
     RedefineBuiltin,  // warning: redefining builtin function: {0} ({1})
     RedefineFunction, // warning: redefining function: {0}
@@ -650,6 +656,11 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (CannotConvertToFloat, "{0}: cannot convert {1} to float"),
         (CannotConvertToJson, "Cannot convert {0} to JSON"),
         (InvalidRegex, "{0}: invalid regex: {1}"),
+        // JWT エラー
+        (NeedNArgs, "{0} requires {1} arguments"),
+        (InvalidAlgorithm, "{0}: invalid algorithm '{1}' (supported: {2})"),
+        (InvalidFloat, "{0}: invalid float value"),
+        (InvalidNumber, "{0}: invalid number value"),
         // 警告
         (
             RedefineBuiltin,
@@ -1212,6 +1223,11 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (CannotConvertToFloat, "{0}: {1}を浮動小数点数に変換できません"),
         (CannotConvertToJson, "{0}をJSONに変換できません"),
         (InvalidRegex, "{0}: 不正な正規表現: {1}"),
+        // JWT エラー
+        (NeedNArgs, "{0}には{1}個の引数が必要です"),
+        (InvalidAlgorithm, "{0}: 不正なアルゴリズム'{1}'（サポート: {2}）"),
+        (InvalidFloat, "{0}: 不正な浮動小数点数値です"),
+        (InvalidNumber, "{0}: 不正な数値です"),
         // 警告
         (RedefineBuiltin, "警告: ビルトイン関数'{0}'を再定義しています ({1})"),
         (RedefineFunction, "警告: 関数'{0}'を再定義しています"),
