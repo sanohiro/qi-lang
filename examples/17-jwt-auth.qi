@@ -1,0 +1,133 @@
+;; 17-jwt-auth.qi - JWT認証の実用例
+;;
+;; このサンプルでは、JWT（JSON Web Token）を使った認証システムの実装例を示します。
+;; - ユーザーログイン（トークン生成）
+;; - トークン検証
+;; - パスワードハッシュ化
+
+;; ========================================
+;; 1. ユーザーデータベース（シンプルな例）
+;; ========================================
+
+(def users
+  [{:id 1 :username "alice" :password_hash (password/hash "secret123")}
+   {:id 2 :username "bob" :password_hash (password/hash "password456")}])
+
+;; ========================================
+;; 2. ユーザー検索
+;; ========================================
+
+;; ユーザー名でユーザーを検索
+(defn find-user [username]
+  (users
+   |> (filter (fn [u] (= (get u :username) username)))
+   |> first))
+
+;; ========================================
+;; 3. ログイン機能
+;; ========================================
+
+;; ユーザー名とパスワードでログインし、JWTトークンを生成
+(defn login [username password]
+  (let [user (find-user username)]
+    (if (nil? user)
+      {:error "User not found"}
+      (if (password/verify password (get user :password_hash))
+        ;; パスワードが正しい場合、JWTトークンを生成
+        (jwt/sign
+          {:user_id (get user :id)
+           :username (get user :username)}
+          "my-secret-key"
+          "HS256")
+        {:error "Invalid password"}))))
+
+;; ========================================
+;; 4. トークン検証
+;; ========================================
+
+;; JWTトークンを検証してユーザー情報を取得
+(defn authenticate [token]
+  (jwt/verify token "my-secret-key"))
+
+;; ========================================
+;; 5. 保護されたリソースへのアクセス
+;; ========================================
+
+;; 認証が必要なリソースにアクセス
+(defn get-protected-resource [token]
+  (match (authenticate token)
+    {:ok payload} -> {:status 200
+                     :body (str "Hello, " (get payload :username) "!")}
+    {:error e} -> {:status 401
+                  :body "Unauthorized"}))
+
+;; ========================================
+;; 6. 実行例
+;; ========================================
+
+(println "=== JWT認証サンプル ===\n")
+
+;; ログイン試行（成功）
+(println "1. Alice でログイン:")
+(def login-result (login "alice" "secret123"))
+(match login-result
+  {:ok token} -> (do
+                   (println "  ✓ ログイン成功")
+                   (println "  Token:" token)
+
+                   ;; トークンを使ってリソースにアクセス
+                   (println "\n2. 保護されたリソースにアクセス:")
+                   (def resource (get-protected-resource token))
+                   (println "  Status:" (get resource :status))
+                   (println "  Body:" (get resource :body))
+
+                   ;; 注: jwt/decodeは現在の実装でexpクレームが必要なため、スキップ
+                   )
+  {:error e} -> (println "  ✗ ログイン失敗:" e))
+
+;; ログイン試行（パスワード間違い）
+(println "\n3. 間違ったパスワードでログイン:")
+(match (login "alice" "wrong-password")
+  {:ok _} -> (println "  ✓ ログイン成功")
+  {:error e} -> (println "  ✗ ログイン失敗:" e))
+
+;; ログイン試行（ユーザーが存在しない）
+(println "\n4. 存在しないユーザーでログイン:")
+(match (login "charlie" "password")
+  {:ok _} -> (println "  ✓ ログイン成功")
+  {:error e} -> (println "  ✗ ログイン失敗:" e))
+
+;; 無効なトークンでアクセス
+(println "\n5. 無効なトークンでリソースにアクセス:")
+(def invalid-resource (get-protected-resource "invalid-token"))
+(println "  Status:" (get invalid-resource :status))
+(println "  Body:" (get invalid-resource :body))
+
+;; ========================================
+;; 6. パスワードハッシュのテスト
+;; ========================================
+
+(println "\n=== パスワードハッシュのテスト ===\n")
+
+(def password "my-secret-password")
+(def hash1 (password/hash password))
+(def hash2 (password/hash password))
+
+(println "同じパスワードでも異なるハッシュが生成される:")
+(println "  Hash 1:" hash1)
+(println "  Hash 2:" hash2)
+(println "  同じ？:" (= hash1 hash2))  ;; => false
+
+(println "\nパスワード検証:")
+(println "  正しいパスワード:" (password/verify password hash1))  ;; => true
+(println "  間違ったパスワード:" (password/verify "wrong" hash1))  ;; => false
+
+;; ========================================
+;; 7. まとめ
+;; ========================================
+
+(println "\n=== まとめ ===")
+(println "✓ JWT認証は、ステートレスな認証に最適")
+(println "✓ パスワードはArgon2でハッシュ化（bcryptより高速で安全）")
+(println "✓ トークンには有効期限を設定可能")
+(println "✓ 秘密鍵は環境変数で管理すること")

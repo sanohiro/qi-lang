@@ -1,0 +1,193 @@
+;; 19-auth-api.qi - 認証付きREST API の実用例
+;;
+;; このサンプルでは、JWT認証とPostgreSQLを組み合わせた
+;; 本格的なREST APIサーバーの実装例を示します。
+;; - ユーザー登録
+;; - ログイン（JWT発行）
+;; - 認証が必要なエンドポイント
+;; - PostgreSQLによるユーザー管理
+;; ========================================
+;; 設定
+;; ========================================
+(def db-conn "postgresql://localhost/qi_auth_test")
+(def jwt-secret "super-secret-key-change-in-production")
+;; ========================================
+;; 1. データベース初期化
+;; ========================================
+;; データベースを初期化
+(defn init-db []
+  (match (db/pg-exec db-conn
+           "CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username TEXT UNIQUE NOT NULL,
+              email TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            )" [])
+    {:ok _} -> {:ok "Database initialized"}
+    {:error e} -> {:error e}))
+;; ========================================
+;; 2. ユーザー管理関数
+;; ========================================
+;; 新規ユーザーを作成
+(defn create-user [username email password]
+  (let [hash (password/hash password)]
+    (db/pg-exec db-conn
+      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)"
+      [username email hash])))
+;; ユーザー名でユーザーを検索
+(defn find-user-by-username [username]
+  (db/pg-query db-conn
+    "SELECT * FROM users WHERE username = $1"
+    [username]))
+;; ユーザー認証
+(defn verify-user [username password]
+  (match (find-user-by-username username)
+    {:ok rows} -> (if (empty? rows)
+                    {:error "User not found"}
+                    (let [user (first rows)
+                          hash (get user :password_hash)]
+                      (if (password/verify password hash)
+                        {:ok user}
+                        {:error "Invalid password"})))
+    {:error e} -> {:error e}))
+;; ========================================
+;; 3. 認証関数
+;; ========================================
+;; JWTトークンを生成
+(defn generate-token [user]
+  (jwt/sign
+    {:user_id (get user :id)
+     :username (get user :username)}
+    jwt-secret
+    "HS256"))
+;; JWTトークンを検証
+(defn verify-token [token]
+  (jwt/verify token jwt-secret))
+;; Authorizationヘッダーからトークンを抽出
+(defn extract-auth-token [request]
+  (let [auth-header (get-in request [:headers :authorization])]
+    (if (nil? auth-header)
+      nil
+      (if (string/starts-with? auth-header "Bearer ")
+        (string/replace-first auth-header "Bearer " "")
+        nil))))
+;; ========================================
+;; 4. ミドルウェア
+;; ========================================
+;; 認証が必要なエンドポイント用ミドルウェア
+(defn require-auth [handler]
+  (fn [request]
+    (let [token (extract-auth-token request)]
+      (if (nil? token)
+        {:status 401
+         :headers {:content-type "application/json"}
+         :body (json/stringify {:error "Missing authorization token"})}
+        (match (verify-token token)
+          {:ok payload} -> (handler (assoc request :user payload))
+          {:error _} -> {:status 401
+                        :headers {:content-type "application/json"}
+                        :body (json/stringify {:error "Invalid token"})})))))
+;; ========================================
+;; 5. エンドポイント
+;; ========================================
+;; POST /api/register - ユーザー登録
+(defn handle-register [request]
+  (match (json/parse (get request :body))
+    {:ok data} -> (let [username (get data :username)
+                       email (get data :email)
+                       password (get data :password)]
+                    (match (create-user username email password)
+                      {:ok _} -> {:status 201
+                                 :headers {:content-type "application/json"}
+                                 :body (json/stringify {:message "User created"})}
+                      {:error e} -> {:status 400
+                                    :headers {:content-type "application/json"}
+                                    :body (json/stringify {:error (str e)})}))
+    {:error _} -> {:status 400
+                  :headers {:content-type "application/json"}
+                  :body (json/stringify {:error "Invalid JSON"})}))
+;; POST /api/login - ログイン
+(defn handle-login [request]
+  (match (json/parse (get request :body))
+    {:ok data} -> (let [username (get data :username)
+                       password (get data :password)]
+                    (match (verify-user username password)
+                      {:ok user} -> (match (generate-token user)
+                                     {:ok token} -> {:status 200
+                                                    :headers {:content-type "application/json"}
+                                                    :body (json/stringify {:token token})}
+                                     {:error e} -> {:status 500
+                                                   :headers {:content-type "application/json"}
+                                                   :body (json/stringify {:error (str e)})})
+                      {:error e} -> {:status 401
+                                    :headers {:content-type "application/json"}
+                                    :body (json/stringify {:error e})}))
+    {:error _} -> {:status 400
+                  :headers {:content-type "application/json"}
+                  :body (json/stringify {:error "Invalid JSON"})}))
+;; GET /api/profile - プロフィール取得（認証必要）
+(defn handle-profile [request]
+  (let [user (get request :user)
+        username (get user :username)]
+    (match (find-user-by-username username)
+      {:ok rows} -> (if (empty? rows)
+                      {:status 404
+                       :headers {:content-type "application/json"}
+                       :body (json/stringify {:error "User not found"})}
+                      (let [user-data (first rows)]
+                        {:status 200
+                         :headers {:content-type "application/json"}
+                         :body (json/stringify
+                                {:id (get user-data :id)
+                                 :username (get user-data :username)
+                                 :email (get user-data :email)
+                                 :created_at (str (get user-data :created_at))})}))
+      {:error e} -> {:status 500
+                    :headers {:content-type "application/json"}
+                    :body (json/stringify {:error (str e)})})))
+;; ========================================
+;; 6. ルーティング
+;; ========================================
+(defn app [request]
+  (let [method (get request :method)
+        path (get request :path)]
+    (match [method path]
+      ["POST" "/api/register"] -> (handle-register request)
+      ["POST" "/api/login"] -> (handle-login request)
+      ["GET" "/api/profile"] -> ((require-auth handle-profile) request)
+      _ -> {:status 404
+           :headers {:content-type "application/json"}
+           :body (json/stringify {:error "Not found"})})))
+;; ========================================
+;; 7. サーバー起動
+;; ========================================
+(println "=== 認証付きREST APIサーバー ===\n")
+;; データベース初期化
+(println "データベース初期化中...")
+(match (init-db)
+  {:ok msg} -> (println "✓" msg)
+  {:error e} -> (println "✗ エラー:" e))
+(println "\nサーバー起動中...")
+(println "URL: http://localhost:3000")
+(println "\n利用可能なエンドポイント:")
+(println "  POST /api/register - ユーザー登録")
+(println "  POST /api/login - ログイン")
+(println "  GET /api/profile - プロフィール取得（認証必要）")
+(println "\nテストコマンド:")
+(println "  # ユーザー登録")
+(println "  curl -X POST http://localhost:3000/api/register \\")
+(println "    -H 'Content-Type: application/json' \\")
+(println "    -d '{\"username\":\"alice\",\"email\":\"alice@example.com\",\"password\":\"secret123\"}'")
+(println "")
+(println "  # ログイン")
+(println "  curl -X POST http://localhost:3000/api/login \\")
+(println "    -H 'Content-Type: application/json' \\")
+(println "    -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
+(println "")
+(println "  # プロフィール取得（トークン必要）")
+(println "  curl http://localhost:3000/api/profile \\")
+(println "    -H 'Authorization: Bearer <トークン>'")
+(println "\nCtrl+C で停止")
+;; サーバー起動
+(server/serve {:port 3000} app)
