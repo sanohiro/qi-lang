@@ -316,3 +316,118 @@ fn test_mysql_multiple_inserts() {
         other => panic!("期待: Vector、実際: {:?}", other),
     }
 }
+
+#[test]
+fn test_mysql_metadata() {
+    let docker = clients::Cli::default();
+    let container = docker.run(mysql_image());
+    let port = container.get_host_port_ipv4(3306);
+    let url = format!("mysql://root:root@127.0.0.1:{}/test_db", port);
+    let mut evaluator = Evaluator::new();
+
+    // 接続待機（MySQLは起動に時間がかかる）
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
+    // 接続
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (db/connect "{}"))"#, url),
+    )
+    .unwrap();
+
+    // テーブル作成
+    eval_qi(
+        &mut evaluator,
+        r#"
+        (db/exec conn "CREATE TABLE products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            price INT DEFAULT 0,
+            category VARCHAR(100)
+        )" [])
+        "#,
+    )
+    .unwrap();
+
+    // インデックス作成
+    eval_qi(
+        &mut evaluator,
+        r#"
+        (db/exec conn "CREATE INDEX idx_category ON products(category)" [])
+        "#,
+    )
+    .unwrap();
+
+    // db/tables - テーブル一覧
+    let tables = eval_qi(&mut evaluator, r#"(db/tables conn)"#).unwrap();
+    match tables {
+        Value::Vector(vec) => {
+            assert!(vec.len() > 0);
+            let has_products = vec
+                .iter()
+                .any(|v| matches!(v, Value::String(s) if s == "products"));
+            assert!(has_products, "productsテーブルが見つかりません");
+        }
+        other => panic!("期待: Vector、実際: {:?}", other),
+    }
+
+    // db/columns - カラム情報
+    let columns = eval_qi(&mut evaluator, r#"(db/columns conn "products")"#).unwrap();
+    match columns {
+        Value::Vector(vec) => {
+            assert_eq!(vec.len(), 4, "カラム数が4個であるべき");
+            // カラム情報を確認（詳細なチェックはせず、情報が取得できることを確認）
+            for col in &vec {
+                if let Value::Map(m) = col {
+                    assert!(m.contains_key("name"), "カラムにnameフィールドが必要");
+                    assert!(m.contains_key("type"), "カラムにtypeフィールドが必要");
+                    assert!(
+                        m.contains_key("nullable"),
+                        "カラムにnullableフィールドが必要"
+                    );
+                    assert!(
+                        m.contains_key("primary_key"),
+                        "カラムにprimary_keyフィールドが必要"
+                    );
+                }
+            }
+        }
+        other => panic!("期待: Vector、実際: {:?}", other),
+    }
+
+    // db/indexes - インデックス情報
+    let indexes = eval_qi(&mut evaluator, r#"(db/indexes conn "products")"#).unwrap();
+    match indexes {
+        Value::Vector(vec) => {
+            assert!(vec.len() >= 1, "少なくとも1つのインデックスがあるべき");
+            // インデックス名を確認
+            let has_idx = vec.iter().any(|v| {
+                if let Value::Map(idx) = v {
+                    matches!(idx.get("name"), Some(Value::String(s)) if s.contains("idx_category") || s == "PRIMARY")
+                } else {
+                    false
+                }
+            });
+            assert!(has_idx, "インデックスが見つかりません");
+        }
+        other => panic!("期待: Vector、実際: {:?}", other),
+    }
+
+    // db/driver-info - ドライバ情報
+    let driver_info = eval_qi(&mut evaluator, r#"(db/driver-info conn)"#).unwrap();
+    match driver_info {
+        Value::Map(info) => {
+            assert_eq!(
+                info.get("name"),
+                Some(&Value::String("MySQL".to_string())),
+                "ドライバ名"
+            );
+            assert!(info.contains_key("version"), "versionフィールドが必要");
+            assert!(
+                info.contains_key("database_version"),
+                "database_versionフィールドが必要"
+            );
+        }
+        other => panic!("期待: Map、実際: {:?}", other),
+    }
+}
