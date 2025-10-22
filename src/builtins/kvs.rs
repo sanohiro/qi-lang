@@ -331,17 +331,17 @@ impl KvsDriver for RedisDriver {
         })
     }
 
-    fn mget(&self, keys: &[String]) -> Result<Vec<Option<String>>, String> {
+    fn mget(&self, _keys: &[String]) -> Result<Vec<Option<String>>, String> {
         // TODO: redis.rsにnative_redis_mgetを実装する必要がある
         Err("MGET not yet implemented for Redis".to_string())
     }
 
-    fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String> {
+    fn mset(&self, _pairs: &HashMap<String, String>) -> Result<String, String> {
         // TODO: redis.rsにnative_redis_msetを実装する必要がある
         Err("MSET not yet implemented for Redis".to_string())
     }
 
-    fn lrange(&self, key: &str, start: i64, stop: i64) -> Result<Vec<String>, String> {
+    fn lrange(&self, _key: &str, _start: i64, _stop: i64) -> Result<Vec<String>, String> {
         // TODO: redis.rsにnative_redis_lrangeを実装する必要がある
         Err("LRANGE not yet implemented for Redis".to_string())
     }
@@ -945,8 +945,8 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
         Ok(pairs) => {
             let mut map = im::HashMap::new();
             for (field, value) in pairs {
-                // キーワード形式（:field）でマップに追加
-                map.insert(format!(":{}", field), Value::String(value));
+                // 文字列キーでマップに追加
+                map.insert(field, Value::String(value));
             }
             Ok(Value::Map(map))
         }

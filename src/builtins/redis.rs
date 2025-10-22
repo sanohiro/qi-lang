@@ -48,6 +48,44 @@ async fn reconnect(url: &str) -> Result<MultiplexedConnection, String> {
     get_or_create_connection(url).await
 }
 
+/// Redis操作を再試行付きで実行するヘルパー
+async fn execute_with_retry<T, F, Fut>(
+    url: &str,
+    operation: F,
+) -> redis::RedisResult<T>
+where
+    F: Fn(MultiplexedConnection) -> Fut,
+    Fut: std::future::Future<Output = redis::RedisResult<T>>,
+{
+    // 最初の試行
+    let conn = get_or_create_connection(url).await.map_err(|e| {
+        redis::RedisError::from((
+            redis::ErrorKind::IoError,
+            "Connection error",
+            e,
+        ))
+    })?;
+
+    let result = operation(conn).await;
+
+    // エラーの場合、再接続して再試行
+    if let Err(ref e) = result {
+        let err_str = e.to_string();
+        if err_str.contains("broken pipe")
+            || err_str.contains("Connection")
+            || err_str.contains("terminated")
+        {
+            // 再接続
+            match reconnect(url).await {
+                Ok(new_conn) => return operation(new_conn).await,
+                Err(_) => {}
+            }
+        }
+    }
+
+    result
+}
+
 /// kvs/redis-get - キーの値を取得
 ///
 /// 引数:
@@ -82,25 +120,11 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
 
     // 非同期処理を同期的に実行（グローバルランタイムを使用）
     TOKIO_RT.block_on(async {
-        // 最初の試行
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
-
-        let mut result: redis::RedisResult<Option<String>> = conn.get(&key).await;
-
-        // エラーの場合、再接続して再試行
-        if let Err(ref e) = result {
-            if e.to_string().contains("broken pipe") || e.to_string().contains("Connection") {
-                match reconnect(&url).await {
-                    Ok(mut new_conn) => {
-                        result = new_conn.get(&key).await;
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.get(&key).await }
+        })
+        .await;
 
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
@@ -158,13 +182,15 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<String> = conn.set(&key, &value).await;
+    TOKIO_RT.block_on(async {
+        let result: redis::RedisResult<String> = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let value = value.clone();
+            async move { conn.set(&key, &value).await }
+        })
+        .await;
+
         match result {
             Ok(_) => Ok(Value::String("OK".to_string())),
             Err(e) => Ok(Value::error(format!("Set error: {}", e))),
@@ -203,13 +229,14 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.del(&key).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.del(&key).await }
+        })
+        .await;
+
         match result {
             Ok(count) => Ok(Value::Integer(count)),
             Err(e) => Ok(Value::error(format!("Delete error: {}", e))),
@@ -248,13 +275,14 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<bool> = conn.exists(&key).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.exists(&key).await }
+        })
+        .await;
+
         match result {
             Ok(exists) => Ok(Value::Bool(exists)),
             Err(e) => Ok(Value::error(format!("Exists error: {}", e))),
@@ -293,13 +321,14 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Vec<String>> = conn.keys(&pattern).await;
+    TOKIO_RT.block_on(async {
+        let result: redis::RedisResult<Vec<String>> = execute_with_retry(&url, |mut conn| {
+            let pattern = pattern.clone();
+            async move { conn.keys(&pattern).await }
+        })
+        .await;
+
         match result {
             Ok(keys) => Ok(Value::Vector(
                 keys.into_iter()
@@ -354,13 +383,14 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<bool> = conn.expire(&key, seconds as i64).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.expire(&key, seconds as i64).await }
+        })
+        .await;
+
         match result {
             Ok(success) => Ok(Value::Bool(success)),
             Err(e) => Ok(Value::error(format!("Expire error: {}", e))),
@@ -399,13 +429,14 @@ pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.ttl(&key).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.ttl(&key).await }
+        })
+        .await;
+
         match result {
             Ok(ttl) => Ok(Value::Integer(ttl)),
             Err(e) => Ok(Value::error(format!("TTL error: {}", e))),
@@ -444,13 +475,14 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.incr(&key, 1).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.incr(&key, 1).await }
+        })
+        .await;
+
         match result {
             Ok(value) => Ok(Value::Integer(value)),
             Err(e) => Ok(Value::error(format!("Incr error: {}", e))),
@@ -489,13 +521,14 @@ pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.decr(&key, 1).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.decr(&key, 1).await }
+        })
+        .await;
+
         match result {
             Ok(value) => Ok(Value::Integer(value)),
             Err(e) => Ok(Value::error(format!("Decr error: {}", e))),
@@ -551,13 +584,15 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.lpush(&key, &value).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let value = value.clone();
+            async move { conn.lpush(&key, &value).await }
+        })
+        .await;
+
         match result {
             Ok(len) => Ok(Value::Integer(len)),
             Err(e) => Ok(Value::error(format!("Lpush error: {}", e))),
@@ -613,13 +648,15 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.rpush(&key, &value).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let value = value.clone();
+            async move { conn.rpush(&key, &value).await }
+        })
+        .await;
+
         match result {
             Ok(len) => Ok(Value::Integer(len)),
             Err(e) => Ok(Value::error(format!("Rpush error: {}", e))),
@@ -658,13 +695,14 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Option<String>> = conn.lpop(&key, None).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.lpop(&key, None).await }
+        })
+        .await;
+
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
             Ok(None) => Ok(Value::Nil),
@@ -704,13 +742,14 @@ pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Option<String>> = conn.rpop(&key, None).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.rpop(&key, None).await }
+        })
+        .await;
+
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
             Ok(None) => Ok(Value::Nil),
@@ -778,13 +817,16 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<bool> = conn.hset(&key, &field, &value).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let field = field.clone();
+            let value = value.clone();
+            async move { conn.hset(&key, &field, &value).await }
+        })
+        .await;
+
         match result {
             Ok(created) => Ok(Value::Bool(created)),
             Err(e) => Ok(Value::error(format!("Hset error: {}", e))),
@@ -834,13 +876,15 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Option<String>> = conn.hget(&key, &field).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let field = field.clone();
+            async move { conn.hget(&key, &field).await }
+        })
+        .await;
+
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
             Ok(None) => Ok(Value::Nil),
@@ -880,13 +924,14 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Vec<(String, String)>> = conn.hgetall(&key).await;
+    TOKIO_RT.block_on(async {
+        let result: redis::RedisResult<Vec<(String, String)>> = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.hgetall(&key).await }
+        })
+        .await;
+
         match result {
             Ok(pairs) => {
                 let mut map = im::HashMap::new();
@@ -949,13 +994,15 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<i64> = conn.sadd(&key, &member).await;
+    TOKIO_RT.block_on(async {
+        let result = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            let member = member.clone();
+            async move { conn.sadd(&key, &member).await }
+        })
+        .await;
+
         match result {
             Ok(count) => Ok(Value::Integer(count)),
             Err(e) => Ok(Value::error(format!("Sadd error: {}", e))),
@@ -994,13 +1041,14 @@ pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-    TOKIO_RT.block_on(async {
-        let mut conn = match get_or_create_connection(&url).await {
-            Ok(conn) => conn,
-            Err(e) => return Ok(Value::error(e)),
-        };
 
-        let result: redis::RedisResult<Vec<String>> = conn.smembers(&key).await;
+    TOKIO_RT.block_on(async {
+        let result: redis::RedisResult<Vec<String>> = execute_with_retry(&url, |mut conn| {
+            let key = key.clone();
+            async move { conn.smembers(&key).await }
+        })
+        .await;
+
         match result {
             Ok(members) => Ok(Value::Vector(
                 members

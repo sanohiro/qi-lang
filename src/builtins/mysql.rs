@@ -95,17 +95,24 @@ impl MysqlConnection {
         for (idx, column) in columns.iter().enumerate() {
             let column_name = column.name_str().to_string();
 
-            // 型に応じて値を取得（数値型を先にチェック）
-            let value = if let Some(Some(v)) = row.get::<Option<i64>, _>(idx) {
+            // まず文字列として取得を試す（最も一般的）
+            let value = if let Some(Ok(v)) = row.get_opt::<String, _>(idx) {
+                // 文字列として取得できた場合、数値への変換を試みる
+                if let Ok(i) = v.parse::<i64>() {
+                    Value::Integer(i)
+                } else if let Ok(f) = v.parse::<f64>() {
+                    Value::Float(f)
+                } else {
+                    Value::String(v)
+                }
+            } else if let Some(Ok(v)) = row.get_opt::<i64, _>(idx) {
                 Value::Integer(v)
-            } else if let Some(Some(v)) = row.get::<Option<i32>, _>(idx) {
+            } else if let Some(Ok(v)) = row.get_opt::<i32, _>(idx) {
                 Value::Integer(v as i64)
-            } else if let Some(Some(v)) = row.get::<Option<f64>, _>(idx) {
+            } else if let Some(Ok(v)) = row.get_opt::<f64, _>(idx) {
                 Value::Float(v)
-            } else if let Some(Some(v)) = row.get::<Option<bool>, _>(idx) {
+            } else if let Some(Ok(v)) = row.get_opt::<bool, _>(idx) {
                 Value::Bool(v)
-            } else if let Some(Some(v)) = row.get::<Option<String>, _>(idx) {
-                Value::String(v)
             } else {
                 Value::Nil
             };
