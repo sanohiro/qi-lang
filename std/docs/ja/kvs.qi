@@ -1,8 +1,8 @@
 ;; 標準ライブラリドキュメント - KVS統一API
-;; KVS Functions (19 functions - kvs/*)
+;; KVS Functions (21 functions - kvs/*)
 ;; このモジュールは `kvs-redis` feature でコンパイルされます
 
-;; ========== 統一インターフェース（19個） ==========
+;; ========== 統一インターフェース（21個） ==========
 ;; バックエンド（Redis, Memcached等）の違いを隠蔽し、同じAPIで操作できます。
 
 ;; --- 接続 (1個) ---
@@ -95,7 +95,7 @@
    :examples ["(kvs/decr kvs \"stock\")"
               "(kvs/decr kvs \"remaining\")"]})
 
-;; --- リスト操作 (4個) ---
+;; --- リスト操作 (5個) ---
 
 (def __doc__kvs/lpush
   {:desc "リストの左端（先頭）に要素を追加します。"
@@ -130,6 +130,17 @@
    :returns {:type "string|nil" :desc "取得した値、リストが空の場合nil"}
    :examples ["(kvs/rpop kvs \"history\")"
               "(def last (kvs/rpop kvs \"log\"))"]})
+
+(def __doc__kvs/lrange
+  {:desc "リストの指定範囲の要素を取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "key" :type "string" :desc "キー名"}
+            {:name "start" :type "integer" :desc "開始インデックス（0始まり）"}
+            {:name "stop" :type "integer" :desc "終了インデックス（-1で末尾まで）"}]
+   :returns {:type "vector" :desc "要素のベクタ"}
+   :examples ["(kvs/lrange kvs \"mylist\" 0 -1) ;; 全要素"
+              "(kvs/lrange kvs \"mylist\" 0 2) ;; 最初の3要素"
+              "(kvs/lrange kvs \"tasks\" 0 9) ;; 最初の10要素"]})
 
 ;; --- ハッシュ操作 (3個) ---
 
@@ -178,6 +189,26 @@
    :returns {:type "vector" :desc "メンバーのベクタ"}
    :examples ["(kvs/smembers kvs \"tags\")"
               "(def tags (kvs/smembers kvs \"user:1:tags\"))"]})
+
+;; --- 複数操作 (2個) ---
+
+(def __doc__kvs/mget
+  {:desc "複数のキーの値を一括取得します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "keys" :type "vector" :desc "キー名のベクタ"}]
+   :returns {:type "vector" :desc "値のベクタ（存在しないキーはnil）"}
+   :examples ["(kvs/mget kvs [\"key1\" \"key2\" \"key3\"])"
+              "(def values (kvs/mget kvs [\"user:1\" \"user:2\"]))"
+              "(kvs/mset kvs {\"key1\" \"value1\" \"key2\" \"value2\"}) (kvs/mget kvs [\"key1\" \"key2\"]) ;=> [\"value1\" \"value2\"]"]})
+
+(def __doc__kvs/mset
+  {:desc "複数のキーと値を一括設定します。"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "pairs" :type "map" :desc "キーと値のマップ"}]
+   :returns {:type "string" :desc "成功時は\"OK\""}
+   :examples ["(kvs/mset kvs {\"key1\" \"value1\" \"key2\" \"value2\"})"
+              "(kvs/mset kvs {\"user:1\" \"Alice\" \"user:2\" \"Bob\"})"
+              "(kvs/mset kvs {\"cache:1\" \"data1\" \"cache:2\" \"data2\" \"cache:3\" \"data3\"})"]})
 
 ;; ========== 使用例 ==========
 

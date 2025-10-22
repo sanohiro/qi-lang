@@ -1,8 +1,8 @@
 ;; Standard Library Documentation - KVS (Key-Value Store) API
-;; KVS Functions (18 functions - kvs/redis-*)
+;; KVS Functions (21 functions - kvs/redis-*)
 ;; This module is compiled with the `kvs-redis` feature
 
-;; ========== Phase 1: Redis Implementation (18 functions) ==========
+;; ========== Phase 1: Redis Implementation (21 functions) ==========
 
 ;; --- Basic Operations (7 functions) ---
 
@@ -85,7 +85,7 @@
    :examples ["(kvs/redis-decr url \"stock\")"
               "(kvs/redis-decr url \"remaining\")"]})
 
-;; --- List Operations (4 functions) ---
+;; --- List Operations (5 functions) ---
 
 (def __doc__kvs/redis-lpush
   {:desc "Prepend one element to a list (push to the left)."
@@ -120,6 +120,17 @@
    :returns {:type "string|nil" :desc "Value retrieved, or nil if the list is empty"}
    :examples ["(kvs/redis-rpop url \"history\")"
               "(def last (kvs/redis-rpop url \"log\"))"]})
+
+(def __doc__kvs/redis-lrange
+  {:desc "Get a range of elements from a list."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "key" :type "string" :desc "Key name"}
+            {:name "start" :type "integer" :desc "Start index (0-based)"}
+            {:name "stop" :type "integer" :desc "Stop index (-1 for end)"}]
+   :returns {:type "vector" :desc "Vector of elements"}
+   :examples ["(kvs/redis-lrange url \"mylist\" 0 -1) ;; All elements"
+              "(kvs/redis-lrange url \"mylist\" 0 2) ;; First 3 elements"
+              "(kvs/redis-lrange url \"tasks\" 0 9) ;; First 10 elements"]})
 
 ;; --- Hash Operations (3 functions) ---
 
@@ -168,6 +179,26 @@
    :returns {:type "vector" :desc "Vector of members"}
    :examples ["(kvs/redis-smembers url \"tags\")"
               "(def tags (kvs/redis-smembers url \"user:1:tags\"))"]})
+
+;; --- Batch Operations (2 functions) ---
+
+(def __doc__kvs/redis-mget
+  {:desc "Get values of multiple keys in a single operation."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "keys" :type "vector" :desc "Vector of key names"}]
+   :returns {:type "vector" :desc "Vector of values (nil for non-existent keys)"}
+   :examples ["(kvs/redis-mget url [\"key1\" \"key2\" \"key3\"])"
+              "(def values (kvs/redis-mget url [\"user:1\" \"user:2\"]))"
+              "(kvs/redis-mset url {\"key1\" \"value1\" \"key2\" \"value2\"}) (kvs/redis-mget url [\"key1\" \"key2\"]) ;=> [\"value1\" \"value2\"]"]})
+
+(def __doc__kvs/redis-mset
+  {:desc "Set multiple key-value pairs in a single operation."
+   :params [{:name "url" :type "string" :desc "Redis connection URL"}
+            {:name "pairs" :type "map" :desc "Map of key-value pairs"}]
+   :returns {:type "string" :desc "\"OK\" on success"}
+   :examples ["(kvs/redis-mset url {\"key1\" \"value1\" \"key2\" \"value2\"})"
+              "(kvs/redis-mset url {\"user:1\" \"Alice\" \"user:2\" \"Bob\"})"
+              "(kvs/redis-mset url {\"cache:1\" \"data1\" \"cache:2\" \"data2\" \"cache:3\" \"data3\"})"]})
 
 ;; ========== Usage Examples ==========
 

@@ -262,6 +262,27 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 (kvs/rpop conn key)  ;; 右端から取得
 ```
 
+#### kvs/lrange - 範囲取得
+
+```qi
+(kvs/lrange conn key start stop)
+```
+
+**引数**:
+- `start`: 開始インデックス（0始まり）
+- `stop`: 終了インデックス（-1で末尾まで）
+
+**例**:
+```qi
+(kvs/rpush kvs "mylist" "a")
+(kvs/rpush kvs "mylist" "b")
+(kvs/rpush kvs "mylist" "c")
+
+(kvs/lrange kvs "mylist" 0 -1)  ;; => ["a" "b" "c"] ;; 全要素
+(kvs/lrange kvs "mylist" 0 1)   ;; => ["a" "b"]    ;; 最初の2要素
+(kvs/lrange kvs "tasks" 0 9)    ;; => [...]        ;; 最初の10要素
+```
+
 ---
 
 ### ハッシュ操作
@@ -328,6 +349,77 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ```qi
 (kvs/smembers kvs "tags")
 ;; => ["redis" "cache" "nosql"]
+```
+
+---
+
+### 複数操作（バッチ操作）
+
+#### kvs/mget - 複数キー一括取得
+
+```qi
+(kvs/mget conn keys)
+```
+
+**引数**:
+- `keys`: キー名のベクタ
+
+**戻り値**:
+- 値のベクタ（存在しないキーはnil）
+
+**例**:
+```qi
+(kvs/set kvs "key1" "value1")
+(kvs/set kvs "key2" "value2")
+(kvs/set kvs "key3" "value3")
+
+(kvs/mget kvs ["key1" "key2" "key3"])
+;; => ["value1" "value2" "value3"]
+
+(kvs/mget kvs ["key1" "nonexistent" "key3"])
+;; => ["value1" nil "value3"]
+```
+
+#### kvs/mset - 複数キー一括設定
+
+```qi
+(kvs/mset conn pairs)
+```
+
+**引数**:
+- `pairs`: キーと値のマップ
+
+**戻り値**:
+- `"OK"` (成功時)
+
+**例**:
+```qi
+(kvs/mset kvs {"key1" "value1" "key2" "value2" "key3" "value3"})
+;; => "OK"
+
+;; 大量のキーを一度に設定
+(kvs/mset kvs {
+  "user:1" "Alice"
+  "user:2" "Bob"
+  "user:3" "Charlie"
+  "cache:1" "data1"
+  "cache:2" "data2"
+})
+```
+
+**パフォーマンスメリット**:
+- 複数のキーを1回のネットワーク往復で処理
+- ループ処理より高速
+- アトミックに実行される
+
+```qi
+;; ❌ 非効率（3回のネットワーク往復）
+(kvs/set kvs "key1" "value1")
+(kvs/set kvs "key2" "value2")
+(kvs/set kvs "key3" "value3")
+
+;; ✅ 効率的（1回のネットワーク往復）
+(kvs/mset kvs {"key1" "value1" "key2" "value2" "key3" "value3"})
 ```
 
 ---
