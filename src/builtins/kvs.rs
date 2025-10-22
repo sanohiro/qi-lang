@@ -331,19 +331,63 @@ impl KvsDriver for RedisDriver {
         })
     }
 
-    fn mget(&self, _keys: &[String]) -> Result<Vec<Option<String>>, String> {
-        // TODO: redis.rsにnative_redis_mgetを実装する必要がある
-        Err("MGET not yet implemented for Redis".to_string())
+    fn mget(&self, keys: &[String]) -> Result<Vec<Option<String>>, String> {
+        let keys_vec: Vec<Value> = keys.iter().map(|k| Value::String(k.clone())).collect();
+        crate::builtins::redis::native_redis_mget(&[
+            Value::String(self.url.clone()),
+            Value::Vector(keys_vec.into()),
+        ])
+        .and_then(|v| match v {
+            Value::Vector(vec) => Ok(vec
+                .iter()
+                .map(|v| match v {
+                    Value::String(s) => Some(s.clone()),
+                    Value::Nil => None,
+                    _ => None,
+                })
+                .collect()),
+            Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
+            _ => Err("Unexpected response".to_string()),
+        })
     }
 
-    fn mset(&self, _pairs: &HashMap<String, String>) -> Result<String, String> {
-        // TODO: redis.rsにnative_redis_msetを実装する必要がある
-        Err("MSET not yet implemented for Redis".to_string())
+    fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String> {
+        let mut map = im::HashMap::new();
+        for (k, v) in pairs {
+            map.insert(k.clone(), Value::String(v.clone()));
+        }
+        crate::builtins::redis::native_redis_mset(&[
+            Value::String(self.url.clone()),
+            Value::Map(map),
+        ])
+        .and_then(|v| match v {
+            Value::String(s) => Ok(s),
+            Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
+            _ => Err("Unexpected response".to_string()),
+        })
     }
 
-    fn lrange(&self, _key: &str, _start: i64, _stop: i64) -> Result<Vec<String>, String> {
-        // TODO: redis.rsにnative_redis_lrangeを実装する必要がある
-        Err("LRANGE not yet implemented for Redis".to_string())
+    fn lrange(&self, key: &str, start: i64, stop: i64) -> Result<Vec<String>, String> {
+        crate::builtins::redis::native_redis_lrange(&[
+            Value::String(self.url.clone()),
+            Value::String(key.to_string()),
+            Value::Integer(start),
+            Value::Integer(stop),
+        ])
+        .and_then(|v| match v {
+            Value::Vector(vec) => Ok(vec
+                .iter()
+                .filter_map(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()),
+            Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
+            _ => Err("Unexpected response".to_string()),
+        })
     }
 }
 
