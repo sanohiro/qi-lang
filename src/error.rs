@@ -351,6 +351,53 @@ impl QiError {
         // レキサーエラーは全てE0602（字句解析エラー）
         ErrorCode::E0602
     }
+
+    /// MsgKeyからErrorCodeを推定（eval用）
+    pub fn error_code_from_eval_msg(key: &crate::i18n::MsgKey) -> ErrorCode {
+        use crate::i18n::MsgKey;
+        match key {
+            // 変数・シンボル関連（E0001-E0003）
+            MsgKey::UndefinedVar | MsgKey::UndefinedVarWithSuggestions => ErrorCode::E0001,
+            MsgKey::SymbolNotFound | MsgKey::SymbolNotExported => ErrorCode::E0002,
+            MsgKey::RedefineVariable
+            | MsgKey::RedefineFunction
+            | MsgKey::RedefineBuiltin => ErrorCode::E0003,
+
+            // 型エラー（E0101-E0103）
+            MsgKey::TypeMismatch => ErrorCode::E0101,
+            MsgKey::TypeOnly | MsgKey::FStringCannotBeQuoted => ErrorCode::E0102,
+
+            // 引数エラー（E0201-E0204）
+            MsgKey::ArgCountMismatch
+            | MsgKey::MacArgCountMismatch
+            | MsgKey::RecurArgCountMismatch => ErrorCode::E0201,
+            MsgKey::NeedExactlyNArgs
+            | MsgKey::NeedNArgsDesc
+            | MsgKey::Need1Arg
+            | MsgKey::Need2Args => ErrorCode::E0201,
+            MsgKey::MacVariadicArgCountMismatch => ErrorCode::E0204,
+
+            // モジュールエラー
+            MsgKey::ModuleNotFound => ErrorCode::E9999,
+            MsgKey::ModuleParseError | MsgKey::ModuleParserInitError => ErrorCode::E0601,
+            MsgKey::ExportOnlyInModule => ErrorCode::E9999,
+
+            // パターンマッチング
+            MsgKey::NoMatchingPattern => ErrorCode::E9999,
+
+            // その他
+            MsgKey::CannotQuote
+            | MsgKey::UnquoteOutsideQuasiquote
+            | MsgKey::UnquoteSpliceNeedsListOrVector => ErrorCode::E9999,
+            MsgKey::RecurNotFound => ErrorCode::E9999,
+            MsgKey::KeyNotFound => ErrorCode::E9999,
+            MsgKey::CircularDependency => ErrorCode::E9999,
+            MsgKey::FStringCodeParseError => ErrorCode::E0601,
+
+            // デフォルト
+            _ => ErrorCode::E9999,
+        }
+    }
 }
 
 #[cfg(test)]

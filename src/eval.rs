@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::error::QiError;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
 use crate::value::{
@@ -29,6 +30,18 @@ pub mod hof_keys {
     pub const COMP_FUNCS: &str = "__comp_funcs__";
     pub const CONSTANTLY_VALUE: &str = "__constantly_value__";
     pub const PARTIAL_PLACEHOLDER: &str = "__partial_placeholder__";
+}
+
+// ========================================
+// エラーヘルパー関数
+// ========================================
+
+/// QiErrorを使ってエラーメッセージを生成
+#[inline]
+fn qerr(key: MsgKey, args: &[&str]) -> String {
+    let base_msg = fmt_msg(key, args);
+    let error_code = QiError::error_code_from_eval_msg(&key);
+    QiError::new(error_code, base_msg).into()
 }
 
 /// 環境から変数名の候補を取得
@@ -227,7 +240,7 @@ impl Evaluator {
                     // 類似した変数名を検索（最大編集距離3、最大3件）
                     let suggestions = find_similar_names(&env_read, name, 3, 3);
                     let msg = if suggestions.is_empty() {
-                        fmt_msg(MsgKey::UndefinedVar, &[name])
+                        qerr(MsgKey::UndefinedVar, &[name])
                     } else {
                         fmt_msg(
                             MsgKey::UndefinedVarWithSuggestions,
@@ -276,13 +289,13 @@ impl Evaluator {
                     if let Some(existing) = env.read().get(name) {
                         match existing {
                             Value::NativeFunc(nf) => {
-                                eprintln!("{}", fmt_msg(MsgKey::RedefineBuiltin, &[name, nf.name]));
+                                eprintln!("{}", qerr(MsgKey::RedefineBuiltin, &[name, nf.name]));
                             }
                             Value::Function(_) | Value::Macro(_) => {
-                                eprintln!("{}", fmt_msg(MsgKey::RedefineFunction, &[name]));
+                                eprintln!("{}", qerr(MsgKey::RedefineFunction, &[name]));
                             }
                             _ => {
-                                eprintln!("{}", fmt_msg(MsgKey::RedefineVariable, &[name]));
+                                eprintln!("{}", qerr(MsgKey::RedefineVariable, &[name]));
                             }
                         }
                     }
@@ -464,7 +477,7 @@ impl Evaluator {
                 // シンボルの存在確認
                 for symbol in symbols {
                     if env.read().get(symbol).is_none() {
-                        return Err(fmt_msg(MsgKey::SymbolNotFound, &[symbol, &module_name]));
+                        return Err(qerr(MsgKey::SymbolNotFound, &[symbol, &module_name]));
                     }
                 }
 
@@ -600,14 +613,14 @@ impl Evaluator {
             Value::Keyword(key) => {
                 // キーワードを関数として使う: (:name map) => (get map :name)
                 if arg_vals.len() != 1 {
-                    return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
+                    return Err(qerr(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
                 }
                 match &arg_vals[0] {
                     Value::Map(m) => m
                         .get(&key)
                         .cloned()
-                        .ok_or_else(|| fmt_msg(MsgKey::KeyNotFound, &[&key])),
-                    _ => Err(fmt_msg(MsgKey::TypeOnly, &["keyword fn", "maps"])),
+                        .ok_or_else(|| qerr(MsgKey::KeyNotFound, &[&key])),
+                    _ => Err(qerr(MsgKey::TypeOnly, &["keyword fn", "maps"])),
                 }
             }
             _ => Err(fmt_msg(
@@ -992,7 +1005,7 @@ impl Evaluator {
     /// pfilter関数の実装: (pfilter pred coll)
     fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["go/pfilter"]));
+            return Err(qerr(MsgKey::Need2Args, &["go/pfilter"]));
         }
         let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1002,7 +1015,7 @@ impl Evaluator {
     /// preduce関数の実装: (preduce f coll init) - reduceと同じ順序
     fn eval_preduce(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &["go/preduce", "3", ""]));
+            return Err(qerr(MsgKey::NeedNArgsDesc, &["go/preduce", "3", ""]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1071,7 +1084,7 @@ impl Evaluator {
     /// test/run - テストを実行して結果を記録
     fn eval_test_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["test/run"]));
+            return Err(qerr(MsgKey::Need2Args, &["test/run"]));
         }
         let name = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let body = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1085,7 +1098,7 @@ impl Evaluator {
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
+            return Err(qerr(MsgKey::Need1Arg, &["test/assert-throws"]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::test_assert_throws(&[func], self)
@@ -1402,7 +1415,7 @@ impl Evaluator {
     /// quote - 式を評価せずにそのまま返す
     fn eval_quote(&self, args: &[Expr]) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["quote"]));
+            return Err(qerr(MsgKey::Need1Arg, &["quote"]));
         }
         self.expr_to_value(&args[0])
     }
@@ -1417,7 +1430,7 @@ impl Evaluator {
         builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
     ) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &[func_name]));
+            return Err(qerr(MsgKey::Need2Args, &[func_name]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1436,7 +1449,7 @@ impl Evaluator {
         builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
     ) -> Result<Value, String> {
         if args.len() != 3 {
-            return Err(fmt_msg(MsgKey::NeedNArgsDesc, &[func_name, "3", ""]));
+            return Err(qerr(MsgKey::NeedNArgsDesc, &[func_name, "3", ""]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1453,7 +1466,7 @@ impl Evaluator {
     /// chunk - 固定サイズでリストを分割
     fn eval_chunk(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["chunk"]));
+            return Err(qerr(MsgKey::Need2Args, &["chunk"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1500,7 +1513,7 @@ impl Evaluator {
 
     fn eval_time(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["time"]));
+            return Err(qerr(MsgKey::Need1Arg, &["time"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1511,7 +1524,7 @@ impl Evaluator {
 
     fn eval_tap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["tap"]));
+            return Err(qerr(MsgKey::Need2Args, &["tap"]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let value = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1528,7 +1541,7 @@ impl Evaluator {
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["go/then"]));
+            return Err(qerr(MsgKey::Need2Args, &["go/then"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1539,7 +1552,7 @@ impl Evaluator {
 
     fn eval_catch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["go/catch"]));
+            return Err(qerr(MsgKey::Need2Args, &["go/catch"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1550,7 +1563,7 @@ impl Evaluator {
 
     fn eval_select(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["go/select!"]));
+            return Err(qerr(MsgKey::Need1Arg, &["go/select!"]));
         }
         let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::select(&[val], self)
@@ -1558,7 +1571,7 @@ impl Evaluator {
 
     fn eval_scope_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["go/scope-go"]));
+            return Err(qerr(MsgKey::Need2Args, &["go/scope-go"]));
         }
         let scope = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let func = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1567,7 +1580,7 @@ impl Evaluator {
 
     fn eval_with_scope(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["go/with-scope"]));
+            return Err(qerr(MsgKey::Need1Arg, &["go/with-scope"]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::with_scope(&[func], self)
@@ -1575,7 +1588,7 @@ impl Evaluator {
 
     fn eval_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 1 {
-            return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
+            return Err(qerr(MsgKey::Need1Arg, &["go/run"]));
         }
         let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::run(&[val], self)
@@ -1606,7 +1619,7 @@ impl Evaluator {
 
     fn eval_iterate(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["iterate"]));
+            return Err(qerr(MsgKey::Need2Args, &["iterate"]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1615,7 +1628,7 @@ impl Evaluator {
 
     fn eval_stream_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["stream-map"]));
+            return Err(qerr(MsgKey::Need2Args, &["stream-map"]));
         }
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1624,7 +1637,7 @@ impl Evaluator {
 
     fn eval_stream_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["stream-filter"]));
+            return Err(qerr(MsgKey::Need2Args, &["stream-filter"]));
         }
         let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
@@ -1633,7 +1646,7 @@ impl Evaluator {
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["find"]));
+            return Err(qerr(MsgKey::Need2Args, &["find"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1644,7 +1657,7 @@ impl Evaluator {
 
     fn eval_find_index(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["find-index"]));
+            return Err(qerr(MsgKey::Need2Args, &["find-index"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1655,7 +1668,7 @@ impl Evaluator {
 
     fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["list/every?"]));
+            return Err(qerr(MsgKey::Need2Args, &["list/every?"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1666,7 +1679,7 @@ impl Evaluator {
 
     fn eval_some(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["list/some?"]));
+            return Err(qerr(MsgKey::Need2Args, &["list/some?"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1677,7 +1690,7 @@ impl Evaluator {
 
     fn eval_update_keys(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["update-keys"]));
+            return Err(qerr(MsgKey::Need2Args, &["update-keys"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1688,7 +1701,7 @@ impl Evaluator {
 
     fn eval_update_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["update-vals"]));
+            return Err(qerr(MsgKey::Need2Args, &["update-vals"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1699,7 +1712,7 @@ impl Evaluator {
 
     fn eval_partition_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["partition-by"]));
+            return Err(qerr(MsgKey::Need2Args, &["partition-by"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1710,7 +1723,7 @@ impl Evaluator {
 
     fn eval_keep(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["keep"]));
+            return Err(qerr(MsgKey::Need2Args, &["keep"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1721,7 +1734,7 @@ impl Evaluator {
 
     fn eval_drop_last(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["drop-last"]));
+            return Err(qerr(MsgKey::Need2Args, &["drop-last"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1732,7 +1745,7 @@ impl Evaluator {
 
     fn eval_split_at(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(fmt_msg(MsgKey::Need2Args, &["split-at"]));
+            return Err(qerr(MsgKey::Need2Args, &["split-at"]));
         }
         let vals: Vec<Value> = args
             .iter()
@@ -1770,19 +1783,19 @@ fn native_vector(args: &[Value]) -> Result<Value, String> {
 /// to-list - List/VectorをListに変換
 fn native_to_list(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-list"]));
+        return Err(qerr(MsgKey::Need1Arg, &["to-list"]));
     }
     match &args[0] {
         Value::List(_) => Ok(args[0].clone()),
         Value::Vector(v) => Ok(Value::List(v.clone())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["to-list", "lists or vectors"])),
+        _ => Err(qerr(MsgKey::TypeOnly, &["to-list", "lists or vectors"])),
     }
 }
 
 /// to-vector - List/VectorをVectorに変換
 fn native_to_vector(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-vector"]));
+        return Err(qerr(MsgKey::Need1Arg, &["to-vector"]));
     }
     match &args[0] {
         Value::Vector(_) => Ok(args[0].clone()),
@@ -1847,10 +1860,10 @@ impl Evaluator {
                         if let Some(value) = module.env.read().get(name) {
                             env.write().set(name.clone(), value);
                         } else {
-                            return Err(fmt_msg(MsgKey::SymbolNotFound, &[name, module_name]));
+                            return Err(qerr(MsgKey::SymbolNotFound, &[name, module_name]));
                         }
                     } else {
-                        return Err(fmt_msg(MsgKey::SymbolNotExported, &[name, module_name]));
+                        return Err(qerr(MsgKey::SymbolNotExported, &[name, module_name]));
                     }
                 }
             }
@@ -2007,7 +2020,7 @@ impl Evaluator {
             }
         }
 
-        let content = content.ok_or_else(|| fmt_msg(MsgKey::ModuleNotFound, &[name]))?;
+        let content = content.ok_or_else(|| qerr(MsgKey::ModuleNotFound, &[name]))?;
 
         // デバッグ: ロードしたパスを表示（開発時のみ）
         if std::env::var("QI_DEBUG").is_ok() {
@@ -2020,11 +2033,11 @@ impl Evaluator {
 
         // パースして評価
         let mut parser = crate::parser::Parser::new(&content)
-            .map_err(|e| fmt_msg(MsgKey::ModuleParserInitError, &[name, &e]))?;
+            .map_err(|e| qerr(MsgKey::ModuleParserInitError, &[name, &e]))?;
 
         let exprs = parser
             .parse_all()
-            .map_err(|e| fmt_msg(MsgKey::ModuleParseError, &[name, &e]))?;
+            .map_err(|e| qerr(MsgKey::ModuleParseError, &[name, &e]))?;
 
         // 新しい環境で評価
         let module_env = Arc::new(RwLock::new(Env::new()));
