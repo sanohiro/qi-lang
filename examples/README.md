@@ -55,6 +55,18 @@ Webアプリケーション構築
 | [15-parallel-data.qi](15-parallel-data.qi) | 並列データ処理 | 20分 |
 | [16-stdin-processing.qi](16-stdin-processing.qi) | **標準入力処理** - Unix パイプライン | 15分 |
 
+### 🗄️ データベース & KVS編（Database & KVS）
+PostgreSQL、MySQL、Redisとの統合
+
+| ファイル | 内容 | 所要時間 |
+|---------|------|---------|
+| [18-postgresql.qi](18-postgresql.qi) | **PostgreSQL接続** - 統一DB API（db/*） | 20分 |
+| [20-mysql.qi](20-mysql.qi) | **MySQL接続** - パラメータ化クエリ | 20分 |
+| [21-kvs-unified.qi](21-kvs-unified.qi) | **KVS統一API** - Redis（kvs/*） | 25分 |
+
+> **📦 Docker環境で簡単に実行**: `./examples/run-examples.sh all`
+> 詳細は下記の「[データベース & KVS サンプルの実行](#データベース--kvs-サンプルの実行)」を参照してください。
+
 ---
 
 ## 🎯 Qiの3大ウリ（★）
@@ -215,11 +227,85 @@ done
 
 ---
 
+## 🗄️ データベース & KVS サンプルの実行
+
+PostgreSQL、MySQL、Redisを使ったサンプルコードは、Dockerを使って簡単に実行できます。
+
+### 前提条件
+
+- Docker と Docker Compose がインストールされていること
+- Qiがビルドされていること（`cargo build`）
+
+### クイックスタート
+
+```bash
+# すべてのデータベース/KVSサンプルを実行
+./examples/run-examples.sh all
+
+# 個別に実行
+./examples/run-examples.sh postgres  # PostgreSQLサンプル
+./examples/run-examples.sh mysql     # MySQLサンプル
+./examples/run-examples.sh kvs       # KVS/Redisサンプル
+
+# クリーンアップ（コンテナ停止・削除）
+./examples/run-examples.sh cleanup
+```
+
+### 手動でDockerコンテナを起動する場合
+
+```bash
+# Docker Composeでコンテナを起動
+cd examples
+docker-compose up -d
+
+# サービスの状態確認
+docker-compose ps
+
+# サンプル実行
+cd ..
+qi examples/18-postgresql.qi
+qi examples/20-mysql.qi
+qi examples/21-kvs-unified.qi
+
+# コンテナ停止・削除
+cd examples
+docker-compose down -v
+```
+
+### 接続情報
+
+Docker Compose環境では、以下の接続情報が使用されます：
+
+- **PostgreSQL**:
+  - URL: `postgresql://postgres@localhost:5432/qi_test`
+  - ポート: `5432`
+
+- **MySQL**:
+  - URL: `mysql://root:password@localhost:3306/qi_test`
+  - ポート: `3306`
+
+- **Redis**:
+  - URL: `redis://localhost:6379`
+  - ポート: `6379`
+
+### トラブルシューティング
+
+#### ポートが既に使用されている
+
+既存のPostgreSQL/MySQL/Redisサーバーと競合する場合は、`docker-compose.yml`のポート番号を変更してください。
+
+#### MySQLの起動が遅い
+
+MySQLコンテナは起動に10秒程度かかります。`run-examples.sh`スクリプトは自動的に待機します。
+
+---
+
 ## 🔗 関連ドキュメント
 
 - **[チュートリアル](../docs/tutorial/)** - 初心者向け6章構成チュートリアル
 - **[言語仕様書](../docs/spec/)** - 完全な言語リファレンス
 - **[クイックリファレンス](../docs/spec/QUICK-REFERENCE.md)** - 1ページでQiの全体像
+- **[データベース & KVS仕様](../docs/spec/17-stdlib-database.md)** - PostgreSQL、MySQL、Redis統一API
 - **[README](../README.md)** - プロジェクト概要
 
 ---

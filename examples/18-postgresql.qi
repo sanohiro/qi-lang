@@ -20,7 +20,7 @@
 ;;
 
 ;; PostgreSQL接続（統一インターフェース）
-(def conn (db/connect "postgresql://localhost/qi_test"))
+(def conn (db/connect "postgresql://postgres@localhost:5432/qi_test"))
 
 ;; ========================================
 ;; 1. テーブル作成
