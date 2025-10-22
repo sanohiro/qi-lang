@@ -148,7 +148,7 @@
     "functions": {
       "patterns": [
         {
-          "match": "\\b(atom|deref|swap!|reset!|print|println|error|tap)\\b",
+          "match": "\\b(atom|deref|swap!|reset!|print|println|error|tap|validate)\\b",
           "name": "support.function.builtin.qi"
         },
         {

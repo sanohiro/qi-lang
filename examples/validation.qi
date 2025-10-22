@@ -1,0 +1,93 @@
+;; バリデーション機能のデモと使用例
+
+(println "=== バリデーション機能デモ ===\n")
+
+;; 1. 基本的な型チェック
+(println "1. 基本的な型チェック")
+(def string-schema {:type "string"})
+(println (validate string-schema "hello"))     ;=> {:ok "hello"}
+(println (validate string-schema 123))         ;=> {:error {:code "type-mismatch" ...}}
+
+;; 2. 文字列長のバリデーション
+(println "\n2. 文字列長のバリデーション")
+(def username-schema
+  {:type "string"
+   :min-length 3
+   :max-length 20})
+(println (validate username-schema "user123"))  ;=> {:ok "user123"}
+(println (validate username-schema "ab"))       ;=> {:error {:code "min-length" ...}}
+(println (validate username-schema "verylongusernamethatexceedslimit"))  ;=> {:error {:code "max-length" ...}}
+
+;; 3. 数値範囲のバリデーション
+(println "\n3. 数値範囲のバリデーション")
+(def age-schema
+  {:type "integer"
+   :min 0
+   :max 150})
+(println (validate age-schema 25))    ;=> {:ok 25}
+(println (validate age-schema -5))    ;=> {:error {:code "min-value" ...}}
+(println (validate age-schema 200))   ;=> {:error {:code "max-value" ...}}
+
+;; 4. 必須フィールドチェック
+(println "\n4. 必須フィールドチェック")
+(def required-schema {:type "string" :required true})
+(println (validate required-schema "test"))  ;=> {:ok "test"}
+(println (validate required-schema nil))     ;=> {:error {:code "required" ...}}
+
+;; 5. パターンマッチング（正規表現）
+(println "\n5. パターンマッチング（正規表現）")
+(def email-schema
+  {:type "string"
+   :pattern "^[^@]+@[^@]+\\.[^@]+$"})
+(println (validate email-schema "user@example.com"))  ;=> {:ok "user@example.com"}
+(println (validate email-schema "invalid-email"))     ;=> {:error {:code "pattern" ...}}
+
+;; 6. ネストしたマップのバリデーション
+(println "\n6. ネストしたマップのバリデーション")
+(def user-schema
+  {:type "map"
+   :fields {:name {:type "string" :required true :min-length 1}
+            :age {:type "integer" :min 0 :max 150}
+            :email {:type "string" :pattern "^[^@]+@[^@]+\\.[^@]+$"}}})
+
+(println (validate user-schema
+  {:name "太郎" :age 25 :email "taro@example.com"}))  ;=> {:ok {...}}
+
+(println (validate user-schema
+  {:name "" :age 25}))  ;=> {:error {:field ":name" :code "min-length" ...}}
+
+(println (validate user-schema
+  {:age 25}))  ;=> {:error {:field ":name" :code "required" ...}}
+
+;; 7. コレクションのバリデーション
+(println "\n7. コレクションのバリデーション")
+(def tags-schema
+  {:type "vector"
+   :min-items 1
+   :max-items 5})
+(println (validate tags-schema ["tag1" "tag2" "tag3"]))  ;=> {:ok [...]}
+(println (validate tags-schema []))                       ;=> {:error {:code "min-items" ...}}
+(println (validate tags-schema ["a" "b" "c" "d" "e" "f"]))  ;=> {:error {:code "max-value" ...}}
+
+;; 8. 複雑なスキーマの例
+(println "\n8. 複雑なスキーマの例（ユーザー登録フォーム）")
+(def signup-schema
+  {:type "map"
+   :fields {:username {:type "string" :required true :min-length 3 :max-length 20}
+            :password {:type "string" :required true :min-length 8}
+            :email {:type "string" :required true :pattern "^[^@]+@[^@]+\\.[^@]+$"}
+            :age {:type "integer" :min 13 :max 150}
+            :bio {:type "string" :max-length 500}}})
+
+(println (validate signup-schema
+  {:username "newuser"
+   :password "securepass123"
+   :email "user@example.com"
+   :age 25}))  ;=> {:ok {...}}
+
+(println (validate signup-schema
+  {:username "ab"
+   :password "short"
+   :email "invalid"}))  ;=> {:error ...}
+
+(println "\n=== デモ完了 ===")

@@ -1,0 +1,84 @@
+;; Standard Library Documentation - Validation Functions
+;; Validation Functions (1 function)
+
+;; ========================================
+;; Schema-based Data Validation
+;; ========================================
+
+(def __doc__validate
+  {:desc "Validates data against a schema. Returns {:ok value} on success, {:error {:code ... :message ... :field ...}} on failure."
+   :params [{:name "schema" :type "map" :desc "Validation schema (map)"}
+            {:name "data" :type "any" :desc "Data to validate"}]
+   :returns {:type "map" :desc "{:ok value} or {:error ...}"}
+   :examples [
+     ";; Basic type checking"
+     "(def schema {:type \"string\"})"
+     "(validate schema \"hello\") ;=> {:ok \"hello\"}"
+     "(validate schema 123) ;=> {:error {:code \"type-mismatch\" :message \"...\" }}"
+     ""
+     ";; Required field checking"
+     "(def schema {:type \"string\" :required true})"
+     "(validate schema nil) ;=> {:error {:code \"required\" :message \"...\" }}"
+     ""
+     ";; String length validation"
+     "(def schema {:type \"string\" :min-length 3 :max-length 20})"
+     "(validate schema \"user123\") ;=> {:ok \"user123\"}"
+     "(validate schema \"ab\") ;=> {:error {:code \"min-length\" :message \"...\" }}"
+     ""
+     ";; Number range validation"
+     "(def schema {:type \"integer\" :min 0 :max 150})"
+     "(validate schema 25) ;=> {:ok 25}"
+     "(validate schema -5) ;=> {:error {:code \"min-value\" :message \"...\" }}"
+     ""
+     ";; Pattern matching (regular expression)"
+     "(def email-schema {:type \"string\" :pattern \"^[^@]+@[^@]+\\\\.[^@]+$\"})"
+     "(validate email-schema \"user@example.com\") ;=> {:ok \"user@example.com\"}"
+     "(validate email-schema \"invalid\") ;=> {:error {:code \"pattern\" :message \"...\" }}"
+     ""
+     ";; Collection validation"
+     "(def tags-schema {:type \"vector\" :min-items 1 :max-items 5})"
+     "(validate tags-schema [\"tag1\" \"tag2\"]) ;=> {:ok [\"tag1\" \"tag2\"]}"
+     "(validate tags-schema []) ;=> {:error {:code \"min-items\" :message \"...\" }}"
+     ""
+     ";; Nested map validation"
+     "(def user-schema"
+     "  {:type \"map\""
+     "   :fields {:name {:type \"string\" :required true :min-length 1}"
+     "            :age {:type \"integer\" :min 0 :max 150}"
+     "            :email {:type \"string\" :pattern \"^[^@]+@[^@]+\\\\.[^@]+$\"}}})"
+     "(validate user-schema {:name \"Taro\" :age 25 :email \"taro@example.com\"}) ;=> {:ok {...}}"
+     "(validate user-schema {:name \"\" :age 25}) ;=> {:error {:field \":name\" :code \"min-length\" ...}}"
+     "(validate user-schema {:age 25}) ;=> {:error {:field \":name\" :code \"required\" ...}}"
+   ]
+   :schema-options [
+     {:key ":type" :type "string" :desc "Data type: \"string\", \"integer\", \"number\", \"boolean\", \"map\", \"vector\", \"list\", \"keyword\", \"symbol\", \"nil\", \"any\""}
+     {:key ":required" :type "bool" :desc "Whether the field is required (default: false)"}
+     {:key ":min-length" :type "integer" :desc "Minimum string length"}
+     {:key ":max-length" :type "integer" :desc "Maximum string length"}
+     {:key ":pattern" :type "string" :desc "Regular expression pattern (for strings)"}
+     {:key ":min" :type "integer|float" :desc "Minimum numeric value"}
+     {:key ":max" :type "integer|float" :desc "Maximum numeric value"}
+     {:key ":positive" :type "bool" :desc "Whether the number must be positive (greater than 0)"}
+     {:key ":integer" :type "bool" :desc "Whether the number must be an integer (for floats)"}
+     {:key ":min-items" :type "integer" :desc "Minimum collection size"}
+     {:key ":max-items" :type "integer" :desc "Maximum collection size"}
+     {:key ":fields" :type "map" :desc "Schema for nested map fields"}
+   ]
+   :error-codes [
+     {:code "type-mismatch" :desc "Type does not match"}
+     {:code "required" :desc "Required field is missing"}
+     {:code "min-length" :desc "String is too short"}
+     {:code "max-length" :desc "String is too long"}
+     {:code "pattern" :desc "Does not match pattern"}
+     {:code "min-value" :desc "Number is too small"}
+     {:code "max-value" :desc "Number is too large"}
+     {:code "positive" :desc "Number is not positive"}
+     {:code "min-items" :desc "Too few items"}
+     {:code "max-items" :desc "Too many items"}
+   ]
+   :notes [
+     "- For optional fields (:required is false or unspecified), validation succeeds if data is nil"
+     "- :type \"any\" accepts any data type"
+     "- For nested map validation, the field with an error is included in :field"
+     "- Regular expression patterns follow ripgrep syntax"
+   ]})

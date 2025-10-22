@@ -81,6 +81,9 @@
 - **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐ NEW
   - PostgreSQL接続（クエリ実行、コマンド実行）
   - パラメータ化クエリ、Result型統合
+- **[18-stdlib-validation.md](18-stdlib-validation.md)** - データ検証 ⭐ NEW
+  - スキーマベースのバリデーション（型チェック、必須フィールド、文字列長、数値範囲、パターンマッチング）
+  - ネストしたマップの検証、Result型統合
 
 ---
 

@@ -1,0 +1,84 @@
+;; 標準ライブラリドキュメント - バリデーション関数
+;; Validation Functions (1 function)
+
+;; ========================================
+;; スキーマベースのデータ検証
+;; ========================================
+
+(def __doc__validate
+  {:desc "スキーマに基づいてデータを検証します。成功時は {:ok value}、失敗時は {:error {:code ... :message ... :field ...}} を返します。"
+   :params [{:name "schema" :type "map" :desc "検証スキーマ（マップ）"}
+            {:name "data" :type "any" :desc "検証対象のデータ"}]
+   :returns {:type "map" :desc "{:ok value} または {:error ...}"}
+   :examples [
+     ";; 基本的な型チェック"
+     "(def schema {:type \"string\"})"
+     "(validate schema \"hello\") ;=> {:ok \"hello\"}"
+     "(validate schema 123) ;=> {:error {:code \"type-mismatch\" :message \"...\" }}"
+     ""
+     ";; 必須フィールドチェック"
+     "(def schema {:type \"string\" :required true})"
+     "(validate schema nil) ;=> {:error {:code \"required\" :message \"...\" }}"
+     ""
+     ";; 文字列長のバリデーション"
+     "(def schema {:type \"string\" :min-length 3 :max-length 20})"
+     "(validate schema \"user123\") ;=> {:ok \"user123\"}"
+     "(validate schema \"ab\") ;=> {:error {:code \"min-length\" :message \"...\" }}"
+     ""
+     ";; 数値範囲のバリデーション"
+     "(def schema {:type \"integer\" :min 0 :max 150})"
+     "(validate schema 25) ;=> {:ok 25}"
+     "(validate schema -5) ;=> {:error {:code \"min-value\" :message \"...\" }}"
+     ""
+     ";; パターンマッチング（正規表現）"
+     "(def email-schema {:type \"string\" :pattern \"^[^@]+@[^@]+\\\\.[^@]+$\"})"
+     "(validate email-schema \"user@example.com\") ;=> {:ok \"user@example.com\"}"
+     "(validate email-schema \"invalid\") ;=> {:error {:code \"pattern\" :message \"...\" }}"
+     ""
+     ";; コレクションのバリデーション"
+     "(def tags-schema {:type \"vector\" :min-items 1 :max-items 5})"
+     "(validate tags-schema [\"tag1\" \"tag2\"]) ;=> {:ok [\"tag1\" \"tag2\"]}"
+     "(validate tags-schema []) ;=> {:error {:code \"min-items\" :message \"...\" }}"
+     ""
+     ";; ネストしたマップのバリデーション"
+     "(def user-schema"
+     "  {:type \"map\""
+     "   :fields {:name {:type \"string\" :required true :min-length 1}"
+     "            :age {:type \"integer\" :min 0 :max 150}"
+     "            :email {:type \"string\" :pattern \"^[^@]+@[^@]+\\\\.[^@]+$\"}}})"
+     "(validate user-schema {:name \"太郎\" :age 25 :email \"taro@example.com\"}) ;=> {:ok {...}}"
+     "(validate user-schema {:name \"\" :age 25}) ;=> {:error {:field \":name\" :code \"min-length\" ...}}"
+     "(validate user-schema {:age 25}) ;=> {:error {:field \":name\" :code \"required\" ...}}"
+   ]
+   :schema-options [
+     {:key ":type" :type "string" :desc "データ型: \"string\", \"integer\", \"number\", \"boolean\", \"map\", \"vector\", \"list\", \"keyword\", \"symbol\", \"nil\", \"any\""}
+     {:key ":required" :type "bool" :desc "必須フィールドかどうか（デフォルト: false）"}
+     {:key ":min-length" :type "integer" :desc "文字列の最小文字数"}
+     {:key ":max-length" :type "integer" :desc "文字列の最大文字数"}
+     {:key ":pattern" :type "string" :desc "正規表現パターン（文字列のみ）"}
+     {:key ":min" :type "integer|float" :desc "数値の最小値"}
+     {:key ":max" :type "integer|float" :desc "数値の最大値"}
+     {:key ":positive" :type "bool" :desc "正の数かどうか（0より大きい）"}
+     {:key ":integer" :type "bool" :desc "整数かどうか（floatの場合）"}
+     {:key ":min-items" :type "integer" :desc "コレクションの最小要素数"}
+     {:key ":max-items" :type "integer" :desc "コレクションの最大要素数"}
+     {:key ":fields" :type "map" :desc "ネストしたマップのフィールドスキーマ"}
+   ]
+   :error-codes [
+     {:code "type-mismatch" :desc "型が一致しない"}
+     {:code "required" :desc "必須フィールドが欠落"}
+     {:code "min-length" :desc "文字列が短すぎる"}
+     {:code "max-length" :desc "文字列が長すぎる"}
+     {:code "pattern" :desc "パターンに一致しない"}
+     {:code "min-value" :desc "数値が小さすぎる"}
+     {:code "max-value" :desc "数値が大きすぎる"}
+     {:code "positive" :desc "正の数でない"}
+     {:code "min-items" :desc "要素数が少なすぎる"}
+     {:code "max-items" :desc "要素数が多すぎる"}
+   ]
+   :notes [
+     "- オプショナルフィールド（:required が false または未指定）でデータが nil の場合、検証は成功します"
+     "- :type が \"any\" の場合、任意の型を受け入れます"
+     "- ネストしたマップの検証では、エラーが発生したフィールドが :field に含まれます"
+     "- 正規表現パターンは ripgrep の構文に従います"
+   ]})
