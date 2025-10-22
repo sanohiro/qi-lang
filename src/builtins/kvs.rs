@@ -352,7 +352,7 @@ impl KvsDriver for RedisDriver {
     }
 
     fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String> {
-        let mut map = im::HashMap::new();
+        let mut map = crate::new_hashmap();
         for (k, v) in pairs {
             map.insert(k.clone(), Value::String(v.clone()));
         }
@@ -987,7 +987,7 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
 
     match driver.hgetall(key) {
         Ok(pairs) => {
-            let mut map = im::HashMap::new();
+            let mut map = crate::new_hashmap();
             for (field, value) in pairs {
                 // 文字列キーでマップに追加
                 map.insert(field, Value::String(value));

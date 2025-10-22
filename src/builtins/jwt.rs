@@ -183,7 +183,7 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
             let header = json_to_qi_value(&serde_json::to_value(&token_data.header).unwrap())?;
             let payload = json_to_qi_value(&token_data.claims)?;
 
-            let mut result_map = im::HashMap::new();
+            let mut result_map = crate::new_hashmap();
             result_map.insert(":header".to_string(), header);
             result_map.insert(":payload".to_string(), payload);
 
@@ -220,7 +220,7 @@ fn parse_algorithm(alg: &str) -> Result<Algorithm, String> {
 }
 
 /// QiのマップをJSON Valueに変換
-fn qi_map_to_json(map: &im::HashMap<String, Value>) -> Result<JsonValue, String> {
+fn qi_map_to_json(map: &crate::HashMap<String, Value>) -> Result<JsonValue, String> {
     let mut json_map = serde_json::Map::new();
 
     for (key, value) in map.iter() {
@@ -283,7 +283,7 @@ fn json_to_qi_value(json: &JsonValue) -> Result<Value, String> {
             Ok(Value::Vector(items?.into()))
         }
         JsonValue::Object(obj) => {
-            let mut map = im::HashMap::new();
+            let mut map = crate::new_hashmap();
             for (k, v) in obj.iter() {
                 // JSONキーをキーワード形式（":name"）に変換
                 let key = format!(":{}", k);
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_jwt_sign_and_verify() {
-        let mut payload = im::HashMap::new();
+        let mut payload = crate::new_hashmap();
         payload.insert(":user_id".to_string(), Value::Integer(123));
         payload.insert(":name".to_string(), Value::String("Alice".to_string()));
 
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_jwt_decode() {
-        let mut payload = im::HashMap::new();
+        let mut payload = crate::new_hashmap();
         payload.insert(":user_id".to_string(), Value::Integer(123));
 
         let secret = Value::String("my-secret-key".to_string());

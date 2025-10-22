@@ -18,7 +18,7 @@
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use im::HashMap;
+use crate::HashMap;
 use regex::Regex;
 
 /// validate関数
@@ -55,7 +55,7 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
             ));
         } else {
             // オプショナルフィールドでnilの場合は成功
-            let mut result_map = crate::value::new_hashmap();
+            let mut result_map = crate::new_hashmap();
             result_map.insert(":ok".to_string(), data.clone());
             return Ok(Value::Map(result_map));
         }
@@ -99,7 +99,7 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
     }
 
     // 全て通過したら成功
-    let mut result_map = crate::value::new_hashmap();
+    let mut result_map = crate::new_hashmap();
     result_map.insert(":ok".to_string(), data.clone());
     Ok(Value::Map(result_map))
 }
@@ -327,7 +327,7 @@ fn validate_map(
 
 /// エラー結果を生成
 fn error_result(field: Option<&str>, code: &str, message: String) -> Value {
-    let mut error_map = crate::value::new_hashmap();
+    let mut error_map = crate::new_hashmap();
     error_map.insert(":code".to_string(), Value::String(code.to_string()));
     error_map.insert(":message".to_string(), Value::String(message));
 
@@ -335,7 +335,7 @@ fn error_result(field: Option<&str>, code: &str, message: String) -> Value {
         error_map.insert(":field".to_string(), Value::String(f.to_string()));
     }
 
-    let mut result_map = crate::value::new_hashmap();
+    let mut result_map = crate::new_hashmap();
     result_map.insert(":error".to_string(), Value::Map(error_map));
     Value::Map(result_map)
 }
@@ -353,7 +353,7 @@ mod tests {
 
     /// ヘルパー関数: スキーママップを作成
     fn make_schema(entries: Vec<(&str, Value)>) -> Value {
-        let mut map = crate::value::new_hashmap();
+        let mut map = crate::new_hashmap();
         for (key, val) in entries {
             map.insert(key.to_string(), val);
         }
@@ -561,17 +561,17 @@ mod tests {
     #[test]
     fn test_validate_nested_map() {
         // ネストしたマップのスキーマ
-        let mut name_schema = crate::value::new_hashmap();
+        let mut name_schema = crate::new_hashmap();
         name_schema.insert(":type".to_string(), Value::String("string".to_string()));
         name_schema.insert(":required".to_string(), Value::Bool(true));
         name_schema.insert(":min-length".to_string(), Value::Integer(1));
 
-        let mut age_schema = crate::value::new_hashmap();
+        let mut age_schema = crate::new_hashmap();
         age_schema.insert(":type".to_string(), Value::String("integer".to_string()));
         age_schema.insert(":min".to_string(), Value::Integer(0));
         age_schema.insert(":max".to_string(), Value::Integer(150));
 
-        let mut fields = crate::value::new_hashmap();
+        let mut fields = crate::new_hashmap();
         fields.insert(":name".to_string(), Value::Map(name_schema));
         fields.insert(":age".to_string(), Value::Map(age_schema));
 
@@ -581,14 +581,14 @@ mod tests {
         ]);
 
         // 正常なデータ
-        let mut valid_data = crate::value::new_hashmap();
+        let mut valid_data = crate::new_hashmap();
         valid_data.insert(":name".to_string(), Value::String("太郎".to_string()));
         valid_data.insert(":age".to_string(), Value::Integer(25));
         let result = native_validate(&[schema.clone(), Value::Map(valid_data)]).unwrap();
         assert!(is_ok(&result), "Expected success for valid nested map");
 
         // nameが空文字列（min-lengthエラー）
-        let mut invalid_name = crate::value::new_hashmap();
+        let mut invalid_name = crate::new_hashmap();
         invalid_name.insert(":name".to_string(), Value::String("".to_string()));
         invalid_name.insert(":age".to_string(), Value::Integer(25));
         let result = native_validate(&[schema.clone(), Value::Map(invalid_name)]).unwrap();
@@ -596,7 +596,7 @@ mod tests {
         assert_eq!(get_error_code(&result), Some("min-length".to_string()));
 
         // nameがない（requiredエラー）
-        let mut missing_name = crate::value::new_hashmap();
+        let mut missing_name = crate::new_hashmap();
         missing_name.insert(":age".to_string(), Value::Integer(25));
         let result = native_validate(&[schema.clone(), Value::Map(missing_name)]).unwrap();
         assert!(
@@ -606,7 +606,7 @@ mod tests {
         assert_eq!(get_error_code(&result), Some("required".to_string()));
 
         // ageが範囲外（max-valueエラー）
-        let mut invalid_age = crate::value::new_hashmap();
+        let mut invalid_age = crate::new_hashmap();
         invalid_age.insert(":name".to_string(), Value::String("太郎".to_string()));
         invalid_age.insert(":age".to_string(), Value::Integer(200));
         let result = native_validate(&[schema, Value::Map(invalid_age)]).unwrap();

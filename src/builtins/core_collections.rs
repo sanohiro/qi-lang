@@ -519,7 +519,7 @@ pub fn native_merge(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["merge", "1"]));
     }
-    let mut result = im::HashMap::new();
+    let mut result = crate::new_hashmap();
     for arg in args {
         match arg {
             Value::Map(m) => {

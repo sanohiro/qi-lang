@@ -360,7 +360,7 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
         let lang = cap.get(1).map(|m| m.as_str().trim()).unwrap_or("");
         let code = cap.get(2).map(|m| m.as_str().trim_end()).unwrap_or("");
 
-        let mut block = im::HashMap::new();
+        let mut block = crate::new_hashmap();
         block.insert(
             "lang".to_string(),
             if lang.is_empty() {
@@ -420,7 +420,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 i += 1;
             }
 
-            let mut block = im::HashMap::new();
+            let mut block = crate::new_hashmap();
             block.insert("type".to_string(), Value::String("code-block".to_string()));
             block.insert(
                 "lang".to_string(),
@@ -441,7 +441,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             let level = cap.get(1).map(|m| m.as_str().len()).unwrap_or(1);
             let text = cap.get(2).map(|m| m.as_str()).unwrap_or("");
 
-            let mut block = im::HashMap::new();
+            let mut block = crate::new_hashmap();
             block.insert("type".to_string(), Value::String("header".to_string()));
             block.insert("level".to_string(), Value::Integer(level as i64));
             block.insert("text".to_string(), Value::String(text.to_string()));
@@ -464,7 +464,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            let mut block = im::HashMap::new();
+            let mut block = crate::new_hashmap();
             block.insert("type".to_string(), Value::String("list".to_string()));
             block.insert("ordered".to_string(), Value::Bool(false));
             block.insert("items".to_string(), Value::List(items.into()));
@@ -486,7 +486,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            let mut block = im::HashMap::new();
+            let mut block = crate::new_hashmap();
             block.insert("type".to_string(), Value::String("list".to_string()));
             block.insert("ordered".to_string(), Value::Bool(true));
             block.insert("items".to_string(), Value::List(items.into()));
@@ -511,7 +511,7 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
         }
 
         if !para_lines.is_empty() {
-            let mut block = im::HashMap::new();
+            let mut block = crate::new_hashmap();
             block.insert("type".to_string(), Value::String("paragraph".to_string()));
             block.insert("text".to_string(), Value::String(para_lines.join(" ")));
             blocks.push(Value::Map(block));

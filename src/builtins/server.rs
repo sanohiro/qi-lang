@@ -12,6 +12,7 @@
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+use crate::HashMap;
 use flate2::read::GzDecoder;
 use http_body_util::{combinators::BoxBody, BodyExt, Full, StreamBody};
 use hyper::body::{Bytes, Frame};
@@ -19,7 +20,6 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
-use im::HashMap;
 use std::convert::Infallible;
 use std::io::Read;
 use std::net::SocketAddr;
@@ -140,7 +140,7 @@ fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
 
         let mut headers = match resp_map.get("headers") {
             Some(Value::Map(h)) => h.clone(),
-            _ => HashMap::new(),
+            _ => crate::new_hashmap(),
         };
 
         headers.insert(
@@ -171,7 +171,7 @@ fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
                     let mut new_resp = resp_map.clone();
                     let mut headers = match resp_map.get("headers") {
                         Some(Value::Map(h)) => h.clone(),
-                        _ => HashMap::new(),
+                        _ => crate::new_hashmap(),
                     };
                     headers.insert(
                         "Content-Encoding".to_string(),
@@ -191,10 +191,10 @@ fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
 /// ?page=1&limit=10 → {"page": "1", "limit": "10"}
 /// ?tag=a&tag=b → {"tag": ["a", "b"]}
 fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
-    let mut params: HashMap<String, Vec<String>> = HashMap::new();
+    let mut params: HashMap<String, Vec<String>> = crate::new_hashmap();
 
     if query_str.is_empty() {
-        return HashMap::new();
+        return crate::new_hashmap();
     }
 
     // &で分割してkey=value形式をパース
@@ -274,7 +274,7 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
     let query_params = parse_query_params(&query);
 
     // ヘッダー
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     for (name, value) in parts.headers.iter() {
         if let Ok(v) = value.to_str() {
             headers.insert(name.as_str().to_string(), Value::String(v.to_string()));
@@ -282,7 +282,7 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
     }
 
     // リクエストマップ
-    let mut req_map = HashMap::new();
+    let mut req_map = crate::new_hashmap();
     req_map.insert("method".to_string(), Value::Keyword(method));
     req_map.insert("path".to_string(), Value::String(path));
     req_map.insert("query".to_string(), Value::String(query));
@@ -392,11 +392,11 @@ pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
         v => format!("{}", v),
     };
 
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(200));
     resp.insert("body".to_string(), Value::String(body));
 
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("text/plain; charset=utf-8".to_string()),
@@ -435,11 +435,11 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
         200
     };
 
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(status));
     resp.insert("body".to_string(), Value::String(json_str));
 
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("application/json; charset=utf-8".to_string()),
@@ -460,11 +460,11 @@ pub fn native_server_not_found(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(404));
     resp.insert("body".to_string(), Value::String(body));
 
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("text/plain; charset=utf-8".to_string()),
@@ -476,7 +476,7 @@ pub fn native_server_not_found(args: &[Value]) -> Result<Value, String> {
 
 /// server/no-content - 204 No Contentレスポンスを作成
 pub fn native_server_no_content(_args: &[Value]) -> Result<Value, String> {
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(204));
     resp.insert("body".to_string(), Value::String(String::new()));
     Ok(Value::Map(resp))
@@ -508,7 +508,7 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
             _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["server/serve", "a map"])),
         }
     } else {
-        HashMap::new()
+        crate::new_hashmap()
     };
 
     let port = match opts.get("port") {
@@ -725,7 +725,7 @@ fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, Strin
                             // パラメータをリクエストに追加
                             let mut req_with_params = match req {
                                 Value::Map(m) => m.clone(),
-                                _ => HashMap::new(),
+                                _ => crate::new_hashmap(),
                             };
                             req_with_params.insert("params".to_string(), Value::Map(params));
 
@@ -787,14 +787,14 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
         .to_str()
         .ok_or_else(|| fmt_msg(MsgKey::InvalidFilePath, &["serve_static_file"]))?;
 
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(200));
     resp.insert(
         "body-file".to_string(),
         Value::String(file_path_str.to_string()),
     );
 
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String(content_type.to_string()),
@@ -872,13 +872,13 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
 
                         if !authorized {
                             // 401 Unauthorized を返す
-                            let mut resp = HashMap::new();
+                            let mut resp = crate::new_hashmap();
                             resp.insert("status".to_string(), Value::Integer(401));
                             resp.insert(
                                 "body".to_string(),
                                 Value::String("Unauthorized".to_string()),
                             );
-                            let mut headers = HashMap::new();
+                            let mut headers = crate::new_hashmap();
                             headers.insert(
                                 "WWW-Authenticate".to_string(),
                                 Value::String("Basic realm=\"Restricted\"".to_string()),
@@ -945,7 +945,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                         if let Value::Map(mut resp_map) = response.clone() {
                             let mut headers = match resp_map.get("headers") {
                                 Some(Value::Map(h)) => h.clone(),
-                                _ => HashMap::new(),
+                                _ => crate::new_hashmap(),
                             };
 
                             headers.insert(
@@ -1003,7 +1003,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                                     let cache_control = cache_parts.join(", ");
                                     let mut headers = match resp_map.get("headers") {
                                         Some(Value::Map(h)) => h.clone(),
-                                        _ => HashMap::new(),
+                                        _ => crate::new_hashmap(),
                                     };
                                     headers.insert(
                                         "Cache-Control".to_string(),
@@ -1041,7 +1041,7 @@ fn match_route_pattern(pattern: &str, path: &str) -> Option<HashMap<String, Valu
         return None;
     }
 
-    let mut params = HashMap::new();
+    let mut params = crate::new_hashmap();
 
     // 各パートを比較
     for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
@@ -1081,7 +1081,7 @@ pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
     let handler = args[0].clone();
 
     // ロギングミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("logging".to_string()),
@@ -1120,7 +1120,7 @@ pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
     };
 
     // CORSミドルウェアマーカーとして、マップにメタデータを埋め込む
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("cors".to_string()),
@@ -1144,7 +1144,7 @@ pub fn native_server_with_json_body(args: &[Value]) -> Result<Value, String> {
     let handler = args[0].clone();
 
     // JSONボディパースミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("json-body".to_string()),
@@ -1177,7 +1177,7 @@ pub fn native_server_with_compression(args: &[Value]) -> Result<Value, String> {
     };
 
     // 圧縮ミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("compression".to_string()),
@@ -1262,14 +1262,14 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     // ストリーミングレスポンスを生成（:body-file を使用）
     let content_type = get_content_type(file_path);
 
-    let mut resp = HashMap::new();
+    let mut resp = crate::new_hashmap();
     resp.insert("status".to_string(), Value::Integer(200));
     resp.insert(
         "body-file".to_string(),
         Value::String(file_path.to_string()),
     );
 
-    let mut headers = HashMap::new();
+    let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String(content_type.to_string()),
@@ -1306,7 +1306,7 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
     }
 
     // 静的ファイルハンドラーマーカー（ミドルウェアと同じパターン）
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert("__static_dir__".to_string(), Value::String(dir_path));
 
     Ok(Value::Map(metadata))
@@ -1330,16 +1330,16 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
         match &args[1] {
             Value::Map(m) => match m.get("users") {
                 Some(Value::Map(u)) => u.clone(),
-                _ => HashMap::new(),
+                _ => crate::new_hashmap(),
             },
-            _ => HashMap::new(),
+            _ => crate::new_hashmap(),
         }
     } else {
-        HashMap::new()
+        crate::new_hashmap()
     };
 
     // Basic Authミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("basic-auth".to_string()),
@@ -1360,7 +1360,7 @@ pub fn native_server_with_bearer(args: &[Value]) -> Result<Value, String> {
     let handler = args[0].clone();
 
     // Bearerミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("bearer".to_string()),
@@ -1384,7 +1384,7 @@ pub fn native_server_with_no_cache(args: &[Value]) -> Result<Value, String> {
     let handler = args[0].clone();
 
     // no-cacheミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("no-cache".to_string()),
@@ -1408,14 +1408,14 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
     let opts = if args.len() > 1 {
         match &args[1] {
             Value::Map(m) => m.clone(),
-            _ => HashMap::new(),
+            _ => crate::new_hashmap(),
         }
     } else {
-        HashMap::new()
+        crate::new_hashmap()
     };
 
     // cache-controlミドルウェアマーカー
-    let mut metadata = HashMap::new();
+    let mut metadata = crate::new_hashmap();
     metadata.insert(
         "__middleware__".to_string(),
         Value::String("cache-control".to_string()),

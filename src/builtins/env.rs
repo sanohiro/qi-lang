@@ -70,7 +70,7 @@ pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need0Args, &["env/all"]));
     }
 
-    let mut map = im::HashMap::new();
+    let mut map = crate::new_hashmap();
     for (key, value) in env::vars() {
         map.insert(key, Value::String(value));
     }

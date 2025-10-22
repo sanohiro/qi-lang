@@ -345,7 +345,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
                 groups.entry(key_str).or_default().push_back(item.clone());
             }
 
-            let mut result = im::HashMap::new();
+            let mut result = crate::new_hashmap();
             for (key_str, values) in groups {
                 result.insert(key_str, Value::List(values));
             }
@@ -454,7 +454,7 @@ pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 }
 
 fn update_in_helper(
-    map: &mut im::HashMap<String, Value>,
+    map: &mut crate::HashMap<String, Value>,
     path: &im::Vector<Value>,
     index: usize,
     func: &Value,
@@ -476,7 +476,7 @@ fn update_in_helper(
         let next_val = map
             .get(&key)
             .cloned()
-            .unwrap_or_else(|| Value::Map(im::HashMap::new()));
+            .unwrap_or_else(|| Value::Map(crate::new_hashmap()));
         match next_val {
             Value::Map(mut inner_map) => {
                 update_in_helper(&mut inner_map, path, index + 1, func, evaluator)?;
@@ -484,7 +484,7 @@ fn update_in_helper(
             }
             _ => {
                 // 既存の値がマップでない場合は上書き
-                let mut new_map = im::HashMap::new();
+                let mut new_map = crate::new_hashmap();
                 update_in_helper(&mut new_map, path, index + 1, func, evaluator)?;
                 map.insert(key, Value::Map(new_map));
             }
@@ -516,7 +516,7 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
                 *counts.entry(key.to_string()).or_insert(0) += 1;
             }
 
-            let mut result = im::HashMap::new();
+            let mut result = crate::new_hashmap();
             for (key, count) in counts {
                 result.insert(key, Value::Integer(count));
             }

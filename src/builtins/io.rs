@@ -1017,7 +1017,7 @@ pub fn native_stdin_read_lines(_args: &[Value]) -> Result<Value, String> {
     let lines: Vec<Value> = reader
         .lines()
         .filter_map(|line| line.ok())
-        .map(|line| Value::String(line))
+        .map(Value::String)
         .collect();
 
     Ok(Value::Vector(lines.into()))

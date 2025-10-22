@@ -359,9 +359,9 @@ impl QiError {
             // 変数・シンボル関連（E0001-E0003）
             MsgKey::UndefinedVar | MsgKey::UndefinedVarWithSuggestions => ErrorCode::E0001,
             MsgKey::SymbolNotFound | MsgKey::SymbolNotExported => ErrorCode::E0002,
-            MsgKey::RedefineVariable
-            | MsgKey::RedefineFunction
-            | MsgKey::RedefineBuiltin => ErrorCode::E0003,
+            MsgKey::RedefineVariable | MsgKey::RedefineFunction | MsgKey::RedefineBuiltin => {
+                ErrorCode::E0003
+            }
 
             // 型エラー（E0101-E0103）
             MsgKey::TypeMismatch => ErrorCode::E0101,
@@ -467,8 +467,7 @@ mod tests {
 
     #[test]
     fn test_display_trait() {
-        let err = QiError::new(ErrorCode::E0001, "テストエラー")
-            .with_help("これはヒントです");
+        let err = QiError::new(ErrorCode::E0001, "テストエラー").with_help("これはヒントです");
 
         let displayed = format!("{}", err);
         assert!(displayed.contains("error[E0001]"));

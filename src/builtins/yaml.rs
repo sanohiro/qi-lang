@@ -87,7 +87,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
             Value::Vector(arr.into_iter().map(yaml_to_value).collect())
         }
         serde_yaml::Value::Mapping(obj) => {
-            let mut map = im::HashMap::new();
+            let mut map = crate::new_hashmap();
             for (k, v) in obj {
                 // YAMLのキーは文字列に変換
                 let key = match k {

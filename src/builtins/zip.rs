@@ -239,7 +239,7 @@ pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
             .by_index(i)
             .map_err(|e| format!("zip/list: failed to read entry {}: {}", i, e))?;
 
-        let mut info = im::HashMap::new();
+        let mut info = crate::new_hashmap();
         info.insert("name".to_string(), Value::String(file.name().to_string()));
         info.insert("size".to_string(), Value::Integer(file.size() as i64));
         info.insert(

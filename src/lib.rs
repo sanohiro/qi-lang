@@ -7,3 +7,21 @@ pub mod lexer;
 pub mod parser;
 pub mod project;
 pub mod value;
+
+// ========================================
+// システム共通型定義
+// ========================================
+
+use rustc_hash::FxBuildHasher;
+
+/// Qi専用のHashMap型（im::HashMapにFxHasherを適用）
+///
+/// FxHasherは非暗号学的ハッシュで、デフォルトのSipHashより高速。
+/// 将来的にハッシュアルゴリズムを変更する場合もここだけ修正すればOK。
+pub type HashMap<K, V> = im::HashMap<K, V, FxBuildHasher>;
+
+/// Qi専用HashMapを作成するヘルパー関数
+#[inline]
+pub fn new_hashmap<K, V>() -> HashMap<K, V> {
+    im::HashMap::with_hasher(FxBuildHasher)
+}

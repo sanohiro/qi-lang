@@ -1,6 +1,6 @@
 use crate::lexer::Span;
 use crossbeam_channel::{Receiver, Sender};
-use im::{HashMap, Vector};
+use im::Vector;
 use parking_lot::RwLock;
 use std::fmt;
 use std::sync::Arc;
@@ -34,7 +34,7 @@ pub enum Value {
     /// ベクタ
     Vector(Vector<Value>),
     /// マップ
-    Map(HashMap<String, Value>),
+    Map(crate::HashMap<String, Value>),
     /// 関数（クロージャ）
     Function(Arc<Function>),
     /// ネイティブ関数（Rustで実装された関数）
@@ -194,7 +194,7 @@ impl Value {
     /// return Ok(Value::error("file not found"));
     /// ```
     pub fn error(message: impl Into<String>) -> Value {
-        let mut map = im::HashMap::new();
+        let mut map = crate::new_hashmap();
         map.insert(":error".to_string(), Value::String(message.into()));
         Value::Map(map)
     }
@@ -208,8 +208,8 @@ impl Value {
     ///     "code".to_string() => Value::Integer(404),
     /// }));
     /// ```
-    pub fn error_with_details(details: im::HashMap<String, Value>) -> Value {
-        let mut map = im::HashMap::new();
+    pub fn error_with_details(details: crate::HashMap<String, Value>) -> Value {
+        let mut map = crate::new_hashmap();
         map.insert(":error".to_string(), Value::Map(details));
         Value::Map(map)
     }
@@ -394,7 +394,7 @@ impl PartialEq for Binding {
 /// 環境（変数の束縛を保持）
 #[derive(Debug, Clone)]
 pub struct Env {
-    bindings: HashMap<String, Binding>,
+    bindings: crate::HashMap<String, Binding>,
     parent: Option<Arc<RwLock<Env>>>,
 }
 
@@ -421,14 +421,14 @@ impl Default for Env {
 impl Env {
     pub fn new() -> Self {
         Env {
-            bindings: HashMap::new(),
+            bindings: crate::new_hashmap(),
             parent: None,
         }
     }
 
     pub fn with_parent(parent: Arc<RwLock<Env>>) -> Self {
         Env {
-            bindings: HashMap::new(),
+            bindings: crate::new_hashmap(),
             parent: Some(parent),
         }
     }

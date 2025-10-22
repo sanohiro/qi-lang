@@ -68,9 +68,8 @@ where
             || err_str.contains("terminated")
         {
             // 再接続
-            match reconnect(url).await {
-                Ok(new_conn) => return operation(new_conn).await,
-                Err(_) => {}
+            if let Ok(new_conn) = reconnect(url).await {
+                return operation(new_conn).await;
             }
         }
     }
@@ -927,7 +926,7 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
 
         match result {
             Ok(pairs) => {
-                let mut map = im::HashMap::new();
+                let mut map = crate::new_hashmap();
                 for (field, value) in pairs {
                     // 文字列キーでマップに追加
                     map.insert(field, Value::String(value));

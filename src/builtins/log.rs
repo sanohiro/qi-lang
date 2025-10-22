@@ -111,7 +111,7 @@ fn is_leap_year(year: u64) -> bool {
 }
 
 /// ログ出力の内部実装
-fn log_internal(level: LogLevel, message: &str, context: Option<im::HashMap<String, Value>>) {
+fn log_internal(level: LogLevel, message: &str, context: Option<crate::HashMap<String, Value>>) {
     let config = LOG_CONFIG.read();
 
     // レベルフィルタ

@@ -260,7 +260,7 @@ fn http_request(
     method: &str,
     url: &str,
     body: Option<&Value>,
-    headers: Option<&im::HashMap<String, Value>>,
+    headers: Option<&crate::HashMap<String, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
     // デフォルトタイムアウト（30秒）の場合は共有Clientを使用
@@ -352,7 +352,7 @@ fn http_request(
             let status = response.status().as_u16() as i64;
 
             // ヘッダーを取得
-            let headers: im::HashMap<String, Value> = response
+            let headers: crate::HashMap<String, Value> = response
                 .headers()
                 .iter()
                 .map(|(k, v)| {
