@@ -79,15 +79,16 @@ pub struct PostgresConnection {
 }
 
 impl PostgresConnection {
-    /// Valueをtokio_postgresのパラメータに変換
-    fn value_to_param_string(value: &Value) -> String {
+    /// Valueをプリペアドステートメント用のパラメータに変換
+    /// 注: プリペアドステートメントではエスケープ不要（DBドライバーが自動処理）
+    fn value_to_sql_param(value: &Value) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
         match value {
-            Value::Nil => "NULL".to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Integer(i) => i.to_string(),
-            Value::Float(f) => f.to_string(),
-            Value::String(s) => format!("'{}'", s.replace('\'', "''")),
-            _ => format!("'{}'", value.to_string().replace('\'', "''")),
+            Value::Nil => Box::new(None::<String>),
+            Value::Bool(b) => Box::new(*b),
+            Value::Integer(i) => Box::new(*i as i32),  // PostgreSQL INTEGER型はi32
+            Value::Float(f) => Box::new(*f),
+            Value::String(s) => Box::new(s.clone()),
+            _ => Box::new(value.to_string()),
         }
     }
 
@@ -126,12 +127,11 @@ impl DbConnection for PostgresConnection {
         let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        // パラメータを文字列に変換（簡易実装）
-        let param_strings: Vec<String> = params.iter().map(Self::value_to_param_string).collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = param_strings
-            .iter()
-            .map(|s| s as &(dyn tokio_postgres::types::ToSql + Sync))
-            .collect();
+        // Valueをプリペアドステートメント用パラメータに変換
+        let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
+            params.iter().map(Self::value_to_sql_param).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
+            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
 
         let rows = runtime
             .block_on(async { client.query(sql, &param_refs[..]).await })
@@ -151,12 +151,11 @@ impl DbConnection for PostgresConnection {
         let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        // パラメータを文字列に変換（簡易実装）
-        let param_strings: Vec<String> = params.iter().map(Self::value_to_param_string).collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = param_strings
-            .iter()
-            .map(|s| s as &(dyn tokio_postgres::types::ToSql + Sync))
-            .collect();
+        // Valueをプリペアドステートメント用パラメータに変換
+        let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
+            params.iter().map(Self::value_to_sql_param).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
+            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
 
         let affected = runtime
             .block_on(async { client.execute(sql, &param_refs[..]).await })
@@ -354,15 +353,13 @@ impl DbTransaction for PostgresTransaction {
         let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        // パラメータを文字列に変換（簡易実装）
-        let param_strings: Vec<String> = params
+        // Valueをプリペアドステートメント用パラメータに変換
+        let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = params
             .iter()
-            .map(PostgresConnection::value_to_param_string)
+            .map(PostgresConnection::value_to_sql_param)
             .collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = param_strings
-            .iter()
-            .map(|s| s as &(dyn tokio_postgres::types::ToSql + Sync))
-            .collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
+            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
 
         let rows = runtime
             .block_on(async { client.query(sql, &param_refs[..]).await })
@@ -382,15 +379,13 @@ impl DbTransaction for PostgresTransaction {
         let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        // パラメータを文字列に変換（簡易実装）
-        let param_strings: Vec<String> = params
+        // Valueをプリペアドステートメント用パラメータに変換
+        let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = params
             .iter()
-            .map(PostgresConnection::value_to_param_string)
+            .map(PostgresConnection::value_to_sql_param)
             .collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = param_strings
-            .iter()
-            .map(|s| s as &(dyn tokio_postgres::types::ToSql + Sync))
-            .collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
+            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
 
         let affected = runtime
             .block_on(async { client.execute(sql, &param_refs[..]).await })
