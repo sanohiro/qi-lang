@@ -8,9 +8,15 @@ use dashmap::DashMap;
 use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands, Client};
 use std::sync::LazyLock;
+use tokio::runtime::Runtime;
 
 /// Redis接続プール（URL → Connection のマッピング）
 static REDIS_POOL: LazyLock<DashMap<String, MultiplexedConnection>> = LazyLock::new(DashMap::new);
+
+/// グローバルなtokioランタイム（Redisの非同期操作用）
+static TOKIO_RT: LazyLock<Runtime> = LazyLock::new(|| {
+    Runtime::new().expect("Failed to create tokio runtime for Redis")
+});
 
 /// 接続を取得または新規作成
 async fn get_or_create_connection(url: &str) -> Result<MultiplexedConnection, String> {
@@ -31,6 +37,15 @@ async fn get_or_create_connection(url: &str) -> Result<MultiplexedConnection, St
     REDIS_POOL.insert(url.to_string(), conn.clone());
 
     Ok(conn)
+}
+
+/// 接続エラー時にプールから削除して再接続
+async fn reconnect(url: &str) -> Result<MultiplexedConnection, String> {
+    // プールから古い接続を削除
+    REDIS_POOL.remove(url);
+
+    // 新規接続を作成
+    get_or_create_connection(url).await
 }
 
 /// kvs/redis-get - キーの値を取得
@@ -65,19 +80,28 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 非同期処理を同期的に実行
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    // 非同期処理を同期的に実行（グローバルランタイムを使用）
+    TOKIO_RT.block_on(async {
+        // 最初の試行
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
         };
 
-        let result: redis::RedisResult<Option<String>> = conn.get(&key).await;
+        let mut result: redis::RedisResult<Option<String>> = conn.get(&key).await;
+
+        // エラーの場合、再接続して再試行
+        if let Err(ref e) = result {
+            if e.to_string().contains("broken pipe") || e.to_string().contains("Connection") {
+                match reconnect(&url).await {
+                    Ok(mut new_conn) => {
+                        result = new_conn.get(&key).await;
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
             Ok(None) => Ok(Value::Nil),
@@ -134,13 +158,7 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -185,13 +203,7 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -236,13 +248,7 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -287,13 +293,7 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -354,13 +354,7 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -405,13 +399,7 @@ pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -456,13 +444,7 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -507,13 +489,7 @@ pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -575,13 +551,7 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -643,13 +613,7 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -694,13 +658,7 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -746,13 +704,7 @@ pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -826,13 +778,7 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -888,13 +834,7 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -940,13 +880,7 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -957,8 +891,8 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
             Ok(pairs) => {
                 let mut map = im::HashMap::new();
                 for (field, value) in pairs {
-                    // キーワード形式（:field）でマップに追加
-                    map.insert(format!(":{}", field), Value::String(value));
+                    // 文字列キーでマップに追加
+                    map.insert(field, Value::String(value));
                 }
                 Ok(Value::Map(map))
             }
@@ -1015,13 +949,7 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),
@@ -1066,13 +994,7 @@ pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
             ))
         }
     };
-
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Ok(Value::error(format!("Runtime error: {}", e))),
-    };
-
-    rt.block_on(async {
+    TOKIO_RT.block_on(async {
         let mut conn = match get_or_create_connection(&url).await {
             Ok(conn) => conn,
             Err(e) => return Ok(Value::error(e)),

@@ -95,10 +95,8 @@ impl MysqlConnection {
         for (idx, column) in columns.iter().enumerate() {
             let column_name = column.name_str().to_string();
 
-            // 型に応じて値を取得
-            let value = if let Some(Some(v)) = row.get::<Option<String>, _>(idx) {
-                Value::String(v)
-            } else if let Some(Some(v)) = row.get::<Option<i64>, _>(idx) {
+            // 型に応じて値を取得（数値型を先にチェック）
+            let value = if let Some(Some(v)) = row.get::<Option<i64>, _>(idx) {
                 Value::Integer(v)
             } else if let Some(Some(v)) = row.get::<Option<i32>, _>(idx) {
                 Value::Integer(v as i64)
@@ -106,6 +104,8 @@ impl MysqlConnection {
                 Value::Float(v)
             } else if let Some(Some(v)) = row.get::<Option<bool>, _>(idx) {
                 Value::Bool(v)
+            } else if let Some(Some(v)) = row.get::<Option<String>, _>(idx) {
+                Value::String(v)
             } else {
                 Value::Nil
             };

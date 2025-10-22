@@ -43,6 +43,13 @@ pub trait KvsDriver: Send + Sync {
     fn hgetall(&self, key: &str) -> Result<Vec<(String, String)>, String>;
     fn sadd(&self, key: &str, member: &str) -> Result<i64, String>;
     fn smembers(&self, key: &str) -> Result<Vec<String>, String>;
+
+    // 複数操作（一部のKVSでのみサポート）
+    fn mget(&self, keys: &[String]) -> Result<Vec<Option<String>>, String>;
+    fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String>;
+
+    // リスト操作（一部のKVSでのみサポート）
+    fn lrange(&self, key: &str, start: i64, stop: i64) -> Result<Vec<String>, String>;
 }
 
 /// Redis KVSドライバー
@@ -322,6 +329,21 @@ impl KvsDriver for RedisDriver {
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
             _ => Err("Unexpected response".to_string()),
         })
+    }
+
+    fn mget(&self, keys: &[String]) -> Result<Vec<Option<String>>, String> {
+        // TODO: redis.rsにnative_redis_mgetを実装する必要がある
+        Err("MGET not yet implemented for Redis".to_string())
+    }
+
+    fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String> {
+        // TODO: redis.rsにnative_redis_msetを実装する必要がある
+        Err("MSET not yet implemented for Redis".to_string())
+    }
+
+    fn lrange(&self, key: &str, start: i64, stop: i64) -> Result<Vec<String>, String> {
+        // TODO: redis.rsにnative_redis_lrangeを実装する必要がある
+        Err("LRANGE not yet implemented for Redis".to_string())
     }
 }
 
@@ -1017,32 +1039,169 @@ pub fn native_smembers(args: &[Value]) -> Result<Value, String> {
     }
 }
 
+/// kvs/mget - 複数のキーの値を一括取得
+pub fn native_mget(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/mget", "2"]));
+    }
+
+    let conn_str = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/mget (conn)", "strings"])),
+    };
+
+    let keys = match &args[1] {
+        Value::Vector(v) => v
+            .iter()
+            .map(|k| match k {
+                Value::String(s) => Ok(s.clone()),
+                _ => Err(fmt_msg(
+                    MsgKey::TypeOnly,
+                    &["kvs/mget (keys)", "vector of strings"],
+                )),
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/mget (keys)", "vectors"])),
+    };
+
+    let conn_id = get_connection(conn_str)?;
+    let connections = CONNECTIONS.lock();
+    let driver = connections
+        .get(&conn_id)
+        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+
+    match driver.mget(&keys) {
+        Ok(values) => Ok(Value::Vector(
+            values
+                .into_iter()
+                .map(|opt| match opt {
+                    Some(s) => Value::String(s),
+                    None => Value::Nil,
+                })
+                .collect::<Vec<_>>()
+                .into(),
+        )),
+        Err(e) => Ok(Value::error(e)),
+    }
+}
+
+/// kvs/mset - 複数のキーと値を一括設定
+pub fn native_mset(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/mset", "2"]));
+    }
+
+    let conn_str = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/mset (conn)", "strings"])),
+    };
+
+    let pairs = match &args[1] {
+        Value::Map(m) => {
+            let mut map = HashMap::new();
+            for (k, v) in m.iter() {
+                let value_str = match v {
+                    Value::String(s) => s.clone(),
+                    Value::Integer(i) => i.to_string(),
+                    Value::Float(f) => f.to_string(),
+                    Value::Bool(b) => b.to_string(),
+                    _ => {
+                        return Err(fmt_msg(
+                            MsgKey::TypeOnly,
+                            &["kvs/mset (values)", "strings, integers, floats, or bools"],
+                        ))
+                    }
+                };
+                map.insert(k.clone(), value_str);
+            }
+            map
+        }
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/mset (pairs)", "maps"])),
+    };
+
+    let conn_id = get_connection(conn_str)?;
+    let connections = CONNECTIONS.lock();
+    let driver = connections
+        .get(&conn_id)
+        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+
+    match driver.mset(&pairs) {
+        Ok(s) => Ok(Value::String(s)),
+        Err(e) => Ok(Value::error(e)),
+    }
+}
+
+/// kvs/lrange - リストの範囲を取得
+pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 4 {
+        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/lrange", "4"]));
+    }
+
+    let conn_str = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (conn)", "strings"])),
+    };
+
+    let key = match &args[1] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (key)", "strings"])),
+    };
+
+    let start = match &args[2] {
+        Value::Integer(i) => *i,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (start)", "integers"])),
+    };
+
+    let stop = match &args[3] {
+        Value::Integer(i) => *i,
+        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (stop)", "integers"])),
+    };
+
+    let conn_id = get_connection(conn_str)?;
+    let connections = CONNECTIONS.lock();
+    let driver = connections
+        .get(&conn_id)
+        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+
+    match driver.lrange(key, start, stop) {
+        Ok(items) => Ok(Value::Vector(
+            items
+                .into_iter()
+                .map(Value::String)
+                .collect::<Vec<_>>()
+                .into(),
+        )),
+        Err(e) => Ok(Value::error(e)),
+    }
+}
+
 // ========================================
 // 関数登録テーブル
 // ========================================
 
-/// 登録すべき関数のリスト（全19関数）
+/// 登録すべき関数のリスト（全22関数）
 /// @qi-doc:category kvs
-/// @qi-doc:functions kvs/connect, kvs/get, kvs/set, kvs/delete, kvs/exists?, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers
+/// @qi-doc:functions kvs/connect, kvs/get, kvs/set, kvs/del, kvs/exists, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/lrange, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers, kvs/mget, kvs/mset
 pub const FUNCTIONS: super::NativeFunctions = &[
     // 接続
     ("kvs/connect", native_connect),
     // 基本操作（7関数）
     ("kvs/get", native_get),
     ("kvs/set", native_set),
-    ("kvs/delete", native_delete),
-    ("kvs/exists?", native_exists),
+    ("kvs/del", native_delete),
+    ("kvs/exists", native_exists),
     ("kvs/keys", native_keys),
     ("kvs/expire", native_expire),
     ("kvs/ttl", native_ttl),
     // 数値操作（2関数）
     ("kvs/incr", native_incr),
     ("kvs/decr", native_decr),
-    // リスト操作（4関数）
+    // リスト操作（5関数）
     ("kvs/lpush", native_lpush),
     ("kvs/rpush", native_rpush),
     ("kvs/lpop", native_lpop),
     ("kvs/rpop", native_rpop),
+    ("kvs/lrange", native_lrange),
     // ハッシュ操作（3関数）
     ("kvs/hset", native_hset),
     ("kvs/hget", native_hget),
@@ -1050,4 +1209,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     // セット操作（2関数）
     ("kvs/sadd", native_sadd),
     ("kvs/smembers", native_smembers),
+    // 複数操作（2関数）
+    ("kvs/mget", native_mget),
+    ("kvs/mset", native_mset),
 ];
