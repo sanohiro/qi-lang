@@ -1,4 +1,5 @@
-use crate::i18n::{fmt_msg, msg, MsgKey};
+use crate::error::{QiError, SourceLocation};
+use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::FStringPart;
 
 /// ソースコード上の位置
@@ -139,6 +140,38 @@ impl Lexer {
         Span::new(self.line, self.column, self.pos)
     }
 
+    /// 位置情報付きエラーメッセージを生成（QiError版）
+    fn error(&self, key: MsgKey, args: &[&str]) -> String {
+        let base_msg = fmt_msg(key, args);
+        let error_code = QiError::error_code_from_lexer_msg(&key);
+        let mut err = QiError::new(error_code, base_msg);
+
+        // 位置情報を追加
+        if self.line != 0 || self.column != 0 {
+            // ソースコードの該当行を取得
+            let input_str: String = self.input.iter().collect();
+            let lines: Vec<&str> = input_str.lines().collect();
+            let source_line = if self.line > 0 && self.line <= lines.len() {
+                Some(lines[self.line - 1].to_string())
+            } else {
+                None
+            };
+
+            let location = SourceLocation {
+                file: "<input>".to_string(),
+                line: self.line,
+                column: self.column,
+                length: 1,
+                source_line,
+            };
+
+            err = err.with_location(location);
+        }
+
+        // QiError -> String（Display traitで自動変換）
+        err.into()
+    }
+
     fn current(&self) -> Option<char> {
         if self.pos < self.input.len() {
             Some(self.input[self.pos])
@@ -218,7 +251,7 @@ impl Lexer {
                 self.advance();
                 Ok(ch)
             }
-            None => Err(msg(MsgKey::UnclosedString).to_string()),
+            None => Err(self.error(MsgKey::UnclosedString, &[])),
         }
     }
 
@@ -240,7 +273,7 @@ impl Lexer {
             }
         }
 
-        Err(msg(MsgKey::UnclosedString).to_string())
+        Err(self.error(MsgKey::UnclosedString, &[]))
     }
 
     /// 複数行文字列を読み取る: """..."""
@@ -269,7 +302,7 @@ impl Lexer {
             }
         }
 
-        Err(msg(MsgKey::UnclosedString).to_string())
+        Err(self.error(MsgKey::UnclosedString, &[]))
     }
 
     fn read_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
@@ -360,7 +393,7 @@ impl Lexer {
                     }
                 }
                 if depth != 0 {
-                    return Err(msg(MsgKey::FStringUnclosedBrace).to_string());
+                    return Err(self.error(MsgKey::FStringUnclosedBrace, &[]));
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
@@ -379,7 +412,7 @@ impl Lexer {
             }
         }
 
-        Err(msg(MsgKey::FStringUnclosed).to_string())
+        Err(self.error(MsgKey::FStringUnclosed, &[]))
     }
 
     /// 複数行f-stringを読み取る: f"""..."""
@@ -476,7 +509,7 @@ impl Lexer {
                     }
                 }
                 if depth != 0 {
-                    return Err(msg(MsgKey::FStringUnclosedBrace).to_string());
+                    return Err(self.error(MsgKey::FStringUnclosedBrace, &[]));
                 }
                 parts.push(FStringPart::Code(code));
             } else if ch == '\\' {
@@ -495,7 +528,7 @@ impl Lexer {
             }
         }
 
-        Err(msg(MsgKey::FStringUnclosed).to_string())
+        Err(self.error(MsgKey::FStringUnclosed, &[]))
     }
 
     fn read_number(&mut self, start_span: Span) -> Result<LocatedToken, String> {
@@ -527,12 +560,12 @@ impl Lexer {
             num_str
                 .parse()
                 .map(Token::Float)
-                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))?
+                .map_err(|_| self.error(MsgKey::NumberLiteralInvalid, &[&num_str]))?
         } else {
             num_str
                 .parse()
                 .map(Token::Integer)
-                .map_err(|_| fmt_msg(MsgKey::NumberLiteralInvalid, &[&num_str]))?
+                .map_err(|_| self.error(MsgKey::NumberLiteralInvalid, &[&num_str]))?
         };
         Ok(LocatedToken::new(token, start_span))
     }
@@ -559,7 +592,7 @@ impl Lexer {
         if is_keyword {
             // 空のキーワードをチェック
             if result.is_empty() {
-                return Err(msg(MsgKey::EmptyKeyword).to_string());
+                return Err(self.error(MsgKey::EmptyKeyword, &[]));
             }
             return Ok(LocatedToken::new(Token::Keyword(result), start_span));
         }
@@ -710,7 +743,7 @@ impl Lexer {
                     return self.read_symbol_or_keyword(start_span);
                 }
                 Some(ch) => {
-                    return Err(fmt_msg(MsgKey::UnexpectedChar, &[&ch.to_string()]));
+                    return Err(self.error(MsgKey::UnexpectedChar, &[&ch.to_string()]));
                 }
             }
         }

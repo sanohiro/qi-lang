@@ -318,7 +318,7 @@ impl QiError {
         QiError::new(ErrorCode::E0601, format!("パースエラー: {}", message))
     }
 
-    /// MsgKeyからErrorCodeを推定
+    /// MsgKeyからErrorCodeを推定（parser用）
     pub fn error_code_from_parser_msg(key: &crate::i18n::MsgKey) -> ErrorCode {
         use crate::i18n::MsgKey;
         match key {
@@ -344,6 +344,12 @@ impl QiError {
             // デフォルト: 構文エラー
             _ => ErrorCode::E0601,
         }
+    }
+
+    /// MsgKeyからErrorCodeを推定（lexer用）
+    pub fn error_code_from_lexer_msg(_key: &crate::i18n::MsgKey) -> ErrorCode {
+        // レキサーエラーは全てE0602（字句解析エラー）
+        ErrorCode::E0602
     }
 }
 
