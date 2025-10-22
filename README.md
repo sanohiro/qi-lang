@@ -145,6 +145,40 @@ qi -e '(+ 1 2 3)'
 qi --help
 ```
 
+## テスト
+
+### ユニットテスト（高速）
+
+```bash
+# 通常のテスト（Dockerなし）
+cargo test
+
+# 特定のモジュールをテスト
+cargo test parser
+cargo test eval
+```
+
+### 統合テスト（Docker自動起動）
+
+PostgreSQL、MySQL、Redisの統合テストは、testcontainersを使用してDockerコンテナを自動起動・削除します。
+
+**前提条件**: Dockerがインストールされている必要があります。
+
+```bash
+# 統合テスト実行（PostgreSQL + MySQL + Redis）
+cargo test --features integration-tests
+
+# 個別実行
+cargo test --features integration-tests --test integration_postgres
+cargo test --features integration-tests --test integration_mysql
+cargo test --features integration-tests --test integration_redis
+```
+
+**動作**:
+- テスト開始時にDockerコンテナが自動起動（ポート自動割り当て）
+- テスト終了時にコンテナが自動削除
+- イメージは残るため、次回のテスト実行が高速
+
 ## ドキュメント
 
 ### はじめに

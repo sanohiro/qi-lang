@@ -303,6 +303,15 @@ pub enum MsgKey {
     ServerStaticFileFailedToRead, // server/static-file: failed to read file: {0}
     ServerStaticDirNotDirectory, // server/static-dir: {0} is not a directory
 
+    // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
+    DbFailedToConnect,             // Failed to connect to database: {0}
+    DbFailedToExecuteQuery,        // Failed to execute query: {0}
+    DbFailedToExecuteStatement,    // Failed to execute statement: {0}
+    DbFailedToBeginTransaction,    // Failed to begin transaction: {0}
+    DbFailedToCommitTransaction,   // Failed to commit transaction: {0}
+    DbFailedToRollbackTransaction, // Failed to rollback transaction: {0}
+    DbUnsupportedUrl,              // Unsupported database URL: {0}
+
     // SQLiteエラー
     SqliteFailedToOpen,                // Failed to open SQLite database: {0}
     SqliteFailedToSetTimeout,          // Failed to set timeout: {0}
@@ -333,17 +342,16 @@ pub enum MsgKey {
     ZipPathDoesNotExist, // {0}: path '{1}' does not exist
 
     // データベースエラー
-    DbUnsupportedUrl,      // Unsupported database URL: {0}. Supported: sqlite:
-    DbNeed2To4Args,        // {0} requires 2-4 arguments, got {1}
-    DbNeed1To3Args,        // {0} requires 1-3 arguments, got {1}
-    DbExpectedConnection,  // Expected DbConnection, got: {0}
-    DbConnectionNotFound,  // Connection not found: {0}
-    DbExpectedTransaction, // Expected DbTransaction, got: {0}
-    DbTransactionNotFound, // Transaction not found: {0}
+    DbNeed2To4Args,                    // {0} requires 2-4 arguments, got {1}
+    DbNeed1To3Args,                    // {0} requires 1-3 arguments, got {1}
+    DbExpectedConnection,              // Expected DbConnection, got: {0}
+    DbConnectionNotFound,              // Connection not found: {0}
+    DbExpectedTransaction,             // Expected DbTransaction, got: {0}
+    DbTransactionNotFound,             // Transaction not found: {0}
     DbExpectedConnectionOrTransaction, // Expected DbConnection or DbTransaction, got: {0}
-    DbExpectedPool,        // Expected DbPool, got: {0}
-    DbPoolNotFound,        // Pool not found: {0}
-    DbInvalidPoolSize,     // {0}: invalid pool size, expected {1}
+    DbExpectedPool,                    // Expected DbPool, got: {0}
+    DbPoolNotFound,                    // Pool not found: {0}
+    DbInvalidPoolSize,                 // {0}: invalid pool size, expected {1}
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs, // {0}: failed to decode as {1} (invalid byte sequence)
@@ -875,6 +883,14 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             ServerStaticDirNotDirectory,
             "server/static-dir: {0} is not a directory",
         ),
+        // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
+        (DbFailedToConnect, "Failed to connect to database: {0}"),
+        (DbFailedToExecuteQuery, "Failed to execute query: {0}"),
+        (DbFailedToExecuteStatement, "Failed to execute statement: {0}"),
+        (DbFailedToBeginTransaction, "Failed to begin transaction: {0}"),
+        (DbFailedToCommitTransaction, "Failed to commit transaction: {0}"),
+        (DbFailedToRollbackTransaction, "Failed to rollback transaction: {0}"),
+        (DbUnsupportedUrl, "Unsupported database URL: {0}"),
         // SQLiteエラー
         (
             SqliteFailedToOpen,
@@ -1327,6 +1343,14 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ServerStaticFileTooLarge, "server/static-file: ファイルが大きすぎます: {0}バイト (最大: {1}バイト / {2}MB)。将来的にストリーミングの使用を検討してください。"),
         (ServerStaticFileFailedToRead, "server/static-file: ファイル読み込み失敗: {0}"),
         (ServerStaticDirNotDirectory, "server/static-dir: {0}はディレクトリではありません"),
+        // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
+        (DbFailedToConnect, "データベース接続失敗: {0}"),
+        (DbFailedToExecuteQuery, "クエリ実行失敗: {0}"),
+        (DbFailedToExecuteStatement, "ステートメント実行失敗: {0}"),
+        (DbFailedToBeginTransaction, "トランザクション開始失敗: {0}"),
+        (DbFailedToCommitTransaction, "トランザクションコミット失敗: {0}"),
+        (DbFailedToRollbackTransaction, "トランザクションロールバック失敗: {0}"),
+        (DbUnsupportedUrl, "サポートされていないデータベースURL: {0}"),
         // SQLiteエラー
         (SqliteFailedToOpen, "SQLiteデータベースのオープン失敗: {0}"),
         (SqliteFailedToSetTimeout, "タイムアウト設定失敗: {0}"),

@@ -119,6 +119,9 @@ std-set = []    # Pure Rust自前実装
 auth-jwt = ["dep:jsonwebtoken", "format-json"]  # JWT生成・検証（JSON依存）
 auth-password = ["dep:argon2", "dep:rand_core"]  # パスワードハッシュ（argon2、bcryptより推奨）
 
+# 統合テスト用（Docker自動起動・削除）
+integration-tests = ["db-postgres", "db-mysql", "kvs-redis"]
+
 # =====================================
 # 依存関係
 # =====================================
@@ -179,6 +182,8 @@ rand_core = { version = "0.6", features = ["getrandom"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+testcontainers = "0.23"
+testcontainers-modules = { version = "0.11", features = ["postgres", "mysql", "redis"] }
 
 [[bench]]
 name = "optimizations"

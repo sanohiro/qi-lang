@@ -13,7 +13,7 @@ use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use mysql_async::prelude::*;
-use mysql_async::{Conn as MyConn, Opts, Row as MyRow, Transaction as MyTransaction};
+use mysql_async::{Conn as MyConn, Opts, Row as MyRow};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -46,7 +46,7 @@ impl DbDriver for MysqlDriver {
 
         // 接続オプションを解析
         let opts = Opts::from_url(conn_str)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::MysqlInvalidConnectionString, &[&e.to_string()])))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
 
         // tokioランタイムを作成
         let rt = tokio::runtime::Runtime::new()
@@ -55,7 +55,7 @@ impl DbDriver for MysqlDriver {
         // 接続を確立
         let conn = rt
             .block_on(async { MyConn::new(opts).await })
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::MysqlFailedToConnect, &[&e.to_string()])))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
 
         Ok(Arc::new(MysqlConnection {
             conn: Arc::new(Mutex::new(conn)),
@@ -123,7 +123,8 @@ impl DbConnection for MysqlConnection {
         let runtime = self.runtime.lock();
 
         // パラメータを変換
-        let mysql_params: Vec<mysql_async::Value> = params.iter().map(Self::value_to_mysql_value).collect();
+        let mysql_params: Vec<mysql_async::Value> =
+            params.iter().map(Self::value_to_mysql_value).collect();
 
         let rows: Vec<MyRow> = runtime
             .block_on(async {
@@ -134,10 +135,7 @@ impl DbConnection for MysqlConnection {
                 }
             })
             .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::MysqlFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
+                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
             })?;
 
         let mut results = Vec::new();
@@ -153,7 +151,8 @@ impl DbConnection for MysqlConnection {
         let runtime = self.runtime.lock();
 
         // パラメータを変換
-        let mysql_params: Vec<mysql_async::Value> = params.iter().map(Self::value_to_mysql_value).collect();
+        let mysql_params: Vec<mysql_async::Value> =
+            params.iter().map(Self::value_to_mysql_value).collect();
 
         let affected = runtime
             .block_on(async {
@@ -166,7 +165,7 @@ impl DbConnection for MysqlConnection {
             })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::MysqlFailedToExecuteStatement,
+                    MsgKey::DbFailedToExecuteStatement,
                     &[&e.to_string()],
                 ))
             })?;
@@ -178,29 +177,26 @@ impl DbConnection for MysqlConnection {
         let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
-        let transaction = runtime
-            .block_on(async { conn.start_transaction(Default::default()).await })
+        // トランザクション開始
+        runtime
+            .block_on(async { conn.query_drop("START TRANSACTION").await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::MysqlFailedToBeginTransaction,
+                    MsgKey::DbFailedToBeginTransaction,
                     &[&e.to_string()],
                 ))
             })?;
 
         Ok(Arc::new(MysqlTransaction {
-            transaction: Arc::new(Mutex::new(Some(transaction))),
+            conn: self.conn.clone(),
             runtime: self.runtime.clone(),
+            committed: Mutex::new(false),
         }))
     }
 
     fn close(&self) -> DbResult<()> {
-        let mut conn = self.conn.lock();
-        let runtime = self.runtime.lock();
-
-        runtime
-            .block_on(async { conn.disconnect().await })
-            .map_err(|e| DbError::new(format!("Failed to close connection: {}", e)))?;
-
+        // MySQLコネクションは明示的にdisconnectする必要はない
+        // Dropトレイトで自動的にクリーンアップされる
         Ok(())
     }
 
@@ -216,7 +212,10 @@ impl DbConnection for MysqlConnection {
 
     fn escape_like(&self, pattern: &str) -> String {
         // LIKE句のメタキャラクタをエスケープ
-        pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+        pattern
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_")
     }
 
     fn driver_name(&self) -> &str {
@@ -230,15 +229,13 @@ impl DbConnection for MysqlConnection {
         let tables = rows
             .into_iter()
             .filter_map(|row| {
-                row.values()
-                    .next()
-                    .and_then(|v| {
-                        if let Value::String(s) = v {
-                            Some(s.clone())
-                        } else {
-                            None
-                        }
-                    })
+                row.values().next().and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
             })
             .collect();
 
@@ -284,7 +281,13 @@ impl DbConnection for MysqlConnection {
             ) {
                 let unique = row
                     .get("Non_unique")
-                    .and_then(|v| if let Value::Integer(i) = v { Some(*i) } else { None })
+                    .and_then(|v| {
+                        if let Value::Integer(i) = v {
+                            Some(*i)
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or(1)
                     == 0;
 
@@ -310,7 +313,9 @@ impl DbConnection for MysqlConnection {
     }
 
     fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
-        Err(DbError::new("Stored procedures not yet implemented for MySQL"))
+        Err(DbError::new(
+            "Stored procedures not yet implemented for MySQL",
+        ))
     }
 
     fn supports(&self, feature: &str) -> bool {
@@ -345,17 +350,14 @@ impl DbConnection for MysqlConnection {
 
 /// MySQLトランザクション
 pub struct MysqlTransaction {
-    transaction: Arc<Mutex<Option<MyTransaction<'static>>>>,
+    conn: Arc<Mutex<MyConn>>,
     runtime: Arc<Mutex<tokio::runtime::Runtime>>,
+    committed: Mutex<bool>,
 }
 
 impl DbTransaction for MysqlTransaction {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .as_mut()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
-
+        let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
         // パラメータを変換
@@ -367,16 +369,13 @@ impl DbTransaction for MysqlTransaction {
         let rows: Vec<MyRow> = runtime
             .block_on(async {
                 if mysql_params.is_empty() {
-                    transaction.query(sql).await
+                    conn.query(sql).await
                 } else {
-                    transaction.exec(sql, mysql_params).await
+                    conn.exec(sql, mysql_params).await
                 }
             })
             .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::MysqlFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
+                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
             })?;
 
         let mut results = Vec::new();
@@ -388,11 +387,7 @@ impl DbTransaction for MysqlTransaction {
     }
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .as_mut()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
-
+        let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
         // パラメータを変換
@@ -404,15 +399,15 @@ impl DbTransaction for MysqlTransaction {
         let affected = runtime
             .block_on(async {
                 if mysql_params.is_empty() {
-                    transaction.query_drop(sql).await?;
+                    conn.query_drop(sql).await?;
                 } else {
-                    transaction.exec_drop(sql, mysql_params).await?;
+                    conn.exec_drop(sql, mysql_params).await?;
                 }
-                Ok::<_, mysql_async::Error>(transaction.affected_rows())
+                Ok::<_, mysql_async::Error>(conn.affected_rows())
             })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::MysqlFailedToExecuteStatement,
+                    MsgKey::DbFailedToExecuteStatement,
                     &[&e.to_string()],
                 ))
             })?;
@@ -421,37 +416,46 @@ impl DbTransaction for MysqlTransaction {
     }
 
     fn commit(self: Arc<Self>) -> DbResult<()> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .take()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
 
+        let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
-        runtime.block_on(async { transaction.commit().await }).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::MysqlFailedToCommitTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        runtime
+            .block_on(async { conn.query_drop("COMMIT").await })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::DbFailedToCommitTransaction,
+                    &[&e.to_string()],
+                ))
+            })?;
 
+        *committed = true;
         Ok(())
     }
 
     fn rollback(self: Arc<Self>) -> DbResult<()> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .take()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
 
+        let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
-        runtime.block_on(async { transaction.rollback().await }).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::MysqlFailedToRollbackTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        runtime
+            .block_on(async { conn.query_drop("ROLLBACK").await })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::DbFailedToRollbackTransaction,
+                    &[&e.to_string()],
+                ))
+            })?;
+
+        *committed = true;
 
         Ok(())
     }

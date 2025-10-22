@@ -13,9 +13,8 @@ use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::Mutex;
-use std::collections::HashMap;
 use std::sync::Arc;
-use tokio_postgres::{Client, NoTls, Row as PgRow, Transaction as PgTransaction};
+use tokio_postgres::{Client, NoTls, Row as PgRow};
 
 /// PostgreSQLドライバー
 pub struct PostgresDriver;
@@ -50,7 +49,7 @@ impl DbDriver for PostgresDriver {
         // 接続を確立
         let (client, connection) = rt
             .block_on(async { tokio_postgres::connect(conn_str, NoTls).await })
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::PostgresFailedToConnect, &[&e.to_string()])))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
 
         // 接続ハンドラーをバックグラウンドで実行
         std::thread::spawn(move || {
@@ -137,10 +136,7 @@ impl DbConnection for PostgresConnection {
         let rows = runtime
             .block_on(async { client.query(sql, &param_refs[..]).await })
             .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
+                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
             })?;
 
         let mut results = Vec::new();
@@ -166,7 +162,7 @@ impl DbConnection for PostgresConnection {
             .block_on(async { client.execute(sql, &param_refs[..]).await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToExecuteStatement,
+                    MsgKey::DbFailedToExecuteStatement,
                     &[&e.to_string()],
                 ))
             })?;
@@ -178,18 +174,20 @@ impl DbConnection for PostgresConnection {
         let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        let transaction = runtime
-            .block_on(async { client.transaction().await })
+        // トランザクション開始
+        runtime
+            .block_on(async { client.execute("BEGIN", &[]).await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToBeginTransaction,
+                    MsgKey::DbFailedToBeginTransaction,
                     &[&e.to_string()],
                 ))
             })?;
 
         Ok(Arc::new(PostgresTransaction {
-            transaction: Arc::new(Mutex::new(Some(transaction))),
+            client: self.client.clone(),
             runtime: self.runtime.clone(),
+            committed: Mutex::new(false),
         }))
     }
 
@@ -210,7 +208,10 @@ impl DbConnection for PostgresConnection {
 
     fn escape_like(&self, pattern: &str) -> String {
         // LIKE句のメタキャラクタをエスケープ
-        pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+        pattern
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_")
     }
 
     fn driver_name(&self) -> &str {
@@ -224,14 +225,13 @@ impl DbConnection for PostgresConnection {
         let tables = rows
             .into_iter()
             .filter_map(|row| {
-                row.get("tablename")
-                    .and_then(|v| {
-                        if let Value::String(s) = v {
-                            Some(s.clone())
-                        } else {
-                            None
-                        }
-                    })
+                row.get("tablename").and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
             })
             .collect();
 
@@ -244,7 +244,11 @@ impl DbConnection for PostgresConnection {
                    WHERE table_name = $1 \
                    ORDER BY ordinal_position";
 
-        let rows = self.query(sql, &[Value::String(table.to_string())], &QueryOptions::default())?;
+        let rows = self.query(
+            sql,
+            &[Value::String(table.to_string())],
+            &QueryOptions::default(),
+        )?;
 
         let columns = rows
             .into_iter()
@@ -272,7 +276,11 @@ impl DbConnection for PostgresConnection {
                    FROM pg_indexes \
                    WHERE tablename = $1";
 
-        let rows = self.query(sql, &[Value::String(table.to_string())], &QueryOptions::default())?;
+        let rows = self.query(
+            sql,
+            &[Value::String(table.to_string())],
+            &QueryOptions::default(),
+        )?;
 
         let indexes = rows
             .into_iter()
@@ -297,7 +305,9 @@ impl DbConnection for PostgresConnection {
     }
 
     fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
-        Err(DbError::new("Stored procedures not yet implemented for PostgreSQL"))
+        Err(DbError::new(
+            "Stored procedures not yet implemented for PostgreSQL",
+        ))
     }
 
     fn supports(&self, feature: &str) -> bool {
@@ -326,23 +336,22 @@ impl DbConnection for PostgresConnection {
 
     fn query_info(&self, _sql: &str) -> DbResult<QueryInfo> {
         // TODO: PREPARE文を使ってカラム情報を取得
-        Err(DbError::new("Query info not yet implemented for PostgreSQL"))
+        Err(DbError::new(
+            "Query info not yet implemented for PostgreSQL",
+        ))
     }
 }
 
 /// PostgreSQLトランザクション
 pub struct PostgresTransaction {
-    transaction: Arc<Mutex<Option<PgTransaction<'static>>>>,
+    client: Arc<Mutex<Client>>,
     runtime: Arc<Mutex<tokio::runtime::Runtime>>,
+    committed: Mutex<bool>,
 }
 
 impl DbTransaction for PostgresTransaction {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .as_mut()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
-
+        let client = self.client.lock();
         let runtime = self.runtime.lock();
 
         // パラメータを文字列に変換（簡易実装）
@@ -356,12 +365,9 @@ impl DbTransaction for PostgresTransaction {
             .collect();
 
         let rows = runtime
-            .block_on(async { transaction.query(sql, &param_refs[..]).await })
+            .block_on(async { client.query(sql, &param_refs[..]).await })
             .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
+                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
             })?;
 
         let mut results = Vec::new();
@@ -373,11 +379,7 @@ impl DbTransaction for PostgresTransaction {
     }
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .as_mut()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
-
+        let client = self.client.lock();
         let runtime = self.runtime.lock();
 
         // パラメータを文字列に変換（簡易実装）
@@ -391,10 +393,10 @@ impl DbTransaction for PostgresTransaction {
             .collect();
 
         let affected = runtime
-            .block_on(async { transaction.execute(sql, &param_refs[..]).await })
+            .block_on(async { client.execute(sql, &param_refs[..]).await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToExecuteStatement,
+                    MsgKey::DbFailedToExecuteStatement,
                     &[&e.to_string()],
                 ))
             })?;
@@ -403,39 +405,46 @@ impl DbTransaction for PostgresTransaction {
     }
 
     fn commit(self: Arc<Self>) -> DbResult<()> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .take()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
 
+        let client = self.client.lock();
         let runtime = self.runtime.lock();
 
-        runtime.block_on(async { transaction.commit().await }).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::PostgresFailedToCommitTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        runtime
+            .block_on(async { client.execute("COMMIT", &[]).await })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::DbFailedToCommitTransaction,
+                    &[&e.to_string()],
+                ))
+            })?;
 
+        *committed = true;
         Ok(())
     }
 
     fn rollback(self: Arc<Self>) -> DbResult<()> {
-        let mut transaction_guard = self.transaction.lock();
-        let transaction = transaction_guard
-            .take()
-            .ok_or_else(|| DbError::new("Transaction already committed or rolled back"))?;
+        let mut committed = self.committed.lock();
+        if *committed {
+            return Err(DbError::new("Transaction already committed or rolled back"));
+        }
 
+        let client = self.client.lock();
         let runtime = self.runtime.lock();
 
         runtime
-            .block_on(async { transaction.rollback().await })
+            .block_on(async { client.execute("ROLLBACK", &[]).await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
-                    MsgKey::PostgresFailedToRollbackTransaction,
+                    MsgKey::DbFailedToRollbackTransaction,
                     &[&e.to_string()],
                 ))
             })?;
+
+        *committed = true;
 
         Ok(())
     }
