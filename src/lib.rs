@@ -1,4 +1,5 @@
 pub mod builtins;
+pub mod error;
 pub mod eval;
 pub mod i18n;
 pub mod intern;
