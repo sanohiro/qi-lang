@@ -434,6 +434,7 @@ pub enum UiMsg {
     OptExecute,
     OptStdin,
     OptLoad,
+    OptQuiet,
     OptHelp,
     OptVersion,
 
@@ -1498,6 +1499,7 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             OptLoad,
             "  -l <file>          Load file before starting REPL",
         ),
+        (OptQuiet, "  -q, --quiet        Start REPL in quiet mode (no startup messages)"),
         (OptHelp, "  -h, --help         Show this help message"),
         (OptVersion, "  -v, --version      Show version information"),
         // ヘルプ例
@@ -1638,6 +1640,7 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             OptLoad,
             "  -l <ファイル>      REPL起動前にファイルを読み込む",
         ),
+        (OptQuiet, "  -q, --quiet        quietモードでREPL起動（起動メッセージなし）"),
         (OptHelp, "  -h, --help         このヘルプメッセージを表示"),
         (OptVersion, "  -v, --version      バージョン情報を表示"),
         // ヘルプ例

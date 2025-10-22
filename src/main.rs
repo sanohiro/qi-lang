@@ -98,7 +98,7 @@ fn main() {
     // コマンドライン引数の解析
     if args.len() == 1 {
         // 引数なし: REPLを起動
-        repl(None);
+        repl(None, false);
         return;
     }
 
@@ -108,6 +108,10 @@ fn main() {
         }
         "-v" | "--version" => {
             println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
+        }
+        "-q" | "--quiet" => {
+            // quietモードでREPL起動
+            repl(None, true);
         }
         "new" => {
             // プロジェクト作成
@@ -191,7 +195,8 @@ fn main() {
                 eprintln!("{}", fmt_ui_msg(UiMsg::ErrorRequiresFile, &[&args[1]]));
                 std::process::exit(1);
             }
-            repl(Some(&args[2]));
+            // -l はREPLなので quiet=false
+            repl(Some(&args[2]), false);
         }
         arg if arg.starts_with('-') => {
             eprintln!("{}", fmt_ui_msg(UiMsg::ErrorUnknownOption, &[arg]));
@@ -208,46 +213,31 @@ fn main() {
 fn print_help() {
     println!("{}", ui_msg(UiMsg::HelpTitle));
     println!();
-    println!("{}:", ui_msg(UiMsg::HelpUsage));
-    println!("    qi [OPTIONS] [FILE]");
+    println!("{}", ui_msg(UiMsg::HelpUsage));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpOptions));
     println!("    new <name> [-t <template>]  新しいQiプロジェクトを作成");
     println!("    template <list|info>        テンプレート管理");
-    println!("    -e, -c <code>       {}", ui_msg(UiMsg::OptExecute));
-    println!("    -                   {}", ui_msg(UiMsg::OptStdin));
-    println!("    -l, --load <file>   {}", ui_msg(UiMsg::OptLoad));
-    println!("    -h, --help          {}", ui_msg(UiMsg::OptHelp));
-    println!("    -v, --version       {}", ui_msg(UiMsg::OptVersion));
+    println!("{}", ui_msg(UiMsg::OptExecute));
+    println!("{}", ui_msg(UiMsg::OptStdin));
+    println!("{}", ui_msg(UiMsg::OptLoad));
+    println!("{}", ui_msg(UiMsg::OptQuiet));
+    println!("{}", ui_msg(UiMsg::OptHelp));
+    println!("{}", ui_msg(UiMsg::OptVersion));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpExamples));
-    println!(
-        "    qi                       {}",
-        ui_msg(UiMsg::ExampleStartRepl)
-    );
+    println!("{}", ui_msg(UiMsg::ExampleStartRepl));
     println!("    qi new my-project        新しいプロジェクトを作成");
     println!("    qi new myapi -t http-server  HTTPサーバープロジェクトを作成");
     println!("    qi template list         利用可能なテンプレート一覧");
-    println!(
-        "    qi script.qi             {}",
-        ui_msg(UiMsg::ExampleRunScript)
-    );
-    println!(
-        "    qi -e '(+ 1 2 3)'        {}",
-        ui_msg(UiMsg::ExampleExecuteCode)
-    );
-    println!(
-        "    echo '(println 42)' | qi -    {}",
-        ui_msg(UiMsg::ExampleStdin)
-    );
-    println!(
-        "    qi -l utils.qi           {}",
-        ui_msg(UiMsg::ExampleLoadFile)
-    );
+    println!("{}", ui_msg(UiMsg::ExampleRunScript));
+    println!("{}", ui_msg(UiMsg::ExampleExecuteCode));
+    println!("{}", ui_msg(UiMsg::ExampleStdin));
+    println!("{}", ui_msg(UiMsg::ExampleLoadFile));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpEnvVars));
-    println!("    QI_LANG              {}", ui_msg(UiMsg::EnvLangQi));
-    println!("    LANG                 {}", ui_msg(UiMsg::EnvLangSystem));
+    println!("{}", ui_msg(UiMsg::EnvLangQi));
+    println!("{}", ui_msg(UiMsg::EnvLangSystem));
 }
 
 fn run_file(path: &str) {
@@ -423,11 +413,13 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
     }
 }
 
-fn repl(preload: Option<&str>) {
-    println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
-    println!("{}", ui_msg(UiMsg::ReplPressCtrlC));
-    println!("{}", ui_msg(UiMsg::ReplTypeHelp));
-    println!();
+fn repl(preload: Option<&str>, quiet: bool) {
+    if !quiet {
+        println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
+        println!("{}", ui_msg(UiMsg::ReplPressCtrlC));
+        println!("{}", ui_msg(UiMsg::ReplTypeHelp));
+        println!();
+    }
 
     let mut evaluator = Evaluator::new();
     let mut helper = QiHelper::new();
@@ -553,7 +545,9 @@ fn repl(preload: Option<&str>) {
     }
 
     let _ = rl.save_history(&history_file);
-    println!("\n{}", ui_msg(UiMsg::ReplGoodbye));
+    if !quiet {
+        println!("\n{}", ui_msg(UiMsg::ReplGoodbye));
+    }
 }
 
 /// 括弧のバランスをチェック
