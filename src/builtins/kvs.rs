@@ -1149,12 +1149,22 @@ pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
 
     let start = match &args[2] {
         Value::Integer(i) => *i,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (start)", "integers"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/lrange (start)", "integers"],
+            ))
+        }
     };
 
     let stop = match &args[3] {
         Value::Integer(i) => *i,
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["kvs/lrange (stop)", "integers"])),
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::TypeOnly,
+                &["kvs/lrange (stop)", "integers"],
+            ))
+        }
     };
 
     let conn_id = get_connection(conn_str)?;

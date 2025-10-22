@@ -88,33 +88,82 @@ impl MysqlConnection {
     }
 
     /// MySQL行をQi Valueに変換
+    ///
+    /// カラムの型情報とValueを直接確認することで、試行錯誤なしに確実な型変換を実現
     fn row_to_hashmap(row: &MyRow) -> DbResult<Row> {
+        use base64::{engine::general_purpose, Engine as _};
+        use mysql_async::Value as MySqlValue;
+
         let mut map = Row::new();
         let columns = row.columns_ref();
 
         for (idx, column) in columns.iter().enumerate() {
             let column_name = column.name_str().to_string();
+            let column_type = column.column_type();
 
-            // まず文字列として取得を試す（最も一般的）
-            let value = if let Some(Ok(v)) = row.get_opt::<String, _>(idx) {
-                // 文字列として取得できた場合、数値への変換を試みる
-                if let Ok(i) = v.parse::<i64>() {
-                    Value::Integer(i)
-                } else if let Ok(f) = v.parse::<f64>() {
-                    Value::Float(f)
-                } else {
-                    Value::String(v)
+            // カラムの値を直接取得
+            let mysql_value = row.as_ref(idx).unwrap_or(&MySqlValue::NULL);
+
+            // MySQLのValueを直接パターンマッチで変換（型情報に基づく確実な変換）
+            let value = match mysql_value {
+                MySqlValue::NULL => Value::Nil,
+                MySqlValue::Int(i) => Value::Integer(*i),
+                MySqlValue::UInt(u) => {
+                    // u64 -> i64の安全な変換（Qiはi64のみサポート）
+                    if *u <= i64::MAX as u64 {
+                        Value::Integer(*u as i64)
+                    } else {
+                        Value::String(u.to_string())
+                    }
                 }
-            } else if let Some(Ok(v)) = row.get_opt::<i64, _>(idx) {
-                Value::Integer(v)
-            } else if let Some(Ok(v)) = row.get_opt::<i32, _>(idx) {
-                Value::Integer(v as i64)
-            } else if let Some(Ok(v)) = row.get_opt::<f64, _>(idx) {
-                Value::Float(v)
-            } else if let Some(Ok(v)) = row.get_opt::<bool, _>(idx) {
-                Value::Bool(v)
-            } else {
-                Value::Nil
+                MySqlValue::Float(f) => Value::Float(*f as f64),
+                MySqlValue::Double(d) => Value::Float(*d),
+                MySqlValue::Bytes(b) => {
+                    // カラムの型情報を使って適切に変換
+                    if column_type.is_numeric_type() {
+                        // 数値型の場合はパース
+                        if let Ok(s) = String::from_utf8(b.clone()) {
+                            if let Ok(i) = s.parse::<i64>() {
+                                Value::Integer(i)
+                            } else if let Ok(f) = s.parse::<f64>() {
+                                Value::Float(f)
+                            } else {
+                                Value::String(s)
+                            }
+                        } else {
+                            Value::Nil
+                        }
+                    } else {
+                        // 文字列型またはバイナリデータ
+                        String::from_utf8(b.clone())
+                            .map(Value::String)
+                            .unwrap_or_else(|_| {
+                                // UTF-8でない場合はbase64エンコード
+                                Value::String(format!(
+                                    "base64:{}",
+                                    general_purpose::STANDARD.encode(b)
+                                ))
+                            })
+                    }
+                }
+                MySqlValue::Date(year, month, day, hour, min, sec, _micro) => {
+                    // 日付時刻をISO 8601形式の文字列に変換
+                    Value::String(format!(
+                        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+                        year, month, day, hour, min, sec
+                    ))
+                }
+                MySqlValue::Time(is_neg, days, hours, mins, secs, _micro) => {
+                    // 時間をHH:MM:SS形式の文字列に変換
+                    let total_hours = days * 24 + *hours as u32;
+                    Value::String(format!(
+                        "{}{:02}:{:02}:{:02}",
+                        if *is_neg { "-" } else { "" },
+                        total_hours,
+                        mins,
+                        secs
+                    ))
+                }
             };
 
             map.insert(column_name, value);

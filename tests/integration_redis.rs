@@ -56,7 +56,11 @@ fn test_redis_get_set() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // SET操作
     let set_result = eval_qi(&mut evaluator, r#"(kvs/set conn "test-key" "test-value")"#).unwrap();
@@ -76,7 +80,11 @@ fn test_redis_del() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // SET → DEL → GET
     eval_qi(&mut evaluator, r#"(kvs/set conn "key-to-delete" "value")"#).unwrap();
@@ -97,7 +105,11 @@ fn test_redis_exists() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // 存在しないキー
     let exists_result = eval_qi(&mut evaluator, r#"(kvs/exists conn "nonexistent")"#).unwrap();
@@ -118,7 +130,11 @@ fn test_redis_expire() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // SET → EXPIRE
     eval_qi(&mut evaluator, r#"(kvs/set conn "expiring-key" "value")"#).unwrap();
@@ -142,7 +158,11 @@ fn test_redis_incr_decr() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // INCR（初期値0から1ずつ増加）
     let incr1 = eval_qi(&mut evaluator, r#"(kvs/incr conn "counter")"#).unwrap();
@@ -165,7 +185,11 @@ fn test_redis_mget_mset() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // MSET（複数キー一括設定）
     let mset_result = eval_qi(
@@ -206,7 +230,11 @@ fn test_redis_keys() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // 複数のキーを設定
     eval_qi(&mut evaluator, r#"(kvs/set conn "user:1" "Alice")"#).unwrap();
@@ -246,7 +274,11 @@ fn test_redis_lpush_rpush_lrange() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // LPUSH（左から追加）
     eval_qi(&mut evaluator, r#"(kvs/lpush conn "mylist" "a")"#).unwrap();
@@ -279,10 +311,18 @@ fn test_redis_hset_hget() {
     let mut evaluator = Evaluator::new();
 
     // 接続
-    eval_qi(&mut evaluator, &format!(r#"(def conn (kvs/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (kvs/connect "{}"))"#, url),
+    )
+    .unwrap();
 
     // HSET（ハッシュに値を設定）
-    eval_qi(&mut evaluator, r#"(kvs/hset conn "user:1000" "name" "Alice")"#).unwrap();
+    eval_qi(
+        &mut evaluator,
+        r#"(kvs/hset conn "user:1000" "name" "Alice")"#,
+    )
+    .unwrap();
     eval_qi(&mut evaluator, r#"(kvs/hset conn "user:1000" "age" "30")"#).unwrap();
 
     // HGET（ハッシュから値を取得）
@@ -296,14 +336,8 @@ fn test_redis_hset_hget() {
     let hgetall_result = eval_qi(&mut evaluator, r#"(kvs/hgetall conn "user:1000")"#).unwrap();
     match hgetall_result {
         Value::Map(map) => {
-            assert_eq!(
-                map.get("name"),
-                Some(&Value::String("Alice".to_string()))
-            );
-            assert_eq!(
-                map.get("age"),
-                Some(&Value::String("30".to_string()))
-            );
+            assert_eq!(map.get("name"), Some(&Value::String("Alice".to_string())));
+            assert_eq!(map.get("age"), Some(&Value::String("30".to_string())));
         }
         other => panic!("期待: Map、実際: {:?}", other),
     }

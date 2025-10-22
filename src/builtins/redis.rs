@@ -14,9 +14,8 @@ use tokio::runtime::Runtime;
 static REDIS_POOL: LazyLock<DashMap<String, MultiplexedConnection>> = LazyLock::new(DashMap::new);
 
 /// グローバルなtokioランタイム（Redisの非同期操作用）
-static TOKIO_RT: LazyLock<Runtime> = LazyLock::new(|| {
-    Runtime::new().expect("Failed to create tokio runtime for Redis")
-});
+static TOKIO_RT: LazyLock<Runtime> =
+    LazyLock::new(|| Runtime::new().expect("Failed to create tokio runtime for Redis"));
 
 /// 接続を取得または新規作成
 async fn get_or_create_connection(url: &str) -> Result<MultiplexedConnection, String> {
@@ -49,22 +48,15 @@ async fn reconnect(url: &str) -> Result<MultiplexedConnection, String> {
 }
 
 /// Redis操作を再試行付きで実行するヘルパー
-async fn execute_with_retry<T, F, Fut>(
-    url: &str,
-    operation: F,
-) -> redis::RedisResult<T>
+async fn execute_with_retry<T, F, Fut>(url: &str, operation: F) -> redis::RedisResult<T>
 where
     F: Fn(MultiplexedConnection) -> Fut,
     Fut: std::future::Future<Output = redis::RedisResult<T>>,
 {
     // 最初の試行
-    let conn = get_or_create_connection(url).await.map_err(|e| {
-        redis::RedisError::from((
-            redis::ErrorKind::IoError,
-            "Connection error",
-            e,
-        ))
-    })?;
+    let conn = get_or_create_connection(url)
+        .await
+        .map_err(|e| redis::RedisError::from((redis::ErrorKind::IoError, "Connection error", e)))?;
 
     let result = operation(conn).await;
 
@@ -926,11 +918,12 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<Vec<(String, String)>> = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.hgetall(&key).await }
-        })
-        .await;
+        let result: redis::RedisResult<Vec<(String, String)>> =
+            execute_with_retry(&url, |mut conn| {
+                let key = key.clone();
+                async move { conn.hgetall(&key).await }
+            })
+            .await;
 
         match result {
             Ok(pairs) => {

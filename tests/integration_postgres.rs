@@ -87,7 +87,11 @@ fn test_postgres_insert_and_query() {
     let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (db/connect "{}"))"#, url),
+    )
+    .unwrap();
     eval_qi(
         &mut evaluator,
         r#"
@@ -143,7 +147,11 @@ fn test_postgres_transaction() {
     let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (db/connect "{}"))"#, url),
+    )
+    .unwrap();
     eval_qi(
         &mut evaluator,
         r#"
@@ -210,7 +218,11 @@ fn test_postgres_rollback() {
     let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (db/connect "{}"))"#, url),
+    )
+    .unwrap();
     eval_qi(
         &mut evaluator,
         r#"
@@ -229,7 +241,11 @@ fn test_postgres_rollback() {
     eval_qi(&mut evaluator, tx_code).unwrap();
 
     // データが挿入されていないことを確認
-    let result = eval_qi(&mut evaluator, r#"(db/query conn "SELECT * FROM items" [])"#).unwrap();
+    let result = eval_qi(
+        &mut evaluator,
+        r#"(db/query conn "SELECT * FROM items" [])"#,
+    )
+    .unwrap();
     match result {
         Value::Vector(rows) => assert_eq!(rows.len(), 0, "ロールバック後は0行であるべき"),
         other => panic!("期待: Vector、実際: {:?}", other),
@@ -245,7 +261,11 @@ fn test_postgres_parameterized_query() {
     let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(
+        &mut evaluator,
+        &format!(r#"(def conn (db/connect "{}"))"#, url),
+    )
+    .unwrap();
     eval_qi(
         &mut evaluator,
         r#"
@@ -290,14 +310,8 @@ fn test_postgres_parameterized_query() {
             assert_eq!(rows.len(), 2);
             match (&rows[0], &rows[1]) {
                 (Value::Map(r1), Value::Map(r2)) => {
-                    assert_eq!(
-                        r1.get("name"),
-                        Some(&Value::String("Apple".to_string()))
-                    );
-                    assert_eq!(
-                        r2.get("name"),
-                        Some(&Value::String("Orange".to_string()))
-                    );
+                    assert_eq!(r1.get("name"), Some(&Value::String("Apple".to_string())));
+                    assert_eq!(r2.get("name"), Some(&Value::String("Orange".to_string())));
                 }
                 _ => panic!("期待: Map、実際: {:?}", rows),
             }

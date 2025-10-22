@@ -85,7 +85,7 @@ impl PostgresConnection {
         match value {
             Value::Nil => Box::new(None::<String>),
             Value::Bool(b) => Box::new(*b),
-            Value::Integer(i) => Box::new(*i as i32),  // PostgreSQL INTEGER型はi32
+            Value::Integer(i) => Box::new(*i as i32), // PostgreSQL INTEGER型はi32
             Value::Float(f) => Box::new(*f),
             Value::String(s) => Box::new(s.clone()),
             _ => Box::new(value.to_string()),
@@ -130,8 +130,10 @@ impl DbConnection for PostgresConnection {
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
             params.iter().map(Self::value_to_sql_param).collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
-            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = sql_params
+            .iter()
+            .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
+            .collect();
 
         let rows = runtime
             .block_on(async { client.query(sql, &param_refs[..]).await })
@@ -154,8 +156,10 @@ impl DbConnection for PostgresConnection {
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
             params.iter().map(Self::value_to_sql_param).collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
-            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = sql_params
+            .iter()
+            .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
+            .collect();
 
         let affected = runtime
             .block_on(async { client.execute(sql, &param_refs[..]).await })
@@ -358,8 +362,10 @@ impl DbTransaction for PostgresTransaction {
             .iter()
             .map(PostgresConnection::value_to_sql_param)
             .collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
-            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = sql_params
+            .iter()
+            .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
+            .collect();
 
         let rows = runtime
             .block_on(async { client.query(sql, &param_refs[..]).await })
@@ -384,8 +390,10 @@ impl DbTransaction for PostgresTransaction {
             .iter()
             .map(PostgresConnection::value_to_sql_param)
             .collect();
-        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
-            sql_params.iter().map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync)).collect();
+        let param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = sql_params
+            .iter()
+            .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
+            .collect();
 
         let affected = runtime
             .block_on(async { client.execute(sql, &param_refs[..]).await })
