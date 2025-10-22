@@ -5,50 +5,44 @@
 
 #![cfg(feature = "integration-tests")]
 
-use qi_lang::env::Env;
-use qi_lang::eval::eval;
-use qi_lang::parser::parse;
+use qi_lang::eval::Evaluator;
+use qi_lang::parser::Parser;
 use qi_lang::value::Value;
-use std::sync::{Arc, RwLock};
-use testcontainers::{clients::Cli, RunnableImage};
-use testcontainers_modules::postgres::Postgres;
+use testcontainers::{clients, GenericImage};
 
-/// PostgreSQLコンテナをセットアップして接続URLを返す
-fn setup_postgres() -> (Cli, testcontainers::ContainerAsync<Postgres>, String) {
-    let docker = Cli::default();
-
-    // PostgreSQLイメージ（標準）
-    let postgres_image = Postgres::default()
-        .with_db_name("test_db")
-        .with_user("test_user")
-        .with_password("test_password");
-
-    let container = docker.run(postgres_image);
-
-    // ポート取得（バッティング回避のため動的割り当て）
-    let port = container.get_host_port_ipv4(5432);
-    let connection_url = format!(
-        "postgresql://test_user:test_password@127.0.0.1:{}/test_db",
-        port
-    );
-
-    (docker, container, connection_url)
+/// PostgreSQLイメージを作成
+fn postgres_image() -> GenericImage {
+    GenericImage::new("postgres", "14")
+        .with_wait_for(testcontainers::core::WaitFor::message_on_stderr(
+            "database system is ready to accept connections",
+        ))
+        .with_env_var("POSTGRES_HOST_AUTH_METHOD", "trust")
 }
 
 /// ヘルパー: Qiコードを評価して結果を返す
-fn eval_qi(env: &Arc<RwLock<Env>>, code: &str) -> Result<Value, String> {
-    let expr = parse(code)?;
-    eval(&expr, env)
+fn eval_qi(evaluator: &mut Evaluator, code: &str) -> Result<Value, String> {
+    let mut parser = Parser::new(code)?;
+    let exprs = parser.parse_all()?;
+
+    let mut result = Value::Nil;
+    for expr in exprs {
+        result = evaluator.eval(&expr)?;
+    }
+    Ok(result)
 }
 
 #[test]
 fn test_postgres_basic_connection() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+
+    let mut evaluator = Evaluator::new();
 
     // 接続テスト
     let code = format!(r#"(db/connect "{}")"#, url);
-    let result = eval_qi(&env, &code);
+    let result = eval_qi(&mut evaluator, &code);
     assert!(result.is_ok(), "接続失敗: {:?}", result);
 
     // 接続IDが返されることを確認
@@ -60,12 +54,15 @@ fn test_postgres_basic_connection() {
 
 #[test]
 fn test_postgres_create_table() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+    let mut evaluator = Evaluator::new();
 
     // 接続
     let conn_code = format!(r#"(def conn (db/connect "{}"))"#, url);
-    eval_qi(&env, &conn_code).unwrap();
+    eval_qi(&mut evaluator, &conn_code).unwrap();
 
     // テーブル作成
     let create_table = r#"
@@ -77,19 +74,22 @@ fn test_postgres_create_table() {
           )" [])
     "#;
 
-    let result = eval_qi(&env, create_table);
+    let result = eval_qi(&mut evaluator, create_table);
     assert!(result.is_ok(), "テーブル作成失敗: {:?}", result);
 }
 
 #[test]
 fn test_postgres_insert_and_query() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+    let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&env, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"
         (db/exec conn
           "CREATE TABLE users (
@@ -107,14 +107,14 @@ fn test_postgres_insert_and_query() {
           "INSERT INTO users (name, email) VALUES ($1, $2)"
           ["Alice" "alice@example.com"])
     "#;
-    let result = eval_qi(&env, insert).unwrap();
-    assert_eq!(result, Value::Number(1.0), "1行挿入されるべき");
+    let result = eval_qi(&mut evaluator, insert).unwrap();
+    assert_eq!(result, Value::Integer(1.0 as i64), "1行挿入されるべき");
 
     // データ取得
     let query = r#"
         (db/query conn "SELECT name, email FROM users WHERE name = $1" ["Alice"])
     "#;
-    let result = eval_qi(&env, query).unwrap();
+    let result = eval_qi(&mut evaluator, query).unwrap();
 
     // 結果検証
     match result {
@@ -122,8 +122,8 @@ fn test_postgres_insert_and_query() {
             assert_eq!(rows.len(), 1, "1行取得されるべき");
             match &rows[0] {
                 Value::Map(row) => {
-                    let name = row.get(&Value::String("name".to_string()));
-                    let email = row.get(&Value::String("email".to_string()));
+                    let name = row.get("name");
+                    let email = row.get("email");
                     assert_eq!(name, Some(&Value::String("Alice".to_string())));
                     assert_eq!(email, Some(&Value::String("alice@example.com".to_string())));
                 }
@@ -136,13 +136,16 @@ fn test_postgres_insert_and_query() {
 
 #[test]
 fn test_postgres_transaction() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+    let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&env, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"
         (db/exec conn
           "CREATE TABLE accounts (
@@ -155,12 +158,12 @@ fn test_postgres_transaction() {
 
     // 初期データ挿入
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/exec conn "INSERT INTO accounts (balance) VALUES (1000)" [])"#,
     )
     .unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/exec conn "INSERT INTO accounts (balance) VALUES (500)" [])"#,
     )
     .unwrap();
@@ -173,11 +176,11 @@ fn test_postgres_transaction() {
           (db/exec tx "UPDATE accounts SET balance = balance + 100 WHERE id = 2" [])
           (db/commit tx))
     "#;
-    eval_qi(&env, tx_code).unwrap();
+    eval_qi(&mut evaluator, tx_code).unwrap();
 
     // 残高確認
     let result = eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/query conn "SELECT balance FROM accounts ORDER BY id" [])"#,
     )
     .unwrap();
@@ -186,10 +189,10 @@ fn test_postgres_transaction() {
             assert_eq!(rows.len(), 2);
             match (&rows[0], &rows[1]) {
                 (Value::Map(row1), Value::Map(row2)) => {
-                    let balance1 = row1.get(&Value::String("balance".to_string()));
-                    let balance2 = row2.get(&Value::String("balance".to_string()));
-                    assert_eq!(balance1, Some(&Value::Number(900.0)));
-                    assert_eq!(balance2, Some(&Value::Number(600.0)));
+                    let balance1 = row1.get("balance");
+                    let balance2 = row2.get("balance");
+                    assert_eq!(balance1, Some(&Value::Integer(900.0 as i64)));
+                    assert_eq!(balance2, Some(&Value::Integer(600.0 as i64)));
                 }
                 _ => panic!("期待: Map、実際: {:?}", rows),
             }
@@ -200,13 +203,16 @@ fn test_postgres_transaction() {
 
 #[test]
 fn test_postgres_rollback() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+    let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&env, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"
         (db/exec conn "CREATE TABLE items (id SERIAL PRIMARY KEY, name TEXT)" [])
     "#,
@@ -220,10 +226,10 @@ fn test_postgres_rollback() {
           (db/exec tx "INSERT INTO items (name) VALUES ($1)" ["test"])
           (db/rollback tx))
     "#;
-    eval_qi(&env, tx_code).unwrap();
+    eval_qi(&mut evaluator, tx_code).unwrap();
 
     // データが挿入されていないことを確認
-    let result = eval_qi(&env, r#"(db/query conn "SELECT * FROM items" [])"#).unwrap();
+    let result = eval_qi(&mut evaluator, r#"(db/query conn "SELECT * FROM items" [])"#).unwrap();
     match result {
         Value::Vector(rows) => assert_eq!(rows.len(), 0, "ロールバック後は0行であるべき"),
         other => panic!("期待: Vector、実際: {:?}", other),
@@ -232,13 +238,16 @@ fn test_postgres_rollback() {
 
 #[test]
 fn test_postgres_parameterized_query() {
-    let (_docker, _container, url) = setup_postgres();
-    let env = Arc::new(RwLock::new(Env::new()));
+    let docker = clients::Cli::default();
+    let container = docker.run(postgres_image());
+    let port = container.get_host_port_ipv4(5432);
+    let url = format!("postgresql://postgres@127.0.0.1:{}/postgres", port);
+    let mut evaluator = Evaluator::new();
 
     // 接続 & テーブル作成
-    eval_qi(&env, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
+    eval_qi(&mut evaluator, &format!(r#"(def conn (db/connect "{}"))"#, url)).unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"
         (db/exec conn
           "CREATE TABLE products (
@@ -252,24 +261,24 @@ fn test_postgres_parameterized_query() {
 
     // 複数データ挿入
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/exec conn "INSERT INTO products (name, price) VALUES ($1, $2)" ["Apple" 100])"#,
     )
     .unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/exec conn "INSERT INTO products (name, price) VALUES ($1, $2)" ["Banana" 50])"#,
     )
     .unwrap();
     eval_qi(
-        &env,
+        &mut evaluator,
         r#"(db/exec conn "INSERT INTO products (name, price) VALUES ($1, $2)" ["Orange" 150])"#,
     )
     .unwrap();
 
     // パラメータ化クエリで検索
     let result = eval_qi(
-        &env,
+        &mut evaluator,
         r#"
         (db/query conn "SELECT name FROM products WHERE price > $1 ORDER BY price" [80])
     "#,
@@ -282,11 +291,11 @@ fn test_postgres_parameterized_query() {
             match (&rows[0], &rows[1]) {
                 (Value::Map(r1), Value::Map(r2)) => {
                     assert_eq!(
-                        r1.get(&Value::String("name".to_string())),
+                        r1.get("name"),
                         Some(&Value::String("Apple".to_string()))
                     );
                     assert_eq!(
-                        r2.get(&Value::String("name".to_string())),
+                        r2.get("name"),
                         Some(&Value::String("Orange".to_string()))
                     );
                 }
