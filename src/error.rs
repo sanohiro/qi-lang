@@ -50,6 +50,9 @@ pub enum ErrorCode {
     E0601, // 構文エラー
     E0602, // 字句解析エラー
     E0603, // 予期しないトークン
+    E0604, // 期待されるシンボル
+    E0605, // EOF（ファイル終端）エラー
+    E0606, // パターンエラー
 
     // 9xxx: 汎用エラー
     E9999, // 分類されていないエラー
@@ -313,6 +316,34 @@ impl QiError {
     /// パースエラー
     pub fn parse_error(message: String) -> Self {
         QiError::new(ErrorCode::E0601, format!("パースエラー: {}", message))
+    }
+
+    /// MsgKeyからErrorCodeを推定
+    pub fn error_code_from_parser_msg(key: &crate::i18n::MsgKey) -> ErrorCode {
+        use crate::i18n::MsgKey;
+        match key {
+            // パースエラー: トークン関連
+            MsgKey::UnexpectedToken | MsgKey::ExpectedToken => ErrorCode::E0603,
+            MsgKey::UnexpectedEof => ErrorCode::E0605,
+            // パースエラー: シンボル関連
+            MsgKey::NeedsSymbol
+            | MsgKey::VarargNeedsName
+            | MsgKey::RestNeedsVar
+            | MsgKey::AsNeedsVarName
+            | MsgKey::AsNeedsAlias
+            | MsgKey::ModuleNeedsName
+            | MsgKey::ExportNeedsSymbols
+            | MsgKey::UseNeedsModuleName
+            | MsgKey::ExpectedSymbolInOnlyList
+            | MsgKey::KeyMustBeKeyword
+            | MsgKey::MacVarargNeedsSymbol => ErrorCode::E0604,
+            // パースエラー: パターン関連
+            MsgKey::UnexpectedPattern => ErrorCode::E0606,
+            // モジュールエラー
+            MsgKey::UseNeedsMode => ErrorCode::E0601,
+            // デフォルト: 構文エラー
+            _ => ErrorCode::E0601,
+        }
     }
 }
 
