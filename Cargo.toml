@@ -108,7 +108,7 @@ util-zip = ["dep:zip", "dep:flate2"]
 
 repl = ["dep:rustyline", "dep:dirs"]
 dev-tools = []  # Pure Rust自前実装
-dap-server = ["dep:serde_json"]  # Debug Adapter Protocol server (serdeは常に有効)
+dap-server = ["dep:serde_json", "dep:tokio"]  # Debug Adapter Protocol server (tokio async runtime使用)
 
 cmd-exec = []  # Pure Rust実装、外部依存なし
 
@@ -181,6 +181,14 @@ rand = { version = "0.9", optional = true }
 jsonwebtoken = { version = "9.2", optional = true }
 argon2 = { version = "0.5", optional = true }
 rand_core = { version = "0.6", features = ["getrandom"], optional = true }
+
+# Unix用の依存関係（DAP stdoutリダイレクト用）
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# Windows用の依存関係（DAP stdoutリダイレクト用）
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_Pipes", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 
 [dev-dependencies]
 testcontainers = "0.15"

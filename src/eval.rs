@@ -9,7 +9,7 @@ use crate::value::{
 use parking_lot::RwLock;
 use smallvec::{smallvec, SmallVec};
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 // ========================================
 // マジック文字列定数
@@ -67,13 +67,6 @@ fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize
     }
     results
 }
-
-/// 出力コールバック型（println/print用）
-pub type OutputCallback = Arc<dyn Fn(String) + Send + Sync>;
-
-/// グローバル出力コールバック（DAP用）
-pub static OUTPUT_CALLBACK: LazyLock<RwLock<Option<OutputCallback>>> =
-    LazyLock::new(|| RwLock::new(None));
 
 #[derive(Clone)]
 pub struct Evaluator {
@@ -1860,22 +1853,13 @@ fn native_to_vector(args: &[Value]) -> Result<Value, String> {
 
 /// print - 値を出力
 fn native_print(args: &[Value]) -> Result<Value, String> {
-    let mut output = String::new();
     for (i, arg) in args.iter().enumerate() {
         if i > 0 {
-            output.push(' ');
+            print!(" ");
         }
-        output.push_str(&arg.to_string());
+        print!("{}", arg);
     }
-    output.push('\n');
-
-    // コールバックがあればそれを使用、なければstdoutに出力
-    if let Some(ref callback) = *OUTPUT_CALLBACK.read() {
-        callback(output);
-    } else {
-        print!("{}", output);
-    }
-
+    println!();
     Ok(Value::Nil)
 }
 

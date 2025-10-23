@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// DAPプロトコルのメッセージベース
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -360,7 +359,8 @@ impl DapServer {
                         }
 
                         // プログラム実行
-                        match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await {
+                        match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await
+                        {
                             Ok(_) => {
                                 eprintln!("[DAP] Program completed successfully");
 
@@ -453,7 +453,10 @@ impl DapServer {
         if let Some(args) = request.arguments {
             if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
                 if let Some(program) = launch_args.program {
-                    eprintln!("[DAP] Launching program: {} (sync version - deprecated)", program);
+                    eprintln!(
+                        "[DAP] Launching program: {} (sync version - deprecated)",
+                        program
+                    );
 
                     // NOTE: この同期版handle_launchは非推奨。run_async()を使用すること
                     // プログラム実行は非同期版（handle_launch_async）で実装済み
@@ -927,9 +930,37 @@ impl DapServer {
     pub async fn run_async_internal() -> io::Result<()> {
         let server = std::sync::Arc::new(DapServer::new());
         let stdin = tokio::io::stdin();
-        let stdout = tokio::io::stdout();
+
+        // オリジナルのstdoutハンドルを保存（プログラム実行時のリダイレクトの影響を受けない）
+        #[cfg(unix)]
+        let original_stdout_fd = unsafe { libc::dup(libc::STDOUT_FILENO) };
+        #[cfg(unix)]
+        if original_stdout_fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        #[cfg(windows)]
+        let original_stdout_handle = unsafe {
+            use windows_sys::Win32::Foundation::*;
+            use windows_sys::Win32::System::Console::*;
+            GetStdHandle(STD_OUTPUT_HANDLE)
+        };
+
+        // オリジナルのstdoutからWriterを作成
+        #[cfg(unix)]
+        let stdout_file = unsafe {
+            use std::os::unix::io::FromRawFd;
+            std::fs::File::from_raw_fd(original_stdout_fd)
+        };
+
+        #[cfg(windows)]
+        let stdout_file = unsafe {
+            use std::os::windows::io::FromRawHandle;
+            std::fs::File::from_raw_handle(original_stdout_handle as _)
+        };
+
+        let mut writer = tokio::io::BufWriter::new(tokio::fs::File::from_std(stdout_file));
         let mut reader = AsyncBufReader::new(stdin);
-        let mut writer = tokio::io::BufWriter::new(stdout);
 
         // イベント送信用のchannel
         let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
@@ -1067,13 +1098,13 @@ impl DapServer {
 // Qiプログラム実行
 // ========================================
 
-/// Qiプログラムを非同期実行（Evaluator使用）
+/// Qiプログラムを非同期実行（stdoutリダイレクト使用）
 async fn run_qi_program_async(
     program_path: &str,
     event_tx: tokio::sync::mpsc::Sender<String>,
     seq_base: i64,
 ) -> Result<(), String> {
-    use crate::eval::{Evaluator, OutputCallback, OUTPUT_CALLBACK};
+    use crate::eval::Evaluator;
     use crate::parser::Parser;
 
     // ファイル読み込み
@@ -1081,51 +1112,32 @@ async fn run_qi_program_async(
         .await
         .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let program_path = program_path.to_string();
+    let program_path_owned = program_path.to_string();
 
-    // 出力コールバックを設定（チャネル経由で送信）
-    let (output_tx, mut output_rx) = tokio::sync::mpsc::channel::<String>(100);
+    // stdoutをリダイレクト
+    let redirect = stdout_redirect::StdoutRedirect::new()
+        .map_err(|e| format!("Failed to redirect stdout: {}", e))?;
 
-    // 出力を受信してDAPイベントに変換するタスク
-    let event_tx_clone = event_tx.clone();
-    tokio::spawn(async move {
-        while let Some(output) = output_rx.recv().await {
-            let output_msg = OutputEventBody {
-                category: "stdout".to_string(),
-                output,
-            };
-            let output_event = Event {
-                seq: seq_base,
-                msg_type: "event".to_string(),
-                event: "output".to_string(),
-                body: serde_json::to_value(&output_msg).ok(),
-            };
-            if let Ok(event_json) = serde_json::to_string(&output_event) {
-                let _ = event_tx_clone.send(event_json).await;
-            }
-        }
-    });
-
-    // コールバックはチャネルに送信するだけ
-    let callback: OutputCallback = Arc::new(move |output: String| {
-        let _ = output_tx.blocking_send(output);
-    });
-
-    *OUTPUT_CALLBACK.write() = Some(callback);
+    // パイプから読み取るタスクを起動
+    let read_handle = redirect.spawn_reader_task(event_tx, seq_base);
 
     // Evaluatorの実行は同期的なのでspawn_blockingで実行
     let result = tokio::task::spawn_blocking(move || {
         let evaluator = Evaluator::new();
-        evaluator.set_source(program_path.clone(), content.clone());
+        evaluator.set_source(program_path_owned.clone(), content.clone());
 
         // パース
         let mut parser = Parser::new(&content).map_err(|e| format!("Parser error: {}", e))?;
-        parser.set_source_name(program_path.clone());
-        let exprs = parser.parse_all().map_err(|e| format!("Parse error: {}", e))?;
+        parser.set_source_name(program_path_owned.clone());
+        let exprs = parser
+            .parse_all()
+            .map_err(|e| format!("Parse error: {}", e))?;
 
         // 評価
         for expr in exprs.iter() {
-            evaluator.eval(expr).map_err(|e| format!("Runtime error: {}", e))?;
+            evaluator
+                .eval(expr)
+                .map_err(|e| format!("Runtime error: {}", e))?;
         }
 
         Ok(())
@@ -1133,8 +1145,201 @@ async fn run_qi_program_async(
     .await
     .map_err(|e| format!("Task join error: {}", e))?;
 
-    // コールバックをクリア
-    *OUTPUT_CALLBACK.write() = None;
+    // stdoutを元に戻す
+    drop(redirect);
+
+    // 読み取りタスクの完了を待つ
+    let _ = read_handle.await;
 
     result
+}
+
+// ========================================
+// stdoutリダイレクト（クロスプラットフォーム）
+// ========================================
+
+mod stdout_redirect {
+    use super::{Event, OutputEventBody};
+    use std::io::{self, Read};
+
+    #[cfg(unix)]
+    pub struct StdoutRedirect {
+        original_stdout: i32,
+        read_fd: i32,
+    }
+
+    #[cfg(windows)]
+    pub struct StdoutRedirect {
+        original_stdout: windows_sys::Win32::Foundation::HANDLE,
+        read_handle: windows_sys::Win32::Foundation::HANDLE,
+    }
+
+    impl StdoutRedirect {
+        /// stdoutをパイプにリダイレクト
+        #[cfg(unix)]
+        pub fn new() -> io::Result<Self> {
+            unsafe {
+                // 元のstdoutを保存
+                let original_stdout = libc::dup(libc::STDOUT_FILENO);
+                if original_stdout < 0 {
+                    return Err(io::Error::last_os_error());
+                }
+
+                // パイプ作成
+                let mut pipe_fds: [i32; 2] = [0, 0];
+                if libc::pipe(pipe_fds.as_mut_ptr()) < 0 {
+                    libc::close(original_stdout);
+                    return Err(io::Error::last_os_error());
+                }
+
+                // stdoutをパイプの書き込み側にリダイレクト
+                if libc::dup2(pipe_fds[1], libc::STDOUT_FILENO) < 0 {
+                    libc::close(original_stdout);
+                    libc::close(pipe_fds[0]);
+                    libc::close(pipe_fds[1]);
+                    return Err(io::Error::last_os_error());
+                }
+
+                // 書き込み側は不要（stdoutが参照している）
+                libc::close(pipe_fds[1]);
+
+                Ok(Self {
+                    original_stdout,
+                    read_fd: pipe_fds[0],
+                })
+            }
+        }
+
+        /// stdoutをパイプにリダイレクト（Windows版）
+        #[cfg(windows)]
+        pub fn new() -> io::Result<Self> {
+            use windows_sys::Win32::Foundation::*;
+            use windows_sys::Win32::Storage::FileSystem::*;
+            use windows_sys::Win32::System::Console::*;
+            use windows_sys::Win32::System::Pipes::*;
+
+            unsafe {
+                // 元のstdoutを保存
+                let original_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+                if original_stdout == INVALID_HANDLE_VALUE {
+                    return Err(io::Error::last_os_error());
+                }
+
+                // パイプ作成
+                let mut read_handle: HANDLE = 0;
+                let mut write_handle: HANDLE = 0;
+                if CreatePipe(&mut read_handle, &mut write_handle, std::ptr::null(), 0) == 0 {
+                    return Err(io::Error::last_os_error());
+                }
+
+                // stdoutをパイプの書き込み側に設定
+                if SetStdHandle(STD_OUTPUT_HANDLE, write_handle) == 0 {
+                    CloseHandle(read_handle);
+                    CloseHandle(write_handle);
+                    return Err(io::Error::last_os_error());
+                }
+
+                // 書き込み側ハンドルを閉じる（stdoutが参照している）
+                CloseHandle(write_handle);
+
+                Ok(Self {
+                    original_stdout,
+                    read_handle,
+                })
+            }
+        }
+
+        /// パイプから読み取ってDAPイベントを送信するタスクを起動
+        pub fn spawn_reader_task(
+            &self,
+            event_tx: tokio::sync::mpsc::Sender<String>,
+            seq_base: i64,
+        ) -> tokio::task::JoinHandle<()> {
+            #[cfg(unix)]
+            let read_fd = unsafe { libc::dup(self.read_fd) };
+
+            #[cfg(windows)]
+            let read_handle = self.read_handle;
+
+            tokio::spawn(async move {
+                #[cfg(unix)]
+                let mut reader = unsafe {
+                    use std::os::unix::io::FromRawFd;
+                    std::fs::File::from_raw_fd(read_fd)
+                };
+
+                #[cfg(windows)]
+                let mut reader = unsafe {
+                    use std::os::windows::io::FromRawHandle;
+                    use windows_sys::Win32::Foundation::DuplicateHandle;
+                    use windows_sys::Win32::Foundation::DUPLICATE_SAME_ACCESS;
+                    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+                    let mut dup_handle: windows_sys::Win32::Foundation::HANDLE = 0;
+                    if DuplicateHandle(
+                        GetCurrentProcess(),
+                        read_handle,
+                        GetCurrentProcess(),
+                        &mut dup_handle,
+                        0,
+                        0,
+                        DUPLICATE_SAME_ACCESS,
+                    ) == 0
+                    {
+                        eprintln!("[DAP] Failed to duplicate handle for reader task");
+                        return;
+                    }
+                    std::fs::File::from_raw_handle(dup_handle as _)
+                };
+
+                let mut buffer = [0u8; 4096];
+                loop {
+                    match reader.read(&mut buffer) {
+                        Ok(0) => break, // EOF
+                        Ok(n) => {
+                            if let Ok(output) = String::from_utf8(buffer[..n].to_vec()) {
+                                let output_msg = OutputEventBody {
+                                    category: "stdout".to_string(),
+                                    output,
+                                };
+                                let output_event = Event {
+                                    seq: seq_base,
+                                    msg_type: "event".to_string(),
+                                    event: "output".to_string(),
+                                    body: serde_json::to_value(&output_msg).ok(),
+                                };
+                                if let Ok(event_json) = serde_json::to_string(&output_event) {
+                                    let _ = event_tx.send(event_json).await;
+                                }
+                            }
+                        }
+                        Err(_) => break,
+                    }
+                }
+            })
+        }
+    }
+
+    impl Drop for StdoutRedirect {
+        /// stdoutを元に戻す
+        #[cfg(unix)]
+        fn drop(&mut self) {
+            unsafe {
+                libc::dup2(self.original_stdout, libc::STDOUT_FILENO);
+                libc::close(self.original_stdout);
+                libc::close(self.read_fd);
+            }
+        }
+
+        #[cfg(windows)]
+        fn drop(&mut self) {
+            use windows_sys::Win32::Foundation::*;
+            use windows_sys::Win32::System::Console::*;
+
+            unsafe {
+                SetStdHandle(STD_OUTPUT_HANDLE, self.original_stdout);
+                CloseHandle(self.read_handle);
+            }
+        }
+    }
 }
