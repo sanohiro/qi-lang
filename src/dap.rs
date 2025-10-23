@@ -983,17 +983,16 @@ impl DapServer {
         // オリジナルのstderrハンドルを保存（DAPログ出力用）
         #[cfg(unix)]
         {
-            let original_stderr_fd = unsafe { libc::dup(libc::STDERR_FILENO) };
-            if original_stderr_fd >= 0 {
-                *ORIGINAL_STDERR.lock() = Some(original_stderr_fd);
+            let fd = unsafe { libc::dup(libc::STDERR_FILENO) };
+            if fd >= 0 {
+                *ORIGINAL_STDERR.lock() = Some(fd);
             }
         }
 
         #[cfg(windows)]
         {
             use windows_sys::Win32::System::Console::*;
-            let original_stderr_handle = unsafe { GetStdHandle(STD_ERROR_HANDLE) };
-            *ORIGINAL_STDERR.lock() = Some(original_stderr_handle);
+            *ORIGINAL_STDERR.lock() = Some(unsafe { GetStdHandle(STD_ERROR_HANDLE) });
         }
 
         // オリジナルのstdoutからWriterを作成
@@ -1194,89 +1193,168 @@ mod stdio_redirect {
     use super::{Event, OutputEventBody};
     use std::io::{self, Read};
 
+    // プラットフォーム固有の型定義
     #[cfg(unix)]
+    type NativeHandle = i32;
+
+    #[cfg(windows)]
+    type NativeHandle = windows_sys::Win32::Foundation::HANDLE;
+
+    // 統一された構造体定義
     pub struct StdioRedirect {
-        original_stdout: i32,
-        original_stderr: i32,
-        stdout_read_fd: i32,
-        stderr_read_fd: i32,
+        original_stdout: NativeHandle,
+        original_stderr: NativeHandle,
+        stdout_read: NativeHandle,
+        stderr_read: NativeHandle,
+    }
+
+    // プラットフォーム固有のヘルパー関数
+    #[cfg(unix)]
+    mod platform {
+        use super::NativeHandle;
+        use std::io;
+
+        pub const STDOUT_NO: NativeHandle = libc::STDOUT_FILENO;
+        pub const STDERR_NO: NativeHandle = libc::STDERR_FILENO;
+
+        pub unsafe fn dup(handle: NativeHandle) -> io::Result<NativeHandle> {
+            let new_handle = libc::dup(handle);
+            if new_handle < 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(new_handle)
+            }
+        }
+
+        pub unsafe fn close(handle: NativeHandle) {
+            libc::close(handle);
+        }
+
+        pub unsafe fn create_pipe() -> io::Result<(NativeHandle, NativeHandle)> {
+            let mut pipe: [i32; 2] = [0, 0];
+            if libc::pipe(pipe.as_mut_ptr()) < 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok((pipe[0], pipe[1]))
+            }
+        }
+
+        pub unsafe fn redirect(
+            new_handle: NativeHandle,
+            std_no: NativeHandle,
+        ) -> io::Result<()> {
+            if libc::dup2(new_handle, std_no) < 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        }
     }
 
     #[cfg(windows)]
-    pub struct StdioRedirect {
-        original_stdout: windows_sys::Win32::Foundation::HANDLE,
-        original_stderr: windows_sys::Win32::Foundation::HANDLE,
-        stdout_read_handle: windows_sys::Win32::Foundation::HANDLE,
-        stderr_read_handle: windows_sys::Win32::Foundation::HANDLE,
+    mod platform {
+        use super::NativeHandle;
+        use std::io;
+        use windows_sys::Win32::Foundation::*;
+        use windows_sys::Win32::System::Console::*;
+        use windows_sys::Win32::System::Pipes::*;
+
+        pub const STDOUT_NO: u32 = STD_OUTPUT_HANDLE;
+        pub const STDERR_NO: u32 = STD_ERROR_HANDLE;
+
+        pub unsafe fn get_std_handle(handle_id: u32) -> io::Result<NativeHandle> {
+            let handle = GetStdHandle(handle_id);
+            if handle == INVALID_HANDLE_VALUE {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(handle)
+            }
+        }
+
+        pub unsafe fn close(handle: NativeHandle) {
+            CloseHandle(handle);
+        }
+
+        pub unsafe fn create_pipe() -> io::Result<(NativeHandle, NativeHandle)> {
+            let mut read_handle: HANDLE = 0;
+            let mut write_handle: HANDLE = 0;
+            if CreatePipe(&mut read_handle, &mut write_handle, std::ptr::null(), 0) == 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok((read_handle, write_handle))
+            }
+        }
+
+        pub unsafe fn redirect(
+            new_handle: NativeHandle,
+            std_handle_id: u32,
+        ) -> io::Result<()> {
+            if SetStdHandle(std_handle_id, new_handle) == 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        }
     }
 
     impl StdioRedirect {
-        /// stdout/stderrをパイプにリダイレクト
+        /// stdout/stderrをパイプにリダイレクト（Unix版）
         #[cfg(unix)]
         pub fn new() -> io::Result<Self> {
+            use platform::*;
+
             unsafe {
-                // 元のstdoutを保存
-                let original_stdout = libc::dup(libc::STDOUT_FILENO);
-                if original_stdout < 0 {
-                    return Err(io::Error::last_os_error());
+                // 元のstdout/stderrを保存
+                let original_stdout = dup(STDOUT_NO)?;
+                let original_stderr = dup(STDERR_NO).map_err(|e| {
+                    close(original_stdout);
+                    e
+                })?;
+
+                // パイプ作成
+                let (stdout_read, stdout_write) = create_pipe().map_err(|e| {
+                    close(original_stdout);
+                    close(original_stderr);
+                    e
+                })?;
+
+                let (stderr_read, stderr_write) = create_pipe().map_err(|e| {
+                    close(original_stdout);
+                    close(original_stderr);
+                    close(stdout_read);
+                    close(stdout_write);
+                    e
+                })?;
+
+                // リダイレクト
+                if let Err(e) = redirect(stdout_write, STDOUT_NO) {
+                    close(original_stdout);
+                    close(original_stderr);
+                    close(stdout_read);
+                    close(stdout_write);
+                    close(stderr_read);
+                    close(stderr_write);
+                    return Err(e);
                 }
 
-                // 元のstderrを保存
-                let original_stderr = libc::dup(libc::STDERR_FILENO);
-                if original_stderr < 0 {
-                    libc::close(original_stdout);
-                    return Err(io::Error::last_os_error());
+                if let Err(e) = redirect(stderr_write, STDERR_NO) {
+                    close(original_stdout);
+                    close(original_stderr);
+                    close(stdout_read);
+                    close(stderr_read);
+                    close(stderr_write);
+                    return Err(e);
                 }
 
-                // stdout用パイプ作成
-                let mut stdout_pipe: [i32; 2] = [0, 0];
-                if libc::pipe(stdout_pipe.as_mut_ptr()) < 0 {
-                    libc::close(original_stdout);
-                    libc::close(original_stderr);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stderr用パイプ作成
-                let mut stderr_pipe: [i32; 2] = [0, 0];
-                if libc::pipe(stderr_pipe.as_mut_ptr()) < 0 {
-                    libc::close(original_stdout);
-                    libc::close(original_stderr);
-                    libc::close(stdout_pipe[0]);
-                    libc::close(stdout_pipe[1]);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stdoutをパイプの書き込み側にリダイレクト
-                if libc::dup2(stdout_pipe[1], libc::STDOUT_FILENO) < 0 {
-                    libc::close(original_stdout);
-                    libc::close(original_stderr);
-                    libc::close(stdout_pipe[0]);
-                    libc::close(stdout_pipe[1]);
-                    libc::close(stderr_pipe[0]);
-                    libc::close(stderr_pipe[1]);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stderrをパイプの書き込み側にリダイレクト
-                if libc::dup2(stderr_pipe[1], libc::STDERR_FILENO) < 0 {
-                    libc::close(original_stdout);
-                    libc::close(original_stderr);
-                    libc::close(stdout_pipe[0]);
-                    libc::close(stdout_pipe[1]);
-                    libc::close(stderr_pipe[0]);
-                    libc::close(stderr_pipe[1]);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // 書き込み側は不要（stdout/stderrが参照している）
-                libc::close(stdout_pipe[1]);
-                libc::close(stderr_pipe[1]);
+                // 書き込み側を閉じる
+                close(stdout_write);
+                close(stderr_write);
 
                 Ok(Self {
                     original_stdout,
                     original_stderr,
-                    stdout_read_fd: stdout_pipe[0],
-                    stderr_read_fd: stderr_pipe[0],
+                    stdout_read,
+                    stderr_read,
                 })
             }
         }
@@ -1284,79 +1362,47 @@ mod stdio_redirect {
         /// stdout/stderrをパイプにリダイレクト（Windows版）
         #[cfg(windows)]
         pub fn new() -> io::Result<Self> {
-            use windows_sys::Win32::Foundation::*;
-            use windows_sys::Win32::Storage::FileSystem::*;
-            use windows_sys::Win32::System::Console::*;
-            use windows_sys::Win32::System::Pipes::*;
+            use platform::*;
 
             unsafe {
-                // 元のstdoutを保存
-                let original_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-                if original_stdout == INVALID_HANDLE_VALUE {
-                    return Err(io::Error::last_os_error());
+                // 元のstdout/stderrを保存
+                let original_stdout = get_std_handle(STDOUT_NO)?;
+                let original_stderr = get_std_handle(STDERR_NO)?;
+
+                // パイプ作成
+                let (stdout_read, stdout_write) = create_pipe()?;
+
+                let (stderr_read, stderr_write) = create_pipe().map_err(|e| {
+                    close(stdout_read);
+                    close(stdout_write);
+                    e
+                })?;
+
+                // リダイレクト
+                if let Err(e) = redirect(stdout_write, STDOUT_NO) {
+                    close(stdout_read);
+                    close(stdout_write);
+                    close(stderr_read);
+                    close(stderr_write);
+                    return Err(e);
                 }
 
-                // 元のstderrを保存
-                let original_stderr = GetStdHandle(STD_ERROR_HANDLE);
-                if original_stderr == INVALID_HANDLE_VALUE {
-                    return Err(io::Error::last_os_error());
+                if let Err(e) = redirect(stderr_write, STDERR_NO) {
+                    close(stdout_read);
+                    close(stderr_read);
+                    close(stderr_write);
+                    return Err(e);
                 }
 
-                // stdout用パイプ作成
-                let mut stdout_read_handle: HANDLE = 0;
-                let mut stdout_write_handle: HANDLE = 0;
-                if CreatePipe(
-                    &mut stdout_read_handle,
-                    &mut stdout_write_handle,
-                    std::ptr::null(),
-                    0,
-                ) == 0
-                {
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stderr用パイプ作成
-                let mut stderr_read_handle: HANDLE = 0;
-                let mut stderr_write_handle: HANDLE = 0;
-                if CreatePipe(
-                    &mut stderr_read_handle,
-                    &mut stderr_write_handle,
-                    std::ptr::null(),
-                    0,
-                ) == 0
-                {
-                    CloseHandle(stdout_read_handle);
-                    CloseHandle(stdout_write_handle);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stdoutをパイプの書き込み側に設定
-                if SetStdHandle(STD_OUTPUT_HANDLE, stdout_write_handle) == 0 {
-                    CloseHandle(stdout_read_handle);
-                    CloseHandle(stdout_write_handle);
-                    CloseHandle(stderr_read_handle);
-                    CloseHandle(stderr_write_handle);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // stderrをパイプの書き込み側に設定
-                if SetStdHandle(STD_ERROR_HANDLE, stderr_write_handle) == 0 {
-                    CloseHandle(stdout_read_handle);
-                    CloseHandle(stdout_write_handle);
-                    CloseHandle(stderr_read_handle);
-                    CloseHandle(stderr_write_handle);
-                    return Err(io::Error::last_os_error());
-                }
-
-                // 書き込み側ハンドルを閉じる（stdout/stderrが参照している）
-                CloseHandle(stdout_write_handle);
-                CloseHandle(stderr_write_handle);
+                // 書き込み側を閉じる
+                close(stdout_write);
+                close(stderr_write);
 
                 Ok(Self {
                     original_stdout,
                     original_stderr,
-                    stdout_read_handle,
-                    stderr_read_handle,
+                    stdout_read,
+                    stderr_read,
                 })
             }
         }
@@ -1367,15 +1413,7 @@ mod stdio_redirect {
             event_tx: tokio::sync::mpsc::Sender<String>,
             seq_base: i64,
         ) -> tokio::task::JoinHandle<()> {
-            self.spawn_reader_impl(
-                event_tx,
-                seq_base,
-                "stdout",
-                #[cfg(unix)]
-                self.stdout_read_fd,
-                #[cfg(windows)]
-                self.stdout_read_handle,
-            )
+            self.spawn_reader_impl(event_tx, seq_base, "stdout", self.stdout_read)
         }
 
         /// stderrパイプから読み取ってDAPイベントを送信するタスクを起動
@@ -1384,15 +1422,7 @@ mod stdio_redirect {
             event_tx: tokio::sync::mpsc::Sender<String>,
             seq_base: i64,
         ) -> tokio::task::JoinHandle<()> {
-            self.spawn_reader_impl(
-                event_tx,
-                seq_base,
-                "stderr",
-                #[cfg(unix)]
-                self.stderr_read_fd,
-                #[cfg(windows)]
-                self.stderr_read_handle,
-            )
+            self.spawn_reader_impl(event_tx, seq_base, "stderr", self.stderr_read)
         }
 
         /// パイプから読み取ってDAPイベントを送信する共通実装
@@ -1401,41 +1431,54 @@ mod stdio_redirect {
             event_tx: tokio::sync::mpsc::Sender<String>,
             seq_base: i64,
             category: &'static str,
-            #[cfg(unix)] read_fd: i32,
-            #[cfg(windows)] read_handle: windows_sys::Win32::Foundation::HANDLE,
+            read_handle: NativeHandle,
         ) -> tokio::task::JoinHandle<()> {
             #[cfg(unix)]
-            let read_fd_dup = unsafe { libc::dup(read_fd) };
+            let read_dup = unsafe { platform::dup(read_handle).unwrap_or(-1) };
+
+            #[cfg(windows)]
+            let read_dup = unsafe {
+                use windows_sys::Win32::Foundation::*;
+                use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+                let mut dup_handle: HANDLE = 0;
+                if DuplicateHandle(
+                    GetCurrentProcess(),
+                    read_handle,
+                    GetCurrentProcess(),
+                    &mut dup_handle,
+                    0,
+                    0,
+                    DUPLICATE_SAME_ACCESS,
+                ) == 0
+                {
+                    0 // Invalid handle
+                } else {
+                    dup_handle
+                }
+            };
 
             tokio::spawn(async move {
                 #[cfg(unix)]
+                if read_dup < 0 {
+                    return;
+                }
+
+                #[cfg(windows)]
+                if read_dup == 0 {
+                    return;
+                }
+
+                #[cfg(unix)]
                 let mut reader = unsafe {
                     use std::os::unix::io::FromRawFd;
-                    std::fs::File::from_raw_fd(read_fd_dup)
+                    std::fs::File::from_raw_fd(read_dup)
                 };
 
                 #[cfg(windows)]
                 let mut reader = unsafe {
                     use std::os::windows::io::FromRawHandle;
-                    use windows_sys::Win32::Foundation::DuplicateHandle;
-                    use windows_sys::Win32::Foundation::DUPLICATE_SAME_ACCESS;
-                    use windows_sys::Win32::System::Threading::GetCurrentProcess;
-
-                    let mut dup_handle: windows_sys::Win32::Foundation::HANDLE = 0;
-                    if DuplicateHandle(
-                        GetCurrentProcess(),
-                        read_handle,
-                        GetCurrentProcess(),
-                        &mut dup_handle,
-                        0,
-                        0,
-                        DUPLICATE_SAME_ACCESS,
-                    ) == 0
-                    {
-                        // Failed to duplicate handle - return silently
-                        return;
-                    }
-                    std::fs::File::from_raw_handle(dup_handle as _)
+                    std::fs::File::from_raw_handle(read_dup as _)
                 };
 
                 let mut buffer = [0u8; 4096];
@@ -1468,28 +1511,19 @@ mod stdio_redirect {
 
     impl Drop for StdioRedirect {
         /// stdout/stderrを元に戻す
-        #[cfg(unix)]
         fn drop(&mut self) {
-            unsafe {
-                libc::dup2(self.original_stdout, libc::STDOUT_FILENO);
-                libc::dup2(self.original_stderr, libc::STDERR_FILENO);
-                libc::close(self.original_stdout);
-                libc::close(self.original_stderr);
-                libc::close(self.stdout_read_fd);
-                libc::close(self.stderr_read_fd);
-            }
-        }
-
-        #[cfg(windows)]
-        fn drop(&mut self) {
-            use windows_sys::Win32::Foundation::*;
-            use windows_sys::Win32::System::Console::*;
+            use platform::*;
 
             unsafe {
-                SetStdHandle(STD_OUTPUT_HANDLE, self.original_stdout);
-                SetStdHandle(STD_ERROR_HANDLE, self.original_stderr);
-                CloseHandle(self.stdout_read_handle);
-                CloseHandle(self.stderr_read_handle);
+                // 元のstdout/stderrを復元
+                let _ = redirect(self.original_stdout, STDOUT_NO);
+                let _ = redirect(self.original_stderr, STDERR_NO);
+
+                // ハンドルをクローズ
+                close(self.original_stdout);
+                close(self.original_stderr);
+                close(self.stdout_read);
+                close(self.stderr_read);
             }
         }
     }
