@@ -8,21 +8,21 @@
 (def __doc__json/parse
   {:desc "JSON文字列をパースしてQiの値に変換します。"
    :params [{:name "json-str" :type "string" :desc "JSON文字列"}]
-   :returns {:type "map" :desc "{:ok value}または{:error message}"}
-   :examples ["(json/parse \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\") ;=> {:ok {:name \"Alice\" :age 30}}"
-              "(json/parse \"[1,2,3]\") ;=> {:ok [1 2 3]}"]})
+   :returns {:type "any" :desc "パース結果（成功時）または{:error message}（失敗時）"}
+   :examples ["(json/parse \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\") ;=> {:name \"Alice\" :age 30}"
+              "(json/parse \"[1,2,3]\") ;=> [1 2 3]"]})
 
 (def __doc__json/stringify
   {:desc "Qiの値をJSON文字列に変換します。"
    :params [{:name "value" :type "any" :desc "JSON化する値"}]
-   :returns {:type "string" :desc "JSON文字列"}
+   :returns {:type "string" :desc "JSON文字列（成功時）または{:error message}（失敗時）"}
    :examples ["(json/stringify {:name \"Alice\" :age 30}) ;=> \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\""
               "(json/stringify [1 2 3]) ;=> \"[1,2,3]\""]})
 
 (def __doc__json/pretty
   {:desc "Qiの値を整形されたJSON文字列に変換します。"
    :params [{:name "value" :type "any" :desc "JSON化する値"}]
-   :returns {:type "string" :desc "整形されたJSON文字列"}
+   :returns {:type "string" :desc "整形されたJSON文字列（成功時）または{:error message}（失敗時）"}
    :examples ["(json/pretty {:name \"Alice\" :age 30})"
               ";; {\n;;   \"name\": \"Alice\",\n;;   \"age\": 30\n;; }"]})
 
@@ -33,9 +33,9 @@
 (def __doc__yaml/parse
   {:desc "YAML文字列をパースしてQiの値に変換します。"
    :params [{:name "yaml-str" :type "string" :desc "YAML文字列"}]
-   :returns {:type "map" :desc "{:ok value}または{:error message}"}
-   :examples ["(yaml/parse \"name: Alice\\nage: 30\")"
-              "(yaml/parse \"- apple\\n- banana\\n- cherry\")"]})
+   :returns {:type "any" :desc "パース結果（成功時）または{:error message}（失敗時）"}
+   :examples ["(yaml/parse \"name: Alice\\nage: 30\") ;=> {:name \"Alice\" :age 30}"
+              "(yaml/parse \"- apple\\n- banana\\n- cherry\") ;=> [\"apple\" \"banana\" \"cherry\"]"]})
 
 (def __doc__yaml/stringify
   {:desc "Qiの値をYAML文字列に変換します。"

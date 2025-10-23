@@ -523,10 +523,10 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
 ;; 使用例
 (def result (create-user "Alice" "alice@example.com" "$argon2id$..."))
-;; => {:ok 1}
+;; => 1
 
 (find-user-by-email "alice@example.com")
-;; => {:ok [{:id 1 :name "Alice" :email "alice@example.com" :created_at "..."}]}
+;; => [{:id 1 :name "Alice" :email "alice@example.com" :created_at "..."}]
 ```
 
 ### ページネーション
@@ -543,10 +543,10 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
 ;; 使用例
 (get-users-page 1 10)  ;; 1ページ目、10件
-;; => {:ok [{:id 100 :name "Zara" ...} ...]}
+;; => [{:id 100 :name "Zara" ...} ...]
 
 (get-users-page 2 10)  ;; 2ページ目、10件
-;; => {:ok [{:id 90 :name "Yuki" ...} ...]}
+;; => [{:id 90 :name "Yuki" ...} ...]
 ```
 
 ### トランザクション（手動）
@@ -572,9 +572,9 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
     ;; コミットまたはロールバック
     (match [debit-result credit-result]
-      [{:ok 1} {:ok 1}] -> (do
-                             (db/exec conn "COMMIT" [])
-                             {:ok "Transfer successful"})
+      [1 1] -> (do
+                 (db/exec conn "COMMIT" [])
+                 "Transfer successful")
       _ -> (do
              (db/exec conn "ROLLBACK" [])
              {:error "Transfer failed"}))))
@@ -598,11 +598,11 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
 ;; 使用例
 (count-users)
-;; => {:ok 1523}
+;; => 1523
 
 (count-users-by-status)
-;; => {:ok [{:status "active" :count 1200}
-;;          {:status "inactive" :count 323}]}
+;; => [{:status "active" :count 1200}
+;;     {:status "inactive" :count 323}]
 ```
 
 ---

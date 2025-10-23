@@ -84,6 +84,7 @@ pub mod time;
 
 pub mod concurrency;
 pub mod csv;
+pub mod debug;
 pub mod env;
 pub mod flow;
 pub mod log;
@@ -193,6 +194,7 @@ const STANDARD_MODULES: &[NativeFunctions] = &[
     util::FUNCTIONS,
     stream::FUNCTIONS,
     concurrency::FUNCTIONS,
+    debug::FUNCTIONS,
 ];
 
 /// すべての組み込み関数を環境に登録

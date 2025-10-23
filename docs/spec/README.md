@@ -50,7 +50,7 @@
   - 高階関数（comp、partial、apply、identity）
 
 - **[08-error-handling.md](08-error-handling.md)** - エラー処理
-  - Result型（{:ok/:error}）
+  - Result型（値 / `{:error ...}`）- validation専用で`{:ok value}`形式もサポート
   - try/catch
   - defer（リソース管理）
 
@@ -84,6 +84,9 @@
 - **[18-stdlib-validation.md](18-stdlib-validation.md)** - データ検証 ⭐ NEW
   - スキーマベースのバリデーション（型チェック、必須フィールド、文字列長、数値範囲、パターンマッチング）
   - ネストしたマップの検証、Result型統合
+- **[19-stdlib-debug.md](19-stdlib-debug.md)** - デバッグ機能 ⭐ NEW
+  - トレース機能（debug/trace）、ブレークポイント（debug/break）
+  - スタックトレース取得（debug/stack）、デバッガ情報（debug/info）
 
 ---
 
@@ -119,10 +122,12 @@
 **データの流れを分岐・変換**
 
 ```qi
-(match response
-  {:ok {:status 200 :body body}} -> (process-body body)
-  {:ok {:status 404}} -> nil
-  {:error e} -> (log-error e))
+;; HTTPレスポンスのパターンマッチング（tryでエラーキャッチ）
+(match (try (http/get url))
+  {:error e} -> (log-error e)
+  {:status 200 :body body} -> (process-body body)
+  {:status 404} -> nil
+  {:status _} -> (error "Unexpected status"))
 ```
 
 ---
@@ -223,6 +228,7 @@
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
 - **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)
 - **Database**: `db/connect`, `db/query`, `db/exec` (PostgreSQL/MySQL/SQLite) → [17-stdlib-database.md](17-stdlib-database.md)
+- **Debug**: `debug/trace`, `debug/break`, `debug/stack`, `debug/info` → [19-stdlib-debug.md](19-stdlib-debug.md)
 
 **📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 

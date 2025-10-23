@@ -315,14 +315,17 @@ finished in 0.08s
 
 (test/run "railway pipeline with http" (fn []
   (def result
-    ("https://httpbin.org/get"
-     |> http/get
-     |>? (fn [resp] {:ok (get resp "body")})
-     |>? json/parse))
+    (match (try
+             ("https://httpbin.org/get"
+              |> http/get
+              |> (fn [resp] (get resp "body"))
+              |>? json/parse))
+      {:error e} -> {:error e}
+      data -> data))
 
   (match result
-    {:ok data} -> (test/assert (map? data))
-    {:error e} -> (test/assert false))))  ;; Should not reach here
+    {:error e} -> (test/assert false)  ;; Should not reach here
+    data -> (test/assert (map? data)))))
 ```
 
 ### データ変換のテスト
@@ -333,12 +336,12 @@ finished in 0.08s
   (def original {"name" "Alice" "age" 30})
   (def result
     (original
-     |> json/stringify
+     |>? json/stringify
      |>? json/parse))
 
   (match result
-    {:ok data} -> (test/assert-eq original data)
-    {:error e} -> (test/assert false))))
+    {:error e} -> (test/assert false)
+    data -> (test/assert-eq original data))))
 
 (test/run "map transformations" (fn []
   (def users [{:name "Alice" :age 30} {:name "Bob" :age 25}])

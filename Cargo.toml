@@ -108,6 +108,7 @@ util-zip = ["dep:zip", "dep:flate2"]
 
 repl = ["dep:rustyline", "dep:dirs"]
 dev-tools = []  # Pure Rust自前実装
+dap-server = ["dep:serde_json"]  # Debug Adapter Protocol server (serdeは常に有効)
 
 cmd-exec = []  # Pure Rust実装、外部依存なし
 

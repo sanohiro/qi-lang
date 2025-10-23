@@ -109,6 +109,19 @@ fn main() {
         "-v" | "--version" => {
             println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
         }
+        #[cfg(feature = "dap-server")]
+        "--dap" => {
+            // DAPサーバーを起動（stdin/stdoutで通信）
+            if let Err(e) = qi_lang::dap::DapServer::run() {
+                eprintln!("DAP server error: {}", e);
+                std::process::exit(1);
+            }
+        }
+        #[cfg(not(feature = "dap-server"))]
+        "--dap" => {
+            eprintln!("Error: DAP server is not enabled. Build with --features dap-server");
+            std::process::exit(1);
+        }
         "-q" | "--quiet" => {
             // quietモードでREPL起動
             repl(None, true);
@@ -222,6 +235,8 @@ fn print_help() {
     println!("{}", ui_msg(UiMsg::OptStdin));
     println!("{}", ui_msg(UiMsg::OptLoad));
     println!("{}", ui_msg(UiMsg::OptQuiet));
+    #[cfg(feature = "dap-server")]
+    println!("    --dap                       Debug Adapter Protocolサーバーを起動");
     println!("{}", ui_msg(UiMsg::OptHelp));
     println!("{}", ui_msg(UiMsg::OptVersion));
     println!();

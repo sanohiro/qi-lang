@@ -1,0 +1,121 @@
+;; 21-debug-trace.qi - デバッグ機能
+;;
+;; トレース、スタックトレース、エラーハンドリングのデバッグ機能を学びます
+
+;; ========================================
+;; デバッガ情報の取得
+;; ========================================
+
+(println "=== デバッガ情報 ===")
+(println (debug/info))
+(println)
+
+;; ========================================
+;; トレース機能のデモ
+;; ========================================
+
+(println "=== トレース機能のデモ ===")
+
+(defn fibonacci
+  "フィボナッチ数列を計算（再帰版）"
+  [n]
+  (if (<= n 1)
+      n
+      (+ (fibonacci (- n 1))
+         (fibonacci (- n 2)))))
+
+(println "トレースなしで実行:")
+(println "fibonacci(5) =" (fibonacci 5))
+(println)
+
+(println "トレース有効化:")
+(debug/trace true)
+(println "fibonacci(4) =" (fibonacci 4))
+(debug/trace false)
+(println)
+
+;; ========================================
+;; スタックトレースの取得
+;; ========================================
+
+(println "=== スタックトレース ===")
+
+(defn inner-function
+  "最も内側の関数"
+  []
+  (debug/stack))
+
+(defn middle-function
+  "中間の関数"
+  []
+  (inner-function))
+
+(defn outer-function
+  "最も外側の関数"
+  []
+  (middle-function))
+
+(println (outer-function))
+(println)
+
+;; ========================================
+;; エラーハンドリングとデバッグ
+;; ========================================
+
+(println "=== エラーハンドリング ===")
+
+(defn error-handler
+  "エラー発生時にスタックトレースを表示"
+  [message]
+  (do
+    (println "エラー:" message)
+    (println "発生場所:")
+    (println (debug/stack))))
+
+(defn divide
+  "除算を行う（ゼロ除算チェック付き）"
+  [a b]
+  (if (= b 0)
+      (error-handler "ゼロで除算できません")
+      (/ a b)))
+
+(divide 10 0)
+(println)
+
+;; ========================================
+;; 条件付きデバッグ
+;; ========================================
+
+(println "=== 条件付きデバッグ ===")
+
+(defn process-item
+  "アイテムを処理する（デバッグモード付き）"
+  [item debug?]
+  (do
+    (when debug?
+      (println "処理中:" item)
+      (println "スタック:" (debug/stack)))
+    (* item 2)))
+
+(def items [1 5 10 20])
+
+(println "通常モード:")
+(each (fn [x] (process-item x false)) items)
+(println)
+
+(println "デバッグモード（大きな値のみ）:")
+(each (fn [x]
+        (when (> x 10)
+          (process-item x true)))
+      items)
+(println)
+
+;; ========================================
+;; まとめ
+;; ========================================
+
+(println "=== デバッグ機能まとめ ===")
+(println "- debug/info: デバッガの状態を取得")
+(println "- debug/trace: 関数呼び出しのトレースを有効/無効化")
+(println "- debug/stack: 現在のコールスタックを取得")
+(println "- debug/break: ブレークポイントを設定（デバッガアタッチ時）")

@@ -160,7 +160,7 @@
     "modules": {
       "patterns": [
         {
-          "match": "\\b(str|list|map|set|math|time|stats|io|path|env|log|go|async|stream|json|yaml|csv|markdown|http|server|db|kvs|cmd|args|test|profile|queue|stack|util|zip|temp|flow|jwt|password)(?=/)",
+          "match": "\\b(str|list|map|set|math|time|stats|io|path|env|log|go|async|stream|json|yaml|csv|markdown|http|server|db|kvs|cmd|args|test|profile|queue|stack|util|zip|temp|flow|jwt|password|debug)(?=/)",
           "name": "support.module.name.qi"
         },
         {

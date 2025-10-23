@@ -68,7 +68,7 @@ features = ["auth-jwt", "auth-password"]
 
 #### 戻り値
 
-- 成功: `{:ok "トークン文字列"}`
+- 成功: トークン文字列
 - 失敗: `{:error "エラーメッセージ"}`
 
 #### 使用例
@@ -76,7 +76,7 @@ features = ["auth-jwt", "auth-password"]
 ```qi
 ;; 基本的な使い方（デフォルトはHS256）
 (def result (jwt/sign {:user_id 123 :name "Alice"} "my-secret"))
-;; => {:ok "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."}
+;; => "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 
 ;; アルゴリズムを指定
 (jwt/sign {:role "admin"} "secret" "HS384")
@@ -109,7 +109,7 @@ features = ["auth-jwt", "auth-password"]
 
 #### 戻り値
 
-- 成功: `{:ok ペイロードマップ}`
+- 成功: ペイロードマップ
 - 失敗: `{:error "エラーメッセージ"}`
 
 #### 使用例
@@ -117,7 +117,7 @@ features = ["auth-jwt", "auth-password"]
 ```qi
 ;; トークンを検証してペイロードを取得
 (def result (jwt/verify token "my-secret"))
-;; => {:ok {:user_id 123 :name "Alice"}}
+;; => {:user_id 123 :name "Alice"}
 
 ;; 検証失敗の例
 (jwt/verify "invalid-token" "secret")
@@ -127,7 +127,7 @@ features = ["auth-jwt", "auth-password"]
 (token
  |>? (jwt/verify "my-secret")
  |>? (fn [payload] (get payload :user_id)))
-;; => {:ok 123}
+;; => 123
 ```
 
 ---
@@ -148,7 +148,7 @@ features = ["auth-jwt", "auth-password"]
 
 #### 戻り値
 
-- 成功: `{:ok {:header ヘッダマップ :payload ペイロードマップ}}`
+- 成功: `{:header ヘッダマップ :payload ペイロードマップ}`
 - 失敗: `{:error "エラーメッセージ"}`
 
 #### 使用例
@@ -156,13 +156,13 @@ features = ["auth-jwt", "auth-password"]
 ```qi
 ;; トークンをデコード（署名検証なし）
 (def result (jwt/decode token))
-;; => {:ok {:header {:typ "JWT" :alg "HS256"}
-;;          :payload {:user_id 123 :name "Alice"}}}
+;; => {:header {:typ "JWT" :alg "HS256"}
+;;     :payload {:user_id 123 :name "Alice"}}
 
 ;; ヘッダーだけ取得
 (jwt/decode token
  |>? (fn [data] (get data :header)))
-;; => {:ok {:typ "JWT" :alg "HS256"}}
+;; => {:typ "JWT" :alg "HS256"}
 ```
 
 ⚠️ **注意**: この関数は署名を検証しません。デバッグやテスト用途にのみ使用してください。
@@ -260,7 +260,7 @@ Argon2は、bcryptよりも高速で安全なパスワードハッシュアル�
 ;; => {:username "alice" :password_hash "$argon2id$..."}
 
 (def token-result (login "alice" "secret123" (get user :password_hash)))
-;; => {:ok "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."}
+;; => "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 ```
 
 ### APIの認証ミドルウェア
@@ -278,8 +278,8 @@ Argon2は、bcryptよりも高速で安全なパスワードハッシュアル�
         token (string/replace-first auth-header "Bearer " "")
         auth-result (authenticate token)]
     (match auth-result
-      {:ok username} -> {:status 200 :body (str "Hello, " username)}
-      {:error _} -> {:status 401 :body "Unauthorized"})))
+      {:error _} -> {:status 401 :body "Unauthorized"}
+      username -> {:status 200 :body (str "Hello, " username)})))
 ```
 
 ### パスワード変更フロー

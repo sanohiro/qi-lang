@@ -11,11 +11,11 @@
 ```qi
 ;; http/get - HTTP GETリクエスト
 (http/get "https://httpbin.org/get")
-;; => {:ok {"status" 200 "headers" {...} "body" "..."}}
+;; => {"status" 200 "headers" {...} "body" "..."}
 
 ;; http/post - HTTP POSTリクエスト
 (http/post "https://api.example.com/users" {"name" "Alice" "email" "alice@example.com"})
-;; => {:ok {"status" 201 "body" "..."}}
+;; => {"status" 201 "body" "..."}
 
 ;; http/put - HTTP PUTリクエスト
 (http/put "https://api.example.com/users/1" {"name" "Alice Updated"})
@@ -77,20 +77,26 @@
 ### Railway Pipelineとの統合
 
 ```qi
-;; GitHub APIからユーザー名を取得
-("https://api.github.com/users/octocat"
- |> http/get
- |>? (fn [resp] {:ok (get resp "body")})
- |>? json/parse
- |>? (fn [data] {:ok (get data "name")}))
-;; => {:ok "The Octocat"}
+;; GitHub APIからユーザー名を取得（HTTPは例外を投げるのでtryでキャッチ）
+(match (try
+         ("https://api.github.com/users/octocat"
+          |> http/get
+          |> (fn [resp] (get resp "body"))
+          |>? json/parse
+          |>? (fn [data] (get data "name"))))
+  {:error e} -> (log/error "Failed:" e)
+  name -> name)
+;; => "The Octocat" (成功時) または {:error ...} (失敗時)
 
-;; エラーハンドリング（自動的にエラー伝播）
-("https://invalid.com/api"
- |> http/get
- |>? (fn [resp] {:ok (get resp "body")})  ;; 実行されない
- |>? json/parse)                          ;; 実行されない
-;; => {:error {"type" "connection" "message" "..."}}
+;; エラーハンドリング（tryで例外をキャッチ）
+(match (try
+         ("https://invalid.com/api"
+          |> http/get
+          |> (fn [resp] (get resp "body"))
+          |>? json/parse))
+  {:error e} -> (log/error "Connection failed:" e)
+  data -> data)
+;; => {:error "..."} (HTTP接続エラー)
 ```
 
 ---

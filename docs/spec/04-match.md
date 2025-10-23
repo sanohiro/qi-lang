@@ -183,13 +183,13 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ## tryとの組み合わせ
 
-`try` はエラー処理のために `{:ok result}` または `{:error e}` を返します。
+`try` は例外をキャッチし、エラー時に `{:error e}` を返します。成功時は値をそのまま返します。
 
 ```qi
-;; {:ok result} または {:error e} を返す
+;; 成功時は値そのまま、エラー時は {:error e}
 (match (try (risky-operation))
-  {:ok result} -> result
-  {:error e} -> (log e))
+  {:error e} -> (log e)
+  result -> result)
 
 ;; パイプラインと組み合わせ
 (match (try
@@ -197,8 +197,8 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
           |> http-get
           |> parse
           |> process))
-  {:ok data} -> data
-  {:error e} -> [])
+  {:error e} -> []
+  data -> data)
 ```
 
 ---
@@ -208,11 +208,12 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 ### 例1: HTTPレスポンスのハンドリング
 
 ```qi
-(match (http/get url)
-  {:ok {:status 200 :body body}} -> (process-body body)
-  {:ok {:status 404}} -> nil
-  {:ok {:status s}} -> (error (str "Unexpected status: " s))
-  {:error e} -> (log-error e))
+;; http/getは例外を投げる可能性があるのでtryでキャッチ
+(match (try (http/get url))
+  {:error e} -> (log-error e)
+  {:status 200 :body body} -> (process-body body)
+  {:status 404} -> nil
+  {:status s} -> (error (str "Unexpected status: " s)))
 ```
 
 ### 例2: データバリデーション

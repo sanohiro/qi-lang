@@ -383,10 +383,10 @@ JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
          :headers {:content-type "application/json"}
          :body (json/stringify {:error "Missing authorization token"})}
         (match (jwt/verify token "my-secret-key")
-          {:ok payload} -> (handler (assoc request :user payload))
           {:error _} -> {:status 401
                         :headers {:content-type "application/json"}
-                        :body (json/stringify {:error "Invalid token"})})))))
+                        :body (json/stringify {:error "Invalid token"})}
+          payload -> (handler (assoc request :user payload)))))))
 
 ;; 保護されたエンドポイント
 (defn handle-profile [request]

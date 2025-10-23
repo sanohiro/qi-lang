@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::builtins::util::to_map_key;
 use crate::error::QiError;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
@@ -761,7 +762,7 @@ impl Evaluator {
                 // ネストされたTransformパターンを扱うため、再帰的に処理
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
-                        let map_key = format!(":{}", key);
+                        let map_key = to_map_key(key);
                         if let Some(val) = map.get(&map_key) {
                             if !self
                                 .match_pattern_with_transforms(pat, val, bindings, transforms)?
@@ -894,7 +895,7 @@ impl Evaluator {
                 if let Value::Map(map) = value {
                     for (key, pat) in pattern_pairs {
                         // キーワードをマップキー形式に変換
-                        let map_key = format!(":{}", key);
+                        let map_key = to_map_key(key);
                         if let Some(val) = map.get(&map_key) {
                             if !self.match_pattern(pat, val, bindings)? {
                                 return Ok(false);
@@ -1205,7 +1206,7 @@ impl Evaluator {
                 // 各キーに対応する値をバインド
                 for (key, pattern) in pairs {
                     // キーワードをマップキー形式に変換
-                    let map_key = format!(":{}", key);
+                    let map_key = to_map_key(key);
                     if let Some(val) = map.get(&map_key) {
                         self.bind_fn_param(pattern, val, env)?;
                     } else {
@@ -1359,21 +1360,64 @@ impl Evaluator {
                     }
                 }
 
-                // プロファイリングが有効な場合、時間測定
-                if builtins::profile::is_enabled() {
-                    let start = std::time::Instant::now();
-                    let result = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
-                    let duration = start.elapsed();
-
-                    // 関数名を取得（環境から逆引き）
+                // デバッガが有効な場合、関数呼び出しを記録
+                let debugger_enabled = crate::debugger::GLOBAL_DEBUGGER.read().is_some();
+                if debugger_enabled {
+                    // 関数名を取得
                     let func_name = self
                         .get_function_name(func)
                         .unwrap_or_else(|| "<anonymous>".to_string());
-                    builtins::profile::record_call(&func_name, duration);
+
+                    // ファイル名を取得
+                    let file_name = self
+                        .source_name
+                        .read()
+                        .as_ref()
+                        .unwrap_or(&"<input>".to_string())
+                        .clone();
+
+                    // 関数本体のspan情報を取得
+                    let span = f.body.span();
+
+                    // デバッガに関数呼び出しを通知
+                    if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
+                        dbg.enter_function(&func_name, &file_name, span.line, span.column);
+                    }
+
+                    // 関数本体を実行
+                    let result = if builtins::profile::is_enabled() {
+                        let start = std::time::Instant::now();
+                        let r = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
+                        let duration = start.elapsed();
+                        builtins::profile::record_call(&func_name, duration);
+                        r
+                    } else {
+                        self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                    };
+
+                    // デバッガに関数終了を通知
+                    if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
+                        dbg.exit_function();
+                    }
 
                     result
                 } else {
-                    self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                    // デバッガ無効時（プロファイリングのみ）
+                    if builtins::profile::is_enabled() {
+                        let start = std::time::Instant::now();
+                        let result = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
+                        let duration = start.elapsed();
+
+                        // 関数名を取得（環境から逆引き）
+                        let func_name = self
+                            .get_function_name(func)
+                            .unwrap_or_else(|| "<anonymous>".to_string());
+                        builtins::profile::record_call(&func_name, duration);
+
+                        result
+                    } else {
+                        self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                    }
                 }
             }
             _ => Err(fmt_msg(

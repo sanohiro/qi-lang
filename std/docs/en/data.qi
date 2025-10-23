@@ -8,21 +8,21 @@
 (def __doc__json/parse
   {:desc "Parses a JSON string and converts it to a Qi value."
    :params [{:name "json-str" :type "string" :desc "JSON string"}]
-   :returns {:type "map" :desc "{:ok value} or {:error message}"}
-   :examples ["(json/parse \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\") ;=> {:ok {:name \"Alice\" :age 30}}"
-              "(json/parse \"[1,2,3]\") ;=> {:ok [1 2 3]}"]})
+   :returns {:type "any" :desc "Parsed result (on success) or {:error message} (on failure)"}
+   :examples ["(json/parse \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\") ;=> {:name \"Alice\" :age 30}"
+              "(json/parse \"[1,2,3]\") ;=> [1 2 3]"]})
 
 (def __doc__json/stringify
   {:desc "Converts a Qi value to a JSON string."
    :params [{:name "value" :type "any" :desc "Value to convert to JSON"}]
-   :returns {:type "string" :desc "JSON string"}
+   :returns {:type "string" :desc "JSON string (on success) or {:error message} (on failure)"}
    :examples ["(json/stringify {:name \"Alice\" :age 30}) ;=> \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\""
               "(json/stringify [1 2 3]) ;=> \"[1,2,3]\""]})
 
 (def __doc__json/pretty
   {:desc "Converts a Qi value to a pretty-printed JSON string."
    :params [{:name "value" :type "any" :desc "Value to convert to JSON"}]
-   :returns {:type "string" :desc "Pretty-printed JSON string"}
+   :returns {:type "string" :desc "Pretty-printed JSON string (on success) or {:error message} (on failure)"}
    :examples ["(json/pretty {:name \"Alice\" :age 30})"
               ";; {\n;;   \"name\": \"Alice\",\n;;   \"age\": 30\n;; }"]})
 
@@ -33,9 +33,9 @@
 (def __doc__yaml/parse
   {:desc "Parses a YAML string and converts it to a Qi value."
    :params [{:name "yaml-str" :type "string" :desc "YAML string"}]
-   :returns {:type "map" :desc "{:ok value} or {:error message}"}
-   :examples ["(yaml/parse \"name: Alice\\nage: 30\")"
-              "(yaml/parse \"- apple\\n- banana\\n- cherry\")"]})
+   :returns {:type "any" :desc "Parsed result (on success) or {:error message} (on failure)"}
+   :examples ["(yaml/parse \"name: Alice\\nage: 30\") ;=> {:name \"Alice\" :age 30}"
+              "(yaml/parse \"- apple\\n- banana\\n- cherry\") ;=> [\"apple\" \"banana\" \"cherry\"]"]})
 
 (def __doc__yaml/stringify
   {:desc "Converts a Qi value to a YAML string."

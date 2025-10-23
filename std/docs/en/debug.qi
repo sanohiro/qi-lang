@@ -1,0 +1,76 @@
+;; Standard Library Documentation - Debug
+;; Debugging Functions (4 functions)
+
+;; ========================================
+;; Debug Control
+;; ========================================
+
+(def __doc__debug/trace
+  {:desc "Enable or disable trace functionality. When enabled, function calls and exits are logged."
+   :params [{:name "enabled" :type "boolean" :desc "true=enable, false=disable"}]
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(debug/trace true)  ;; Enable tracing"
+              "(debug/trace false) ;; Disable tracing"]})
+
+(def __doc__debug/break
+  {:desc "Set a breakpoint. If a debugger is attached, execution will pause."
+   :params []
+   :returns {:type "nil" :desc "Always nil"}
+   :examples ["(debug/break) ;; Pause execution"
+              "(defn my-func [x]"
+              "  (debug/break) ;; Debug point"
+              "  (+ x 1))"]})
+
+(def __doc__debug/stack
+  {:desc "Get the current call stack as a string."
+   :params []
+   :returns {:type "string" :desc "Stack trace string"}
+   :examples ["(debug/stack) ;=> \"  #0 my-func at test.qi:10\\n  #1 main at test.qi:20\\n\""
+              "(defn debug-here []"
+              "  (println (debug/stack)))"]})
+
+(def __doc__debug/info
+  {:desc "Get the current state of the debugger."
+   :params []
+   :returns {:type "map" :desc "Map containing debug information"}
+   :examples ["(debug/info) ;=> {:enabled false}"
+              "(debug/info) ;=> {:enabled true :state \"Running\" :stack-depth 3}"]})
+
+;; ========================================
+;; Usage Examples
+;; ========================================
+
+;; Debugging with trace functionality
+(comment
+  (defn fibonacci [n]
+    (if (<= n 1)
+        n
+        (+ (fibonacci (- n 1)) (fibonacci (- n 2)))))
+
+  (debug/trace true)
+  (fibonacci 5)
+  (debug/trace false)
+)
+
+;; Getting stack traces
+(comment
+  (defn error-handler []
+    (println "Error occurred at:")
+    (println (debug/stack)))
+
+  (defn process-data [data]
+    (if (nil? data)
+        (error-handler)
+        (println "Processing:" data)))
+
+  (process-data nil)
+)
+
+;; Displaying debug information
+(comment
+  (println "Debugger status:" (debug/info))
+
+  (if (get (debug/info) :enabled)
+      (println "Debugger is active")
+      (println "Debugger is inactive"))
+)

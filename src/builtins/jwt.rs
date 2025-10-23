@@ -4,6 +4,7 @@
 
 #![cfg(feature = "auth-jwt")]
 
+use crate::builtins::util::to_map_key;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
@@ -286,7 +287,7 @@ fn json_to_qi_value(json: &JsonValue) -> Result<Value, String> {
             let mut map = crate::new_hashmap();
             for (k, v) in obj.iter() {
                 // JSONキーをキーワード形式（":name"）に変換
-                let key = format!(":{}", k);
+                let key = to_map_key(k);
                 let value = json_to_qi_value(v)?;
                 map.insert(key, value);
             }

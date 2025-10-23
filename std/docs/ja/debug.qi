@@ -1,0 +1,76 @@
+;; Standard Library Documentation - Debug
+;; デバッグ機能 (4 functions)
+
+;; ========================================
+;; デバッグ制御
+;; ========================================
+
+(def __doc__debug/trace
+  {:desc "トレース機能を有効/無効にする。有効にすると、関数の呼び出しと終了がログに出力されます。"
+   :params [{:name "enabled" :type "boolean" :desc "true=有効, false=無効"}]
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(debug/trace true)  ;; トレースを有効化"
+              "(debug/trace false) ;; トレースを無効化"]})
+
+(def __doc__debug/break
+  {:desc "ブレークポイントを設定します。デバッガがアタッチされている場合、実行が一時停止します。"
+   :params []
+   :returns {:type "nil" :desc "常にnil"}
+   :examples ["(debug/break) ;; 実行を一時停止"
+              "(defn my-func [x]"
+              "  (debug/break) ;; デバッグポイント"
+              "  (+ x 1))"]})
+
+(def __doc__debug/stack
+  {:desc "現在のコールスタックを文字列として取得します。"
+   :params []
+   :returns {:type "string" :desc "スタックトレース文字列"}
+   :examples ["(debug/stack) ;=> \"  #0 my-func at test.qi:10\\n  #1 main at test.qi:20\\n\""
+              "(defn debug-here []"
+              "  (println (debug/stack)))"]})
+
+(def __doc__debug/info
+  {:desc "デバッガの現在の状態を取得します。"
+   :params []
+   :returns {:type "map" :desc "デバッグ情報を含むマップ"}
+   :examples ["(debug/info) ;=> {:enabled false}"
+              "(debug/info) ;=> {:enabled true :state \"Running\" :stack-depth 3}"]})
+
+;; ========================================
+;; 使用例
+;; ========================================
+
+;; トレース機能を使ったデバッグ
+(comment
+  (defn fibonacci [n]
+    (if (<= n 1)
+        n
+        (+ (fibonacci (- n 1)) (fibonacci (- n 2)))))
+
+  (debug/trace true)
+  (fibonacci 5)
+  (debug/trace false)
+)
+
+;; スタックトレースの取得
+(comment
+  (defn error-handler []
+    (println "Error occurred at:")
+    (println (debug/stack)))
+
+  (defn process-data [data]
+    (if (nil? data)
+        (error-handler)
+        (println "Processing:" data)))
+
+  (process-data nil)
+)
+
+;; デバッグ情報の表示
+(comment
+  (println "Debugger status:" (debug/info))
+
+  (if (get (debug/info) :enabled)
+      (println "Debugger is active")
+      (println "Debugger is inactive"))
+)

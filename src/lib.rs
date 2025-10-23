@@ -1,4 +1,7 @@
 pub mod builtins;
+#[cfg(feature = "dap-server")]
+pub mod dap;
+pub mod debugger;
 pub mod error;
 pub mod eval;
 pub mod i18n;

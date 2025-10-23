@@ -11,46 +11,49 @@
 ```qi
 ;; json/parse - JSON文字列をパース
 (json/parse "{\"name\":\"Alice\",\"age\":30}")
-;; => {:ok {"name" "Alice" "age" 30}}
+;; => {"name" "Alice" "age" 30}
 
 ;; json/stringify - 値をJSON化（コンパクト）
 (json/stringify {"name" "Bob" "age" 25})
-;; => {:ok "{\"name\":\"Bob\",\"age\":25}"}
+;; => "{\"name\":\"Bob\",\"age\":25}"
 
 ;; json/pretty - 値を整形JSON化
 (json/pretty {"name" "Bob" "age" 25})
-;; => {:ok "{\n  \"name\": \"Bob\",\n  \"age\": 25\n}"}
+;; => "{\n  \"name\": \"Bob\",\n  \"age\": 25\n}"
 ```
 
 ### Result型による安全なパース
 
-すべてのJSON関数は `{:ok value}` または `{:error message}` を返します。
+すべてのJSON関数は成功時に値をそのまま返し、失敗時に `{:error message}` を返します。
 
 ```qi
 ;; 正常なパース
 (match (json/parse "{\"valid\": true}")
-  {:ok data} -> data
-  {:error e} -> (log e))
+  {:error e} -> (log e)
+  data -> data)
 ;; => {"valid" true}
 
 ;; エラーハンドリング
 (match (json/parse "{invalid json}")
-  {:ok data} -> data
-  {:error e} -> (println "Parse error:" e))
+  {:error e} -> (println "Parse error:" e)
+  data -> data)
 ;; => "Parse error: ..."
 ```
 
 ### パイプラインでの使用
 
 ```qi
-;; APIレスポンスをパース→変換→保存
-("https://api.example.com/users/123"
- |> http/get
- |>? (fn [resp] {:ok (get resp "body")})
- |>? json/parse
- |>? (fn [data] {:ok (assoc data "processed" true)})
- |>? json/pretty
- |>? (fn [json] {:ok (io/write-file "output.json" json)}))
+;; APIレスポンスをパース→変換→保存（HTTPは例外を投げるのでtryでキャッチ）
+(match (try
+         ("https://api.example.com/users/123"
+          |> http/get
+          |> (fn [resp] (get resp "body"))
+          |>? json/parse
+          |>? (fn [data] (assoc data "processed" true))
+          |>? json/pretty
+          |>? (fn [json] (io/write-file "output.json" json))))
+  {:error e} -> (log/error "Failed:" e)
+  result -> result)
 ```
 
 ---
@@ -64,33 +67,39 @@
 ```qi
 ;; yaml/parse - YAML文字列をパース
 (yaml/parse "name: Alice\nage: 30\ntags:\n  - dev\n  - ops")
-;; => {:ok {"name" "Alice" "age" 30 "tags" ["dev" "ops"]}}
+;; => {"name" "Alice" "age" 30 "tags" ["dev" "ops"]}
 
 ;; yaml/stringify - 値をYAML化
 (yaml/stringify {"name" "Bob" "age" 25 "tags" ["backend" "devops"]})
-;; => {:ok "name: Bob\nage: 25\ntags:\n- backend\n- devops\n"}
+;; => "name: Bob\nage: 25\ntags:\n- backend\n- devops\n"
 
 ;; yaml/pretty - 値を整形YAML化（yaml/stringifyと同じ）
 (yaml/pretty {"server" {"host" "localhost" "port" 8080}})
-;; => {:ok "server:\n  host: localhost\n  port: 8080\n"}
+;; => "server:\n  host: localhost\n  port: 8080\n"
 ```
 
 ### 設定ファイル処理
 
 ```qi
-;; 設定ファイルをパースしてポート番号を取得
-("config.yaml"
- |> io/read-file
- |> yaml/parse
- |>? (fn [conf] {:ok (get-in conf ["server" "port"])}))
-;; => {:ok 8080}
+;; 設定ファイルをパースしてポート番号を取得（I/Oは例外を投げるのでtryでキャッチ）
+(match (try
+         ("config.yaml"
+          |> io/read-file
+          |>? yaml/parse
+          |>? (fn [conf] (get-in conf ["server" "port"]))))
+  {:error e} -> (log/error "Failed:" e)
+  port -> port)
+;; => 8080
 
 ;; データ変換パイプライン（JSON → YAML）
-("data.json"
- |> io/read-file
- |> json/parse
- |>? (fn [data] (yaml/stringify (get data "ok")))
- |>? (fn [yaml] {:ok (io/write-file "data.yaml" yaml)}))
+(match (try
+         ("data.json"
+          |> io/read-file
+          |>? json/parse
+          |>? yaml/stringify
+          |>? (fn [yaml] (io/write-file "data.yaml" yaml))))
+  {:error e} -> (log/error "Failed:" e)
+  result -> result)
 ```
 
 ### YAMLの特徴
@@ -98,7 +107,7 @@
 - 設定ファイルに最適（JSON/TOMLより読みやすい）
 - インデント自動整形
 - JSON互換（YAMLはJSONのスーパーセット）
-- エラーハンドリング: `{:ok ...}` または `{:error "..."}`
+- エラーハンドリング: 成功時は値をそのまま返し、失敗時に `{:error "..."}`
 
 ---
 
@@ -108,12 +117,15 @@
 
 ```qi
 (defn fetch-and-save [url output-file]
-  (url
-   |> http/get
-   |>? (fn [resp] {:ok (get resp "body")})
-   |>? json/parse
-   |>? json/pretty
-   |>? (fn [json-str] {:ok (io/write-file output-file json-str)})))
+  (match (try
+           (url
+            |> http/get
+            |> (fn [resp] (get resp "body"))
+            |>? json/parse
+            |>? json/pretty
+            |>? (fn [json-str] (io/write-file output-file json-str))))
+    {:error e} -> (log/error "Failed:" e)
+    result -> result))
 
 (fetch-and-save "https://api.github.com/users/octocat" "user.json")
 ```
@@ -122,18 +134,21 @@
 
 ```qi
 (defn load-config [path]
-  (path
-   |> io/read-file
-   |> yaml/parse
-   |>? (fn [config]
-         ;; バリデーション
-         (if (get config "version")
-           {:ok config}
-           {:error "Missing version field"}))))
+  (match (try
+           (path
+            |> io/read-file
+            |>? yaml/parse
+            |>? (fn [config]
+                  ;; バリデーション
+                  (if (get config "version")
+                    config
+                    {:error "Missing version field"}))))
+    {:error e} -> {:error e}
+    config -> config))
 
 (match (load-config "config.yaml")
-  {:ok config} -> (println "Config loaded:" config)
-  {:error e} -> (println "Error:" e))
+  {:error e} -> (println "Error:" e)
+  config -> (println "Config loaded:" config))
 ```
 
 ### データ変換
@@ -141,21 +156,27 @@
 ```qi
 ;; JSON → YAML変換
 (defn json-to-yaml [input-file output-file]
-  (input-file
-   |> io/read-file
-   |> json/parse
-   |>? yaml/stringify
-   |>? (fn [yaml-str] {:ok (io/write-file output-file yaml-str)})))
+  (match (try
+           (input-file
+            |> io/read-file
+            |>? json/parse
+            |>? yaml/stringify
+            |>? (fn [yaml-str] (io/write-file output-file yaml-str))))
+    {:error e} -> (log/error "Failed:" e)
+    result -> result))
 
 (json-to-yaml "data.json" "data.yaml")
 
 ;; YAML → JSON変換
 (defn yaml-to-json [input-file output-file]
-  (input-file
-   |> io/read-file
-   |> yaml/parse
-   |>? json/stringify
-   |>? (fn [json-str] {:ok (io/write-file output-file json-str)})))
+  (match (try
+           (input-file
+            |> io/read-file
+            |>? yaml/parse
+            |>? json/stringify
+            |>? (fn [json-str] (io/write-file output-file json-str))))
+    {:error e} -> (log/error "Failed:" e)
+    result -> result))
 
 (yaml-to-json "config.yaml" "config.json")
 ```
@@ -167,13 +188,12 @@
 (def files ["data1.json" "data2.json" "data3.json"])
 
 (files
- ||> io/read-file
- ||> json/parse
- |> (map (fn [result]
-           (match result
-             {:ok data} -> data
-             {:error e} -> nil)))
- |> (filter some?))
+ ||> (fn [f] (try (io/read-file f)))
+ ||> (fn [content]
+       (match content
+         {:error e} -> {:error e}
+         c -> (json/parse c)))
+ |> (filter (fn [result] (not (error? result)))))
 ```
 
 ### エラーハンドリングパターン
@@ -182,18 +202,18 @@
 ;; パイプラインでのエラー処理
 (defn process-json [json-str]
   (match (json/parse json-str)
-    {:ok data} -> (do
-                    (println "Parsed successfully")
-                    {:ok (assoc data "timestamp" (now))})
     {:error e} -> (do
                     (log/error "Parse failed:" e)
-                    {:error e})))
+                    {:error e})
+    data -> (do
+              (println "Parsed successfully")
+              (assoc data "timestamp" (now)))))
 
 ;; 複数のパース試行
 (defn try-parse-formats [input-str]
   (match (json/parse input-str)
-    {:ok data} -> {:ok data}
-    {:error _} -> (yaml/parse input-str)))
+    {:error _} -> (yaml/parse input-str)
+    data -> data))
 ```
 
 ---
