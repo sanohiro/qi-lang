@@ -92,6 +92,30 @@ pub struct Capabilities {
 }
 
 // ========================================
+// Launch/Attach関連
+// ========================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchRequestArguments {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub program: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_on_entry: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachRequestArguments {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<i64>,
+}
+
+// ========================================
 // Breakpoint関連
 // ========================================
 
@@ -254,7 +278,10 @@ impl DapServer {
     pub fn handle_request(&self, request: Request) -> Response {
         match request.command.as_str() {
             "initialize" => self.handle_initialize(request),
+            "launch" => self.handle_launch(request),
+            "attach" => self.handle_attach(request),
             "setBreakpoints" => self.handle_set_breakpoints(request),
+            "configurationDone" => self.handle_configuration_done(request),
             "threads" => self.handle_threads(request),
             "stackTrace" => self.handle_stack_trace(request),
             "scopes" => self.handle_scopes(request),
@@ -263,7 +290,6 @@ impl DapServer {
             "next" => self.handle_next(request),
             "stepIn" => self.handle_step_in(request),
             "stepOut" => self.handle_step_out(request),
-            "configurationDone" => self.handle_configuration_done(request),
             "disconnect" => self.handle_disconnect(request),
             _ => Response {
                 seq: self.next_seq(),
@@ -274,6 +300,37 @@ impl DapServer {
                 message: Some(format!("Unknown command: {}", request.command)),
                 body: None,
             },
+        }
+    }
+
+    fn handle_launch(&self, request: Request) -> Response {
+        eprintln!("[DAP] Launch request received");
+
+        // TODO: 実際のプログラム実行を実装
+        // 現時点では成功レスポンスのみ返す
+
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq: request.seq,
+            success: true,
+            command: "launch".to_string(),
+            message: None,
+            body: None,
+        }
+    }
+
+    fn handle_attach(&self, request: Request) -> Response {
+        eprintln!("[DAP] Attach request received");
+
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq: request.seq,
+            success: true,
+            command: "attach".to_string(),
+            message: None,
+            body: None,
         }
     }
 
