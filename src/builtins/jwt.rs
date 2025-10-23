@@ -2,8 +2,6 @@
 //!
 //! このモジュールは `auth-jwt` feature でコンパイルされます。
 
-#![cfg(feature = "auth-jwt")]
-
 use crate::builtins::util::to_map_key;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;

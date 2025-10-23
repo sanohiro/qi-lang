@@ -4,7 +4,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use parking_lot::RwLock;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -975,7 +975,7 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 ///       (recur))))
 /// ```
 pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
-    let stdin = io::stdin();
+    let stdin = std::io::stdin();
     let mut handle = stdin.lock();
     let mut line = String::new();
 
@@ -1010,13 +1010,12 @@ pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
 ///  |> (each println))
 /// ```
 pub fn native_stdin_read_lines(_args: &[Value]) -> Result<Value, String> {
-    let stdin = io::stdin();
-    let handle = stdin.lock();
-    let reader = BufReader::new(handle);
+    let stdin = std::io::stdin();
+    let reader = BufReader::new(stdin.lock());
 
     let lines: Vec<Value> = reader
         .lines()
-        .filter_map(|line| line.ok())
+        .map_while(Result::ok)
         .map(Value::String)
         .collect();
 

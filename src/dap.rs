@@ -982,6 +982,110 @@ fn backup_stdout() -> io::Result<std::fs::File> {
     }
 }
 
+/// Qiプログラム用のstdin書き込み側fd（将来のinputイベント用）
+static QI_STDIN_WRITE_FD: parking_lot::Mutex<Option<i32>> = parking_lot::Mutex::new(None);
+
+/// 元のstdin (fd 0)を保存し、Qiプログラム用のパイプに差し替える
+///
+/// 戻り値: DAPサーバーが使用する元のstdin
+#[cfg(unix)]
+unsafe fn backup_stdin() -> io::Result<std::fs::File> {
+    use std::os::unix::io::FromRawFd;
+    // 1. 元の stdin (fd 0) を複製して保存
+    let original_stdin_fd = libc::dup(libc::STDIN_FILENO);
+    if original_stdin_fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    // 2. Qiプログラム用のパイプを作成
+    let mut pipe_fds = [0i32; 2];
+    if libc::pipe(pipe_fds.as_mut_ptr()) < 0 {
+        libc::close(original_stdin_fd);
+        return Err(io::Error::last_os_error());
+    }
+    let pipe_read = pipe_fds[0];
+    let pipe_write = pipe_fds[1];
+
+    // 3. fd 0 をパイプの read 側に差し替える
+    if libc::dup2(pipe_read, libc::STDIN_FILENO) < 0 {
+        libc::close(original_stdin_fd);
+        libc::close(pipe_read);
+        libc::close(pipe_write);
+        return Err(io::Error::last_os_error());
+    }
+
+    // 4. パイプの read 側は不要（fd 0 に複製済み）
+    libc::close(pipe_read);
+
+    // 5. パイプの write 側を保存（将来の input イベントで使用）
+    *QI_STDIN_WRITE_FD.lock() = Some(pipe_write);
+
+    // 6. 現時点では input イベント未実装なので、write 側を close して EOF を返す
+    // TODO: input イベント実装時にこの行を削除
+    libc::close(pipe_write);
+
+    // 7. 元の stdin fd を File に変換して返す
+    Ok(std::fs::File::from_raw_fd(original_stdin_fd))
+}
+
+#[cfg(windows)]
+unsafe fn backup_stdin() -> io::Result<std::fs::File> {
+    use std::os::windows::io::FromRawHandle;
+    use windows_sys::Win32::Foundation::*;
+    use windows_sys::Win32::System::Console::*;
+    use windows_sys::Win32::System::Pipes::CreatePipe;
+    use windows_sys::Win32::System::Threading::{
+        DuplicateHandle, GetCurrentProcess, DUPLICATE_SAME_ACCESS,
+    };
+
+    // 1. 元の stdin ハンドルを取得
+    let original_stdin = GetStdHandle(STD_INPUT_HANDLE);
+    if original_stdin == INVALID_HANDLE_VALUE {
+        return Err(io::Error::last_os_error());
+    }
+
+    // 2. stdin ハンドルを複製して保存
+    let mut duplicated_stdin: HANDLE = 0;
+    if DuplicateHandle(
+        GetCurrentProcess(),
+        original_stdin,
+        GetCurrentProcess(),
+        &mut duplicated_stdin,
+        0,
+        0,
+        DUPLICATE_SAME_ACCESS,
+    ) == 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+
+    // 3. Qiプログラム用のパイプを作成
+    let mut pipe_read: HANDLE = 0;
+    let mut pipe_write: HANDLE = 0;
+    if CreatePipe(&mut pipe_read, &mut pipe_write, std::ptr::null(), 0) == 0 {
+        CloseHandle(duplicated_stdin);
+        return Err(io::Error::last_os_error());
+    }
+
+    // 4. stdin をパイプの read 側に差し替え
+    if SetStdHandle(STD_INPUT_HANDLE, pipe_read) == 0 {
+        CloseHandle(duplicated_stdin);
+        CloseHandle(pipe_read);
+        CloseHandle(pipe_write);
+        return Err(io::Error::last_os_error());
+    }
+
+    // 5. パイプの write 側を保存（将来の input イベントで使用）
+    *QI_STDIN_WRITE_FD.lock() = Some(pipe_write as i32);
+
+    // 6. 現時点では input イベント未実装なので、write 側を close して EOF を返す
+    // TODO: input イベント実装時にこの行を削除
+    CloseHandle(pipe_write);
+
+    // 7. 複製した元の stdin ハンドルを File に変換して返す
+    Ok(std::fs::File::from_raw_handle(duplicated_stdin as _))
+}
+
 /// 元のstderrをバックアップ（DAPログ出力用）
 #[cfg(unix)]
 fn backup_stderr_for_logging() {
@@ -1010,7 +1114,10 @@ impl DapServer {
     /// DAPサーバーを起動（非同期版・推奨）
     pub async fn run_async_internal() -> io::Result<()> {
         let server = std::sync::Arc::new(DapServer::new());
-        let stdin = tokio::io::stdin();
+
+        // 元の stdin (fd 0) を保存してから、Qi プログラム用のパイプに差し替える
+        let original_stdin_file = unsafe { backup_stdin()? };
+        let stdin = tokio::fs::File::from_std(original_stdin_file);
 
         // 元のstdout/stderrをバックアップ
         let stdout_file = backup_stdout()?;
@@ -1085,8 +1192,10 @@ impl DapServer {
     /// DAPサーバーを起動（同期版・互換性のため残す）
     pub fn run() -> io::Result<()> {
         let server = DapServer::new();
-        let stdin = io::stdin();
-        let mut reader = BufReader::new(stdin.lock());
+
+        // 元の stdin (fd 0) を保存してから、Qi プログラム用のパイプに差し替える
+        let original_stdin_file = unsafe { backup_stdin()? };
+        let mut reader = BufReader::new(original_stdin_file);
         let mut stdout = io::stdout();
 
         loop {
@@ -1247,10 +1356,7 @@ mod stdio_redirect {
             }
         }
 
-        pub unsafe fn redirect(
-            new_handle: NativeHandle,
-            std_no: NativeHandle,
-        ) -> io::Result<()> {
+        pub unsafe fn redirect(new_handle: NativeHandle, std_no: NativeHandle) -> io::Result<()> {
             if libc::dup2(new_handle, std_no) < 0 {
                 Err(io::Error::last_os_error())
             } else {
@@ -1310,10 +1416,7 @@ mod stdio_redirect {
             }
         }
 
-        pub unsafe fn redirect(
-            new_handle: NativeHandle,
-            std_handle_id: u32,
-        ) -> io::Result<()> {
+        pub unsafe fn redirect(new_handle: NativeHandle, std_handle_id: u32) -> io::Result<()> {
             if SetStdHandle(std_handle_id, new_handle) == 0 {
                 Err(io::Error::last_os_error())
             } else {
@@ -1361,7 +1464,7 @@ mod stdio_redirect {
                     e
                 })?;
 
-                // パイプ作成
+                // パイプ作成（stdout、stderr）
                 let (stdout_read, stdout_write) = create_pipe().map_err(|e| {
                     close(original_stdout);
                     close(original_stderr);
@@ -1413,13 +1516,14 @@ mod stdio_redirect {
         #[cfg(windows)]
         pub fn new() -> io::Result<Self> {
             use platform::*;
+            use windows_sys::Win32::Storage::FileSystem::*;
 
             unsafe {
                 // 元のstdout/stderrを保存
                 let original_stdout = get_std_handle(STDOUT_NO)?;
                 let original_stderr = get_std_handle(STDERR_NO)?;
 
-                // パイプ作成
+                // パイプ作成（stdout、stderr）
                 let (stdout_read, stdout_write) = create_pipe()?;
 
                 let (stderr_read, stderr_write) = create_pipe().map_err(|e| {

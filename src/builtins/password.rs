@@ -2,8 +2,6 @@
 //!
 //! このモジュールは `auth-password` feature でコンパイルされます。
 
-#![cfg(feature = "auth-password")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use argon2::{
