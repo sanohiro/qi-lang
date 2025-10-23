@@ -335,10 +335,17 @@ impl DapServer {
         if let Some(args) = request.arguments {
             if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
                 if let Some(program) = launch_args.program {
+                    dap_log(&format!(
+                        "[DAP] Launch request received: program={}",
+                        program
+                    ));
+
                     // プログラムをバックグラウンドで実行
                     let seq_base = self.next_seq();
                     let program_clone = program.clone();
                     tokio::spawn(async move {
+                        dap_log(&format!("[DAP] Launching program: {}", program_clone));
+
                         // プログラム開始メッセージ
                         let start_msg = OutputEventBody {
                             category: "console".to_string(),
@@ -358,6 +365,8 @@ impl DapServer {
                         match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await
                         {
                             Ok(_) => {
+                                dap_log("[DAP] Program completed successfully");
+
                                 // 成功メッセージ
                                 let success_msg = OutputEventBody {
                                     category: "console".to_string(),
@@ -374,6 +383,8 @@ impl DapServer {
                                 }
                             }
                             Err(e) => {
+                                dap_log(&format!("[DAP] Program failed: {}", e));
+
                                 // エラーメッセージ
                                 let error_msg = OutputEventBody {
                                     category: "stderr".to_string(),
@@ -905,6 +916,46 @@ pub async fn write_message_async<W: tokio::io::AsyncWrite + Unpin>(
 }
 
 // ========================================
+// DAPサーバーのログ出力（元のstderrに書き込む）
+// ========================================
+
+use parking_lot::Mutex;
+use std::sync::LazyLock;
+
+/// 元のstderr（プログラム実行時のリダイレクトの影響を受けない）
+#[cfg(unix)]
+static ORIGINAL_STDERR: LazyLock<Mutex<Option<i32>>> = LazyLock::new(|| Mutex::new(None));
+
+#[cfg(windows)]
+static ORIGINAL_STDERR: LazyLock<Mutex<Option<windows_sys::Win32::Foundation::HANDLE>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+/// DAPサーバーのログを元のstderrに出力
+fn dap_log(message: &str) {
+    if let Some(fd) = *ORIGINAL_STDERR.lock() {
+        let msg = format!("{}\n", message);
+
+        #[cfg(unix)]
+        unsafe {
+            libc::write(fd, msg.as_ptr() as *const _, msg.len());
+        }
+
+        #[cfg(windows)]
+        unsafe {
+            use windows_sys::Win32::Storage::FileSystem::*;
+            let mut written: u32 = 0;
+            WriteFile(
+                fd,
+                msg.as_ptr() as *const _,
+                msg.len() as u32,
+                &mut written,
+                std::ptr::null_mut(),
+            );
+        }
+    }
+}
+
+// ========================================
 // DAPサーバーメインループ
 // ========================================
 
@@ -929,6 +980,22 @@ impl DapServer {
             GetStdHandle(STD_OUTPUT_HANDLE)
         };
 
+        // オリジナルのstderrハンドルを保存（DAPログ出力用）
+        #[cfg(unix)]
+        {
+            let original_stderr_fd = unsafe { libc::dup(libc::STDERR_FILENO) };
+            if original_stderr_fd >= 0 {
+                *ORIGINAL_STDERR.lock() = Some(original_stderr_fd);
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            use windows_sys::Win32::System::Console::*;
+            let original_stderr_handle = unsafe { GetStdHandle(STD_ERROR_HANDLE) };
+            *ORIGINAL_STDERR.lock() = Some(original_stderr_handle);
+        }
+
         // オリジナルのstdoutからWriterを作成
         #[cfg(unix)]
         let stdout_file = unsafe {
@@ -944,6 +1011,8 @@ impl DapServer {
 
         let mut writer = tokio::io::BufWriter::new(tokio::fs::File::from_std(stdout_file));
         let mut reader = AsyncBufReader::new(stdin);
+
+        dap_log("[DAP] Qi Debug Adapter starting (async mode)...");
 
         // イベント送信用のchannel
         let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
