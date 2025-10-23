@@ -956,6 +956,53 @@ fn dap_log(message: &str) {
 }
 
 // ========================================
+// DAPサーバー用ヘルパー関数
+// ========================================
+
+/// 元のstdoutをバックアップしてFileを作成
+#[cfg(unix)]
+fn backup_stdout() -> io::Result<std::fs::File> {
+    unsafe {
+        let fd = libc::dup(libc::STDOUT_FILENO);
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        use std::os::unix::io::FromRawFd;
+        Ok(std::fs::File::from_raw_fd(fd))
+    }
+}
+
+#[cfg(windows)]
+fn backup_stdout() -> io::Result<std::fs::File> {
+    unsafe {
+        use std::os::windows::io::FromRawHandle;
+        use windows_sys::Win32::System::Console::*;
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        Ok(std::fs::File::from_raw_handle(handle as _))
+    }
+}
+
+/// 元のstderrをバックアップ（DAPログ出力用）
+#[cfg(unix)]
+fn backup_stderr_for_logging() {
+    unsafe {
+        let fd = libc::dup(libc::STDERR_FILENO);
+        if fd >= 0 {
+            *ORIGINAL_STDERR.lock() = Some(fd);
+        }
+    }
+}
+
+#[cfg(windows)]
+fn backup_stderr_for_logging() {
+    unsafe {
+        use windows_sys::Win32::System::Console::*;
+        let handle = GetStdHandle(STD_ERROR_HANDLE);
+        *ORIGINAL_STDERR.lock() = Some(handle);
+    }
+}
+
+// ========================================
 // DAPサーバーメインループ
 // ========================================
 
@@ -965,48 +1012,9 @@ impl DapServer {
         let server = std::sync::Arc::new(DapServer::new());
         let stdin = tokio::io::stdin();
 
-        // オリジナルのstdoutハンドルを保存（プログラム実行時のリダイレクトの影響を受けない）
-        #[cfg(unix)]
-        let original_stdout_fd = unsafe { libc::dup(libc::STDOUT_FILENO) };
-        #[cfg(unix)]
-        if original_stdout_fd < 0 {
-            return Err(io::Error::last_os_error());
-        }
-
-        #[cfg(windows)]
-        let original_stdout_handle = unsafe {
-            use windows_sys::Win32::Foundation::*;
-            use windows_sys::Win32::System::Console::*;
-            GetStdHandle(STD_OUTPUT_HANDLE)
-        };
-
-        // オリジナルのstderrハンドルを保存（DAPログ出力用）
-        #[cfg(unix)]
-        {
-            let fd = unsafe { libc::dup(libc::STDERR_FILENO) };
-            if fd >= 0 {
-                *ORIGINAL_STDERR.lock() = Some(fd);
-            }
-        }
-
-        #[cfg(windows)]
-        {
-            use windows_sys::Win32::System::Console::*;
-            *ORIGINAL_STDERR.lock() = Some(unsafe { GetStdHandle(STD_ERROR_HANDLE) });
-        }
-
-        // オリジナルのstdoutからWriterを作成
-        #[cfg(unix)]
-        let stdout_file = unsafe {
-            use std::os::unix::io::FromRawFd;
-            std::fs::File::from_raw_fd(original_stdout_fd)
-        };
-
-        #[cfg(windows)]
-        let stdout_file = unsafe {
-            use std::os::windows::io::FromRawHandle;
-            std::fs::File::from_raw_handle(original_stdout_handle as _)
-        };
+        // 元のstdout/stderrをバックアップ
+        let stdout_file = backup_stdout()?;
+        backup_stderr_for_logging();
 
         let mut writer = tokio::io::BufWriter::new(tokio::fs::File::from_std(stdout_file));
         let mut reader = AsyncBufReader::new(stdin);
