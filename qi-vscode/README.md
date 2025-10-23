@@ -43,14 +43,48 @@ The extension provides full debugging support via the Debug Adapter Protocol (DA
 - **Breakpoints**: Set breakpoints by clicking on the gutter
 - **Step Execution**: Step over, step into, step out of functions
 - **Call Stack**: View the current call stack
-- **Variables**: Inspect variables and scopes (planned)
+- **Variables**: Inspect variables and scopes
 - **Continue/Pause**: Control program execution
+- **Standard Input**: Send input to programs using `.stdin` command
 
-To start debugging:
+#### Basic Debugging
 1. Open a `.qi` file
 2. Set breakpoints by clicking on the line numbers
 3. Press `F5` or click "Debug Qi File" in the command palette
 4. Use the debug toolbar to step through your code
+
+#### Sending Input to Programs
+When debugging programs that use `io/stdin-line` or `io/stdin-lines`, you can send input via the Debug Console:
+
+**Single line input**:
+```
+.stdin Hello, World!
+```
+
+**Multiple lines** (use `\n` for newlines):
+```
+.stdin Line 1\nLine 2\nLine 3
+```
+
+**Tab-separated values**:
+```
+.stdin Column1\tColumn2\tColumn3
+```
+
+Example program:
+```qi
+;; test-stdin.qi
+(println "Enter your name:")
+(def name (io/stdin-line))
+(println f"Hello, {name}!")
+```
+
+1. Set a breakpoint on line 2
+2. Start debugging with F5
+3. Continue to the breakpoint
+4. Open Debug Console
+5. Type `.stdin Alice` and press Enter
+6. Continue execution - output will show "Hello, Alice!"
 
 **Note**: Make sure the Qi executable is built with the `dap-server` feature:
 ```bash
