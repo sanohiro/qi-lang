@@ -298,6 +298,7 @@ impl DapServer {
             "stepIn" => self.handle_step_in(request),
             "stepOut" => self.handle_step_out(request),
             "disconnect" => self.handle_disconnect(request),
+            "writeStdin" => self.handle_write_stdin(request),
             _ => Response {
                 seq: self.next_seq(),
                 msg_type: "response".to_string(),
@@ -762,6 +763,50 @@ impl DapServer {
         }
     }
 
+    /// writeStdinリクエストハンドラー（標準入力エミュレート）
+    ///
+    /// クライアントから送られたテキストをQiプログラムのstdinに書き込みます。
+    /// 引数: { "text": "入力文字列" }
+    fn handle_write_stdin(&self, request: Request) -> Response {
+        let text = request
+            .arguments
+            .as_ref()
+            .and_then(|args| args.get("text"))
+            .and_then(|v| v.as_str());
+
+        match text {
+            Some(text_str) => match write_to_stdin(text_str) {
+                Ok(()) => Response {
+                    seq: self.next_seq(),
+                    msg_type: "response".to_string(),
+                    request_seq: request.seq,
+                    success: true,
+                    command: "writeStdin".to_string(),
+                    message: None,
+                    body: None,
+                },
+                Err(e) => Response {
+                    seq: self.next_seq(),
+                    msg_type: "response".to_string(),
+                    request_seq: request.seq,
+                    success: false,
+                    command: "writeStdin".to_string(),
+                    message: Some(format!("Failed to write to stdin: {}", e)),
+                    body: None,
+                },
+            },
+            None => Response {
+                seq: self.next_seq(),
+                msg_type: "response".to_string(),
+                request_seq: request.seq,
+                success: false,
+                command: "writeStdin".to_string(),
+                message: Some("Missing 'text' argument".to_string()),
+                body: None,
+            },
+        }
+    }
+
     pub fn create_stopped_event(&self, reason: &str, thread_id: i64) -> Event {
         let body = serde_json::json!({
             "reason": reason,
@@ -1017,14 +1062,10 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     // 4. パイプの read 側は不要（fd 0 に複製済み）
     libc::close(pipe_read);
 
-    // 5. パイプの write 側を保存（将来の input イベントで使用）
+    // 5. パイプの write 側を保存（input イベントで使用）
     *QI_STDIN_WRITE_FD.lock() = Some(pipe_write);
 
-    // 6. 現時点では input イベント未実装なので、write 側を close して EOF を返す
-    // TODO: input イベント実装時にこの行を削除
-    libc::close(pipe_write);
-
-    // 7. 元の stdin fd を File に変換して返す
+    // 6. 元の stdin fd を File に変換して返す
     Ok(std::fs::File::from_raw_fd(original_stdin_fd))
 }
 
@@ -1075,15 +1116,65 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
         return Err(io::Error::last_os_error());
     }
 
-    // 5. パイプの write 側を保存（将来の input イベントで使用）
+    // 5. パイプの write 側を保存（input イベントで使用）
     *QI_STDIN_WRITE_FD.lock() = Some(pipe_write as i32);
 
-    // 6. 現時点では input イベント未実装なので、write 側を close して EOF を返す
-    // TODO: input イベント実装時にこの行を削除
-    CloseHandle(pipe_write);
-
-    // 7. 複製した元の stdin ハンドルを File に変換して返す
+    // 6. 複製した元の stdin ハンドルを File に変換して返す
     Ok(std::fs::File::from_raw_handle(duplicated_stdin as _))
+}
+
+/// Qiプログラムのstdinにテキストを書き込む（DAPのwriteStdinリクエスト用）
+///
+/// 引数のテキストを改行付きでパイプに書き込みます。
+#[cfg(unix)]
+fn write_to_stdin(text: &str) -> io::Result<()> {
+    let fd_guard = QI_STDIN_WRITE_FD.lock();
+    if let Some(write_fd) = *fd_guard {
+        let data = format!("{}\n", text);
+        unsafe {
+            let bytes_written =
+                libc::write(write_fd, data.as_ptr() as *const libc::c_void, data.len());
+            if bytes_written < 0 {
+                return Err(io::Error::last_os_error());
+            }
+        }
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "stdin write fd not available",
+        ))
+    }
+}
+
+#[cfg(windows)]
+fn write_to_stdin(text: &str) -> io::Result<()> {
+    use windows_sys::Win32::Foundation::*;
+    use windows_sys::Win32::Storage::FileSystem::WriteFile;
+
+    let fd_guard = QI_STDIN_WRITE_FD.lock();
+    if let Some(handle) = *fd_guard {
+        let data = format!("{}\n", text);
+        let mut bytes_written: u32 = 0;
+        unsafe {
+            if WriteFile(
+                handle as HANDLE,
+                data.as_ptr(),
+                data.len() as u32,
+                &mut bytes_written,
+                std::ptr::null_mut(),
+            ) == 0
+            {
+                return Err(io::Error::last_os_error());
+            }
+        }
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "stdin write handle not available",
+        ))
+    }
 }
 
 /// 元のstderrをバックアップ（DAPログ出力用）
