@@ -299,6 +299,7 @@ impl DapServer {
             "stepOut" => self.handle_step_out(request),
             "disconnect" => self.handle_disconnect(request),
             "writeStdin" => self.handle_write_stdin(request),
+            "evaluate" => self.handle_evaluate(request),
             _ => Response {
                 seq: self.next_seq(),
                 msg_type: "response".to_string(),
@@ -760,6 +761,74 @@ impl DapServer {
             command: "disconnect".to_string(),
             message: None,
             body: None,
+        }
+    }
+
+    /// evaluateリクエストハンドラー（デバッグコンソール入力）
+    ///
+    /// デバッグコンソールから入力された式を評価します。
+    /// `.stdin <text>` 形式の入力を標準入力に書き込みます。
+    /// 引数: { "expression": "式またはコマンド", "frameId": ..., "context": ... }
+    fn handle_evaluate(&self, request: Request) -> Response {
+        let expression = request
+            .arguments
+            .as_ref()
+            .and_then(|args| args.get("expression"))
+            .and_then(|v| v.as_str());
+
+        match expression {
+            Some(expr) => {
+                // .stdin プレフィックスをチェック
+                if let Some(text) = expr.strip_prefix(".stdin ") {
+                    // writeStdinを実行
+                    match write_to_stdin(text) {
+                        Ok(()) => Response {
+                            seq: self.next_seq(),
+                            msg_type: "response".to_string(),
+                            request_seq: request.seq,
+                            success: true,
+                            command: "evaluate".to_string(),
+                            message: None,
+                            body: Some(serde_json::json!({
+                                "result": format!("Sent to stdin: {}", text),
+                                "variablesReference": 0
+                            })),
+                        },
+                        Err(e) => Response {
+                            seq: self.next_seq(),
+                            msg_type: "response".to_string(),
+                            request_seq: request.seq,
+                            success: false,
+                            command: "evaluate".to_string(),
+                            message: Some(format!("Failed to write to stdin: {}", e)),
+                            body: None,
+                        },
+                    }
+                } else {
+                    // それ以外は未サポート
+                    Response {
+                        seq: self.next_seq(),
+                        msg_type: "response".to_string(),
+                        request_seq: request.seq,
+                        success: false,
+                        command: "evaluate".to_string(),
+                        message: Some(
+                            "Evaluation not supported. Use '.stdin <text>' to send stdin input."
+                                .to_string(),
+                        ),
+                        body: None,
+                    }
+                }
+            }
+            None => Response {
+                seq: self.next_seq(),
+                msg_type: "response".to_string(),
+                request_seq: request.seq,
+                success: false,
+                command: "evaluate".to_string(),
+                message: Some("Missing 'expression' argument".to_string()),
+                body: None,
+            },
         }
     }
 
