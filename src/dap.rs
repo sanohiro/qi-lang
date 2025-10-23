@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// DAPプロトコルのメッセージベース
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +49,13 @@ pub struct Event {
     pub event: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<serde_json::Value>,
+}
+
+/// Output イベントのbody
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputEventBody {
+    pub category: String,
+    pub output: String,
 }
 
 // ========================================
@@ -333,21 +341,67 @@ impl DapServer {
                     eprintln!("[DAP] Launching program: {}", program);
 
                     // プログラムをバックグラウンドで実行
-                    let seq = self.next_seq();
+                    let seq_base = self.next_seq();
+                    let program_clone = program.clone();
                     tokio::spawn(async move {
+                        // プログラム開始メッセージ
+                        let start_msg = OutputEventBody {
+                            category: "console".to_string(),
+                            output: format!("Starting program: {}\n", program_clone),
+                        };
+                        let start_event = Event {
+                            seq: seq_base,
+                            msg_type: "event".to_string(),
+                            event: "output".to_string(),
+                            body: serde_json::to_value(&start_msg).ok(),
+                        };
+                        if let Ok(event_json) = serde_json::to_string(&start_event) {
+                            let _ = event_tx.send(event_json).await;
+                        }
+
                         // プログラム実行
-                        match run_qi_program_async(&program).await {
+                        match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await {
                             Ok(_) => {
                                 eprintln!("[DAP] Program completed successfully");
+
+                                // 成功メッセージ
+                                let success_msg = OutputEventBody {
+                                    category: "console".to_string(),
+                                    output: "\nProgram completed successfully.\n".to_string(),
+                                };
+                                let success_event = Event {
+                                    seq: seq_base + 1,
+                                    msg_type: "event".to_string(),
+                                    event: "output".to_string(),
+                                    body: serde_json::to_value(&success_msg).ok(),
+                                };
+                                if let Ok(event_json) = serde_json::to_string(&success_event) {
+                                    let _ = event_tx.send(event_json).await;
+                                }
                             }
                             Err(e) => {
                                 eprintln!("[DAP] Program execution failed: {}", e);
+
+                                // エラーメッセージ
+                                let error_msg = OutputEventBody {
+                                    category: "stderr".to_string(),
+                                    output: format!("\nProgram failed: {}\n", e),
+                                };
+                                let error_event = Event {
+                                    seq: seq_base + 1,
+                                    msg_type: "event".to_string(),
+                                    event: "output".to_string(),
+                                    body: serde_json::to_value(&error_msg).ok(),
+                                };
+                                if let Ok(event_json) = serde_json::to_string(&error_event) {
+                                    let _ = event_tx.send(event_json).await;
+                                }
                             }
                         }
 
                         // terminatedイベント送信
                         let terminated_event = Event {
-                            seq,
+                            seq: seq_base + 2,
                             msg_type: "event".to_string(),
                             event: "terminated".to_string(),
                             body: None,
@@ -1014,8 +1068,12 @@ impl DapServer {
 // ========================================
 
 /// Qiプログラムを非同期実行（Evaluator使用）
-async fn run_qi_program_async(program_path: &str) -> Result<(), String> {
-    use crate::eval::Evaluator;
+async fn run_qi_program_async(
+    program_path: &str,
+    event_tx: tokio::sync::mpsc::Sender<String>,
+    seq_base: i64,
+) -> Result<(), String> {
+    use crate::eval::{Evaluator, OutputCallback, OUTPUT_CALLBACK};
     use crate::parser::Parser;
 
     // ファイル読み込み
@@ -1025,8 +1083,38 @@ async fn run_qi_program_async(program_path: &str) -> Result<(), String> {
 
     let program_path = program_path.to_string();
 
+    // 出力コールバックを設定（チャネル経由で送信）
+    let (output_tx, mut output_rx) = tokio::sync::mpsc::channel::<String>(100);
+
+    // 出力を受信してDAPイベントに変換するタスク
+    let event_tx_clone = event_tx.clone();
+    tokio::spawn(async move {
+        while let Some(output) = output_rx.recv().await {
+            let output_msg = OutputEventBody {
+                category: "stdout".to_string(),
+                output,
+            };
+            let output_event = Event {
+                seq: seq_base,
+                msg_type: "event".to_string(),
+                event: "output".to_string(),
+                body: serde_json::to_value(&output_msg).ok(),
+            };
+            if let Ok(event_json) = serde_json::to_string(&output_event) {
+                let _ = event_tx_clone.send(event_json).await;
+            }
+        }
+    });
+
+    // コールバックはチャネルに送信するだけ
+    let callback: OutputCallback = Arc::new(move |output: String| {
+        let _ = output_tx.blocking_send(output);
+    });
+
+    *OUTPUT_CALLBACK.write() = Some(callback);
+
     // Evaluatorの実行は同期的なのでspawn_blockingで実行
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         let evaluator = Evaluator::new();
         evaluator.set_source(program_path.clone(), content.clone());
 
@@ -1043,5 +1131,10 @@ async fn run_qi_program_async(program_path: &str) -> Result<(), String> {
         Ok(())
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?
+    .map_err(|e| format!("Task join error: {}", e))?;
+
+    // コールバックをクリア
+    *OUTPUT_CALLBACK.write() = None;
+
+    result
 }

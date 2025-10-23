@@ -14,6 +14,8 @@ use crate::value::Value;
 
 /// print - 改行なしで出力
 pub fn native_print(args: &[Value]) -> Result<Value, String> {
+    use crate::eval::OUTPUT_CALLBACK;
+
     let output = if args.is_empty() {
         String::new()
     } else {
@@ -25,13 +27,22 @@ pub fn native_print(args: &[Value]) -> Result<Value, String> {
             .collect::<Vec<_>>()
             .join(" ")
     };
-    print!("{}", output);
+
+    // コールバックがあればそれを使用、なければstdoutに出力
+    if let Some(ref callback) = *OUTPUT_CALLBACK.read() {
+        callback(output);
+    } else {
+        print!("{}", output);
+    }
+
     Ok(Value::Nil)
 }
 
 /// println - 改行付きで出力
 pub fn native_println(args: &[Value]) -> Result<Value, String> {
-    let output = if args.is_empty() {
+    use crate::eval::OUTPUT_CALLBACK;
+
+    let mut output = if args.is_empty() {
         String::new()
     } else {
         args.iter()
@@ -42,7 +53,15 @@ pub fn native_println(args: &[Value]) -> Result<Value, String> {
             .collect::<Vec<_>>()
             .join(" ")
     };
-    println!("{}", output);
+    output.push('\n');
+
+    // コールバックがあればそれを使用、なければstdoutに出力
+    if let Some(ref callback) = *OUTPUT_CALLBACK.read() {
+        callback(output);
+    } else {
+        print!("{}", output);
+    }
+
     Ok(Value::Nil)
 }
 
