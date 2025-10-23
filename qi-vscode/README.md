@@ -33,9 +33,29 @@ Complete language support for **Qi - A Lisp that flows**.
 ### Commands
 - **Run Qi File** (`Ctrl+F5` / `Cmd+F5`) - Execute current Qi file
 - **Start Qi REPL** (`Ctrl+Shift+R` / `Cmd+Shift+R`) - Start interactive REPL
-- **Debug Qi File** (`F5`) - Debug current file (planned)
+- **Debug Qi File** (`F5`) - Debug current file with breakpoints and step execution
 - **Format Document** - Format code according to docs/style-guide.md
 - **Show Documentation** - Open Qi documentation
+
+### Debugging
+The extension provides full debugging support via the Debug Adapter Protocol (DAP):
+
+- **Breakpoints**: Set breakpoints by clicking on the gutter
+- **Step Execution**: Step over, step into, step out of functions
+- **Call Stack**: View the current call stack
+- **Variables**: Inspect variables and scopes (planned)
+- **Continue/Pause**: Control program execution
+
+To start debugging:
+1. Open a `.qi` file
+2. Set breakpoints by clicking on the line numbers
+3. Press `F5` or click "Debug Qi File" in the command palette
+4. Use the debug toolbar to step through your code
+
+**Note**: Make sure the Qi executable is built with the `dap-server` feature:
+```bash
+cargo build --features dap-server --release
+```
 
 ## Installation
 

@@ -186,24 +186,95 @@
       {
         "type": "qi",
         "label": "Qi Debugger",
+        "runtime": "node",
         "configurationAttributes": {
           "launch": {
+            "required": [
+              "program"
+            ],
             "properties": {
               "program": {
                 "type": "string",
-                "description": "Path to the Qi file to debug"
+                "description": "Absolute path to the Qi file to debug",
+                "default": "${file}"
               },
               "args": {
                 "type": "array",
-                "description": "Command line arguments"
+                "description": "Command line arguments passed to the program",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "cwd": {
                 "type": "string",
-                "description": "Working directory"
+                "description": "Absolute path to the working directory of the program being debugged",
+                "default": "${workspaceFolder}"
+              },
+              "qiPath": {
+                "type": "string",
+                "description": "Path to the Qi executable (default: qi)",
+                "default": "qi"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after launch",
+                "default": false
+              },
+              "trace": {
+                "type": "boolean",
+                "description": "Enable logging of the Debug Adapter Protocol",
+                "default": false
+              }
+            }
+          },
+          "attach": {
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Port to attach to",
+                "default": 9229
               }
             }
           }
-        }
+        },
+        "initialConfigurations": [
+          {
+            "type": "qi",
+            "request": "launch",
+            "name": "Launch Qi Program",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Qi: Launch",
+            "description": "Launch and debug a Qi program",
+            "body": {
+              "type": "qi",
+              "request": "launch",
+              "name": "Launch Qi Program",
+              "program": "^\"\\${file}\"",
+              "cwd": "^\"\\${workspaceFolder}\"",
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "Qi: Launch with Arguments",
+            "description": "Launch and debug a Qi program with command line arguments",
+            "body": {
+              "type": "qi",
+              "request": "launch",
+              "name": "Launch Qi Program with Args",
+              "program": "^\"\\${file}\"",
+              "args": [],
+              "cwd": "^\"\\${workspaceFolder}\"",
+              "stopOnEntry": false
+            }
+          }
+        ]
       }
     ],
     "breakpoints": [
