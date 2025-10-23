@@ -780,8 +780,10 @@ impl DapServer {
             Some(expr) => {
                 // .stdin プレフィックスをチェック
                 if let Some(text) = expr.strip_prefix(".stdin ") {
+                    // エスケープシーケンスを変換（\n → 改行, \t → タブ）
+                    let text = text.replace("\\n", "\n").replace("\\t", "\t");
                     // writeStdinを実行
-                    match write_to_stdin(text) {
+                    match write_to_stdin(&text) {
                         Ok(()) => Response {
                             seq: self.next_seq(),
                             msg_type: "response".to_string(),
