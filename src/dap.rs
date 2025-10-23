@@ -331,14 +331,10 @@ impl DapServer {
         request: Request,
         event_tx: tokio::sync::mpsc::Sender<String>,
     ) -> Response {
-        eprintln!("[DAP] Launch request received (async)");
-
         // launchの引数を解析
         if let Some(args) = request.arguments {
             if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
                 if let Some(program) = launch_args.program {
-                    eprintln!("[DAP] Launching program: {}", program);
-
                     // プログラムをバックグラウンドで実行
                     let seq_base = self.next_seq();
                     let program_clone = program.clone();
@@ -362,8 +358,6 @@ impl DapServer {
                         match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await
                         {
                             Ok(_) => {
-                                eprintln!("[DAP] Program completed successfully");
-
                                 // 成功メッセージ
                                 let success_msg = OutputEventBody {
                                     category: "console".to_string(),
@@ -380,8 +374,6 @@ impl DapServer {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("[DAP] Program execution failed: {}", e);
-
                                 // エラーメッセージ
                                 let error_msg = OutputEventBody {
                                     category: "stderr".to_string(),
@@ -447,17 +439,10 @@ impl DapServer {
     }
 
     fn handle_launch(&self, request: Request) -> Response {
-        eprintln!("[DAP] Launch request received");
-
         // launchの引数を解析
         if let Some(args) = request.arguments {
             if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
-                if let Some(program) = launch_args.program {
-                    eprintln!(
-                        "[DAP] Launching program: {} (sync version - deprecated)",
-                        program
-                    );
-
+                if let Some(_program) = launch_args.program {
                     // NOTE: この同期版handle_launchは非推奨。run_async()を使用すること
                     // プログラム実行は非同期版（handle_launch_async）で実装済み
                 } else {
@@ -486,8 +471,6 @@ impl DapServer {
     }
 
     fn handle_attach(&self, request: Request) -> Response {
-        eprintln!("[DAP] Attach request received");
-
         Response {
             seq: self.next_seq(),
             msg_type: "response".to_string(),
@@ -965,8 +948,6 @@ impl DapServer {
         // イベント送信用のchannel
         let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
 
-        eprintln!("[DAP] Qi Debug Adapter starting (async mode)...");
-
         // メインループ
         loop {
             tokio::select! {
@@ -974,13 +955,10 @@ impl DapServer {
                 message_result = read_message_async(&mut reader) => {
                     match message_result {
                         Ok(message) => {
-                            eprintln!("[DAP] <- {}", message);
-
                             // JSONパース
                             let request: Request = match serde_json::from_str(&message) {
                                 Ok(req) => req,
-                                Err(e) => {
-                                    eprintln!("[DAP] Failed to parse request: {}", e);
+                                Err(_) => {
                                     continue;
                                 }
                             };
@@ -992,7 +970,6 @@ impl DapServer {
                             let response_json = serde_json::to_string(&response)
                                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-                            eprintln!("[DAP] -> {}", response_json);
                             write_message_async(&mut writer, &response_json).await?;
 
                             // initialized イベント送信（initializeリクエスト後）
@@ -1001,16 +978,13 @@ impl DapServer {
                                 let event_json = serde_json::to_string(&initialized_event)
                                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-                                eprintln!("[DAP] -> {}", event_json);
                                 write_message_async(&mut writer, &event_json).await?;
                             }
                         }
                         Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
-                            eprintln!("[DAP] Client disconnected");
                             break;
                         }
-                        Err(e) => {
-                            eprintln!("[DAP] Failed to read message: {}", e);
+                        Err(_) => {
                             continue;
                         }
                     }
@@ -1018,13 +992,11 @@ impl DapServer {
 
                 // イベント送信
                 Some(event_json) = event_rx.recv() => {
-                    eprintln!("[DAP] -> Event: {}", event_json);
                     write_message_async(&mut writer, &event_json).await?;
                 }
             }
         }
 
-        eprintln!("[DAP] Qi Debug Adapter stopped");
         Ok(())
     }
 
@@ -1041,29 +1013,22 @@ impl DapServer {
         let mut reader = BufReader::new(stdin.lock());
         let mut stdout = io::stdout();
 
-        eprintln!("[DAP] Qi Debug Adapter starting...");
-
         loop {
             // リクエストを読み取る
             let message = match read_message(&mut reader) {
                 Ok(msg) => msg,
                 Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
-                    eprintln!("[DAP] Client disconnected");
                     break;
                 }
-                Err(e) => {
-                    eprintln!("[DAP] Failed to read message: {}", e);
+                Err(_) => {
                     continue;
                 }
             };
 
-            eprintln!("[DAP] <- {}", message);
-
             // JSONパース
             let request: Request = match serde_json::from_str(&message) {
                 Ok(req) => req,
-                Err(e) => {
-                    eprintln!("[DAP] Failed to parse request: {}", e);
+                Err(_) => {
                     continue;
                 }
             };
@@ -1075,7 +1040,6 @@ impl DapServer {
             let response_json = serde_json::to_string(&response)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-            eprintln!("[DAP] -> {}", response_json);
             write_message(&mut stdout, &response_json)?;
 
             // initialized イベント送信（initializeリクエスト後）
@@ -1084,12 +1048,10 @@ impl DapServer {
                 let event_json = serde_json::to_string(&initialized_event)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-                eprintln!("[DAP] -> {}", event_json);
                 write_message(&mut stdout, &event_json)?;
             }
         }
 
-        eprintln!("[DAP] Qi Debug Adapter stopped");
         Ok(())
     }
 }
