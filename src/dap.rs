@@ -1257,6 +1257,22 @@ mod stdio_redirect {
                 Ok(())
             }
         }
+
+        /// ハンドルを複製（リーダー用）
+        pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<NativeHandle> {
+            let new_handle = libc::dup(handle);
+            if new_handle < 0 {
+                None
+            } else {
+                Some(new_handle)
+            }
+        }
+
+        /// ハンドルからFileリーダーを作成
+        pub unsafe fn create_reader(handle: NativeHandle) -> std::fs::File {
+            use std::os::unix::io::FromRawFd;
+            std::fs::File::from_raw_fd(handle)
+        }
     }
 
     #[cfg(windows)]
@@ -1266,6 +1282,7 @@ mod stdio_redirect {
         use windows_sys::Win32::Foundation::*;
         use windows_sys::Win32::System::Console::*;
         use windows_sys::Win32::System::Pipes::*;
+        use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
         pub const STDOUT_NO: u32 = STD_OUTPUT_HANDLE;
         pub const STDERR_NO: u32 = STD_ERROR_HANDLE;
@@ -1302,6 +1319,31 @@ mod stdio_redirect {
             } else {
                 Ok(())
             }
+        }
+
+        /// ハンドルを複製（リーダー用）
+        pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<NativeHandle> {
+            let mut dup_handle: HANDLE = 0;
+            if DuplicateHandle(
+                GetCurrentProcess(),
+                handle,
+                GetCurrentProcess(),
+                &mut dup_handle,
+                0,
+                0,
+                DUPLICATE_SAME_ACCESS,
+            ) == 0
+            {
+                None
+            } else {
+                Some(dup_handle)
+            }
+        }
+
+        /// ハンドルからFileリーダーを作成
+        pub unsafe fn create_reader(handle: NativeHandle) -> std::fs::File {
+            use std::os::windows::io::FromRawHandle;
+            std::fs::File::from_raw_handle(handle as _)
         }
     }
 
@@ -1441,53 +1483,17 @@ mod stdio_redirect {
             category: &'static str,
             read_handle: NativeHandle,
         ) -> tokio::task::JoinHandle<()> {
-            #[cfg(unix)]
-            let read_dup = unsafe { platform::dup(read_handle).unwrap_or(-1) };
-
-            #[cfg(windows)]
-            let read_dup = unsafe {
-                use windows_sys::Win32::Foundation::*;
-                use windows_sys::Win32::System::Threading::GetCurrentProcess;
-
-                let mut dup_handle: HANDLE = 0;
-                if DuplicateHandle(
-                    GetCurrentProcess(),
-                    read_handle,
-                    GetCurrentProcess(),
-                    &mut dup_handle,
-                    0,
-                    0,
-                    DUPLICATE_SAME_ACCESS,
-                ) == 0
-                {
-                    0 // Invalid handle
-                } else {
-                    dup_handle
-                }
-            };
+            // ハンドルを複製
+            let read_dup = unsafe { platform::dup_for_reader(read_handle) };
 
             tokio::spawn(async move {
-                #[cfg(unix)]
-                if read_dup < 0 {
+                // 複製に失敗した場合は早期リターン
+                let Some(handle) = read_dup else {
                     return;
-                }
-
-                #[cfg(windows)]
-                if read_dup == 0 {
-                    return;
-                }
-
-                #[cfg(unix)]
-                let mut reader = unsafe {
-                    use std::os::unix::io::FromRawFd;
-                    std::fs::File::from_raw_fd(read_dup)
                 };
 
-                #[cfg(windows)]
-                let mut reader = unsafe {
-                    use std::os::windows::io::FromRawHandle;
-                    std::fs::File::from_raw_handle(read_dup as _)
-                };
+                // リーダーを作成
+                let mut reader = unsafe { platform::create_reader(handle) };
 
                 let mut buffer = [0u8; 4096];
                 loop {
