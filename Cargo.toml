@@ -150,7 +150,7 @@ redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], opt
 # odbc-api = { version = "8.1", optional = true }  # Optional, C依存
 
 reqwest = { version = "0.12", features = ["json", "blocking", "gzip", "deflate", "brotli"], optional = true }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "net", "fs", "io-util"], optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "net", "fs", "io-util", "io-std"], optional = true }
 tokio-util = { version = "0.7", features = ["io", "codec"], optional = true }
 tokio-stream = { version = "0.1", optional = true }
 hyper = { version = "1", features = ["server", "http1", "http2"], optional = true }

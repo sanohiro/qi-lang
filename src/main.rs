@@ -111,8 +111,8 @@ fn main() {
         }
         #[cfg(feature = "dap-server")]
         "--dap" => {
-            // DAPサーバーを起動（stdin/stdoutで通信）
-            if let Err(e) = qi_lang::dap::DapServer::run() {
+            // DAPサーバーを起動（非同期版、stdin/stdoutで通信）
+            if let Err(e) = qi_lang::dap::DapServer::run_async() {
                 eprintln!("DAP server error: {}", e);
                 std::process::exit(1);
             }

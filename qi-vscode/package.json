@@ -22,6 +22,9 @@
   ],
   "activationEvents": [
     "onLanguage:qi",
+    "onDebug:qi",
+    "onDebugResolve:qi",
+    "onDebugDynamicConfigurations:qi",
     "onCommand:qi.runFile",
     "onCommand:qi.startRepl",
     "onCommand:qi.debugFile",

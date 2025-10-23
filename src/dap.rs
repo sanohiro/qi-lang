@@ -303,11 +303,119 @@ impl DapServer {
         }
     }
 
+    /// 非同期版リクエストハンドラ（イベント送信チャネル付き）
+    pub fn handle_request_async(
+        &self,
+        request: Request,
+        event_tx: tokio::sync::mpsc::Sender<String>,
+    ) -> Response {
+        match request.command.as_str() {
+            "launch" => self.handle_launch_async(request, event_tx),
+            _ => {
+                // 他のコマンドは同期版を使用
+                self.handle_request(request)
+            }
+        }
+    }
+
+    /// 非同期版launchハンドラ（プログラムを実行してイベント送信）
+    fn handle_launch_async(
+        &self,
+        request: Request,
+        event_tx: tokio::sync::mpsc::Sender<String>,
+    ) -> Response {
+        eprintln!("[DAP] Launch request received (async)");
+
+        // launchの引数を解析
+        if let Some(args) = request.arguments {
+            if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
+                if let Some(program) = launch_args.program {
+                    eprintln!("[DAP] Launching program: {}", program);
+
+                    // プログラムをバックグラウンドで実行
+                    let seq = self.next_seq();
+                    tokio::spawn(async move {
+                        // プログラム実行
+                        match run_qi_program_async(&program).await {
+                            Ok(_) => {
+                                eprintln!("[DAP] Program completed successfully");
+                            }
+                            Err(e) => {
+                                eprintln!("[DAP] Program execution failed: {}", e);
+                            }
+                        }
+
+                        // terminatedイベント送信
+                        let terminated_event = Event {
+                            seq,
+                            msg_type: "event".to_string(),
+                            event: "terminated".to_string(),
+                            body: None,
+                        };
+
+                        if let Ok(event_json) = serde_json::to_string(&terminated_event) {
+                            let _ = event_tx.send(event_json).await;
+                        }
+                    });
+
+                    return Response {
+                        seq: self.next_seq(),
+                        msg_type: "response".to_string(),
+                        request_seq: request.seq,
+                        success: true,
+                        command: "launch".to_string(),
+                        message: None,
+                        body: None,
+                    };
+                } else {
+                    return Response {
+                        seq: self.next_seq(),
+                        msg_type: "response".to_string(),
+                        request_seq: request.seq,
+                        success: false,
+                        command: "launch".to_string(),
+                        message: Some("No program specified".to_string()),
+                        body: None,
+                    };
+                }
+            }
+        }
+
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq: request.seq,
+            success: false,
+            command: "launch".to_string(),
+            message: Some("Invalid launch arguments".to_string()),
+            body: None,
+        }
+    }
+
     fn handle_launch(&self, request: Request) -> Response {
         eprintln!("[DAP] Launch request received");
 
-        // TODO: 実際のプログラム実行を実装
-        // 現時点では成功レスポンスのみ返す
+        // launchの引数を解析
+        if let Some(args) = request.arguments {
+            if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
+                if let Some(program) = launch_args.program {
+                    eprintln!("[DAP] Launching program: {} (sync version - deprecated)", program);
+
+                    // NOTE: この同期版handle_launchは非推奨。run_async()を使用すること
+                    // プログラム実行は非同期版（handle_launch_async）で実装済み
+                } else {
+                    return Response {
+                        seq: self.next_seq(),
+                        msg_type: "response".to_string(),
+                        request_seq: request.seq,
+                        success: false,
+                        command: "launch".to_string(),
+                        message: Some("No program specified".to_string()),
+                        body: None,
+                    };
+                }
+            }
+        }
 
         Response {
             seq: self.next_seq(),
@@ -640,6 +748,9 @@ impl Default for DapServer {
 
 use std::io::{self, BufRead, BufReader, Write};
 
+#[cfg(feature = "dap-server")]
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader as AsyncBufReader};
+
 /// DAPメッセージを読み取る（Content-Length形式）
 ///
 /// # フォーマット
@@ -698,11 +809,147 @@ pub fn write_message<W: Write>(writer: &mut W, message: &str) -> io::Result<()> 
 }
 
 // ========================================
+// 非同期版DAP通信レイヤー
+// ========================================
+
+/// DAPメッセージを非同期で読み取る（Content-Length形式）
+pub async fn read_message_async<R: tokio::io::AsyncBufRead + Unpin>(
+    reader: &mut R,
+) -> io::Result<String> {
+    // Content-Lengthヘッダーを読む
+    let mut header = String::new();
+    let bytes_read = reader.read_line(&mut header).await?;
+
+    // EOFチェック
+    if bytes_read == 0 || header.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Connection closed",
+        ));
+    }
+
+    if !header.starts_with("Content-Length: ") {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Invalid header: {}", header),
+        ));
+    }
+
+    let length: usize = header
+        .trim_start_matches("Content-Length: ")
+        .trim()
+        .parse()
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    // 空行を読む（\r\n）
+    let mut empty_line = String::new();
+    reader.read_line(&mut empty_line).await?;
+
+    // メッセージ本体を読む
+    let mut buffer = vec![0u8; length];
+    reader.read_exact(&mut buffer).await?;
+
+    String::from_utf8(buffer).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+/// DAPメッセージを非同期で書き出す（Content-Length形式）
+pub async fn write_message_async<W: tokio::io::AsyncWrite + Unpin>(
+    writer: &mut W,
+    message: &str,
+) -> io::Result<()> {
+    let content_length = message.len();
+    let header = format!("Content-Length: {}\r\n\r\n{}", content_length, message);
+    writer.write_all(header.as_bytes()).await?;
+    writer.flush().await?;
+    Ok(())
+}
+
+// ========================================
 // DAPサーバーメインループ
 // ========================================
 
 impl DapServer {
-    /// DAPサーバーを起動（stdin/stdoutで通信）
+    /// DAPサーバーを起動（非同期版・推奨）
+    pub async fn run_async_internal() -> io::Result<()> {
+        let server = std::sync::Arc::new(DapServer::new());
+        let stdin = tokio::io::stdin();
+        let stdout = tokio::io::stdout();
+        let mut reader = AsyncBufReader::new(stdin);
+        let mut writer = tokio::io::BufWriter::new(stdout);
+
+        // イベント送信用のchannel
+        let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
+
+        eprintln!("[DAP] Qi Debug Adapter starting (async mode)...");
+
+        // メインループ
+        loop {
+            tokio::select! {
+                // リクエスト処理
+                message_result = read_message_async(&mut reader) => {
+                    match message_result {
+                        Ok(message) => {
+                            eprintln!("[DAP] <- {}", message);
+
+                            // JSONパース
+                            let request: Request = match serde_json::from_str(&message) {
+                                Ok(req) => req,
+                                Err(e) => {
+                                    eprintln!("[DAP] Failed to parse request: {}", e);
+                                    continue;
+                                }
+                            };
+
+                            // リクエスト処理（イベント送信チャネルを渡す）
+                            let response = server.handle_request_async(request, event_tx.clone());
+
+                            // レスポンス送信
+                            let response_json = serde_json::to_string(&response)
+                                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+                            eprintln!("[DAP] -> {}", response_json);
+                            write_message_async(&mut writer, &response_json).await?;
+
+                            // initialized イベント送信（initializeリクエスト後）
+                            if response.command == "initialize" && response.success {
+                                let initialized_event = server.create_initialized_event();
+                                let event_json = serde_json::to_string(&initialized_event)
+                                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+                                eprintln!("[DAP] -> {}", event_json);
+                                write_message_async(&mut writer, &event_json).await?;
+                            }
+                        }
+                        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                            eprintln!("[DAP] Client disconnected");
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!("[DAP] Failed to read message: {}", e);
+                            continue;
+                        }
+                    }
+                }
+
+                // イベント送信
+                Some(event_json) = event_rx.recv() => {
+                    eprintln!("[DAP] -> Event: {}", event_json);
+                    write_message_async(&mut writer, &event_json).await?;
+                }
+            }
+        }
+
+        eprintln!("[DAP] Qi Debug Adapter stopped");
+        Ok(())
+    }
+
+    /// DAPサーバーを起動（エントリーポイント）
+    #[tokio::main]
+    pub async fn run_async() -> io::Result<()> {
+        Self::run_async_internal().await
+    }
+
+    /// DAPサーバーを起動（同期版・互換性のため残す）
     pub fn run() -> io::Result<()> {
         let server = DapServer::new();
         let stdin = io::stdin();
@@ -760,4 +1007,41 @@ impl DapServer {
         eprintln!("[DAP] Qi Debug Adapter stopped");
         Ok(())
     }
+}
+
+// ========================================
+// Qiプログラム実行
+// ========================================
+
+/// Qiプログラムを非同期実行（Evaluator使用）
+async fn run_qi_program_async(program_path: &str) -> Result<(), String> {
+    use crate::eval::Evaluator;
+    use crate::parser::Parser;
+
+    // ファイル読み込み
+    let content = tokio::fs::read_to_string(program_path)
+        .await
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    let program_path = program_path.to_string();
+
+    // Evaluatorの実行は同期的なのでspawn_blockingで実行
+    tokio::task::spawn_blocking(move || {
+        let evaluator = Evaluator::new();
+        evaluator.set_source(program_path.clone(), content.clone());
+
+        // パース
+        let mut parser = Parser::new(&content).map_err(|e| format!("Parser error: {}", e))?;
+        parser.set_source_name(program_path.clone());
+        let exprs = parser.parse_all().map_err(|e| format!("Parse error: {}", e))?;
+
+        // 評価
+        for expr in exprs.iter() {
+            evaluator.eval(expr).map_err(|e| format!("Runtime error: {}", e))?;
+        }
+
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
