@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// DAPプロトコルのメッセージベース
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -263,10 +264,17 @@ pub struct StepOutArguments {
 // DAPサーバー
 // ========================================
 
+/// launch時の保留情報
+struct PendingLaunch {
+    program: String,
+    event_tx: tokio::sync::mpsc::Sender<String>,
+}
+
 pub struct DapServer {
     seq: std::sync::atomic::AtomicI64,
     initialized: std::sync::atomic::AtomicBool,
     breakpoints: parking_lot::RwLock<HashMap<String, Vec<SourceBreakpoint>>>,
+    pending_launch: parking_lot::RwLock<Option<PendingLaunch>>,
 }
 
 impl DapServer {
@@ -275,11 +283,22 @@ impl DapServer {
             seq: std::sync::atomic::AtomicI64::new(1),
             initialized: std::sync::atomic::AtomicBool::new(false),
             breakpoints: parking_lot::RwLock::new(HashMap::new()),
+            pending_launch: parking_lot::RwLock::new(None),
         }
     }
 
     fn next_seq(&self) -> i64 {
         self.seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// イベントを送信
+    pub fn send_event(&self, event_name: &str, body: Option<serde_json::Value>) -> Event {
+        Event {
+            seq: self.next_seq(),
+            msg_type: "event".to_string(),
+            event: event_name.to_string(),
+            body,
+        }
     }
 
     pub fn handle_request(&self, request: Request) -> Response {
@@ -320,6 +339,7 @@ impl DapServer {
     ) -> Response {
         match request.command.as_str() {
             "launch" => self.handle_launch_async(request, event_tx),
+            "configurationDone" => self.handle_configuration_done_async(request, event_tx),
             _ => {
                 // 他のコマンドは同期版を使用
                 self.handle_request(request)
@@ -327,7 +347,7 @@ impl DapServer {
         }
     }
 
-    /// 非同期版launchハンドラ（プログラムを実行してイベント送信）
+    /// 非同期版launchハンドラ（configurationDone後に実行するため情報を保存）
     fn handle_launch_async(
         &self,
         request: Request,
@@ -337,85 +357,30 @@ impl DapServer {
         if let Some(args) = request.arguments {
             if let Ok(launch_args) = serde_json::from_value::<LaunchRequestArguments>(args) {
                 if let Some(program) = launch_args.program {
-                    dap_log(&format!(
-                        "[DAP] Launch request received: program={}",
+                    let log_msg = format!(
+                        "[DAP] Launch request received: program={} (pending until configurationDone)\n",
                         program
-                    ));
+                    );
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
 
-                    // プログラムをバックグラウンドで実行
-                    let seq_base = self.next_seq();
-                    let program_clone = program.clone();
-                    tokio::spawn(async move {
-                        dap_log(&format!("[DAP] Launching program: {}", program_clone));
-
-                        // プログラム開始メッセージ
-                        let start_msg = OutputEventBody {
-                            category: "console".to_string(),
-                            output: format!("Starting program: {}\n", program_clone),
-                        };
-                        let start_event = Event {
-                            seq: seq_base,
-                            msg_type: "event".to_string(),
-                            event: "output".to_string(),
-                            body: serde_json::to_value(&start_msg).ok(),
-                        };
-                        if let Ok(event_json) = serde_json::to_string(&start_event) {
-                            let _ = event_tx.send(event_json).await;
-                        }
-
-                        // プログラム実行
-                        match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await
-                        {
-                            Ok(_) => {
-                                dap_log("[DAP] Program completed successfully");
-
-                                // 成功メッセージ
-                                let success_msg = OutputEventBody {
-                                    category: "console".to_string(),
-                                    output: "\nProgram completed successfully.\n".to_string(),
-                                };
-                                let success_event = Event {
-                                    seq: seq_base + 1,
-                                    msg_type: "event".to_string(),
-                                    event: "output".to_string(),
-                                    body: serde_json::to_value(&success_msg).ok(),
-                                };
-                                if let Ok(event_json) = serde_json::to_string(&success_event) {
-                                    let _ = event_tx.send(event_json).await;
-                                }
-                            }
-                            Err(e) => {
-                                dap_log(&format!("[DAP] Program failed: {}", e));
-
-                                // エラーメッセージ
-                                let error_msg = OutputEventBody {
-                                    category: "stderr".to_string(),
-                                    output: format!("\nProgram failed: {}\n", e),
-                                };
-                                let error_event = Event {
-                                    seq: seq_base + 1,
-                                    msg_type: "event".to_string(),
-                                    event: "output".to_string(),
-                                    body: serde_json::to_value(&error_msg).ok(),
-                                };
-                                if let Ok(event_json) = serde_json::to_string(&error_event) {
-                                    let _ = event_tx.send(event_json).await;
-                                }
-                            }
-                        }
-
-                        // terminatedイベント送信
-                        let terminated_event = Event {
-                            seq: seq_base + 2,
-                            msg_type: "event".to_string(),
-                            event: "terminated".to_string(),
-                            body: None,
-                        };
-
-                        if let Ok(event_json) = serde_json::to_string(&terminated_event) {
-                            let _ = event_tx.send(event_json).await;
-                        }
+                    // プログラム実行情報を保存（configurationDone後に実行）
+                    *self.pending_launch.write() = Some(PendingLaunch {
+                        program: program.clone(),
+                        event_tx,
                     });
+
+                    let log_msg = format!("[DAP] Stored pending launch for: {}\n", program);
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
 
                     return Response {
                         seq: self.next_seq(),
@@ -521,10 +486,30 @@ impl DapServer {
     }
 
     fn handle_set_breakpoints(&self, request: Request) -> Response {
+        let log_msg = format!("setBreakpoints called\n");
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/qi-dap.log")
+            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+            .ok();
+
         if let Some(args) = request.arguments {
             if let Ok(args) = serde_json::from_value::<SetBreakpointsArguments>(args) {
                 let path = args.source.path.clone().unwrap_or_default();
                 let breakpoints = args.breakpoints.unwrap_or_default();
+
+                let log_msg = format!(
+                    "  path: {}\n  breakpoints: {} items\n",
+                    path,
+                    breakpoints.len()
+                );
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/qi-dap.log")
+                    .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                    .ok();
 
                 // ブレークポイントを保存
                 self.breakpoints
@@ -533,10 +518,35 @@ impl DapServer {
 
                 // グローバルデバッガにブレークポイントを設定
                 if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
-                    dbg.clear_breakpoints();
+                    // このファイルのブレークポイントだけをクリア（他のファイルは残す）
+                    let log_msg = format!("  Clearing breakpoints for file: {}\n", path);
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
+                    dbg.clear_breakpoints_for_file(&path);
                     for bp in &breakpoints {
+                        let log_msg = format!("  Setting BP: {}:{}\n", path, bp.line);
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/qi-dap.log")
+                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                            .ok();
+                        dap_log(&format!("[DAP] Setting breakpoint: {}:{}", path, bp.line));
                         dbg.add_breakpoint(&path, bp.line as usize);
                     }
+                } else {
+                    let log_msg = "  ERROR: GLOBAL_DEBUGGER is None!\n";
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
+                    dap_log("[DAP] WARNING: GLOBAL_DEBUGGER is not initialized!");
                 }
 
                 // レスポンスのブレークポイントを生成
@@ -597,7 +607,7 @@ impl DapServer {
 
     fn handle_stack_trace(&self, request: Request) -> Response {
         // デバッガからスタック情報を取得
-        let stack_frames = if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
+        let mut stack_frames = if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
             dbg.call_stack()
                 .iter()
                 .enumerate()
@@ -615,6 +625,24 @@ impl DapServer {
         } else {
             vec![]
         };
+
+        // call_stackが空の場合（トップレベルコード）、stopped_eventから現在位置を取得
+        if stack_frames.is_empty() {
+            if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
+                if let Some((file, line, column, _reason)) = dbg.get_stopped_event() {
+                    stack_frames.push(StackFrame {
+                        id: 0,
+                        name: "<main>".to_string(),
+                        source: Some(Source {
+                            name: None,
+                            path: Some(file.clone()),
+                        }),
+                        line: *line as i64,
+                        column: *column as i64,
+                    });
+                }
+            }
+        }
 
         let body = serde_json::json!({
             "stackFrames": stack_frames,
@@ -654,8 +682,33 @@ impl DapServer {
     }
 
     fn handle_variables(&self, _request: Request) -> Response {
-        // TODO: 実際の変数情報を取得
-        let variables: Vec<Variable> = vec![];
+        // 停止時の環境から変数一覧を取得
+        let mut variables: Vec<Variable> = vec![];
+
+        if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
+            if let Some(env_arc) = dbg.get_stopped_env() {
+                let env = env_arc.read();
+
+                // ローカル変数のみを取得（親環境にあるグローバル変数/関数を除外）
+                for (name, binding) in env.local_bindings() {
+                    // 関数・マクロ・ネイティブ関数は除外（データのみ表示）
+                    use crate::value::Value;
+                    let is_callable = matches!(
+                        binding.value,
+                        Value::Function(_) | Value::Macro(_) | Value::NativeFunc(_)
+                    );
+
+                    if !is_callable {
+                        variables.push(Variable {
+                            name,
+                            value: format!("{}", binding.value),
+                            var_type: Some(binding.value.type_name().to_string()),
+                            variables_reference: 0, // TODO: ネストした値の展開は後で実装
+                        });
+                    }
+                }
+            }
+        }
 
         let body = serde_json::json!({ "variables": variables });
 
@@ -693,6 +746,7 @@ impl DapServer {
         // ステップオーバー
         if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
             dbg.step_over();
+            dbg.resume(); // 待機中のスレッドを起こす
         }
 
         Response {
@@ -710,6 +764,7 @@ impl DapServer {
         // ステップイン
         if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
             dbg.step_in();
+            dbg.resume(); // 待機中のスレッドを起こす
         }
 
         Response {
@@ -727,6 +782,7 @@ impl DapServer {
         // ステップアウト
         if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
             dbg.step_out();
+            dbg.resume(); // 待機中のスレッドを起こす
         }
 
         Response {
@@ -741,6 +797,175 @@ impl DapServer {
     }
 
     fn handle_configuration_done(&self, request: Request) -> Response {
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq: request.seq,
+            success: true,
+            command: "configurationDone".to_string(),
+            message: None,
+            body: None,
+        }
+    }
+
+    /// 非同期版configurationDoneハンドラ（pending_launchがあれば実行開始）
+    fn handle_configuration_done_async(
+        &self,
+        request: Request,
+        _event_tx: tokio::sync::mpsc::Sender<String>,
+    ) -> Response {
+        let log_msg = "[DAP] configurationDone received - checking for pending launch\n";
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/qi-dap.log")
+            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+            .ok();
+
+        // pending_launchを取り出す
+        let pending = self.pending_launch.write().take();
+
+        if let Some(PendingLaunch { program, event_tx }) = pending {
+            let log_msg = format!("[DAP] Found pending launch: {}\n", program);
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/qi-dap.log")
+                .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                .ok();
+
+            // プログラムをバックグラウンドで実行
+            let seq_base = self.next_seq();
+            let program_clone = program.clone();
+
+            let log_msg = format!("[DAP] Spawning task to run program: {}\n", program_clone);
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/qi-dap.log")
+                .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                .ok();
+
+            tokio::spawn(async move {
+                let log_msg = format!(
+                    "[DAP] Task started - launching program: {}\n",
+                    program_clone
+                );
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/qi-dap.log")
+                    .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                    .ok();
+
+                // プログラム開始メッセージ
+                let start_msg = OutputEventBody {
+                    category: "console".to_string(),
+                    output: format!("Starting program: {}\n", program_clone),
+                };
+                let start_event = Event {
+                    seq: seq_base,
+                    msg_type: "event".to_string(),
+                    event: "output".to_string(),
+                    body: serde_json::to_value(&start_msg).ok(),
+                };
+                if let Ok(event_json) = serde_json::to_string(&start_event) {
+                    let _ = event_tx.send(event_json).await;
+                }
+
+                // プログラム実行
+                let log_msg = format!(
+                    "[DAP] Calling run_qi_program_async for: {}\n",
+                    program_clone
+                );
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/qi-dap.log")
+                    .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                    .ok();
+
+                match run_qi_program_async(&program_clone, event_tx.clone(), seq_base).await {
+                    Ok(_) => {
+                        let log_msg = "[DAP] Program completed successfully\n";
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/qi-dap.log")
+                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                            .ok();
+
+                        // 成功メッセージ
+                        let success_msg = OutputEventBody {
+                            category: "console".to_string(),
+                            output: "\nProgram completed successfully.\n".to_string(),
+                        };
+                        let success_event = Event {
+                            seq: seq_base + 1,
+                            msg_type: "event".to_string(),
+                            event: "output".to_string(),
+                            body: serde_json::to_value(&success_msg).ok(),
+                        };
+                        if let Ok(event_json) = serde_json::to_string(&success_event) {
+                            let _ = event_tx.send(event_json).await;
+                        }
+                    }
+                    Err(e) => {
+                        let log_msg = format!("[DAP] Program failed: {}\n", e);
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/qi-dap.log")
+                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                            .ok();
+
+                        // エラーメッセージ
+                        let error_msg = OutputEventBody {
+                            category: "stderr".to_string(),
+                            output: format!("\nProgram failed: {}\n", e),
+                        };
+                        let error_event = Event {
+                            seq: seq_base + 1,
+                            msg_type: "event".to_string(),
+                            event: "output".to_string(),
+                            body: serde_json::to_value(&error_msg).ok(),
+                        };
+                        if let Ok(event_json) = serde_json::to_string(&error_event) {
+                            let _ = event_tx.send(event_json).await;
+                        }
+                    }
+                }
+
+                // terminatedイベント送信
+                let log_msg = "[DAP] Sending terminated event\n";
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/qi-dap.log")
+                    .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                    .ok();
+
+                let terminated_event = Event {
+                    seq: seq_base + 2,
+                    msg_type: "event".to_string(),
+                    event: "terminated".to_string(),
+                    body: None,
+                };
+
+                if let Ok(event_json) = serde_json::to_string(&terminated_event) {
+                    let _ = event_tx.send(event_json).await;
+                }
+            });
+        } else {
+            let log_msg = "[DAP] No pending launch found\n";
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/qi-dap.log")
+                .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                .ok();
+        }
+
         Response {
             seq: self.next_seq(),
             msg_type: "response".to_string(),
@@ -792,7 +1017,7 @@ impl DapServer {
                             command: "evaluate".to_string(),
                             message: None,
                             body: Some(serde_json::json!({
-                                "result": format!("Sent to stdin: {}", text),
+                                "result": format!("✓ 入力を送信しました: {}", text),
                                 "variablesReference": 0
                             })),
                         },
@@ -807,18 +1032,82 @@ impl DapServer {
                         },
                     }
                 } else {
-                    // それ以外は未サポート
-                    Response {
-                        seq: self.next_seq(),
-                        msg_type: "response".to_string(),
-                        request_seq: request.seq,
-                        success: false,
-                        command: "evaluate".to_string(),
-                        message: Some(
-                            "Evaluation not supported. Use '.stdin <text>' to send stdin input."
-                                .to_string(),
-                        ),
-                        body: None,
+                    // ウォッチ式の評価
+                    if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
+                        if let Some(env_arc) = dbg.get_stopped_env() {
+                            // パーサーと評価器を使って式を評価
+                            match crate::parser::Parser::new(expr).and_then(|mut p| p.parse_all()) {
+                                Ok(exprs) => {
+                                    if exprs.is_empty() {
+                                        return Response {
+                                            seq: self.next_seq(),
+                                            msg_type: "response".to_string(),
+                                            request_seq: request.seq,
+                                            success: false,
+                                            command: "evaluate".to_string(),
+                                            message: Some("Empty expression".to_string()),
+                                            body: None,
+                                        };
+                                    }
+
+                                    // 最初の式を評価
+                                    let evaluator = crate::eval::Evaluator::new();
+                                    match evaluator.eval_with_env(&exprs[0], env_arc.clone()) {
+                                        Ok(value) => Response {
+                                            seq: self.next_seq(),
+                                            msg_type: "response".to_string(),
+                                            request_seq: request.seq,
+                                            success: true,
+                                            command: "evaluate".to_string(),
+                                            message: None,
+                                            body: Some(serde_json::json!({
+                                                "result": format!("{}", value),
+                                                "type": value.type_name(),
+                                                "variablesReference": 0
+                                            })),
+                                        },
+                                        Err(e) => Response {
+                                            seq: self.next_seq(),
+                                            msg_type: "response".to_string(),
+                                            request_seq: request.seq,
+                                            success: false,
+                                            command: "evaluate".to_string(),
+                                            message: Some(format!("Evaluation error: {}", e)),
+                                            body: None,
+                                        },
+                                    }
+                                }
+                                Err(e) => Response {
+                                    seq: self.next_seq(),
+                                    msg_type: "response".to_string(),
+                                    request_seq: request.seq,
+                                    success: false,
+                                    command: "evaluate".to_string(),
+                                    message: Some(format!("Parse error: {}", e)),
+                                    body: None,
+                                },
+                            }
+                        } else {
+                            Response {
+                                seq: self.next_seq(),
+                                msg_type: "response".to_string(),
+                                request_seq: request.seq,
+                                success: false,
+                                command: "evaluate".to_string(),
+                                message: Some("No environment available (not stopped at breakpoint)".to_string()),
+                                body: None,
+                            }
+                        }
+                    } else {
+                        Response {
+                            seq: self.next_seq(),
+                            msg_type: "response".to_string(),
+                            request_seq: request.seq,
+                            success: false,
+                            command: "evaluate".to_string(),
+                            message: Some("Debugger not available".to_string()),
+                            body: None,
+                        }
                     }
                 }
             }
@@ -1289,13 +1578,79 @@ impl DapServer {
         let mut reader = AsyncBufReader::new(stdin);
 
         dap_log("[DAP] Qi Debug Adapter starting (async mode)...");
+        eprintln!("[DAP] Log file: /tmp/qi-dap.log");
+
+        let exe_path = std::env::current_exe()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| "<unknown>".to_string());
+
+        std::fs::write(
+            "/tmp/qi-dap.log",
+            format!(
+                "DAP server started at {:?}\nExecutable: {}\n",
+                std::time::SystemTime::now(),
+                exe_path
+            ),
+        )
+        .ok();
+
+        // デバッガーを初期化
+        crate::debugger::init_global_debugger(true);
 
         // イベント送信用のchannel
         let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
 
+        // 停止イベント監視用のタイマー
+        let mut stopped_event_interval =
+            tokio::time::interval(tokio::time::Duration::from_millis(50));
+
+        // 前回送信したイベント（重複送信防止）
+        let mut last_sent_event: Option<(String, usize, usize, String)> = None;
+
         // メインループ
         loop {
             tokio::select! {
+                // 停止イベントの監視（50msごと）
+                _ = stopped_event_interval.tick() => {
+                    let event_info = {
+                        let guard = crate::debugger::GLOBAL_DEBUGGER.read();
+                        if let Some(ref dbg) = *guard {
+                            dbg.get_stopped_event().cloned()
+                        } else {
+                            None
+                        }
+                    };
+
+                    // 前回と同じイベントは送信しない
+                    if event_info.is_some() && event_info == last_sent_event {
+                        continue;
+                    }
+
+                    if let Some((file, line, column, reason)) = event_info.clone() {
+                        last_sent_event = event_info;
+                        let log_msg = format!(
+                            "[DAP] Sending stopped event: reason={}, file={}, line={}, column={}\n",
+                            reason, file, line, column
+                        );
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/qi-dap.log")
+                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                            .ok();
+
+                        let body = serde_json::json!({
+                            "reason": reason,
+                            "threadId": 1,
+                            "allThreadsStopped": true,
+                        });
+
+                        let event = server.send_event("stopped", Some(body));
+                        if let Ok(event_json) = serde_json::to_string(&event) {
+                            write_message_async(&mut writer, &event_json).await?;
+                        }
+                    }
+                }
                 // リクエスト処理
                 message_result = read_message_async(&mut reader) => {
                     match message_result {
@@ -1307,6 +1662,15 @@ impl DapServer {
                                     continue;
                                 }
                             };
+
+                            // ログに記録
+                            let log_msg = format!("Request: {}\n", request.command);
+                            std::fs::OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open("/tmp/qi-dap.log")
+                                .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                                .ok();
 
                             // リクエスト処理（イベント送信チャネルを渡す）
                             let response = server.handle_request_async(request, event_tx.clone());
@@ -1353,12 +1717,78 @@ impl DapServer {
 
     /// DAPサーバーを起動（同期版・互換性のため残す）
     pub fn run() -> io::Result<()> {
-        let server = DapServer::new();
+        let server = Arc::new(DapServer::new());
+        let stdout = Arc::new(parking_lot::Mutex::new(io::stdout()));
 
         // 元の stdin (fd 0) を保存してから、Qi プログラム用のパイプに差し替える
         let original_stdin_file = unsafe { backup_stdin()? };
         let mut reader = BufReader::new(original_stdin_file);
-        let mut stdout = io::stdout();
+
+        // 起動ログ
+        let exe_path = std::env::current_exe()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| "<unknown>".to_string());
+
+        dap_log(&format!("[DAP] Qi Debug Adapter starting (sync mode)..."));
+        dap_log(&format!("[DAP] Executable: {}", exe_path));
+
+        // デバッガーを初期化
+        crate::debugger::init_global_debugger(true);
+
+        // イベント監視スレッドを起動
+        let server_clone = Arc::clone(&server);
+        let stdout_clone = Arc::clone(&stdout);
+        std::thread::spawn(move || {
+            // 前回送信したイベント（重複送信防止）
+            let mut last_sent_event: Option<(String, usize, usize, String)> = None;
+
+            loop {
+                // 50ms ごとに stopped イベントをチェック
+                std::thread::sleep(std::time::Duration::from_millis(50));
+
+                // stopped イベントをチェック
+                let event_info = {
+                    let guard = crate::debugger::GLOBAL_DEBUGGER.read();
+                    if let Some(ref dbg) = *guard {
+                        dbg.get_stopped_event().cloned()
+                    } else {
+                        None
+                    }
+                };
+
+                // 前回と同じイベントは送信しない
+                if event_info.is_some() && event_info == last_sent_event {
+                    continue;
+                }
+
+                // イベントがあれば送信
+                if let Some((file, line, column, reason)) = event_info.clone() {
+                    last_sent_event = event_info;
+                    let log_msg = format!(
+                        "[DAP] Sending stopped event: reason={}, file={}, line={}, column={}\n",
+                        reason, file, line, column
+                    );
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
+
+                    let body = serde_json::json!({
+                        "reason": reason,
+                        "threadId": 1,
+                        "allThreadsStopped": true,
+                    });
+
+                    let event = server_clone.send_event("stopped", Some(body));
+                    if let Ok(event_json) = serde_json::to_string(&event) {
+                        let mut stdout_guard = stdout_clone.lock();
+                        let _ = write_message(&mut *stdout_guard, &event_json);
+                    }
+                }
+            }
+        });
 
         loop {
             // リクエストを読み取る
@@ -1387,7 +1817,10 @@ impl DapServer {
             let response_json = serde_json::to_string(&response)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-            write_message(&mut stdout, &response_json)?;
+            {
+                let mut stdout_guard = stdout.lock();
+                write_message(&mut *stdout_guard, &response_json)?;
+            }
 
             // initialized イベント送信（initializeリクエスト後）
             if response.command == "initialize" && response.success {
@@ -1395,7 +1828,8 @@ impl DapServer {
                 let event_json = serde_json::to_string(&initialized_event)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-                write_message(&mut stdout, &event_json)?;
+                let mut stdout_guard = stdout.lock();
+                write_message(&mut *stdout_guard, &event_json)?;
             }
         }
 
@@ -1470,7 +1904,7 @@ async fn run_qi_program_async(
 
 mod stdio_redirect {
     use super::{Event, OutputEventBody};
-    use std::io::{self, Read};
+    use std::io;
 
     // プラットフォーム固有の型定義
     #[cfg(unix)]
@@ -1621,24 +2055,21 @@ mod stdio_redirect {
             unsafe {
                 // 元のstdout/stderrを保存
                 let original_stdout = dup(STDOUT_NO)?;
-                let original_stderr = dup(STDERR_NO).map_err(|e| {
+                let original_stderr = dup(STDERR_NO).inspect_err(|_e| {
                     close(original_stdout);
-                    e
                 })?;
 
                 // パイプ作成（stdout、stderr）
-                let (stdout_read, stdout_write) = create_pipe().map_err(|e| {
+                let (stdout_read, stdout_write) = create_pipe().inspect_err(|_e| {
                     close(original_stdout);
                     close(original_stderr);
-                    e
                 })?;
 
-                let (stderr_read, stderr_write) = create_pipe().map_err(|e| {
+                let (stderr_read, stderr_write) = create_pipe().inspect_err(|_e| {
                     close(original_stdout);
                     close(original_stderr);
                     close(stdout_read);
                     close(stdout_write);
-                    e
                 })?;
 
                 // リダイレクト
@@ -1753,34 +2184,39 @@ mod stdio_redirect {
             let read_dup = unsafe { platform::dup_for_reader(read_handle) };
 
             tokio::spawn(async move {
+                use tokio::io::AsyncBufReadExt;
+
                 // 複製に失敗した場合は早期リターン
                 let Some(handle) = read_dup else {
                     return;
                 };
 
                 // リーダーを作成
-                let mut reader = unsafe { platform::create_reader(handle) };
+                let file = unsafe { platform::create_reader(handle) };
+                let async_file = tokio::fs::File::from_std(file);
+                let mut reader = tokio::io::BufReader::new(async_file);
 
-                let mut buffer = [0u8; 4096];
+                let mut line = String::new();
+                let mut seq = seq_base;
                 loop {
-                    match reader.read(&mut buffer) {
+                    line.clear();
+                    match reader.read_line(&mut line).await {
                         Ok(0) => break, // EOF
-                        Ok(n) => {
-                            if let Ok(output) = String::from_utf8(buffer[..n].to_vec()) {
-                                let output_msg = OutputEventBody {
-                                    category: category.to_string(),
-                                    output,
-                                };
-                                let output_event = Event {
-                                    seq: seq_base,
-                                    msg_type: "event".to_string(),
-                                    event: "output".to_string(),
-                                    body: serde_json::to_value(&output_msg).ok(),
-                                };
-                                if let Ok(event_json) = serde_json::to_string(&output_event) {
-                                    let _ = event_tx.send(event_json).await;
-                                }
+                        Ok(_) => {
+                            let output_msg = OutputEventBody {
+                                category: category.to_string(),
+                                output: line.clone(),
+                            };
+                            let output_event = Event {
+                                seq,
+                                msg_type: "event".to_string(),
+                                event: "output".to_string(),
+                                body: serde_json::to_value(&output_msg).ok(),
+                            };
+                            if let Ok(event_json) = serde_json::to_string(&output_event) {
+                                let _ = event_tx.send(event_json).await;
                             }
+                            seq += 1;
                         }
                         Err(_) => break,
                     }

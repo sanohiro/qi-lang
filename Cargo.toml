@@ -65,6 +65,7 @@ default = [
     # 開発支援
     "repl",
     "dev-tools",
+    "dap-server",
 
     # コマンド実行
     "cmd-exec",
@@ -197,5 +198,6 @@ testcontainers = "0.15"
 # コンパイラ最適化（Phase 18）
 [profile.release]
 debug = true
-lto = true           # リンク時最適化（クレート間の最適化）
-codegen-units = 1    # 最大限の最適化（コンパイル時間は増加）
+# 開発中はビルド時間短縮のためコメントアウト（最終リリース時は有効化すること）
+# lto = true           # リンク時最適化（クレート間の最適化）
+# codegen-units = 1    # 最大限の最適化（コンパイル時間は増加）

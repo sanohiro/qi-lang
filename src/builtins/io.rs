@@ -975,6 +975,16 @@ pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
 ///       (recur))))
 /// ```
 pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
+    // DAPモードの場合、標準入力待ちの通知を出力
+    #[cfg(feature = "dap-server")]
+    {
+        let is_dap_mode = crate::debugger::GLOBAL_DEBUGGER.read().is_some();
+        if is_dap_mode {
+            eprintln!("\n⏸️  標準入力を待っています");
+            eprintln!("   デバッグコンソールで .stdin <text> と入力してください\n");
+        }
+    }
+
     let stdin = std::io::stdin();
     let mut handle = stdin.lock();
     let mut line = String::new();

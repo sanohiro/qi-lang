@@ -225,7 +225,77 @@ impl Evaluator {
         Some(self.global_env.clone())
     }
 
-    fn eval_with_env(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
+    pub fn eval_with_env(&self, expr: &Expr, env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        // ブレークポイントチェック (dap-server feature が有効な場合のみ)
+        // リスト（関数呼び出し）の場合のみチェック
+        #[cfg(feature = "dap-server")]
+        {
+            let span = expr.span();
+            let should_check = matches!(expr, Expr::List { .. } | Expr::Call { .. });
+
+            if should_check {
+                let span = expr.span();
+                let should_wait = {
+                    let file_name = self
+                        .source_name
+                        .read()
+                        .as_ref()
+                        .unwrap_or(&"<input>".to_string())
+                        .clone();
+
+                    let mut guard = crate::debugger::GLOBAL_DEBUGGER.write();
+                    if let Some(ref mut dbg) = *guard {
+                        let result = dbg.check_breakpoint(
+                            &file_name,
+                            span.line,
+                            span.column,
+                            Some(env.clone()),
+                        );
+                        if result {
+                            let log_msg =
+                                format!("[EVAL] Breakpoint hit: {}:{}\n", file_name, span.line);
+                            std::fs::OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open("/tmp/qi-dap.log")
+                                .and_then(|mut f| {
+                                    std::io::Write::write_all(&mut f, log_msg.as_bytes())
+                                })
+                                .ok();
+                        }
+                        result
+                    } else {
+                        let log_msg = "[EVAL] WARNING: GLOBAL_DEBUGGER is None\n";
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open("/tmp/qi-dap.log")
+                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                            .ok();
+                        false
+                    }
+                };
+
+                if should_wait {
+                    let log_msg = "[EVAL] Waiting for debugger resume...\n";
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
+                    crate::debugger::wait_if_paused_global();
+                    let log_msg = "[EVAL] Debugger resumed\n";
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/qi-dap.log")
+                        .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+                        .ok();
+                }
+            }
+        }
+
         match expr {
             Expr::Nil { .. } => Ok(Value::Nil),
             Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
@@ -1361,47 +1431,88 @@ impl Evaluator {
                 }
 
                 // デバッガが有効な場合、関数呼び出しを記録
-                let debugger_enabled = crate::debugger::GLOBAL_DEBUGGER.read().is_some();
-                if debugger_enabled {
-                    // 関数名を取得
-                    let func_name = self
-                        .get_function_name(func)
-                        .unwrap_or_else(|| "<anonymous>".to_string());
+                #[cfg(feature = "dap-server")]
+                {
+                    let debugger_enabled = crate::debugger::GLOBAL_DEBUGGER.read().is_some();
+                    if debugger_enabled {
+                        // 関数名を取得
+                        let func_name = self
+                            .get_function_name(func)
+                            .unwrap_or_else(|| "<anonymous>".to_string());
 
-                    // ファイル名を取得
-                    let file_name = self
-                        .source_name
-                        .read()
-                        .as_ref()
-                        .unwrap_or(&"<input>".to_string())
-                        .clone();
+                        // ファイル名を取得
+                        let file_name = self
+                            .source_name
+                            .read()
+                            .as_ref()
+                            .unwrap_or(&"<input>".to_string())
+                            .clone();
 
-                    // 関数本体のspan情報を取得
-                    let span = f.body.span();
+                        // 関数本体のspan情報を取得
+                        let span = f.body.span();
 
-                    // デバッガに関数呼び出しを通知
-                    if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
-                        dbg.enter_function(&func_name, &file_name, span.line, span.column);
-                    }
+                        // デバッガに関数呼び出しを通知
+                        let should_wait = {
+                            let mut guard = crate::debugger::GLOBAL_DEBUGGER.write();
+                            if let Some(ref mut dbg) = *guard {
+                                dbg.enter_function(&func_name, &file_name, span.line, span.column);
 
-                    // 関数本体を実行
-                    let result = if builtins::profile::is_enabled() {
-                        let start = std::time::Instant::now();
-                        let r = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
-                        let duration = start.elapsed();
-                        builtins::profile::record_call(&func_name, duration);
-                        r
+                                // ブレークポイントチェック（new_envをArcでラップして渡す）
+                                dbg.check_breakpoint(
+                                    &file_name,
+                                    span.line,
+                                    span.column,
+                                    Some(Arc::new(RwLock::new(new_env.clone()))),
+                                )
+                            } else {
+                                false
+                            }
+                        };
+
+                        // ロックを解放してから待機
+                        if should_wait {
+                            crate::debugger::wait_if_paused_global();
+                        }
+
+                        // 関数本体を実行
+                        let result = if builtins::profile::is_enabled() {
+                            let start = std::time::Instant::now();
+                            let r = self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
+                            let duration = start.elapsed();
+                            builtins::profile::record_call(&func_name, duration);
+                            r
+                        } else {
+                            self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                        };
+
+                        // デバッガに関数終了を通知
+                        if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
+                            dbg.exit_function();
+                        }
+
+                        result
                     } else {
-                        self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
-                    };
+                        // デバッガ無効時（プロファイリングのみ）
+                        if builtins::profile::is_enabled() {
+                            let start = std::time::Instant::now();
+                            let result =
+                                self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)));
+                            let duration = start.elapsed();
 
-                    // デバッガに関数終了を通知
-                    if let Some(ref mut dbg) = *crate::debugger::GLOBAL_DEBUGGER.write() {
-                        dbg.exit_function();
+                            // 関数名を取得（環境から逆引き）
+                            let func_name = self
+                                .get_function_name(func)
+                                .unwrap_or_else(|| "<anonymous>".to_string());
+                            builtins::profile::record_call(&func_name, duration);
+
+                            result
+                        } else {
+                            self.eval_with_env(&f.body, Arc::new(RwLock::new(new_env)))
+                        }
                     }
-
-                    result
-                } else {
+                }
+                #[cfg(not(feature = "dap-server"))]
+                {
                     // デバッガ無効時（プロファイリングのみ）
                     if builtins::profile::is_enabled() {
                         let start = std::time::Instant::now();

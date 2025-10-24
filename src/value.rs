@@ -469,6 +469,29 @@ impl Env {
     pub fn all_bindings(&self) -> impl Iterator<Item = (&String, &Binding)> {
         self.bindings.iter()
     }
+
+    /// 親環境を取得
+    pub fn parent(&self) -> Option<Arc<RwLock<Env>>> {
+        self.parent.clone()
+    }
+
+    /// ローカルバインディングのみを取得（親環境にあるものを除外）
+    pub fn local_bindings(&self) -> Vec<(String, Binding)> {
+        let mut result = Vec::new();
+        for (name, binding) in &self.bindings {
+            // 親環境にも存在するキーはスキップ（グローバル変数/関数）
+            let is_local = if let Some(ref parent) = self.parent {
+                parent.read().get(name).is_none()
+            } else {
+                true // 親がない場合はすべてローカル
+            };
+
+            if is_local {
+                result.push((name.clone(), binding.clone()));
+            }
+        }
+        result
+    }
 }
 
 /// AST（抽象構文木）の式

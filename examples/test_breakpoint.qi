@@ -1,0 +1,11 @@
+;; ブレークポイントのテスト
+
+(defn factorial [n]
+  (if (<= n 1)
+      1
+      (* n (factorial (- n 1)))))
+
+(println "計算開始")
+(def result (factorial 5))
+(println f"結果: {result}")
+(println "完了")

@@ -1,0 +1,16 @@
+;; 標準入力のテスト
+
+(println "=== 標準入力テスト ===")
+(println "")
+
+(println "あなたの名前を入力してください:")
+(def name (io/stdin-line))
+(println f"こんにちは、{name}さん！")
+
+(println "")
+(println "好きな数字を入力してください:")
+(def num (io/stdin-line))
+(println f"あなたの好きな数字は {num} ですね。")
+
+(println "")
+(println "=== テスト完了 ===")
