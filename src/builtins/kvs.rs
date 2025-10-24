@@ -78,7 +78,7 @@ impl KvsDriver for RedisDriver {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -91,7 +91,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::String(s) => Ok(s),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -103,7 +103,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -115,7 +115,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -136,7 +136,7 @@ impl KvsDriver for RedisDriver {
                 })
                 .collect()),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -149,7 +149,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -161,7 +161,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -173,7 +173,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -185,7 +185,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -198,7 +198,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -211,7 +211,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -224,7 +224,7 @@ impl KvsDriver for RedisDriver {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -237,7 +237,7 @@ impl KvsDriver for RedisDriver {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -251,7 +251,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -265,7 +265,7 @@ impl KvsDriver for RedisDriver {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -293,7 +293,7 @@ impl KvsDriver for RedisDriver {
                 }
                 Ok(pairs)
             }
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -306,7 +306,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -327,7 +327,7 @@ impl KvsDriver for RedisDriver {
                 })
                 .collect()),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -347,7 +347,7 @@ impl KvsDriver for RedisDriver {
                 })
                 .collect()),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -363,7 +363,7 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::String(s) => Ok(s),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 
@@ -386,7 +386,7 @@ impl KvsDriver for RedisDriver {
                 })
                 .collect()),
             Value::Map(m) if m.contains_key(":error") => Err(m.get(":error").unwrap().to_string()),
-            _ => Err("Unexpected response".to_string()),
+            _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
     }
 }

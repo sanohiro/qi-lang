@@ -436,6 +436,7 @@ pub enum MsgKey {
     InvalidConnection,           // Invalid connection (expected KvsConnection:xxx)
     QiTomlAlreadyExists,         // qi.toml already exists
     PatternErrorNotAllowed,      // Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)
+    UnexpectedResponse,          // Unexpected response
 }
 
 /// UIメッセージキー
@@ -1170,6 +1171,7 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidConnection, "Invalid connection (expected KvsConnection:xxx)"),
         (QiTomlAlreadyExists, "qi.toml already exists"),
         (PatternErrorNotAllowed, "Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)"),
+        (UnexpectedResponse, "Unexpected response"),
     ])
 });
 
@@ -1624,6 +1626,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidConnection, "無効な接続（KvsConnection:xxxが期待されます）"),
         (QiTomlAlreadyExists, "qi.tomlが既に存在します"),
         (PatternErrorNotAllowed, "パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）"),
+        (UnexpectedResponse, "予期しないレスポンス"),
     ])
 });
 
