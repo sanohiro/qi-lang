@@ -1,0 +1,11 @@
+# HTTP Server Template
+# JSON API server template
+
+[template]
+name = "http-server"
+description = "JSON API server with routing"
+author = "Qi Team"
+version = "0.1.0"
+
+[features]
+required = ["http-server", "format-json"]

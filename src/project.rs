@@ -464,7 +464,11 @@ fn find_all_templates() -> Result<Vec<String>, String> {
 /// テンプレート情報を読み込む
 fn load_template_info(name: &str) -> Result<TemplateInfo, String> {
     let template_dir = find_template(name)?;
-    let info_path = template_dir.join("template.toml");
+
+    // 言語に応じたtemplate.tomlを読み込む
+    let lang = Lang::from_env();
+    let lang_template_dir = select_lang_template(&template_dir, lang);
+    let info_path = lang_template_dir.join("template.toml");
 
     let content = fs::read_to_string(&info_path)
         .map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToRead, &[&e.to_string()]))?;

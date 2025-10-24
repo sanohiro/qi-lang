@@ -1,0 +1,11 @@
+# Basic Template
+# Basic Qi project template
+
+[template]
+name = "basic"
+description = "Basic project structure"
+author = "Qi Team"
+version = "0.1.0"
+
+[features]
+required = []
