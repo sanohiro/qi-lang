@@ -142,11 +142,11 @@ fn prompt_metadata(project_dir: &Path) -> Result<ProjectMetadata, String> {
 
     println!("{}", ui_msg(UiMsg::ProjectCreating));
 
-    let name = prompt_with_default("プロジェクト名", default_name)?;
-    let version = prompt_with_default("バージョン", "0.1.0")?;
-    let description = prompt_optional("説明")?;
-    let author = prompt_optional("著者名")?;
-    let license = prompt_with_default("ライセンス", "MIT")?;
+    let name = prompt_with_default(&ui_msg(UiMsg::PromptProjectName), default_name)?;
+    let version = prompt_with_default(&ui_msg(UiMsg::PromptVersion), "0.1.0")?;
+    let description = prompt_optional(&ui_msg(UiMsg::PromptDescription))?;
+    let author = prompt_optional(&ui_msg(UiMsg::PromptAuthor))?;
+    let license = prompt_with_default(&ui_msg(UiMsg::PromptLicense), "MIT")?;
 
     Ok(ProjectMetadata {
         name,
@@ -178,7 +178,7 @@ fn prompt_with_default(label: &str, default: &str) -> Result<String, String> {
 
 /// オプショナルな値をプロンプト表示
 fn prompt_optional(label: &str) -> Result<Option<String>, String> {
-    print!("{} (省略可): ", label);
+    print!("{} {}: ", label, ui_msg(UiMsg::PromptOptional));
     io::stdout().flush().map_err(|e| e.to_string())?;
 
     let mut input = String::new();

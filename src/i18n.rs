@@ -545,6 +545,12 @@ pub enum UiMsg {
     ProjectCreated,             // 新しいQiプロジェクトが作成されました: {0}
     ProjectNextSteps,           // 次のステップ:
     ProjectCreating,            // 新しいQiプロジェクトを作成します
+    PromptProjectName,          // プロジェクト名
+    PromptVersion,              // バージョン
+    PromptDescription,          // 説明
+    PromptAuthor,               // 著者名
+    PromptLicense,              // ライセンス
+    PromptOptional,             // (省略可)
     TemplateNeedSubcommand,     // エラー: サブコマンドを指定してください
     TemplateUsage,              // 使い方: qi template <list|info>
     TemplateNeedName,           // エラー: テンプレート名を指定してください
@@ -1769,6 +1775,12 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectCreated, "\nNew Qi project created: {0}"),
         (ProjectNextSteps, "\nNext steps:"),
         (ProjectCreating, "Creating new Qi project\n"),
+        (PromptProjectName, "Project name"),
+        (PromptVersion, "Version"),
+        (PromptDescription, "Description"),
+        (PromptAuthor, "Author"),
+        (PromptLicense, "License"),
+        (PromptOptional, "(optional)"),
         (TemplateNeedSubcommand, "Error: Please specify a subcommand"),
         (TemplateUsage, "Usage: qi template <list|info>"),
         (TemplateNeedName, "Error: Please specify a template name"),
@@ -1955,6 +1967,12 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectCreated, "\n新しいQiプロジェクトが作成されました: {0}"),
         (ProjectNextSteps, "\n次のステップ:"),
         (ProjectCreating, "新しいQiプロジェクトを作成します\n"),
+        (PromptProjectName, "プロジェクト名"),
+        (PromptVersion, "バージョン"),
+        (PromptDescription, "説明"),
+        (PromptAuthor, "著者名"),
+        (PromptLicense, "ライセンス"),
+        (PromptOptional, "(省略可)"),
         (TemplateNeedSubcommand, "エラー: サブコマンドを指定してください"),
         (TemplateUsage, "使い方: qi template <list|info>"),
         (TemplateNeedName, "エラー: テンプレート名を指定してください"),
