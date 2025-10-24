@@ -432,6 +432,10 @@ pub enum MsgKey {
     InvalidIsolationLevel,       // Invalid isolation level: {0}
     UnsupportedKvsUrl,           // Unsupported KVS URL: {0}
     UnsupportedUrl,              // Unsupported URL: {0}
+    RedisSupportNotEnabled,      // Redis support not enabled (feature 'kvs-redis' required)
+    InvalidConnection,           // Invalid connection (expected KvsConnection:xxx)
+    QiTomlAlreadyExists,         // qi.toml already exists
+    PatternErrorNotAllowed,      // Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)
 }
 
 /// UIメッセージキー
@@ -1162,6 +1166,10 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidIsolationLevel, "Invalid isolation level: {0}"),
         (UnsupportedKvsUrl, "Unsupported KVS URL: {0}"),
         (UnsupportedUrl, "Unsupported URL: {0}"),
+        (RedisSupportNotEnabled, "Redis support not enabled (feature 'kvs-redis' required)"),
+        (InvalidConnection, "Invalid connection (expected KvsConnection:xxx)"),
+        (QiTomlAlreadyExists, "qi.toml already exists"),
+        (PatternErrorNotAllowed, "Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)"),
     ])
 });
 
@@ -1612,6 +1620,10 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (InvalidIsolationLevel, "無効なアイソレーションレベル: {0}"),
         (UnsupportedKvsUrl, "サポートされていないKVS URL: {0}"),
         (UnsupportedUrl, "サポートされていないURL: {0}"),
+        (RedisSupportNotEnabled, "Redisサポートが有効化されていません（feature 'kvs-redis'が必要です）"),
+        (InvalidConnection, "無効な接続（KvsConnection:xxxが期待されます）"),
+        (QiTomlAlreadyExists, "qi.tomlが既に存在します"),
+        (PatternErrorNotAllowed, "パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）"),
     ])
 });
 

@@ -422,7 +422,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
         }
         #[cfg(not(feature = "kvs-redis"))]
         {
-            return Err("Redis support not enabled (feature 'kvs-redis' required)".to_string());
+            return Err(fmt_msg(MsgKey::RedisSupportNotEnabled, &[]));
         }
     } else {
         return Err(fmt_msg(MsgKey::UnsupportedKvsUrl, &[url]));
@@ -438,7 +438,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
 /// 接続IDから接続を取得
 fn get_connection(conn_str: &str) -> Result<String, String> {
     if !conn_str.starts_with("KvsConnection:") {
-        return Err("Invalid connection (expected KvsConnection:xxx)".to_string());
+        return Err(fmt_msg(MsgKey::InvalidConnection, &[]));
     }
     let conn_id = &conn_str["KvsConnection:".len()..];
     if !CONNECTIONS.lock().contains_key(conn_id) {

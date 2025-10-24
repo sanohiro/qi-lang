@@ -1300,7 +1300,7 @@ impl Evaluator {
             Pattern::Wildcard | Pattern::Nil | Pattern::Bool(_) | Pattern::Integer(_)
             | Pattern::Float(_) | Pattern::String(_) | Pattern::Keyword(_)
             | Pattern::Transform(_, _) | Pattern::Or(_) => {
-                Err("パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）".to_string())
+                Err(fmt_msg(MsgKey::PatternErrorNotAllowed, &[]))
             }
         }
     }

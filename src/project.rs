@@ -153,7 +153,7 @@ pub fn init_project(project_name: Option<String>, non_interactive: bool) -> Resu
     // qi.tomlが既に存在するかチェック
     let qi_toml_path = project_dir.join("qi.toml");
     if qi_toml_path.exists() {
-        return Err("qi.tomlが既に存在します".to_string());
+        return Err(fmt_msg(MsgKey::QiTomlAlreadyExists, &[]));
     }
 
     // プロジェクトメタデータを取得
