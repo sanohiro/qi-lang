@@ -1,0 +1,34 @@
+;; test.qi - Test code
+
+(println "=== Running Tests ===")
+
+;; Functions to test
+(defn greet [name]
+  (str "Hello, " name "!"))
+
+(defn add [a b]
+  (+ a b))
+
+;; Test greet function
+(def result (greet "Test"))
+(if (= result "Hello, Test!")
+  (println "✓ greet function test: passed")
+  (println "✗ greet function test: failed"))
+
+;; Test add function
+(def add-result (add 2 3))
+(if (= add-result 5)
+  (println "✓ add function test: passed")
+  (println "✗ add function test: failed"))
+
+;; Test pipeline processing
+(def pipeline-result
+  ([1 2 3 4 5]
+   |> (map (fn [x] (* x 2)))
+   |> (reduce + 0)))
+
+(if (= pipeline-result 30)
+  (println "✓ pipeline processing test: passed")
+  (println "✗ pipeline-result processing test: failed"))
+
+(println "\nTests completed")

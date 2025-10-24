@@ -2,7 +2,7 @@
 //!
 //! Qiプロジェクトのメタデータと依存関係を管理します。
 
-use crate::i18n::{fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
+use crate::i18n::{fmt_msg, fmt_ui_msg, ui_msg, Lang, MsgKey, UiMsg};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -122,8 +122,12 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
         metadata.license.as_ref().cloned().unwrap_or_default(),
     );
 
+    // 言語に応じたテンプレートディレクトリを選択
+    let lang = Lang::from_env();
+    let lang_template_dir = select_lang_template(&template_dir, lang);
+
     // テンプレートからプロジェクトを生成（qi.tomlを含む）
-    copy_template(&template_dir, &project_dir, &vars)?;
+    copy_template(&lang_template_dir, &project_dir, &vars)?;
 
     println!("{}", fmt_ui_msg(UiMsg::ProjectCreated, &[&project_dir.display().to_string()]));
     println!("{}", ui_msg(UiMsg::ProjectNextSteps));
@@ -232,6 +236,17 @@ fn find_template(name: &str) -> Result<PathBuf, String> {
     }
 
     Err(fmt_msg(MsgKey::TemplateNotFound, &[name]))
+}
+
+/// 言語に応じたテンプレートディレクトリを選択
+fn select_lang_template(template_dir: &Path, lang: Lang) -> PathBuf {
+    let lang_dir = template_dir.join(lang.as_str());
+    if lang_dir.exists() {
+        lang_dir
+    } else {
+        // フォールバック: 英語版
+        template_dir.join("en")
+    }
 }
 
 /// テンプレートをコピー＆変数置換

@@ -1,0 +1,15 @@
+;; main.qi - Entry point
+
+(println "Hello, Qi!")
+
+;; Greeting function
+(defn greet [name]
+  (str "Hello, " name "!"))
+
+;; Use the function
+(println (greet "{{ project_name }}"))
+
+;; Pipeline example
+(println ([1 2 3 4 5]
+          |> (map (fn [x] (* x x)))
+          |> (filter (fn [x] (> x 10)))))

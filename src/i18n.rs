@@ -40,6 +40,14 @@ impl Lang {
             _ => Lang::En, // 未対応言語は英語にフォールバック
         }
     }
+
+    /// 言語コードを文字列に変換
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Lang::Ja => "ja",
+            Lang::En => "en",
+        }
+    }
 }
 
 /// エラーメッセージキー
