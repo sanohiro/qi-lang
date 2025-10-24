@@ -980,8 +980,9 @@ pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
     {
         let is_dap_mode = crate::debugger::GLOBAL_DEBUGGER.read().is_some();
         if is_dap_mode {
-            eprintln!("\n⏸️  標準入力を待っています");
-            eprintln!("   デバッグコンソールで .stdin <text> と入力してください\n");
+            use crate::i18n::{ui_msg, UiMsg};
+            eprintln!("{}", ui_msg(UiMsg::DapStdinWaiting));
+            eprintln!("{}", ui_msg(UiMsg::DapStdinInstructions));
         }
     }
 

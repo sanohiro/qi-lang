@@ -194,7 +194,7 @@ impl std::str::FromStr for IsolationLevel {
             "read-committed" => Ok(Self::ReadCommitted),
             "repeatable-read" => Ok(Self::RepeatableRead),
             "serializable" => Ok(Self::Serializable),
-            _ => Err(format!("Invalid isolation level: {}", s)),
+            _ => Err(fmt_msg(MsgKey::InvalidIsolationLevel, &[s])),
         }
     }
 }

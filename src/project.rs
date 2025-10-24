@@ -2,6 +2,7 @@
 //!
 //! Qiプロジェクトのメタデータと依存関係を管理します。
 
+use crate::i18n::{fmt_msg, MsgKey};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -60,15 +61,15 @@ impl QiProject {
     /// qi.tomlを読み込む
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         let content = fs::read_to_string(path.as_ref())
-            .map_err(|e| format!("qi.tomlの読み込みに失敗: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToRead, &[&e.to_string()]))?;
 
-        toml::from_str(&content).map_err(|e| format!("qi.tomlのパースに失敗: {}", e))
+        toml::from_str(&content).map_err(|e| fmt_msg(MsgKey::QiTomlFailedToParse, &[&e.to_string()]))
     }
 
     /// カレントディレクトリからqi.tomlを探す
     pub fn find_and_load() -> Result<Self, String> {
         let current = std::env::current_dir()
-            .map_err(|e| format!("カレントディレクトリの取得に失敗: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::FailedToGetCurrentDir, &[&e.to_string()]))?;
 
         Self::load(current.join("qi.toml"))
     }
@@ -76,9 +77,9 @@ impl QiProject {
     /// qi.tomlを書き込む
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
         let content = toml::to_string_pretty(self)
-            .map_err(|e| format!("qi.tomlのシリアライズに失敗: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToSerialize, &[&e.to_string()]))?;
 
-        fs::write(path.as_ref(), content).map_err(|e| format!("qi.tomlの書き込みに失敗: {}", e))
+        fs::write(path.as_ref(), content).map_err(|e| fmt_msg(MsgKey::QiTomlFailedToWrite, &[&e.to_string()]))
     }
 }
 
@@ -92,9 +93,9 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
     // プロジェクトディレクトリ作成
     let project_dir = PathBuf::from(&project_name);
     if project_dir.exists() {
-        return Err(format!("ディレクトリ '{}' は既に存在します", project_name));
+        return Err(fmt_msg(MsgKey::DirectoryAlreadyExists, &[&project_name]));
     }
-    fs::create_dir_all(&project_dir).map_err(|e| format!("ディレクトリの作成に失敗: {}", e))?;
+    fs::create_dir_all(&project_dir).map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
 
     // メタデータを取得
     let metadata = prompt_metadata(&project_dir)?;
@@ -141,12 +142,12 @@ pub fn init_project(project_name: Option<String>, non_interactive: bool) -> Resu
     let project_dir = if let Some(name) = &project_name {
         PathBuf::from(name)
     } else {
-        std::env::current_dir().map_err(|e| format!("カレントディレクトリの取得に失敗: {}", e))?
+        std::env::current_dir().map_err(|e| fmt_msg(MsgKey::FailedToGetCurrentDir, &[&e.to_string()]))?
     };
 
     // ディレクトリが存在しない場合は作成
     if !project_dir.exists() {
-        fs::create_dir_all(&project_dir).map_err(|e| format!("ディレクトリの作成に失敗: {}", e))?;
+        fs::create_dir_all(&project_dir).map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
     }
 
     // qi.tomlが既に存在するかチェック
@@ -274,11 +275,11 @@ fn prompt_optional(label: &str) -> Result<Option<String>, String> {
 fn create_project_structure(project_dir: &Path) -> Result<(), String> {
     // ディレクトリ作成
     fs::create_dir_all(project_dir.join("src"))
-        .map_err(|e| format!("src/ディレクトリの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateSrcDir, &[&e.to_string()]))?;
     fs::create_dir_all(project_dir.join("examples"))
-        .map_err(|e| format!("examples/ディレクトリの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateExamplesDir, &[&e.to_string()]))?;
     fs::create_dir_all(project_dir.join("tests"))
-        .map_err(|e| format!("tests/ディレクトリの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateTestsDir, &[&e.to_string()]))?;
 
     println!("✓ ディレクトリ構造を作成しました");
 
@@ -300,7 +301,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
           |> (filter (fn [x] (> x 10)))))
 "#;
     fs::write(project_dir.join("main.qi"), main_qi)
-        .map_err(|e| format!("main.qiの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateMainQi, &[&e.to_string()]))?;
     println!("✓ main.qiを作成しました");
 
     // src/lib.qiを作成
@@ -313,7 +314,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
   (+ a b))
 "#;
     fs::write(project_dir.join("src/lib.qi"), lib_qi)
-        .map_err(|e| format!("src/lib.qiの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateLibQi, &[&e.to_string()]))?;
     println!("✓ src/lib.qiを作成しました");
 
     // examples/example.qiを作成
@@ -346,7 +347,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
           ||> (fn [x] (* x x))))
 "#;
     fs::write(project_dir.join("examples/example.qi"), example_qi)
-        .map_err(|e| format!("examples/example.qiの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateExampleQi, &[&e.to_string()]))?;
     println!("✓ examples/example.qiを作成しました");
 
     // tests/test.qiを作成
@@ -386,7 +387,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
 (println "\nテスト完了")
 "#;
     fs::write(project_dir.join("tests/test.qi"), test_qi)
-        .map_err(|e| format!("tests/test.qiの作成に失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateTestQi, &[&e.to_string()]))?;
     println!("✓ tests/test.qiを作成しました");
 
     Ok(())
@@ -405,6 +406,7 @@ fn find_template(name: &str) -> Result<PathBuf, String> {
     }
 
     // 2. ホームディレクトリ
+    #[cfg(feature = "repl")]
     if let Some(home) = dirs::home_dir() {
         let home_templates = home.join(".qi/templates").join(name);
         if home_templates.exists() {
@@ -428,7 +430,7 @@ fn find_template(name: &str) -> Result<PathBuf, String> {
         return Ok(dev_templates);
     }
 
-    Err(format!("テンプレート '{}' が見つかりません", name))
+    Err(fmt_msg(MsgKey::TemplateNotFound, &[name]))
 }
 
 /// テンプレートをコピー＆変数置換
@@ -447,7 +449,7 @@ fn copy_dir_recursive(
     dest: &Path,
     vars: &HashMap<String, String>,
 ) -> Result<(), String> {
-    for entry in fs::read_dir(src).map_err(|e| format!("ディレクトリの読み込みに失敗: {}", e))?
+    for entry in fs::read_dir(src).map_err(|e| fmt_msg(MsgKey::FailedToReadDirectory, &[&e.to_string()]))?
     {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_type = entry.file_type().map_err(|e| e.to_string())?;
@@ -474,15 +476,15 @@ fn copy_dir_recursive(
 
         if file_type.is_dir() {
             fs::create_dir_all(&dest_path)
-                .map_err(|e| format!("ディレクトリの作成に失敗: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
             copy_dir_recursive(&src_path, &dest_path, vars)?;
         } else if file_type.is_file() {
             // ファイルを読み込んで変数置換
             let content = fs::read_to_string(&src_path)
-                .map_err(|e| format!("ファイルの読み込みに失敗: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::FailedToReadFile, &[&e.to_string()]))?;
             let rendered = render_template(&content, vars);
             fs::write(&dest_path, rendered)
-                .map_err(|e| format!("ファイルの書き込みに失敗: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::FailedToWriteFile, &[&e.to_string()]))?;
         }
     }
     Ok(())
@@ -649,7 +651,7 @@ fn load_template_info(name: &str) -> Result<TemplateInfo, String> {
     let info_path = template_dir.join("template.toml");
 
     let content = fs::read_to_string(&info_path)
-        .map_err(|e| format!("template.tomlの読み込みに失敗: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToRead, &[&e.to_string()]))?;
 
-    toml::from_str(&content).map_err(|e| format!("template.tomlのパースに失敗: {}", e))
+    toml::from_str(&content).map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToParse, &[&e.to_string()]))
 }

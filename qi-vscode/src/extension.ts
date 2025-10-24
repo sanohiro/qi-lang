@@ -92,12 +92,22 @@ class QiDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
     executable: vscode.DebugAdapterExecutable | undefined
   ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
 
-    // 設定からQiのパスを取得
-    const config = vscode.workspace.getConfiguration('qi');
-    const qiPath = config.get<string>('executablePath', 'qi');
+    // session.configurationからqiPathを取得（launch.jsonで指定されたもの）
+    // なければ設定から取得
+    let qiPath = session.configuration.qiPath;
+    if (!qiPath) {
+      const config = vscode.workspace.getConfiguration('qi');
+      qiPath = config.get<string>('executablePath', 'qi');
+    }
 
     // デバッグアダプターとしてqi --dapを起動
     const args = ['--dap'];
+
+    // 常にログ出力
+    console.log(`[Qi Debug] createDebugAdapterDescriptor called`);
+    console.log(`[Qi Debug] qiPath: ${qiPath}`);
+    console.log(`[Qi Debug] args: ${args.join(' ')}`);
+    console.log(`[Qi Debug] session.configuration:`, session.configuration);
 
     // トレースが有効な場合
     if (session.configuration.trace) {

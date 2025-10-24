@@ -425,7 +425,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
             return Err("Redis support not enabled (feature 'kvs-redis' required)".to_string());
         }
     } else {
-        return Err(format!("Unsupported KVS URL: {}", url));
+        return Err(fmt_msg(MsgKey::UnsupportedKvsUrl, &[url]));
     };
 
     // 接続を保存
@@ -442,7 +442,7 @@ fn get_connection(conn_str: &str) -> Result<String, String> {
     }
     let conn_id = &conn_str["KvsConnection:".len()..];
     if !CONNECTIONS.lock().contains_key(conn_id) {
-        return Err(format!("Connection not found: {}", conn_id));
+        return Err(fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]));
     }
     Ok(conn_id.to_string())
 }
@@ -467,7 +467,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.get(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -509,7 +509,7 @@ pub fn native_set(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.set(key, &value) {
         Ok(s) => Ok(Value::String(s)),
@@ -537,7 +537,7 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.delete(key) {
         Ok(n) => Ok(Value::Integer(n)),
@@ -570,7 +570,7 @@ pub fn native_exists(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.exists(key) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -603,7 +603,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.keys(pattern) {
         Ok(keys) => Ok(Value::Vector(
@@ -646,7 +646,7 @@ pub fn native_expire(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.expire(key, seconds) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -674,7 +674,7 @@ pub fn native_ttl(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.ttl(key) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -702,7 +702,7 @@ pub fn native_incr(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.incr(key) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -730,7 +730,7 @@ pub fn native_decr(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.decr(key) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -771,7 +771,7 @@ pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.lpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -812,7 +812,7 @@ pub fn native_rpush(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.rpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -840,7 +840,7 @@ pub fn native_lpop(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.lpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -869,7 +869,7 @@ pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.rpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -916,7 +916,7 @@ pub fn native_hset(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.hset(key, field, &value) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -949,7 +949,7 @@ pub fn native_hget(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.hget(key, field) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -983,7 +983,7 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.hgetall(key) {
         Ok(pairs) => {
@@ -1031,7 +1031,7 @@ pub fn native_sadd(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.sadd(key, &member) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -1069,7 +1069,7 @@ pub fn native_smembers(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.smembers(key) {
         Ok(members) => Ok(Value::Vector(
@@ -1112,7 +1112,7 @@ pub fn native_mget(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.mget(&keys) {
         Ok(values) => Ok(Value::Vector(
@@ -1167,7 +1167,7 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.mset(&pairs) {
         Ok(s) => Ok(Value::String(s)),
@@ -1215,7 +1215,7 @@ pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
     let connections = CONNECTIONS.lock();
     let driver = connections
         .get(&conn_id)
-        .ok_or_else(|| format!("Connection not found: {}", conn_id))?;
+        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
 
     match driver.lrange(key, start, stop) {
         Ok(items) => Ok(Value::Vector(

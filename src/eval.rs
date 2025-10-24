@@ -1218,9 +1218,9 @@ impl Evaluator {
                 let values = match value {
                     Value::List(v) | Value::Vector(v) => v,
                     _ => {
-                        return Err(format!(
-                            "型エラー: ベクタパターンに対して{}を渡すことはできません",
-                            value.type_name()
+                        return Err(fmt_msg(
+                            MsgKey::TypeErrorVectorPattern,
+                            &[value.type_name()]
                         ));
                     }
                 };
@@ -1229,10 +1229,9 @@ impl Evaluator {
                 if let Some(rest) = rest_param {
                     // [x y ...rest] 形式
                     if values.len() < params.len() {
-                        return Err(format!(
-                            "引数エラー: ベクタパターンは最低{}個の要素を期待しましたが、{}個が渡されました",
-                            params.len(),
-                            values.len()
+                        return Err(fmt_msg(
+                            MsgKey::ArgErrorVectorPatternMinimum,
+                            &[&params.len().to_string(), &values.len().to_string()]
                         ));
                     }
 
@@ -1248,10 +1247,9 @@ impl Evaluator {
                 } else {
                     // [x y] 形式（固定長）
                     if values.len() != params.len() {
-                        return Err(format!(
-                            "引数エラー: ベクタパターンは{}個の要素を期待しましたが、{}個が渡されました",
-                            params.len(),
-                            values.len()
+                        return Err(fmt_msg(
+                            MsgKey::ArgErrorVectorPattern,
+                            &[&params.len().to_string(), &values.len().to_string()]
                         ));
                     }
 
@@ -1266,9 +1264,9 @@ impl Evaluator {
                 let map = match value {
                     Value::Map(m) => m,
                     _ => {
-                        return Err(format!(
-                            "型エラー: マップパターンに対して{}を渡すことはできません",
-                            value.type_name()
+                        return Err(fmt_msg(
+                            MsgKey::TypeErrorMapPattern,
+                            &[value.type_name()]
                         ));
                     }
                 };
@@ -1280,7 +1278,7 @@ impl Evaluator {
                     if let Some(val) = map.get(&map_key) {
                         self.bind_fn_param(pattern, val, env)?;
                     } else {
-                        return Err(format!("キーエラー: マップにキー :{}が存在しません", key));
+                        return Err(fmt_msg(MsgKey::KeyErrorMapMissing, &[key]));
                     }
                 }
 

@@ -50,7 +50,7 @@ impl DbDriver for MysqlDriver {
 
         // tokioランタイムを作成
         let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| DbError::new(format!("Failed to create runtime: {}", e)))?;
+            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e.to_string()])))?;
 
         // 接続を確立
         let conn = rt

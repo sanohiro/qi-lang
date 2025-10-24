@@ -369,6 +369,69 @@ pub enum MsgKey {
     MdTableEmpty,          // markdown/table: table must not be empty
     MdTableRowMustBeList,  // markdown/table: row {0} must be a list
     MdTableColumnMismatch, // markdown/table: row {0} has {1} columns, expected {2}
+
+    // DAPデバッガーエラー
+    DapEmptyExpression,       // Empty expression
+    DapEvaluationError,       // Evaluation error: {0}
+    DapParseError,            // Parse error: {0}
+    DapNoEnvironment,         // No environment available (not stopped at breakpoint)
+    DapDebuggerNotAvailable,  // Debugger not available
+    DapServerError,           // DAP server error: {0}
+    DapServerNotEnabled,      // Error: DAP server is not enabled. Build with --features dap-server
+    InternalError,            // Internal error: {0}
+
+    // プロジェクト管理エラー
+    QiTomlFailedToRead,          // Failed to read qi.toml: {0}
+    QiTomlFailedToParse,         // Failed to parse qi.toml: {0}
+    QiTomlFailedToSerialize,     // Failed to serialize qi.toml: {0}
+    QiTomlFailedToWrite,         // Failed to write qi.toml: {0}
+    FailedToGetCurrentDir,       // Failed to get current directory: {0}
+    DirectoryAlreadyExists,      // Directory '{}' already exists
+    FailedToCreateDirectory,     // Failed to create directory: {0}
+    FailedToCreateSrcDir,        // Failed to create src/ directory: {0}
+    FailedToCreateExamplesDir,   // Failed to create examples/ directory: {0}
+    FailedToCreateTestsDir,      // Failed to create tests/ directory: {0}
+    FailedToCreateMainQi,        // Failed to create main.qi: {0}
+    FailedToCreateLibQi,         // Failed to create src/lib.qi: {0}
+    FailedToCreateExampleQi,     // Failed to create examples/example.qi: {0}
+    FailedToCreateTestQi,        // Failed to create tests/test.qi: {0}
+    TemplateNotFound,            // Template '{}' not found
+    FailedToReadDirectory,       // Failed to read directory: {0}
+    FailedToReadFile,            // Failed to read file: {0}
+    FailedToWriteFile,           // Failed to write file: {0}
+    TemplateTomlFailedToRead,    // Failed to read template.toml: {0}
+    TemplateTomlFailedToParse,   // Failed to parse template.toml: {0}
+
+    // 評価器エラー
+    TypeErrorVectorPattern,      // Type error: cannot pass {0} to vector pattern
+    ArgErrorVectorPatternMinimum, // Argument error: vector pattern expects at least {0} elements, but got {1}
+    ArgErrorVectorPattern,       // Argument error: vector pattern expects {0} elements, but got {1}
+    TypeErrorMapPattern,         // Type error: cannot pass {0} to map pattern
+    KeyErrorMapMissing,          // Key error: map does not have key :{0}
+
+    // データベース・KVSエラー
+    ConnectionError,             // Connection error: {0}
+    ConnectionNotFound,          // Connection not found: {0}
+    EvalError,                   // eval: {0}
+    FailedToCreateRuntime,       // Failed to create runtime: {0}
+    FailedToExecuteColumnsQuery, // Failed to execute columns query: {0}
+    FailedToExecuteForeignKeysQuery, // Failed to execute foreign keys query: {0}
+    FailedToExecuteIndexColumnsQuery, // Failed to execute index columns query: {0}
+    FailedToExecuteIndexesQuery, // Failed to execute indexes query: {0}
+    FailedToExecuteTablesQuery,  // Failed to execute tables query: {0}
+    FailedToGetColumnName,       // Failed to get column name: {0}
+    FailedToGetColumnValue,      // Failed to get column value: {0}
+    FailedToGetDatabaseVersion,  // Failed to get database version: {0}
+    FailedToPrepareStatement,    // Failed to prepare statement: {0}
+    FailedToQueryColumns,        // Failed to query columns: {0}
+    FailedToQueryForeignKeys,    // Failed to query foreign keys: {0}
+    FailedToQueryIndexColumns,   // Failed to query index columns: {0}
+    FailedToQueryIndexes,        // Failed to query indexes: {0}
+    FailedToQueryTables,         // Failed to query tables: {0}
+    FailedToReadFileMetadata,    // Failed to read file metadata: {0}
+    InvalidIsolationLevel,       // Invalid isolation level: {0}
+    UnsupportedKvsUrl,           // Unsupported KVS URL: {0}
+    UnsupportedUrl,              // Unsupported URL: {0}
 }
 
 /// UIメッセージキー
@@ -399,6 +462,7 @@ pub enum UiMsg {
 
     // REPLコマンドヘルプ
     ReplCommandHelp,
+    ReplCommandDoc,
     ReplCommandVars,
     ReplCommandFuncs,
     ReplCommandBuiltins,
@@ -437,6 +501,9 @@ pub enum UiMsg {
     OptQuiet,
     OptHelp,
     OptVersion,
+    OptNew,
+    OptTemplate,
+    OptDap,
 
     // ヘルプ例
     ExampleStartRepl,
@@ -444,6 +511,9 @@ pub enum UiMsg {
     ExampleExecuteCode,
     ExampleStdin,
     ExampleLoadFile,
+    ExampleNewProject,
+    ExampleNewHttpServer,
+    ExampleTemplateList,
 
     // 環境変数説明
     EnvLangQi,
@@ -463,6 +533,29 @@ pub enum UiMsg {
     ErrorParse,
     ErrorLexer,
     ErrorRuntime,
+
+    // DAP
+    DapStdinWaiting,      // ⏸️  標準入力を待っています
+    DapStdinInstructions, // デバッグコンソールで .stdin <text> と入力してください
+    DapStdinSent,         // ✓ 入力を送信しました: {0}
+
+    // プロジェクト作成
+    ProjectNewNeedName,         // エラー: プロジェクト名を指定してください
+    ProjectNewUsage,            // 使い方: qi new <project-name> [--template <template>]
+    ProjectNewUnknownOption,    // エラー: 不明なオプション: {0}
+    ProjectNewError,            // エラー: {0}
+    TemplateNeedSubcommand,     // エラー: サブコマンドを指定してください
+    TemplateUsage,              // 使い方: qi template <list|info>
+    TemplateNeedName,           // エラー: テンプレート名を指定してください
+    TemplateInfoUsage,          // 使い方: qi template info <name>
+    TemplateUnknownSubcommand,  // エラー: 不明なサブコマンド: {0}
+
+    // REPL
+    ReplDocUsage,    // Usage: :doc <name>
+    ReplDocNotFound, // No such function or variable: {0}
+    ReplDocParameters, // Parameters:
+    ReplDocExamples,   // Examples:
+    ReplDocNoDoc,      // (no documentation available)
 }
 
 // ========================================
@@ -1010,6 +1103,65 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             MdTableColumnMismatch,
             "markdown/table: row {0} has {1} columns, expected {2}",
         ),
+        // DAPデバッガーエラー
+        (DapEmptyExpression, "Empty expression"),
+        (DapEvaluationError, "Evaluation error: {0}"),
+        (DapParseError, "Parse error: {0}"),
+        (DapNoEnvironment, "No environment available (not stopped at breakpoint)"),
+        (DapDebuggerNotAvailable, "Debugger not available"),
+        (DapServerError, "DAP server error: {0}"),
+        (DapServerNotEnabled, "Error: DAP server is not enabled. Build with --features dap-server"),
+        (InternalError, "Internal error: {0}"),
+        // プロジェクト管理エラー
+        (QiTomlFailedToRead, "Failed to read qi.toml: {0}"),
+        (QiTomlFailedToParse, "Failed to parse qi.toml: {0}"),
+        (QiTomlFailedToSerialize, "Failed to serialize qi.toml: {0}"),
+        (QiTomlFailedToWrite, "Failed to write qi.toml: {0}"),
+        (FailedToGetCurrentDir, "Failed to get current directory: {0}"),
+        (DirectoryAlreadyExists, "Directory '{0}' already exists"),
+        (FailedToCreateDirectory, "Failed to create directory: {0}"),
+        (FailedToCreateSrcDir, "Failed to create src/ directory: {0}"),
+        (FailedToCreateExamplesDir, "Failed to create examples/ directory: {0}"),
+        (FailedToCreateTestsDir, "Failed to create tests/ directory: {0}"),
+        (FailedToCreateMainQi, "Failed to create main.qi: {0}"),
+        (FailedToCreateLibQi, "Failed to create src/lib.qi: {0}"),
+        (FailedToCreateExampleQi, "Failed to create examples/example.qi: {0}"),
+        (FailedToCreateTestQi, "Failed to create tests/test.qi: {0}"),
+        (TemplateNotFound, "Template '{0}' not found"),
+        (FailedToReadDirectory, "Failed to read directory: {0}"),
+        (FailedToReadFile, "Failed to read file: {0}"),
+        (FailedToWriteFile, "Failed to write file: {0}"),
+        (TemplateTomlFailedToRead, "Failed to read template.toml: {0}"),
+        (TemplateTomlFailedToParse, "Failed to parse template.toml: {0}"),
+        // 評価器エラー
+        (TypeErrorVectorPattern, "Type error: cannot pass {0} to vector pattern"),
+        (ArgErrorVectorPatternMinimum, "Argument error: vector pattern expects at least {0} elements, but got {1}"),
+        (ArgErrorVectorPattern, "Argument error: vector pattern expects {0} elements, but got {1}"),
+        (TypeErrorMapPattern, "Type error: cannot pass {0} to map pattern"),
+        (KeyErrorMapMissing, "Key error: map does not have key :{0}"),
+        // データベース・KVSエラー
+        (ConnectionError, "Connection error: {0}"),
+        (ConnectionNotFound, "Connection not found: {0}"),
+        (EvalError, "eval: {0}"),
+        (FailedToCreateRuntime, "Failed to create runtime: {0}"),
+        (FailedToExecuteColumnsQuery, "Failed to execute columns query: {0}"),
+        (FailedToExecuteForeignKeysQuery, "Failed to execute foreign keys query: {0}"),
+        (FailedToExecuteIndexColumnsQuery, "Failed to execute index columns query: {0}"),
+        (FailedToExecuteIndexesQuery, "Failed to execute indexes query: {0}"),
+        (FailedToExecuteTablesQuery, "Failed to execute tables query: {0}"),
+        (FailedToGetColumnName, "Failed to get column name: {0}"),
+        (FailedToGetColumnValue, "Failed to get column value: {0}"),
+        (FailedToGetDatabaseVersion, "Failed to get database version: {0}"),
+        (FailedToPrepareStatement, "Failed to prepare statement: {0}"),
+        (FailedToQueryColumns, "Failed to query columns: {0}"),
+        (FailedToQueryForeignKeys, "Failed to query foreign keys: {0}"),
+        (FailedToQueryIndexColumns, "Failed to query index columns: {0}"),
+        (FailedToQueryIndexes, "Failed to query indexes: {0}"),
+        (FailedToQueryTables, "Failed to query tables: {0}"),
+        (FailedToReadFileMetadata, "Failed to read file metadata: {0}"),
+        (InvalidIsolationLevel, "Invalid isolation level: {0}"),
+        (UnsupportedKvsUrl, "Unsupported KVS URL: {0}"),
+        (UnsupportedUrl, "Unsupported URL: {0}"),
     ])
 });
 
@@ -1401,6 +1553,65 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (MdTableEmpty, "markdown/table: テーブルは空であってはいけません"),
         (MdTableRowMustBeList, "markdown/table: 行{0}はリストである必要があります"),
         (MdTableColumnMismatch, "markdown/table: 行{0}は{1}列ですが、{2}列が期待されています"),
+        // DAPデバッガーエラー
+        (DapEmptyExpression, "式が空です"),
+        (DapEvaluationError, "評価エラー: {0}"),
+        (DapParseError, "パースエラー: {0}"),
+        (DapNoEnvironment, "環境が利用できません（ブレークポイントで停止していません）"),
+        (DapDebuggerNotAvailable, "デバッガーが利用できません"),
+        (DapServerError, "DAPサーバーエラー: {0}"),
+        (DapServerNotEnabled, "エラー: DAPサーバーが有効化されていません。--features dap-serverでビルドしてください"),
+        (InternalError, "内部エラー: {0}"),
+        // プロジェクト管理エラー
+        (QiTomlFailedToRead, "qi.tomlの読み込みに失敗: {0}"),
+        (QiTomlFailedToParse, "qi.tomlのパースに失敗: {0}"),
+        (QiTomlFailedToSerialize, "qi.tomlのシリアライズに失敗: {0}"),
+        (QiTomlFailedToWrite, "qi.tomlの書き込みに失敗: {0}"),
+        (FailedToGetCurrentDir, "カレントディレクトリの取得に失敗: {0}"),
+        (DirectoryAlreadyExists, "ディレクトリ '{0}' は既に存在します"),
+        (FailedToCreateDirectory, "ディレクトリの作成に失敗: {0}"),
+        (FailedToCreateSrcDir, "src/ディレクトリの作成に失敗: {0}"),
+        (FailedToCreateExamplesDir, "examples/ディレクトリの作成に失敗: {0}"),
+        (FailedToCreateTestsDir, "tests/ディレクトリの作成に失敗: {0}"),
+        (FailedToCreateMainQi, "main.qiの作成に失敗: {0}"),
+        (FailedToCreateLibQi, "src/lib.qiの作成に失敗: {0}"),
+        (FailedToCreateExampleQi, "examples/example.qiの作成に失敗: {0}"),
+        (FailedToCreateTestQi, "tests/test.qiの作成に失敗: {0}"),
+        (TemplateNotFound, "テンプレート '{0}' が見つかりません"),
+        (FailedToReadDirectory, "ディレクトリの読み込みに失敗: {0}"),
+        (FailedToReadFile, "ファイルの読み込みに失敗: {0}"),
+        (FailedToWriteFile, "ファイルの書き込みに失敗: {0}"),
+        (TemplateTomlFailedToRead, "template.tomlの読み込みに失敗: {0}"),
+        (TemplateTomlFailedToParse, "template.tomlのパースに失敗: {0}"),
+        // 評価器エラー
+        (TypeErrorVectorPattern, "型エラー: ベクタパターンに対して{0}を渡すことはできません"),
+        (ArgErrorVectorPatternMinimum, "引数エラー: ベクタパターンは最低{0}個の要素を期待しましたが、{1}個が渡されました"),
+        (ArgErrorVectorPattern, "引数エラー: ベクタパターンは{0}個の要素を期待しましたが、{1}個が渡されました"),
+        (TypeErrorMapPattern, "型エラー: マップパターンに対して{0}を渡すことはできません"),
+        (KeyErrorMapMissing, "キーエラー: マップにキー :{0}が存在しません"),
+        // データベース・KVSエラー
+        (ConnectionError, "接続エラー: {0}"),
+        (ConnectionNotFound, "接続が見つかりません: {0}"),
+        (EvalError, "評価: {0}"),
+        (FailedToCreateRuntime, "ランタイムの作成に失敗: {0}"),
+        (FailedToExecuteColumnsQuery, "カラムクエリの実行に失敗: {0}"),
+        (FailedToExecuteForeignKeysQuery, "外部キークエリの実行に失敗: {0}"),
+        (FailedToExecuteIndexColumnsQuery, "インデックスカラムクエリの実行に失敗: {0}"),
+        (FailedToExecuteIndexesQuery, "インデックスクエリの実行に失敗: {0}"),
+        (FailedToExecuteTablesQuery, "テーブルクエリの実行に失敗: {0}"),
+        (FailedToGetColumnName, "カラム名の取得に失敗: {0}"),
+        (FailedToGetColumnValue, "カラム値の取得に失敗: {0}"),
+        (FailedToGetDatabaseVersion, "データベースバージョンの取得に失敗: {0}"),
+        (FailedToPrepareStatement, "ステートメントの準備に失敗: {0}"),
+        (FailedToQueryColumns, "カラムのクエリに失敗: {0}"),
+        (FailedToQueryForeignKeys, "外部キーのクエリに失敗: {0}"),
+        (FailedToQueryIndexColumns, "インデックスカラムのクエリに失敗: {0}"),
+        (FailedToQueryIndexes, "インデックスのクエリに失敗: {0}"),
+        (FailedToQueryTables, "テーブルのクエリに失敗: {0}"),
+        (FailedToReadFileMetadata, "ファイルメタデータの読み込みに失敗: {0}"),
+        (InvalidIsolationLevel, "無効なアイソレーションレベル: {0}"),
+        (UnsupportedKvsUrl, "サポートされていないKVS URL: {0}"),
+        (UnsupportedUrl, "サポートされていないURL: {0}"),
     ])
 });
 
@@ -1435,6 +1646,7 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ReplTypeHelpForCommands, "Type :help for available commands"),
         // REPLコマンドヘルプ
         (ReplCommandHelp, "  :help              Show this help"),
+        (ReplCommandDoc, "  :doc <name>        Show documentation for a function"),
         (
             ReplCommandVars,
             "  :vars              List defined variables",
@@ -1505,6 +1717,9 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         (OptHelp, "  -h, --help         Show this help message"),
         (OptVersion, "  -v, --version      Show version information"),
+        (OptNew, "    new <name> [-t <template>]  Create a new Qi project"),
+        (OptTemplate, "    template <list|info>        Template management"),
+        (OptDap, "    --dap                       Start Debug Adapter Protocol server"),
         // ヘルプ例
         (ExampleStartRepl, "  qi                 Start REPL"),
         (ExampleRunScript, "  qi script.qi       Run script"),
@@ -1514,6 +1729,9 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             ExampleLoadFile,
             "  qi -l prelude.qi   Load file and start REPL",
         ),
+        (ExampleNewProject, "    qi new my-project        Create a new project"),
+        (ExampleNewHttpServer, "    qi new myapi -t http-server  Create an HTTP server project"),
+        (ExampleTemplateList, "    qi template list         List available templates"),
         // 環境変数説明
         (EnvLangQi, "  QI_LANG            Language (ja, en)"),
         (
@@ -1533,6 +1751,26 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ErrorParse, "Parse error"),
         (ErrorLexer, "Lexer error"),
         (ErrorRuntime, "Runtime error"),
+        // DAP
+        (DapStdinWaiting, "\n⏸️  Waiting for standard input"),
+        (DapStdinInstructions, "   Enter '.stdin <text>' in the debug console\n"),
+        (DapStdinSent, "✓ Sent to stdin: {0}"),
+        // Project creation
+        (ProjectNewNeedName, "Error: Please specify a project name"),
+        (ProjectNewUsage, "Usage: qi new <project-name> [--template <template>]"),
+        (ProjectNewUnknownOption, "Error: Unknown option: {0}"),
+        (ProjectNewError, "Error: {0}"),
+        (TemplateNeedSubcommand, "Error: Please specify a subcommand"),
+        (TemplateUsage, "Usage: qi template <list|info>"),
+        (TemplateNeedName, "Error: Please specify a template name"),
+        (TemplateInfoUsage, "Usage: qi template info <name>"),
+        (TemplateUnknownSubcommand, "Error: Unknown subcommand: {0}"),
+        // REPL documentation
+        (ReplDocUsage, "Usage: :doc <name>"),
+        (ReplDocNotFound, "No such function or variable: {0}"),
+        (ReplDocParameters, "\nParameters:"),
+        (ReplDocExamples, "\nExamples:"),
+        (ReplDocNoDoc, "(no documentation available)"),
     ])
 });
 
@@ -1576,6 +1814,7 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         // REPLコマンドヘルプ
         (ReplCommandHelp, "  :help              このヘルプを表示"),
+        (ReplCommandDoc, "  :doc <name>        関数のドキュメントを表示"),
         (
             ReplCommandVars,
             "  :vars              定義されている変数を一覧表示",
@@ -1649,6 +1888,9 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         (OptHelp, "  -h, --help         このヘルプメッセージを表示"),
         (OptVersion, "  -v, --version      バージョン情報を表示"),
+        (OptNew, "    new <name> [-t <template>]  新しいQiプロジェクトを作成"),
+        (OptTemplate, "    template <list|info>        テンプレート管理"),
+        (OptDap, "    --dap                       Debug Adapter Protocolサーバーを起動"),
         // ヘルプ例
         (ExampleStartRepl, "  qi                 REPLを起動"),
         (ExampleRunScript, "  qi script.qi       スクリプトを実行"),
@@ -1658,6 +1900,9 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             ExampleLoadFile,
             "  qi -l prelude.qi   ファイルを読み込んでREPL起動",
         ),
+        (ExampleNewProject, "    qi new my-project        新しいプロジェクトを作成"),
+        (ExampleNewHttpServer, "    qi new myapi -t http-server  HTTPサーバープロジェクトを作成"),
+        (ExampleTemplateList, "    qi template list         利用可能なテンプレート一覧"),
         // 環境変数説明
         (EnvLangQi, "  QI_LANG            言語 (ja, en)"),
         (
@@ -1680,6 +1925,26 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ErrorParse, "パースエラー"),
         (ErrorLexer, "字句解析エラー"),
         (ErrorRuntime, "実行時エラー"),
+        // DAP
+        (DapStdinWaiting, "\n⏸️  標準入力を待っています"),
+        (DapStdinInstructions, "   デバッグコンソールで .stdin <text> と入力してください\n"),
+        (DapStdinSent, "✓ 入力を送信しました: {0}"),
+        // プロジェクト作成
+        (ProjectNewNeedName, "エラー: プロジェクト名を指定してください"),
+        (ProjectNewUsage, "使い方: qi new <project-name> [--template <template>]"),
+        (ProjectNewUnknownOption, "エラー: 不明なオプション: {0}"),
+        (ProjectNewError, "エラー: {0}"),
+        (TemplateNeedSubcommand, "エラー: サブコマンドを指定してください"),
+        (TemplateUsage, "使い方: qi template <list|info>"),
+        (TemplateNeedName, "エラー: テンプレート名を指定してください"),
+        (TemplateInfoUsage, "使い方: qi template info <name>"),
+        (TemplateUnknownSubcommand, "エラー: 不明なサブコマンド: {0}"),
+        // REPLドキュメント
+        (ReplDocUsage, "使い方: :doc <name>"),
+        (ReplDocNotFound, "関数または変数が見つかりません: {0}"),
+        (ReplDocParameters, "\nパラメータ:"),
+        (ReplDocExamples, "\n使用例:"),
+        (ReplDocNoDoc, "(ドキュメントがありません)"),
     ])
 });
 

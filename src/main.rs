@@ -1,5 +1,5 @@
 use qi_lang::eval::Evaluator;
-use qi_lang::i18n::{self, fmt_ui_msg, ui_msg, UiMsg};
+use qi_lang::i18n::{self, fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::project;
 use qi_lang::value::Value;
@@ -113,13 +113,13 @@ fn main() {
         "--dap" => {
             // DAPサーバーを起動（非同期版、stdin/stdoutで通信）
             if let Err(e) = qi_lang::dap::DapServer::run_async() {
-                eprintln!("DAP server error: {}", e);
+                eprintln!("{}", fmt_msg(MsgKey::DapServerError, &[&e.to_string()]));
                 std::process::exit(1);
             }
         }
         #[cfg(not(feature = "dap-server"))]
         "--dap" => {
-            eprintln!("Error: DAP server is not enabled. Build with --features dap-server");
+            eprintln!("{}", fmt_msg(MsgKey::DapServerNotEnabled, &[]));
             std::process::exit(1);
         }
         "-q" | "--quiet" => {
@@ -129,8 +129,8 @@ fn main() {
         "new" => {
             // プロジェクト作成
             if args.len() < 3 {
-                eprintln!("エラー: プロジェクト名を指定してください");
-                eprintln!("使い方: qi new <project-name> [--template <template>]");
+                eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewNeedName, &[]));
+                eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewUsage, &[]));
                 std::process::exit(1);
             }
             let project_name = args[2].clone();
@@ -143,45 +143,45 @@ fn main() {
                     template = Some(args[i + 1].clone());
                     i += 2;
                 } else {
-                    eprintln!("エラー: 不明なオプション: {}", args[i]);
+                    eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewUnknownOption, &[&args[i]]));
                     std::process::exit(1);
                 }
             }
 
             if let Err(e) = project::new_project(project_name, template) {
-                eprintln!("エラー: {}", e);
+                eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewError, &[&e]));
                 std::process::exit(1);
             }
         }
         "template" => {
             // テンプレート管理
             if args.len() < 3 {
-                eprintln!("エラー: サブコマンドを指定してください");
-                eprintln!("使い方: qi template <list|info>");
+                eprintln!("{}", fmt_ui_msg(UiMsg::TemplateNeedSubcommand, &[]));
+                eprintln!("{}", fmt_ui_msg(UiMsg::TemplateUsage, &[]));
                 std::process::exit(1);
             }
 
             match args[2].as_str() {
                 "list" => {
                     if let Err(e) = project::list_templates() {
-                        eprintln!("エラー: {}", e);
+                        eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewError, &[&e]));
                         std::process::exit(1);
                     }
                 }
                 "info" => {
                     if args.len() < 4 {
-                        eprintln!("エラー: テンプレート名を指定してください");
-                        eprintln!("使い方: qi template info <name>");
+                        eprintln!("{}", fmt_ui_msg(UiMsg::TemplateNeedName, &[]));
+                        eprintln!("{}", fmt_ui_msg(UiMsg::TemplateInfoUsage, &[]));
                         std::process::exit(1);
                     }
                     if let Err(e) = project::show_template_info(&args[3]) {
-                        eprintln!("エラー: {}", e);
+                        eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewError, &[&e]));
                         std::process::exit(1);
                     }
                 }
                 _ => {
-                    eprintln!("エラー: 不明なサブコマンド: {}", args[2]);
-                    eprintln!("使い方: qi template <list|info>");
+                    eprintln!("{}", fmt_ui_msg(UiMsg::TemplateUnknownSubcommand, &[&args[2]]));
+                    eprintln!("{}", fmt_ui_msg(UiMsg::TemplateUsage, &[]));
                     std::process::exit(1);
                 }
             }
@@ -229,22 +229,22 @@ fn print_help() {
     println!("{}", ui_msg(UiMsg::HelpUsage));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpOptions));
-    println!("    new <name> [-t <template>]  新しいQiプロジェクトを作成");
-    println!("    template <list|info>        テンプレート管理");
+    println!("{}", ui_msg(UiMsg::OptNew));
+    println!("{}", ui_msg(UiMsg::OptTemplate));
     println!("{}", ui_msg(UiMsg::OptExecute));
     println!("{}", ui_msg(UiMsg::OptStdin));
     println!("{}", ui_msg(UiMsg::OptLoad));
     println!("{}", ui_msg(UiMsg::OptQuiet));
     #[cfg(feature = "dap-server")]
-    println!("    --dap                       Debug Adapter Protocolサーバーを起動");
+    println!("{}", ui_msg(UiMsg::OptDap));
     println!("{}", ui_msg(UiMsg::OptHelp));
     println!("{}", ui_msg(UiMsg::OptVersion));
     println!();
     println!("{}:", ui_msg(UiMsg::HelpExamples));
     println!("{}", ui_msg(UiMsg::ExampleStartRepl));
-    println!("    qi new my-project        新しいプロジェクトを作成");
-    println!("    qi new myapi -t http-server  HTTPサーバープロジェクトを作成");
-    println!("    qi template list         利用可能なテンプレート一覧");
+    println!("{}", ui_msg(UiMsg::ExampleNewProject));
+    println!("{}", ui_msg(UiMsg::ExampleNewHttpServer));
+    println!("{}", ui_msg(UiMsg::ExampleTemplateList));
     println!("{}", ui_msg(UiMsg::ExampleRunScript));
     println!("{}", ui_msg(UiMsg::ExampleExecuteCode));
     println!("{}", ui_msg(UiMsg::ExampleStdin));
@@ -363,12 +363,12 @@ fn run_tests(args: &[String]) {
                 }
             }
             Err(e) => {
-                eprintln!("Internal error: {}", e);
+                eprintln!("{}", fmt_msg(MsgKey::InternalError, &[&e]));
                 std::process::exit(1);
             }
         },
         Err(e) => {
-            eprintln!("Internal error: {}", e);
+            eprintln!("{}", fmt_msg(MsgKey::InternalError, &[&e]));
             std::process::exit(1);
         }
     }
@@ -701,7 +701,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
         ":help" => {
             println!("{}", ui_msg(UiMsg::ReplAvailableCommands));
             println!("  {}", ui_msg(UiMsg::ReplCommandHelp));
-            println!("  :doc <name>              Show documentation for a function");
+            println!("  {}", ui_msg(UiMsg::ReplCommandDoc));
             println!("  {}", ui_msg(UiMsg::ReplCommandVars));
             println!("  {}", ui_msg(UiMsg::ReplCommandFuncs));
             println!("  {}", ui_msg(UiMsg::ReplCommandBuiltins));
@@ -755,7 +755,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
             lazy_load_std_docs(evaluator);
 
             if parts.len() < 2 {
-                eprintln!("Usage: :doc <name>");
+                eprintln!("{}", fmt_ui_msg(UiMsg::ReplDocUsage, &[]));
                 return;
             }
 
@@ -765,7 +765,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
 
                 // 関数/変数の存在確認
                 if env.get(name).is_none() {
-                    eprintln!("No such function or variable: {}", name);
+                    eprintln!("{}", fmt_ui_msg(UiMsg::ReplDocNotFound, &[name]));
                     return;
                 }
 
@@ -801,7 +801,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                             println!("  {}", desc);
                         }
                         if let Some(Value::Vector(params)) = m.get("params") {
-                            println!("\nParameters:");
+                            println!("{}", ui_msg(UiMsg::ReplDocParameters));
                             for param in params {
                                 if let Value::Map(pm) = param {
                                     if let (
@@ -815,7 +815,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                             }
                         }
                         if let Some(Value::Vector(examples)) = m.get("examples") {
-                            println!("\nExamples:");
+                            println!("{}", ui_msg(UiMsg::ReplDocExamples));
                             for ex in examples {
                                 if let Value::String(s) = ex {
                                     println!("  {}", s);
@@ -825,7 +825,7 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                         println!();
                     }
                     _ => {
-                        println!("\n{}: (no documentation available)\n", name);
+                        println!("\n{}: {}\n", name, ui_msg(UiMsg::ReplDocNoDoc));
                     }
                 }
             }

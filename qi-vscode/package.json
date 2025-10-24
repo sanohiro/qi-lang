@@ -189,7 +189,6 @@
       {
         "type": "qi",
         "label": "Qi Debugger",
-        "runtime": "node",
         "configurationAttributes": {
           "launch": {
             "required": [
