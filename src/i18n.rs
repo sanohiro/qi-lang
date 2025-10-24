@@ -388,13 +388,6 @@ pub enum MsgKey {
     FailedToGetCurrentDir,       // Failed to get current directory: {0}
     DirectoryAlreadyExists,      // Directory '{}' already exists
     FailedToCreateDirectory,     // Failed to create directory: {0}
-    FailedToCreateSrcDir,        // Failed to create src/ directory: {0}
-    FailedToCreateExamplesDir,   // Failed to create examples/ directory: {0}
-    FailedToCreateTestsDir,      // Failed to create tests/ directory: {0}
-    FailedToCreateMainQi,        // Failed to create main.qi: {0}
-    FailedToCreateLibQi,         // Failed to create src/lib.qi: {0}
-    FailedToCreateExampleQi,     // Failed to create examples/example.qi: {0}
-    FailedToCreateTestQi,        // Failed to create tests/test.qi: {0}
     TemplateNotFound,            // Template '{}' not found
     FailedToReadDirectory,       // Failed to read directory: {0}
     FailedToReadFile,            // Failed to read file: {0}
@@ -552,12 +545,6 @@ pub enum UiMsg {
     ProjectCreated,             // 新しいQiプロジェクトが作成されました: {0}
     ProjectNextSteps,           // 次のステップ:
     ProjectCreating,            // 新しいQiプロジェクトを作成します
-    ProjectDirCreated,          // ✓ ディレクトリ構造を作成しました
-    ProjectQiTomlCreated,       // ✓ qi.tomlを作成しました
-    ProjectMainQiCreated,       // ✓ main.qiを作成しました
-    ProjectLibQiCreated,        // ✓ src/lib.qiを作成しました
-    ProjectExampleQiCreated,    // ✓ examples/example.qiを作成しました
-    ProjectTestQiCreated,       // ✓ tests/test.qiを作成しました
     TemplateNeedSubcommand,     // エラー: サブコマンドを指定してください
     TemplateUsage,              // 使い方: qi template <list|info>
     TemplateNeedName,           // エラー: テンプレート名を指定してください
@@ -1143,13 +1130,6 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FailedToGetCurrentDir, "Failed to get current directory: {0}"),
         (DirectoryAlreadyExists, "Directory '{0}' already exists"),
         (FailedToCreateDirectory, "Failed to create directory: {0}"),
-        (FailedToCreateSrcDir, "Failed to create src/ directory: {0}"),
-        (FailedToCreateExamplesDir, "Failed to create examples/ directory: {0}"),
-        (FailedToCreateTestsDir, "Failed to create tests/ directory: {0}"),
-        (FailedToCreateMainQi, "Failed to create main.qi: {0}"),
-        (FailedToCreateLibQi, "Failed to create src/lib.qi: {0}"),
-        (FailedToCreateExampleQi, "Failed to create examples/example.qi: {0}"),
-        (FailedToCreateTestQi, "Failed to create tests/test.qi: {0}"),
         (TemplateNotFound, "Template '{0}' not found"),
         (FailedToReadDirectory, "Failed to read directory: {0}"),
         (FailedToReadFile, "Failed to read file: {0}"),
@@ -1598,13 +1578,6 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FailedToGetCurrentDir, "カレントディレクトリの取得に失敗: {0}"),
         (DirectoryAlreadyExists, "ディレクトリ '{0}' は既に存在します"),
         (FailedToCreateDirectory, "ディレクトリの作成に失敗: {0}"),
-        (FailedToCreateSrcDir, "src/ディレクトリの作成に失敗: {0}"),
-        (FailedToCreateExamplesDir, "examples/ディレクトリの作成に失敗: {0}"),
-        (FailedToCreateTestsDir, "tests/ディレクトリの作成に失敗: {0}"),
-        (FailedToCreateMainQi, "main.qiの作成に失敗: {0}"),
-        (FailedToCreateLibQi, "src/lib.qiの作成に失敗: {0}"),
-        (FailedToCreateExampleQi, "examples/example.qiの作成に失敗: {0}"),
-        (FailedToCreateTestQi, "tests/test.qiの作成に失敗: {0}"),
         (TemplateNotFound, "テンプレート '{0}' が見つかりません"),
         (FailedToReadDirectory, "ディレクトリの読み込みに失敗: {0}"),
         (FailedToReadFile, "ファイルの読み込みに失敗: {0}"),
@@ -1796,12 +1769,6 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectCreated, "\nNew Qi project created: {0}"),
         (ProjectNextSteps, "\nNext steps:"),
         (ProjectCreating, "Creating new Qi project\n"),
-        (ProjectDirCreated, "✓ Created directory structure"),
-        (ProjectQiTomlCreated, "✓ Created qi.toml"),
-        (ProjectMainQiCreated, "✓ Created main.qi"),
-        (ProjectLibQiCreated, "✓ Created src/lib.qi"),
-        (ProjectExampleQiCreated, "✓ Created examples/example.qi"),
-        (ProjectTestQiCreated, "✓ Created tests/test.qi"),
         (TemplateNeedSubcommand, "Error: Please specify a subcommand"),
         (TemplateUsage, "Usage: qi template <list|info>"),
         (TemplateNeedName, "Error: Please specify a template name"),
@@ -1988,12 +1955,6 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectCreated, "\n新しいQiプロジェクトが作成されました: {0}"),
         (ProjectNextSteps, "\n次のステップ:"),
         (ProjectCreating, "新しいQiプロジェクトを作成します\n"),
-        (ProjectDirCreated, "✓ ディレクトリ構造を作成しました"),
-        (ProjectQiTomlCreated, "✓ qi.tomlを作成しました"),
-        (ProjectMainQiCreated, "✓ main.qiを作成しました"),
-        (ProjectLibQiCreated, "✓ src/lib.qiを作成しました"),
-        (ProjectExampleQiCreated, "✓ examples/example.qiを作成しました"),
-        (ProjectTestQiCreated, "✓ tests/test.qiを作成しました"),
         (TemplateNeedSubcommand, "エラー: サブコマンドを指定してください"),
         (TemplateUsage, "使い方: qi template <list|info>"),
         (TemplateNeedName, "エラー: テンプレート名を指定してください"),
