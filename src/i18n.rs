@@ -549,11 +549,29 @@ pub enum UiMsg {
     ProjectNewUsage,            // 使い方: qi new <project-name> [--template <template>]
     ProjectNewUnknownOption,    // エラー: 不明なオプション: {0}
     ProjectNewError,            // エラー: {0}
+    ProjectCreated,             // 新しいQiプロジェクトが作成されました: {0}
+    ProjectNextSteps,           // 次のステップ:
+    ProjectCreating,            // 新しいQiプロジェクトを作成します
+    ProjectDirCreated,          // ✓ ディレクトリ構造を作成しました
+    ProjectQiTomlCreated,       // ✓ qi.tomlを作成しました
+    ProjectMainQiCreated,       // ✓ main.qiを作成しました
+    ProjectLibQiCreated,        // ✓ src/lib.qiを作成しました
+    ProjectExampleQiCreated,    // ✓ examples/example.qiを作成しました
+    ProjectTestQiCreated,       // ✓ tests/test.qiを作成しました
     TemplateNeedSubcommand,     // エラー: サブコマンドを指定してください
     TemplateUsage,              // 使い方: qi template <list|info>
     TemplateNeedName,           // エラー: テンプレート名を指定してください
     TemplateInfoUsage,          // 使い方: qi template info <name>
     TemplateUnknownSubcommand,  // エラー: 不明なサブコマンド: {0}
+    TemplateNoTemplates,        // 利用可能なテンプレートがありません
+    TemplateAvailable,          // 利用可能なテンプレート:
+    TemplateNoInfo,             // (情報なし)
+    TemplateInfoTemplate,       // Template: {0}
+    TemplateInfoDescription,    // Description: {0}
+    TemplateInfoAuthor,         // Author: {0}
+    TemplateInfoVersion,        // Version: {0}
+    TemplateInfoRequired,       // Required features: {0}
+    TemplateInfoLocation,       // Location: {0}
 
     // REPL
     ReplDocUsage,    // Usage: :doc <name>
@@ -1775,11 +1793,29 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectNewUsage, "Usage: qi new <project-name> [--template <template>]"),
         (ProjectNewUnknownOption, "Error: Unknown option: {0}"),
         (ProjectNewError, "Error: {0}"),
+        (ProjectCreated, "\nNew Qi project created: {0}"),
+        (ProjectNextSteps, "\nNext steps:"),
+        (ProjectCreating, "Creating new Qi project\n"),
+        (ProjectDirCreated, "✓ Created directory structure"),
+        (ProjectQiTomlCreated, "✓ Created qi.toml"),
+        (ProjectMainQiCreated, "✓ Created main.qi"),
+        (ProjectLibQiCreated, "✓ Created src/lib.qi"),
+        (ProjectExampleQiCreated, "✓ Created examples/example.qi"),
+        (ProjectTestQiCreated, "✓ Created tests/test.qi"),
         (TemplateNeedSubcommand, "Error: Please specify a subcommand"),
         (TemplateUsage, "Usage: qi template <list|info>"),
         (TemplateNeedName, "Error: Please specify a template name"),
         (TemplateInfoUsage, "Usage: qi template info <name>"),
         (TemplateUnknownSubcommand, "Error: Unknown subcommand: {0}"),
+        (TemplateNoTemplates, "No templates available"),
+        (TemplateAvailable, "Available templates:"),
+        (TemplateNoInfo, "(no information)"),
+        (TemplateInfoTemplate, "Template: {0}"),
+        (TemplateInfoDescription, "Description: {0}"),
+        (TemplateInfoAuthor, "Author: {0}"),
+        (TemplateInfoVersion, "Version: {0}"),
+        (TemplateInfoRequired, "Required features: {0}"),
+        (TemplateInfoLocation, "Location: {0}"),
         // REPL documentation
         (ReplDocUsage, "Usage: :doc <name>"),
         (ReplDocNotFound, "No such function or variable: {0}"),
@@ -1949,11 +1985,29 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ProjectNewUsage, "使い方: qi new <project-name> [--template <template>]"),
         (ProjectNewUnknownOption, "エラー: 不明なオプション: {0}"),
         (ProjectNewError, "エラー: {0}"),
+        (ProjectCreated, "\n新しいQiプロジェクトが作成されました: {0}"),
+        (ProjectNextSteps, "\n次のステップ:"),
+        (ProjectCreating, "新しいQiプロジェクトを作成します\n"),
+        (ProjectDirCreated, "✓ ディレクトリ構造を作成しました"),
+        (ProjectQiTomlCreated, "✓ qi.tomlを作成しました"),
+        (ProjectMainQiCreated, "✓ main.qiを作成しました"),
+        (ProjectLibQiCreated, "✓ src/lib.qiを作成しました"),
+        (ProjectExampleQiCreated, "✓ examples/example.qiを作成しました"),
+        (ProjectTestQiCreated, "✓ tests/test.qiを作成しました"),
         (TemplateNeedSubcommand, "エラー: サブコマンドを指定してください"),
         (TemplateUsage, "使い方: qi template <list|info>"),
         (TemplateNeedName, "エラー: テンプレート名を指定してください"),
         (TemplateInfoUsage, "使い方: qi template info <name>"),
         (TemplateUnknownSubcommand, "エラー: 不明なサブコマンド: {0}"),
+        (TemplateNoTemplates, "利用可能なテンプレートがありません"),
+        (TemplateAvailable, "利用可能なテンプレート:"),
+        (TemplateNoInfo, "(情報なし)"),
+        (TemplateInfoTemplate, "Template: {0}"),
+        (TemplateInfoDescription, "Description: {0}"),
+        (TemplateInfoAuthor, "Author: {0}"),
+        (TemplateInfoVersion, "Version: {0}"),
+        (TemplateInfoRequired, "Required features: {0}"),
+        (TemplateInfoLocation, "Location: {0}"),
         // REPLドキュメント
         (ReplDocUsage, "使い方: :doc <name>"),
         (ReplDocNotFound, "関数または変数が見つかりません: {0}"),

@@ -2,7 +2,7 @@
 //!
 //! Qiプロジェクトのメタデータと依存関係を管理します。
 
-use crate::i18n::{fmt_msg, MsgKey};
+use crate::i18n::{fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -125,11 +125,8 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
     // テンプレートからプロジェクトを生成（qi.tomlを含む）
     copy_template(&template_dir, &project_dir, &vars)?;
 
-    println!(
-        "\n新しいQiプロジェクトが作成されました: {}",
-        project_dir.display()
-    );
-    println!("\n次のステップ:");
+    println!("{}", fmt_ui_msg(UiMsg::ProjectCreated, &[&project_dir.display().to_string()]));
+    println!("{}", ui_msg(UiMsg::ProjectNextSteps));
     println!("  cd {}", project_dir.display());
     println!("  qi main.qi");
 
@@ -176,16 +173,13 @@ pub fn init_project(project_name: Option<String>, non_interactive: bool) -> Resu
 
     // qi.tomlを保存
     project.save(&qi_toml_path)?;
-    println!("✓ qi.tomlを作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectQiTomlCreated));
 
     // ディレクトリ構造を作成
     create_project_structure(&project_dir)?;
 
-    println!(
-        "\n新しいQiプロジェクトが作成されました: {}",
-        project_dir.display()
-    );
-    println!("\n次のステップ:");
+    println!("{}", fmt_ui_msg(UiMsg::ProjectCreated, &[&project_dir.display().to_string()]));
+    println!("{}", ui_msg(UiMsg::ProjectNextSteps));
     println!("  cd {}", project_dir.display());
     println!("  qi main.qi");
 
@@ -217,7 +211,7 @@ fn prompt_metadata(project_dir: &Path) -> Result<ProjectMetadata, String> {
         .and_then(|n| n.to_str())
         .unwrap_or("qi-project");
 
-    println!("新しいQiプロジェクトを作成します\n");
+    println!("{}", ui_msg(UiMsg::ProjectCreating));
 
     let name = prompt_with_default("プロジェクト名", default_name)?;
     let version = prompt_with_default("バージョン", "0.1.0")?;
@@ -281,7 +275,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
     fs::create_dir_all(project_dir.join("tests"))
         .map_err(|e| fmt_msg(MsgKey::FailedToCreateTestsDir, &[&e.to_string()]))?;
 
-    println!("✓ ディレクトリ構造を作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectDirCreated));
 
     // main.qiを作成
     let main_qi = r#";; main.qi - エントリーポイント
@@ -302,7 +296,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
 "#;
     fs::write(project_dir.join("main.qi"), main_qi)
         .map_err(|e| fmt_msg(MsgKey::FailedToCreateMainQi, &[&e.to_string()]))?;
-    println!("✓ main.qiを作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectMainQiCreated));
 
     // src/lib.qiを作成
     let lib_qi = r#";; lib.qi - ライブラリコード
@@ -315,7 +309,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
 "#;
     fs::write(project_dir.join("src/lib.qi"), lib_qi)
         .map_err(|e| fmt_msg(MsgKey::FailedToCreateLibQi, &[&e.to_string()]))?;
-    println!("✓ src/lib.qiを作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectLibQiCreated));
 
     // examples/example.qiを作成
     let example_qi = r#";; example.qi - サンプルコード
@@ -348,7 +342,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
 "#;
     fs::write(project_dir.join("examples/example.qi"), example_qi)
         .map_err(|e| fmt_msg(MsgKey::FailedToCreateExampleQi, &[&e.to_string()]))?;
-    println!("✓ examples/example.qiを作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectExampleQiCreated));
 
     // tests/test.qiを作成
     let test_qi = r#";; test.qi - テストコード
@@ -388,7 +382,7 @@ fn create_project_structure(project_dir: &Path) -> Result<(), String> {
 "#;
     fs::write(project_dir.join("tests/test.qi"), test_qi)
         .map_err(|e| fmt_msg(MsgKey::FailedToCreateTestQi, &[&e.to_string()]))?;
-    println!("✓ tests/test.qiを作成しました");
+    println!("{}", ui_msg(UiMsg::ProjectTestQiCreated));
 
     Ok(())
 }
@@ -584,11 +578,11 @@ pub fn list_templates() -> Result<(), String> {
     let templates = find_all_templates()?;
 
     if templates.is_empty() {
-        println!("利用可能なテンプレートがありません");
+        println!("{}", ui_msg(UiMsg::TemplateNoTemplates));
         return Ok(());
     }
 
-    println!("利用可能なテンプレート:");
+    println!("{}", ui_msg(UiMsg::TemplateAvailable));
     for template in templates {
         if let Ok(info) = load_template_info(&template) {
             println!(
@@ -596,7 +590,7 @@ pub fn list_templates() -> Result<(), String> {
                 info.template.name, info.template.description
             );
         } else {
-            println!("  {:16} - (情報なし)", template);
+            println!("  {:16} - {}", template, ui_msg(UiMsg::TemplateNoInfo));
         }
     }
 
@@ -608,18 +602,18 @@ pub fn show_template_info(name: &str) -> Result<(), String> {
     let template_dir = find_template(name)?;
     let info = load_template_info(name)?;
 
-    println!("Template: {}", info.template.name);
-    println!("Description: {}", info.template.description);
+    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoTemplate, &[&info.template.name]));
+    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoDescription, &[&info.template.description]));
     if !info.template.author.is_empty() {
-        println!("Author: {}", info.template.author);
+        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoAuthor, &[&info.template.author]));
     }
     if !info.template.version.is_empty() {
-        println!("Version: {}", info.template.version);
+        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoVersion, &[&info.template.version]));
     }
     if !info.features.required.is_empty() {
-        println!("Required features: {}", info.features.required.join(", "));
+        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoRequired, &[&info.features.required.join(", ")]));
     }
-    println!("Location: {}", template_dir.display());
+    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoLocation, &[&template_dir.display().to_string()]));
 
     Ok(())
 }
