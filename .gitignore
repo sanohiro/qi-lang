@@ -31,3 +31,6 @@ reports
 # Logo source files (copied to assets/logo/)
 qi_logo_pack/
 /private/
+
+# Release archives
+release/

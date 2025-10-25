@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+  build:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux-x86_64
+            ext: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-x86_64
+            ext: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: darwin-arm64
+            ext: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: darwin-x86_64
+            ext: tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive (Unix)
+        if: matrix.ext == 'tar.gz'
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          ARCHIVE_NAME="qi-${VERSION}-${{ matrix.name }}"
+          mkdir -p release/${ARCHIVE_NAME}/qi
+
+          cp target/${{ matrix.target }}/release/qi release/${ARCHIVE_NAME}/qi/
+          cp -r std release/${ARCHIVE_NAME}/qi/
+          cp README.md release/${ARCHIVE_NAME}/qi/ || true
+
+          cd release
+          tar czf ${ARCHIVE_NAME}.tar.gz ${ARCHIVE_NAME}/
+          echo "ASSET_PATH=release/${ARCHIVE_NAME}.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_NAME=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_ENV
+
+      - name: Create archive (Windows)
+        if: matrix.ext == 'zip'
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          ARCHIVE_NAME="qi-${VERSION}-${{ matrix.name }}"
+          mkdir -p release/${ARCHIVE_NAME}/qi
+
+          cp target/${{ matrix.target }}/release/qi.exe release/${ARCHIVE_NAME}/qi/
+          cp -r std release/${ARCHIVE_NAME}/qi/
+          cp README.md release/${ARCHIVE_NAME}/qi/ || true
+
+          cd release
+          7z a ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}/
+          echo "ASSET_PATH=release/${ARCHIVE_NAME}.zip" >> $GITHUB_ENV
+          echo "ASSET_NAME=${ARCHIVE_NAME}.zip" >> $GITHUB_ENV
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ASSET_PATH }}
+          asset_name: ${{ env.ASSET_NAME }}
+          asset_content_type: application/octet-stream
