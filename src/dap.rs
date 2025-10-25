@@ -1210,7 +1210,7 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader as Async
 /// DAPメッセージを読み取る（Content-Length形式）
 ///
 /// # フォーマット
-/// ```
+/// ```text
 /// Content-Length: 119\r\n
 /// \r\n
 /// {"seq":1,"type":"request","command":"initialize",...}
