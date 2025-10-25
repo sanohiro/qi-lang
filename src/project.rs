@@ -204,22 +204,13 @@ fn prompt_optional(label: &str) -> Result<Option<String>, String> {
 
 /// テンプレートを検索
 fn find_template(name: &str) -> Result<PathBuf, String> {
-    // 1. カレントディレクトリ
-    let current_templates = PathBuf::from(".qi/templates").join(name);
-    if current_templates.exists() {
-        return Ok(current_templates);
+    // 1. ソースからのビルド時（開発用）
+    let dev_templates = PathBuf::from("std/templates").join(name);
+    if dev_templates.exists() {
+        return Ok(dev_templates);
     }
 
-    // 2. ホームディレクトリ
-    #[cfg(feature = "repl")]
-    if let Some(home) = dirs::home_dir() {
-        let home_templates = home.join(".qi/templates").join(name);
-        if home_templates.exists() {
-            return Ok(home_templates);
-        }
-    }
-
-    // 3. qiバイナリの隣（std/templates/）
+    // 2. qiバイナリの隣（std/templates/）
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             let std_templates = exe_dir.join("std/templates").join(name);
@@ -227,12 +218,6 @@ fn find_template(name: &str) -> Result<PathBuf, String> {
                 return Ok(std_templates);
             }
         }
-    }
-
-    // 4. ソースからのビルド時（開発用）
-    let dev_templates = PathBuf::from("std/templates").join(name);
-    if dev_templates.exists() {
-        return Ok(dev_templates);
     }
 
     Err(fmt_msg(MsgKey::TemplateNotFound, &[name]))
