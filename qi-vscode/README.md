@@ -1,5 +1,7 @@
 # Qi Language VSCode Extension
 
+[English](./README.md) | [日本語](./README.ja.md)
+
 Complete language support for **Qi - A Lisp that flows**.
 
 ## Features
@@ -28,13 +30,11 @@ Complete language support for **Qi - A Lisp that flows**.
 - Auto-closing pairs: `()`, `[]`, `{}`, `""`
 - Bracket matching
 - Comment toggling (`;` line comments)
-- **Code Formatting**: Automatic formatting using `qi fmt`
 
 ### Commands
 - **Run Qi File** (`Ctrl+F5` / `Cmd+F5`) - Execute current Qi file
 - **Start Qi REPL** (`Ctrl+Shift+R` / `Cmd+Shift+R`) - Start interactive REPL
 - **Debug Qi File** (`F5`) - Debug current file with breakpoints and step execution
-- **Format Document** - Format code according to docs/style-guide.md
 - **Show Documentation** - Open Qi documentation
 
 ### Debugging
@@ -122,7 +122,6 @@ The extension can be configured via VSCode settings:
 ```json
 {
   "qi.executablePath": "qi",
-  "qi.enableFormatting": true,
   "qi.enableLinting": true,
   "qi.repl.autoStart": false
 }
@@ -131,7 +130,6 @@ The extension can be configured via VSCode settings:
 ### Settings
 
 - **`qi.executablePath`** (string, default: `"qi"`) - Path to the Qi executable. If `qi` is in your PATH, you can use `"qi"`. Otherwise, specify the full path.
-- **`qi.enableFormatting`** (boolean, default: `true`) - Enable automatic code formatting with `qi fmt`.
 - **`qi.enableLinting`** (boolean, default: `true`) - Enable linting (planned).
 - **`qi.repl.autoStart`** (boolean, default: `false`) - Automatically start REPL when opening Qi files.
 

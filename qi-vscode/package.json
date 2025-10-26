@@ -4,6 +4,11 @@
   "description": "Complete language support for Qi - A Lisp that flows",
   "version": "1.0.0",
   "publisher": "qi-lang",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sanohiro/qi-lang"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -28,7 +33,6 @@
     "onCommand:qi.runFile",
     "onCommand:qi.startRepl",
     "onCommand:qi.debugFile",
-    "onCommand:qi.formatDocument",
     "onCommand:qi.showDocs"
   ],
   "main": "./out/extension.js",
@@ -83,12 +87,6 @@
         "icon": "$(debug-start)"
       },
       {
-        "command": "qi.formatDocument",
-        "title": "Format Document",
-        "category": "Qi",
-        "icon": "$(format)"
-      },
-      {
         "command": "qi.showDocs",
         "title": "Show Qi Documentation",
         "category": "Qi",
@@ -125,11 +123,6 @@
           "command": "qi.debugFile",
           "when": "resourceExtname == '.qi'",
           "group": "qi@2"
-        },
-        {
-          "command": "qi.formatDocument",
-          "when": "resourceExtname == '.qi'",
-          "group": "qi@3"
         }
       ],
       "explorer/context": [
@@ -152,10 +145,6 @@
           "when": "resourceExtname == '.qi'"
         },
         {
-          "command": "qi.formatDocument",
-          "when": "resourceExtname == '.qi'"
-        },
-        {
           "command": "qi.showDocs"
         }
       ]
@@ -167,11 +156,6 @@
           "type": "string",
           "default": "qi",
           "description": "Path to the Qi executable"
-        },
-        "qi.enableFormatting": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable automatic formatting"
         },
         "qi.enableLinting": {
           "type": "boolean",
