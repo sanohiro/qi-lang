@@ -63,7 +63,8 @@ impl QiProject {
         let content = fs::read_to_string(path.as_ref())
             .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToRead, &[&e.to_string()]))?;
 
-        toml::from_str(&content).map_err(|e| fmt_msg(MsgKey::QiTomlFailedToParse, &[&e.to_string()]))
+        toml::from_str(&content)
+            .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToParse, &[&e.to_string()]))
     }
 
     /// カレントディレクトリからqi.tomlを探す
@@ -79,7 +80,8 @@ impl QiProject {
         let content = toml::to_string_pretty(self)
             .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToSerialize, &[&e.to_string()]))?;
 
-        fs::write(path.as_ref(), content).map_err(|e| fmt_msg(MsgKey::QiTomlFailedToWrite, &[&e.to_string()]))
+        fs::write(path.as_ref(), content)
+            .map_err(|e| fmt_msg(MsgKey::QiTomlFailedToWrite, &[&e.to_string()]))
     }
 }
 
@@ -95,7 +97,8 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
     if project_dir.exists() {
         return Err(fmt_msg(MsgKey::DirectoryAlreadyExists, &[&project_name]));
     }
-    fs::create_dir_all(&project_dir).map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
+    fs::create_dir_all(&project_dir)
+        .map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
 
     // メタデータを取得
     let metadata = prompt_metadata(&project_dir)?;
@@ -129,7 +132,10 @@ pub fn new_project(project_name: String, template: Option<String>) -> Result<(),
     // テンプレートからプロジェクトを生成（qi.tomlを含む）
     copy_template(&lang_template_dir, &project_dir, &vars)?;
 
-    println!("{}", fmt_ui_msg(UiMsg::ProjectCreated, &[&project_dir.display().to_string()]));
+    println!(
+        "{}",
+        fmt_ui_msg(UiMsg::ProjectCreated, &[&project_dir.display().to_string()])
+    );
     println!("{}", ui_msg(UiMsg::ProjectNextSteps));
     println!("  cd {}", project_dir.display());
     println!("  qi main.qi");
@@ -250,7 +256,8 @@ fn copy_dir_recursive(
     dest: &Path,
     vars: &HashMap<String, String>,
 ) -> Result<(), String> {
-    for entry in fs::read_dir(src).map_err(|e| fmt_msg(MsgKey::FailedToReadDirectory, &[&e.to_string()]))?
+    for entry in
+        fs::read_dir(src).map_err(|e| fmt_msg(MsgKey::FailedToReadDirectory, &[&e.to_string()]))?
     {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_type = entry.file_type().map_err(|e| e.to_string())?;
@@ -409,18 +416,45 @@ pub fn show_template_info(name: &str) -> Result<(), String> {
     let template_dir = find_template(name)?;
     let info = load_template_info(name)?;
 
-    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoTemplate, &[&info.template.name]));
-    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoDescription, &[&info.template.description]));
+    println!(
+        "{}",
+        fmt_ui_msg(UiMsg::TemplateInfoTemplate, &[&info.template.name])
+    );
+    println!(
+        "{}",
+        fmt_ui_msg(
+            UiMsg::TemplateInfoDescription,
+            &[&info.template.description]
+        )
+    );
     if !info.template.author.is_empty() {
-        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoAuthor, &[&info.template.author]));
+        println!(
+            "{}",
+            fmt_ui_msg(UiMsg::TemplateInfoAuthor, &[&info.template.author])
+        );
     }
     if !info.template.version.is_empty() {
-        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoVersion, &[&info.template.version]));
+        println!(
+            "{}",
+            fmt_ui_msg(UiMsg::TemplateInfoVersion, &[&info.template.version])
+        );
     }
     if !info.features.required.is_empty() {
-        println!("{}", fmt_ui_msg(UiMsg::TemplateInfoRequired, &[&info.features.required.join(", ")]));
+        println!(
+            "{}",
+            fmt_ui_msg(
+                UiMsg::TemplateInfoRequired,
+                &[&info.features.required.join(", ")]
+            )
+        );
     }
-    println!("{}", fmt_ui_msg(UiMsg::TemplateInfoLocation, &[&template_dir.display().to_string()]));
+    println!(
+        "{}",
+        fmt_ui_msg(
+            UiMsg::TemplateInfoLocation,
+            &[&template_dir.display().to_string()]
+        )
+    );
 
     Ok(())
 }
@@ -458,5 +492,6 @@ fn load_template_info(name: &str) -> Result<TemplateInfo, String> {
     let content = fs::read_to_string(&info_path)
         .map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToRead, &[&e.to_string()]))?;
 
-    toml::from_str(&content).map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToParse, &[&e.to_string()]))
+    toml::from_str(&content)
+        .map_err(|e| fmt_msg(MsgKey::TemplateTomlFailedToParse, &[&e.to_string()]))
 }

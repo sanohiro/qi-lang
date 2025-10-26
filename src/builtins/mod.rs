@@ -40,8 +40,10 @@
 //! - http: HTTP通信（22個）
 //! - db: データベース（17個）
 
-// Lazy初期化サポート
+// ユーティリティモジュール
 pub mod lazy_init;
+pub mod macros;
+pub mod value_helpers;
 
 // Coreモジュール
 pub mod core_collections;

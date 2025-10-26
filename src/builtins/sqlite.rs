@@ -113,7 +113,12 @@ impl SqliteConnection {
                     // バイナリデータは今後の実装で対応（今はbase64エンコードした文字列として返す）
                     Value::String(base64::engine::general_purpose::STANDARD.encode(b))
                 }
-                Err(e) => return Err(DbError::new(fmt_msg(MsgKey::FailedToGetColumnValue, &[&e.to_string()]))),
+                Err(e) => {
+                    return Err(DbError::new(fmt_msg(
+                        MsgKey::FailedToGetColumnValue,
+                        &[&e.to_string()],
+                    )))
+                }
             };
 
             map.insert(column_name, value);
@@ -232,9 +237,12 @@ impl DbConnection for SqliteConnection {
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
             .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryTables, &[&e.to_string()])))?;
 
-        let rows = stmt
-            .query([])
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToExecuteTablesQuery, &[&e.to_string()])))?;
+        let rows = stmt.query([]).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::FailedToExecuteTablesQuery,
+                &[&e.to_string()],
+            ))
+        })?;
 
         let mut tables = Vec::new();
         let mut rows = rows;
@@ -253,9 +261,12 @@ impl DbConnection for SqliteConnection {
             .prepare(&sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryColumns, &[&e.to_string()])))?;
 
-        let rows = stmt
-            .query([])
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToExecuteColumnsQuery, &[&e.to_string()])))?;
+        let rows = stmt.query([]).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::FailedToExecuteColumnsQuery,
+                &[&e.to_string()],
+            ))
+        })?;
 
         let mut columns = Vec::new();
         let mut rows = rows;
@@ -285,9 +296,12 @@ impl DbConnection for SqliteConnection {
             .prepare(&sql)
             .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryIndexes, &[&e.to_string()])))?;
 
-        let rows = stmt
-            .query([])
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToExecuteIndexesQuery, &[&e.to_string()])))?;
+        let rows = stmt.query([]).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::FailedToExecuteIndexesQuery,
+                &[&e.to_string()],
+            ))
+        })?;
 
         let mut indexes = Vec::new();
         let mut rows = rows;
@@ -297,12 +311,18 @@ impl DbConnection for SqliteConnection {
 
             // インデックスのカラムを取得
             let col_sql = format!("PRAGMA index_info({})", self.sanitize_identifier(&name));
-            let mut col_stmt = conn
-                .prepare(&col_sql)
-                .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryIndexColumns, &[&e.to_string()])))?;
+            let mut col_stmt = conn.prepare(&col_sql).map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::FailedToQueryIndexColumns,
+                    &[&e.to_string()],
+                ))
+            })?;
 
             let col_rows = col_stmt.query([]).map_err(|e| {
-                DbError::new(fmt_msg(MsgKey::FailedToExecuteIndexColumnsQuery, &[&e.to_string()]))
+                DbError::new(fmt_msg(
+                    MsgKey::FailedToExecuteIndexColumnsQuery,
+                    &[&e.to_string()],
+                ))
             })?;
 
             let mut columns = Vec::new();
@@ -329,13 +349,16 @@ impl DbConnection for SqliteConnection {
             "PRAGMA foreign_key_list({})",
             self.sanitize_identifier(table)
         );
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryForeignKeys, &[&e.to_string()])))?;
+        let mut stmt = conn.prepare(&sql).map_err(|e| {
+            DbError::new(fmt_msg(MsgKey::FailedToQueryForeignKeys, &[&e.to_string()]))
+        })?;
 
-        let rows = stmt
-            .query([])
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToExecuteForeignKeysQuery, &[&e.to_string()])))?;
+        let rows = stmt.query([]).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::FailedToExecuteForeignKeysQuery,
+                &[&e.to_string()],
+            ))
+        })?;
 
         let mut fkeys = Vec::new();
         let mut rows = rows;
@@ -402,7 +425,12 @@ impl DbConnection for SqliteConnection {
         let version = rusqlite::version();
         let db_version = conn
             .query_row("SELECT sqlite_version()", [], |row| row.get::<_, String>(0))
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToGetDatabaseVersion, &[&e.to_string()])))?;
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::FailedToGetDatabaseVersion,
+                    &[&e.to_string()],
+                ))
+            })?;
 
         Ok(DriverInfo {
             name: "sqlite".to_string(),
@@ -413,9 +441,9 @@ impl DbConnection for SqliteConnection {
 
     fn query_info(&self, sql: &str) -> DbResult<QueryInfo> {
         let conn = self.conn.lock();
-        let stmt = conn
-            .prepare(sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToPrepareStatement, &[&e.to_string()])))?;
+        let stmt = conn.prepare(sql).map_err(|e| {
+            DbError::new(fmt_msg(MsgKey::FailedToPrepareStatement, &[&e.to_string()]))
+        })?;
 
         let column_count = stmt.column_count();
         let mut columns = Vec::new();
@@ -423,7 +451,9 @@ impl DbConnection for SqliteConnection {
         for i in 0..column_count {
             let name = stmt
                 .column_name(i)
-                .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToGetColumnName, &[&e.to_string()])))?
+                .map_err(|e| {
+                    DbError::new(fmt_msg(MsgKey::FailedToGetColumnName, &[&e.to_string()]))
+                })?
                 .to_string();
 
             // SQLiteではクエリから型情報を取得するのが難しいため、

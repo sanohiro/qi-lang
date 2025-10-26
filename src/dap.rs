@@ -1045,7 +1045,10 @@ impl DapServer {
                                             request_seq: request.seq,
                                             success: false,
                                             command: "evaluate".to_string(),
-                                            message: Some(crate::i18n::fmt_msg(crate::i18n::MsgKey::DapEmptyExpression, &[])),
+                                            message: Some(crate::i18n::fmt_msg(
+                                                crate::i18n::MsgKey::DapEmptyExpression,
+                                                &[],
+                                            )),
                                             body: None,
                                         };
                                     }
@@ -1072,7 +1075,10 @@ impl DapServer {
                                             request_seq: request.seq,
                                             success: false,
                                             command: "evaluate".to_string(),
-                                            message: Some(crate::i18n::fmt_msg(crate::i18n::MsgKey::DapEvaluationError, &[&e])),
+                                            message: Some(crate::i18n::fmt_msg(
+                                                crate::i18n::MsgKey::DapEvaluationError,
+                                                &[&e],
+                                            )),
                                             body: None,
                                         },
                                     }
@@ -1083,7 +1089,10 @@ impl DapServer {
                                     request_seq: request.seq,
                                     success: false,
                                     command: "evaluate".to_string(),
-                                    message: Some(crate::i18n::fmt_msg(crate::i18n::MsgKey::DapParseError, &[&e])),
+                                    message: Some(crate::i18n::fmt_msg(
+                                        crate::i18n::MsgKey::DapParseError,
+                                        &[&e],
+                                    )),
                                     body: None,
                                 },
                             }
@@ -1094,7 +1103,10 @@ impl DapServer {
                                 request_seq: request.seq,
                                 success: false,
                                 command: "evaluate".to_string(),
-                                message: Some(crate::i18n::fmt_msg(crate::i18n::MsgKey::DapNoEnvironment, &[])),
+                                message: Some(crate::i18n::fmt_msg(
+                                    crate::i18n::MsgKey::DapNoEnvironment,
+                                    &[],
+                                )),
                                 body: None,
                             }
                         }
@@ -1105,7 +1117,10 @@ impl DapServer {
                             request_seq: request.seq,
                             success: false,
                             command: "evaluate".to_string(),
-                            message: Some(crate::i18n::fmt_msg(crate::i18n::MsgKey::DapDebuggerNotAvailable, &[])),
+                            message: Some(crate::i18n::fmt_msg(
+                                crate::i18n::MsgKey::DapDebuggerNotAvailable,
+                                &[],
+                            )),
                             body: None,
                         }
                     }

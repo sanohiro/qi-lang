@@ -379,65 +379,65 @@ pub enum MsgKey {
     MdTableColumnMismatch, // markdown/table: row {0} has {1} columns, expected {2}
 
     // DAPデバッガーエラー
-    DapEmptyExpression,       // Empty expression
-    DapEvaluationError,       // Evaluation error: {0}
-    DapParseError,            // Parse error: {0}
-    DapNoEnvironment,         // No environment available (not stopped at breakpoint)
-    DapDebuggerNotAvailable,  // Debugger not available
-    DapServerError,           // DAP server error: {0}
-    DapServerNotEnabled,      // Error: DAP server is not enabled. Build with --features dap-server
-    InternalError,            // Internal error: {0}
+    DapEmptyExpression,      // Empty expression
+    DapEvaluationError,      // Evaluation error: {0}
+    DapParseError,           // Parse error: {0}
+    DapNoEnvironment,        // No environment available (not stopped at breakpoint)
+    DapDebuggerNotAvailable, // Debugger not available
+    DapServerError,          // DAP server error: {0}
+    DapServerNotEnabled,     // Error: DAP server is not enabled. Build with --features dap-server
+    InternalError,           // Internal error: {0}
 
     // プロジェクト管理エラー
-    QiTomlFailedToRead,          // Failed to read qi.toml: {0}
-    QiTomlFailedToParse,         // Failed to parse qi.toml: {0}
-    QiTomlFailedToSerialize,     // Failed to serialize qi.toml: {0}
-    QiTomlFailedToWrite,         // Failed to write qi.toml: {0}
-    FailedToGetCurrentDir,       // Failed to get current directory: {0}
-    DirectoryAlreadyExists,      // Directory '{}' already exists
-    FailedToCreateDirectory,     // Failed to create directory: {0}
-    TemplateNotFound,            // Template '{}' not found
-    FailedToReadDirectory,       // Failed to read directory: {0}
-    FailedToReadFile,            // Failed to read file: {0}
-    FailedToWriteFile,           // Failed to write file: {0}
-    TemplateTomlFailedToRead,    // Failed to read template.toml: {0}
-    TemplateTomlFailedToParse,   // Failed to parse template.toml: {0}
+    QiTomlFailedToRead,        // Failed to read qi.toml: {0}
+    QiTomlFailedToParse,       // Failed to parse qi.toml: {0}
+    QiTomlFailedToSerialize,   // Failed to serialize qi.toml: {0}
+    QiTomlFailedToWrite,       // Failed to write qi.toml: {0}
+    FailedToGetCurrentDir,     // Failed to get current directory: {0}
+    DirectoryAlreadyExists,    // Directory '{}' already exists
+    FailedToCreateDirectory,   // Failed to create directory: {0}
+    TemplateNotFound,          // Template '{}' not found
+    FailedToReadDirectory,     // Failed to read directory: {0}
+    FailedToReadFile,          // Failed to read file: {0}
+    FailedToWriteFile,         // Failed to write file: {0}
+    TemplateTomlFailedToRead,  // Failed to read template.toml: {0}
+    TemplateTomlFailedToParse, // Failed to parse template.toml: {0}
 
     // 評価器エラー
-    TypeErrorVectorPattern,      // Type error: cannot pass {0} to vector pattern
+    TypeErrorVectorPattern, // Type error: cannot pass {0} to vector pattern
     ArgErrorVectorPatternMinimum, // Argument error: vector pattern expects at least {0} elements, but got {1}
-    ArgErrorVectorPattern,       // Argument error: vector pattern expects {0} elements, but got {1}
-    TypeErrorMapPattern,         // Type error: cannot pass {0} to map pattern
-    KeyErrorMapMissing,          // Key error: map does not have key :{0}
+    ArgErrorVectorPattern, // Argument error: vector pattern expects {0} elements, but got {1}
+    TypeErrorMapPattern,   // Type error: cannot pass {0} to map pattern
+    KeyErrorMapMissing,    // Key error: map does not have key :{0}
 
     // データベース・KVSエラー
-    ConnectionError,             // Connection error: {0}
-    ConnectionNotFound,          // Connection not found: {0}
-    EvalError,                   // eval: {0}
-    FailedToCreateRuntime,       // Failed to create runtime: {0}
-    FailedToExecuteColumnsQuery, // Failed to execute columns query: {0}
-    FailedToExecuteForeignKeysQuery, // Failed to execute foreign keys query: {0}
+    ConnectionError,                  // Connection error: {0}
+    ConnectionNotFound,               // Connection not found: {0}
+    EvalError,                        // eval: {0}
+    FailedToCreateRuntime,            // Failed to create runtime: {0}
+    FailedToExecuteColumnsQuery,      // Failed to execute columns query: {0}
+    FailedToExecuteForeignKeysQuery,  // Failed to execute foreign keys query: {0}
     FailedToExecuteIndexColumnsQuery, // Failed to execute index columns query: {0}
-    FailedToExecuteIndexesQuery, // Failed to execute indexes query: {0}
-    FailedToExecuteTablesQuery,  // Failed to execute tables query: {0}
-    FailedToGetColumnName,       // Failed to get column name: {0}
-    FailedToGetColumnValue,      // Failed to get column value: {0}
-    FailedToGetDatabaseVersion,  // Failed to get database version: {0}
-    FailedToPrepareStatement,    // Failed to prepare statement: {0}
-    FailedToQueryColumns,        // Failed to query columns: {0}
-    FailedToQueryForeignKeys,    // Failed to query foreign keys: {0}
-    FailedToQueryIndexColumns,   // Failed to query index columns: {0}
-    FailedToQueryIndexes,        // Failed to query indexes: {0}
-    FailedToQueryTables,         // Failed to query tables: {0}
-    FailedToReadFileMetadata,    // Failed to read file metadata: {0}
-    InvalidIsolationLevel,       // Invalid isolation level: {0}
-    UnsupportedKvsUrl,           // Unsupported KVS URL: {0}
-    UnsupportedUrl,              // Unsupported URL: {0}
-    RedisSupportNotEnabled,      // Redis support not enabled (feature 'kvs-redis' required)
-    InvalidConnection,           // Invalid connection (expected KvsConnection:xxx)
-    QiTomlAlreadyExists,         // qi.toml already exists
-    PatternErrorNotAllowed,      // Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)
-    UnexpectedResponse,          // Unexpected response
+    FailedToExecuteIndexesQuery,      // Failed to execute indexes query: {0}
+    FailedToExecuteTablesQuery,       // Failed to execute tables query: {0}
+    FailedToGetColumnName,            // Failed to get column name: {0}
+    FailedToGetColumnValue,           // Failed to get column value: {0}
+    FailedToGetDatabaseVersion,       // Failed to get database version: {0}
+    FailedToPrepareStatement,         // Failed to prepare statement: {0}
+    FailedToQueryColumns,             // Failed to query columns: {0}
+    FailedToQueryForeignKeys,         // Failed to query foreign keys: {0}
+    FailedToQueryIndexColumns,        // Failed to query index columns: {0}
+    FailedToQueryIndexes,             // Failed to query indexes: {0}
+    FailedToQueryTables,              // Failed to query tables: {0}
+    FailedToReadFileMetadata,         // Failed to read file metadata: {0}
+    InvalidIsolationLevel,            // Invalid isolation level: {0}
+    UnsupportedKvsUrl,                // Unsupported KVS URL: {0}
+    UnsupportedUrl,                   // Unsupported URL: {0}
+    RedisSupportNotEnabled,           // Redis support not enabled (feature 'kvs-redis' required)
+    InvalidConnection,                // Invalid connection (expected KvsConnection:xxx)
+    QiTomlAlreadyExists,              // qi.toml already exists
+    PatternErrorNotAllowed, // Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)
+    UnexpectedResponse,     // Unexpected response
 }
 
 /// UIメッセージキー
@@ -546,37 +546,37 @@ pub enum UiMsg {
     DapStdinSent,         // ✓ 入力を送信しました: {0}
 
     // プロジェクト作成
-    ProjectNewNeedName,         // エラー: プロジェクト名を指定してください
-    ProjectNewUsage,            // 使い方: qi new <project-name> [--template <template>]
-    ProjectNewUnknownOption,    // エラー: 不明なオプション: {0}
-    ProjectNewError,            // エラー: {0}
-    ProjectCreated,             // 新しいQiプロジェクトが作成されました: {0}
-    ProjectNextSteps,           // 次のステップ:
-    ProjectCreating,            // 新しいQiプロジェクトを作成します
-    PromptProjectName,          // プロジェクト名
-    PromptVersion,              // バージョン
-    PromptDescription,          // 説明
-    PromptAuthor,               // 著者名
-    PromptLicense,              // ライセンス
-    PromptOptional,             // (省略可)
-    TemplateNeedSubcommand,     // エラー: サブコマンドを指定してください
-    TemplateUsage,              // 使い方: qi template <list|info>
-    TemplateNeedName,           // エラー: テンプレート名を指定してください
-    TemplateInfoUsage,          // 使い方: qi template info <name>
-    TemplateUnknownSubcommand,  // エラー: 不明なサブコマンド: {0}
-    TemplateNoTemplates,        // 利用可能なテンプレートがありません
-    TemplateAvailable,          // 利用可能なテンプレート:
-    TemplateNoInfo,             // (情報なし)
-    TemplateInfoTemplate,       // Template: {0}
-    TemplateInfoDescription,    // Description: {0}
-    TemplateInfoAuthor,         // Author: {0}
-    TemplateInfoVersion,        // Version: {0}
-    TemplateInfoRequired,       // Required features: {0}
-    TemplateInfoLocation,       // Location: {0}
+    ProjectNewNeedName,        // エラー: プロジェクト名を指定してください
+    ProjectNewUsage,           // 使い方: qi new <project-name> [--template <template>]
+    ProjectNewUnknownOption,   // エラー: 不明なオプション: {0}
+    ProjectNewError,           // エラー: {0}
+    ProjectCreated,            // 新しいQiプロジェクトが作成されました: {0}
+    ProjectNextSteps,          // 次のステップ:
+    ProjectCreating,           // 新しいQiプロジェクトを作成します
+    PromptProjectName,         // プロジェクト名
+    PromptVersion,             // バージョン
+    PromptDescription,         // 説明
+    PromptAuthor,              // 著者名
+    PromptLicense,             // ライセンス
+    PromptOptional,            // (省略可)
+    TemplateNeedSubcommand,    // エラー: サブコマンドを指定してください
+    TemplateUsage,             // 使い方: qi template <list|info>
+    TemplateNeedName,          // エラー: テンプレート名を指定してください
+    TemplateInfoUsage,         // 使い方: qi template info <name>
+    TemplateUnknownSubcommand, // エラー: 不明なサブコマンド: {0}
+    TemplateNoTemplates,       // 利用可能なテンプレートがありません
+    TemplateAvailable,         // 利用可能なテンプレート:
+    TemplateNoInfo,            // (情報なし)
+    TemplateInfoTemplate,      // Template: {0}
+    TemplateInfoDescription,   // Description: {0}
+    TemplateInfoAuthor,        // Author: {0}
+    TemplateInfoVersion,       // Version: {0}
+    TemplateInfoRequired,      // Required features: {0}
+    TemplateInfoLocation,      // Location: {0}
 
     // REPL
-    ReplDocUsage,    // Usage: :doc <name>
-    ReplDocNotFound, // No such function or variable: {0}
+    ReplDocUsage,      // Usage: :doc <name>
+    ReplDocNotFound,   // No such function or variable: {0}
     ReplDocParameters, // Parameters:
     ReplDocExamples,   // Examples:
     ReplDocNoDoc,      // (no documentation available)
@@ -1666,7 +1666,10 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ReplTypeHelpForCommands, "Type :help for available commands"),
         // REPLコマンドヘルプ
         (ReplCommandHelp, "  :help              Show this help"),
-        (ReplCommandDoc, "  :doc <name>        Show documentation for a function"),
+        (
+            ReplCommandDoc,
+            "  :doc <name>        Show documentation for a function",
+        ),
         (
             ReplCommandVars,
             "  :vars              List defined variables",
@@ -1737,9 +1740,18 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         (OptHelp, "  -h, --help         Show this help message"),
         (OptVersion, "  -v, --version      Show version information"),
-        (OptNew, "    new <name> [-t <template>]  Create a new Qi project"),
-        (OptTemplate, "    template <list|info>        Template management"),
-        (OptDap, "    --dap                       Start Debug Adapter Protocol server"),
+        (
+            OptNew,
+            "    new <name> [-t <template>]  Create a new Qi project",
+        ),
+        (
+            OptTemplate,
+            "    template <list|info>        Template management",
+        ),
+        (
+            OptDap,
+            "    --dap                       Start Debug Adapter Protocol server",
+        ),
         // ヘルプ例
         (ExampleStartRepl, "  qi                 Start REPL"),
         (ExampleRunScript, "  qi script.qi       Run script"),
@@ -1749,9 +1761,18 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             ExampleLoadFile,
             "  qi -l prelude.qi   Load file and start REPL",
         ),
-        (ExampleNewProject, "    qi new my-project        Create a new project"),
-        (ExampleNewHttpServer, "    qi new myapi -t http-server  Create an HTTP server project"),
-        (ExampleTemplateList, "    qi template list         List available templates"),
+        (
+            ExampleNewProject,
+            "    qi new my-project        Create a new project",
+        ),
+        (
+            ExampleNewHttpServer,
+            "    qi new myapi -t http-server  Create an HTTP server project",
+        ),
+        (
+            ExampleTemplateList,
+            "    qi template list         List available templates",
+        ),
         // 環境変数説明
         (EnvLangQi, "  QI_LANG            Language (ja, en)"),
         (
@@ -1773,11 +1794,17 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ErrorRuntime, "Runtime error"),
         // DAP
         (DapStdinWaiting, "\n⏸️  Waiting for standard input"),
-        (DapStdinInstructions, "   Enter '.stdin <text>' in the debug console\n"),
+        (
+            DapStdinInstructions,
+            "   Enter '.stdin <text>' in the debug console\n",
+        ),
         (DapStdinSent, "✓ Sent to stdin: {0}"),
         // Project creation
         (ProjectNewNeedName, "Error: Please specify a project name"),
-        (ProjectNewUsage, "Usage: qi new <project-name> [--template <template>]"),
+        (
+            ProjectNewUsage,
+            "Usage: qi new <project-name> [--template <template>]",
+        ),
         (ProjectNewUnknownOption, "Error: Unknown option: {0}"),
         (ProjectNewError, "Error: {0}"),
         (ProjectCreated, "\nNew Qi project created: {0}"),
@@ -1852,7 +1879,10 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         // REPLコマンドヘルプ
         (ReplCommandHelp, "  :help              このヘルプを表示"),
-        (ReplCommandDoc, "  :doc <name>        関数のドキュメントを表示"),
+        (
+            ReplCommandDoc,
+            "  :doc <name>        関数のドキュメントを表示",
+        ),
         (
             ReplCommandVars,
             "  :vars              定義されている変数を一覧表示",
@@ -1926,9 +1956,18 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         ),
         (OptHelp, "  -h, --help         このヘルプメッセージを表示"),
         (OptVersion, "  -v, --version      バージョン情報を表示"),
-        (OptNew, "    new <name> [-t <template>]  新しいQiプロジェクトを作成"),
-        (OptTemplate, "    template <list|info>        テンプレート管理"),
-        (OptDap, "    --dap                       Debug Adapter Protocolサーバーを起動"),
+        (
+            OptNew,
+            "    new <name> [-t <template>]  新しいQiプロジェクトを作成",
+        ),
+        (
+            OptTemplate,
+            "    template <list|info>        テンプレート管理",
+        ),
+        (
+            OptDap,
+            "    --dap                       Debug Adapter Protocolサーバーを起動",
+        ),
         // ヘルプ例
         (ExampleStartRepl, "  qi                 REPLを起動"),
         (ExampleRunScript, "  qi script.qi       スクリプトを実行"),
@@ -1938,9 +1977,18 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
             ExampleLoadFile,
             "  qi -l prelude.qi   ファイルを読み込んでREPL起動",
         ),
-        (ExampleNewProject, "    qi new my-project        新しいプロジェクトを作成"),
-        (ExampleNewHttpServer, "    qi new myapi -t http-server  HTTPサーバープロジェクトを作成"),
-        (ExampleTemplateList, "    qi template list         利用可能なテンプレート一覧"),
+        (
+            ExampleNewProject,
+            "    qi new my-project        新しいプロジェクトを作成",
+        ),
+        (
+            ExampleNewHttpServer,
+            "    qi new myapi -t http-server  HTTPサーバープロジェクトを作成",
+        ),
+        (
+            ExampleTemplateList,
+            "    qi template list         利用可能なテンプレート一覧",
+        ),
         // 環境変数説明
         (EnvLangQi, "  QI_LANG            言語 (ja, en)"),
         (
@@ -1965,14 +2013,26 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (ErrorRuntime, "実行時エラー"),
         // DAP
         (DapStdinWaiting, "\n⏸️  標準入力を待っています"),
-        (DapStdinInstructions, "   デバッグコンソールで .stdin <text> と入力してください\n"),
+        (
+            DapStdinInstructions,
+            "   デバッグコンソールで .stdin <text> と入力してください\n",
+        ),
         (DapStdinSent, "✓ 入力を送信しました: {0}"),
         // プロジェクト作成
-        (ProjectNewNeedName, "エラー: プロジェクト名を指定してください"),
-        (ProjectNewUsage, "使い方: qi new <project-name> [--template <template>]"),
+        (
+            ProjectNewNeedName,
+            "エラー: プロジェクト名を指定してください",
+        ),
+        (
+            ProjectNewUsage,
+            "使い方: qi new <project-name> [--template <template>]",
+        ),
         (ProjectNewUnknownOption, "エラー: 不明なオプション: {0}"),
         (ProjectNewError, "エラー: {0}"),
-        (ProjectCreated, "\n新しいQiプロジェクトが作成されました: {0}"),
+        (
+            ProjectCreated,
+            "\n新しいQiプロジェクトが作成されました: {0}",
+        ),
         (ProjectNextSteps, "\n次のステップ:"),
         (ProjectCreating, "新しいQiプロジェクトを作成します\n"),
         (PromptProjectName, "プロジェクト名"),
@@ -1981,7 +2041,10 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
         (PromptAuthor, "著者名"),
         (PromptLicense, "ライセンス"),
         (PromptOptional, "(省略可)"),
-        (TemplateNeedSubcommand, "エラー: サブコマンドを指定してください"),
+        (
+            TemplateNeedSubcommand,
+            "エラー: サブコマンドを指定してください",
+        ),
         (TemplateUsage, "使い方: qi template <list|info>"),
         (TemplateNeedName, "エラー: テンプレート名を指定してください"),
         (TemplateInfoUsage, "使い方: qi template info <name>"),

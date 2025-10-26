@@ -230,7 +230,6 @@ impl Evaluator {
         // リスト（関数呼び出し）の場合のみチェック
         #[cfg(feature = "dap-server")]
         {
-            let span = expr.span();
             let should_check = matches!(expr, Expr::List { .. } | Expr::Call { .. });
 
             if should_check {
@@ -1220,7 +1219,7 @@ impl Evaluator {
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::TypeErrorVectorPattern,
-                            &[value.type_name()]
+                            &[value.type_name()],
                         ));
                     }
                 };
@@ -1231,7 +1230,7 @@ impl Evaluator {
                     if values.len() < params.len() {
                         return Err(fmt_msg(
                             MsgKey::ArgErrorVectorPatternMinimum,
-                            &[&params.len().to_string(), &values.len().to_string()]
+                            &[&params.len().to_string(), &values.len().to_string()],
                         ));
                     }
 
@@ -1249,7 +1248,7 @@ impl Evaluator {
                     if values.len() != params.len() {
                         return Err(fmt_msg(
                             MsgKey::ArgErrorVectorPattern,
-                            &[&params.len().to_string(), &values.len().to_string()]
+                            &[&params.len().to_string(), &values.len().to_string()],
                         ));
                     }
 
@@ -1264,10 +1263,7 @@ impl Evaluator {
                 let map = match value {
                     Value::Map(m) => m,
                     _ => {
-                        return Err(fmt_msg(
-                            MsgKey::TypeErrorMapPattern,
-                            &[value.type_name()]
-                        ));
+                        return Err(fmt_msg(MsgKey::TypeErrorMapPattern, &[value.type_name()]));
                     }
                 };
 
@@ -1297,11 +1293,15 @@ impl Evaluator {
                 Ok(())
             }
             // match専用パターン（fn/letでは使用不可）
-            Pattern::Wildcard | Pattern::Nil | Pattern::Bool(_) | Pattern::Integer(_)
-            | Pattern::Float(_) | Pattern::String(_) | Pattern::Keyword(_)
-            | Pattern::Transform(_, _) | Pattern::Or(_) => {
-                Err(fmt_msg(MsgKey::PatternErrorNotAllowed, &[]))
-            }
+            Pattern::Wildcard
+            | Pattern::Nil
+            | Pattern::Bool(_)
+            | Pattern::Integer(_)
+            | Pattern::Float(_)
+            | Pattern::String(_)
+            | Pattern::Keyword(_)
+            | Pattern::Transform(_, _)
+            | Pattern::Or(_) => Err(fmt_msg(MsgKey::PatternErrorNotAllowed, &[])),
         }
     }
 

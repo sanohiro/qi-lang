@@ -143,7 +143,10 @@ fn main() {
                     template = Some(args[i + 1].clone());
                     i += 2;
                 } else {
-                    eprintln!("{}", fmt_ui_msg(UiMsg::ProjectNewUnknownOption, &[&args[i]]));
+                    eprintln!(
+                        "{}",
+                        fmt_ui_msg(UiMsg::ProjectNewUnknownOption, &[&args[i]])
+                    );
                     std::process::exit(1);
                 }
             }
@@ -180,7 +183,10 @@ fn main() {
                     }
                 }
                 _ => {
-                    eprintln!("{}", fmt_ui_msg(UiMsg::TemplateUnknownSubcommand, &[&args[2]]));
+                    eprintln!(
+                        "{}",
+                        fmt_ui_msg(UiMsg::TemplateUnknownSubcommand, &[&args[2]])
+                    );
                     eprintln!("{}", fmt_ui_msg(UiMsg::TemplateUsage, &[]));
                     std::process::exit(1);
                 }

@@ -1,4 +1,5 @@
 pub mod builtins;
+pub mod constants;
 #[cfg(feature = "dap-server")]
 pub mod dap;
 pub mod debugger;
