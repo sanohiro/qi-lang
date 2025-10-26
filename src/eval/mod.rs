@@ -1,15 +1,26 @@
 use crate::builtins;
 use crate::builtins::util::to_map_key;
-use crate::error::QiError;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
-use crate::value::{
-    Env, Expr, FStringPart, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value,
-};
+use crate::value::{Env, Expr, Function, Macro, MatchArm, Module, NativeFunc, Pattern, Value};
 use parking_lot::RwLock;
 use smallvec::{smallvec, SmallVec};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+// ========================================
+// サブモジュール
+// ========================================
+
+pub mod core;
+pub mod helpers;
+
+// helpersとcoreからの関数をインポート
+use core::{
+    native_is_fn, native_is_number, native_list, native_print, native_to_list, native_to_vector,
+    native_vector,
+};
+use helpers::{find_similar_names, qerr};
 
 // ========================================
 // マジック文字列定数
@@ -36,37 +47,6 @@ pub mod hof_keys {
 // ========================================
 // エラーヘルパー関数
 // ========================================
-
-/// QiErrorを使ってエラーメッセージを生成
-#[inline]
-fn qerr(key: MsgKey, args: &[&str]) -> String {
-    let base_msg = fmt_msg(key, args);
-    let error_code = QiError::error_code_from_eval_msg(&key);
-    QiError::new(error_code, base_msg).into()
-}
-
-/// 環境から変数名の候補を取得
-fn find_similar_names(env: &Env, target: &str, max_distance: usize, limit: usize) -> Vec<String> {
-    // limit.max(8): 通常limit=3だが、フィルタ前の候補は8個程度と推定
-    let mut candidates = Vec::with_capacity(limit.max(8));
-    for (name, _) in env.bindings() {
-        let distance = strsim::levenshtein(target, name);
-        if distance <= max_distance {
-            candidates.push((name.clone(), distance));
-        }
-    }
-
-    // 距離でソート
-    candidates.sort_by_key(|(_, dist)| *dist);
-
-    // 上位のみ取得
-    // limit: 通常3個まで取得
-    let mut results = Vec::with_capacity(limit);
-    for (name, _) in candidates.into_iter().take(limit) {
-        results.push(name);
-    }
-    results
-}
 
 #[derive(Clone)]
 pub struct Evaluator {
@@ -1573,44 +1553,6 @@ impl Evaluator {
         self.expr_to_value(&args[0])
     }
 
-    /// 2引数のbuiltin関数を評価する共通ヘルパー
-    #[inline]
-    fn eval_builtin_2_args(
-        &self,
-        args: &[Expr],
-        env: Arc<RwLock<Env>>,
-        func_name: &str,
-        builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
-    ) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &[func_name]));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtin(&vals, self)
-    }
-
-    /// 3引数のbuiltin関数を評価する共通ヘルパー
-    #[inline]
-    fn eval_builtin_3_args(
-        &self,
-        args: &[Expr],
-        env: Arc<RwLock<Env>>,
-        func_name: &str,
-        builtin: fn(&[Value], &Evaluator) -> Result<Value, String>,
-    ) -> Result<Value, String> {
-        if args.len() != 3 {
-            return Err(qerr(MsgKey::NeedNArgsDesc, &[func_name, "3", ""]));
-        }
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
-            .collect::<Result<Vec<_>, _>>()?;
-        builtin(&vals, self)
-    }
-
     /// sort-by - キー関数でソート
     fn eval_sort_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         self.eval_builtin_2_args(args, env, "sort-by", builtins::sort_by)
@@ -1908,88 +1850,6 @@ impl Evaluator {
     }
 }
 
-// eval.rs内でのみ必要な特別な組み込み関数
-// （print、list、およびbuiltinsモジュールにない型判定関数）
-
-/// 引数の数をチェックするマクロ
-macro_rules! check_args {
-    ($args:expr, $expected:expr, $func_name:expr) => {
-        if $args.len() != $expected {
-            return Err(fmt_msg(
-                MsgKey::NeedExactlyNArgs,
-                &[$func_name, &$expected.to_string()],
-            ));
-        }
-    };
-}
-
-/// list - リストを作成
-fn native_list(args: &[Value]) -> Result<Value, String> {
-    Ok(Value::List(args.iter().cloned().collect()))
-}
-
-/// vector - ベクタを作成
-fn native_vector(args: &[Value]) -> Result<Value, String> {
-    Ok(Value::Vector(args.iter().cloned().collect()))
-}
-
-/// to-list - List/VectorをListに変換
-fn native_to_list(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(qerr(MsgKey::Need1Arg, &["to-list"]));
-    }
-    match &args[0] {
-        Value::List(_) => Ok(args[0].clone()),
-        Value::Vector(v) => Ok(Value::List(v.clone())),
-        _ => Err(qerr(MsgKey::TypeOnly, &["to-list", "lists or vectors"])),
-    }
-}
-
-/// to-vector - List/VectorをVectorに変換
-fn native_to_vector(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(qerr(MsgKey::Need1Arg, &["to-vector"]));
-    }
-    match &args[0] {
-        Value::Vector(_) => Ok(args[0].clone()),
-        Value::List(v) => Ok(Value::Vector(v.clone())),
-        _ => Err(fmt_msg(
-            MsgKey::TypeOnly,
-            &["to-vector", "lists or vectors"],
-        )),
-    }
-}
-
-/// print - 値を出力
-fn native_print(args: &[Value]) -> Result<Value, String> {
-    for (i, arg) in args.iter().enumerate() {
-        if i > 0 {
-            print!(" ");
-        }
-        print!("{}", arg);
-    }
-    println!();
-    Ok(Value::Nil)
-}
-
-/// number? - 数値かどうか判定
-fn native_is_number(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "number?");
-    Ok(Value::Bool(matches!(
-        args[0],
-        Value::Integer(_) | Value::Float(_)
-    )))
-}
-
-/// fn? - 関数かどうか判定
-fn native_is_fn(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "fn?");
-    Ok(Value::Bool(matches!(
-        args[0],
-        Value::Function(_) | Value::NativeFunc(_)
-    )))
-}
-
 // モジュールシステムのヘルパー関数
 impl Evaluator {
     /// useモジュールの評価
@@ -2254,62 +2114,6 @@ impl Evaluator {
         *self.current_module.write() = prev_module;
 
         Ok(module)
-    }
-
-    /// f-stringを評価
-    fn eval_fstring(&self, parts: &[FStringPart], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        let mut result = String::new();
-
-        for part in parts {
-            match part {
-                FStringPart::Text(text) => result.push_str(text),
-                FStringPart::Code(code) => {
-                    // コードをパースして評価
-                    let mut parser = crate::parser::Parser::new(code).map_err(|e| {
-                        crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e])
-                    })?;
-                    let expr = parser.parse().map_err(|e| {
-                        crate::i18n::fmt_msg(crate::i18n::MsgKey::FStringCodeParseError, &[&e])
-                    })?;
-                    let value = self.eval_with_env(&expr, Arc::clone(&env))?;
-
-                    // 値を文字列に変換
-                    let s = match value {
-                        Value::String(s) => s,
-                        Value::Integer(n) => n.to_string(),
-                        Value::Float(f) => f.to_string(),
-                        Value::Bool(b) => b.to_string(),
-                        Value::Nil => "nil".to_string(),
-                        Value::Keyword(k) => format!(":{}", k),
-                        Value::Symbol(s) => s,
-                        Value::List(items) => {
-                            let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
-                            format!("({})", strs.join(" "))
-                        }
-                        Value::Vector(items) => {
-                            let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
-                            format!("[{}]", strs.join(" "))
-                        }
-                        Value::Map(m) => {
-                            let strs: Vec<_> =
-                                m.iter().map(|(k, v)| format!(":{} {}", k, v)).collect();
-                            format!("{{{}}}", strs.join(" "))
-                        }
-                        Value::Function(_) => "<function>".to_string(),
-                        Value::NativeFunc(nf) => format!("<native-fn:{}>", nf.name),
-                        Value::Macro(m) => format!("<macro:{}>", m.name),
-                        Value::Atom(a) => format!("<atom:{}>", a.read()),
-                        Value::Channel(_) => "<channel>".to_string(),
-                        Value::Scope(_) => "<scope>".to_string(),
-                        Value::Stream(_) => "<stream>".to_string(),
-                        Value::Uvar(id) => format!("<uvar:{}>", id),
-                    };
-                    result.push_str(&s);
-                }
-            }
-        }
-
-        Ok(Value::String(result))
     }
 
     /// doを評価
@@ -2681,76 +2485,6 @@ impl Evaluator {
             }
             // その他は変換してValueに
             _ => self.expr_to_value(expr),
-        }
-    }
-
-    /// PatternをValueに変換（マクロ展開/quote用）
-    #[allow(clippy::only_used_in_recursion)]
-    fn fn_param_to_value(&self, param: &crate::value::Pattern) -> Value {
-        use std::collections::HashMap;
-        match param {
-            Pattern::Var(name) => Value::Symbol(name.clone()),
-            Pattern::List(params, rest) | Pattern::Vector(params, rest) => {
-                let mut items: Vec<Value> =
-                    params.iter().map(|p| self.fn_param_to_value(p)).collect();
-                // restがある場合は [..., "&", rest_name] の形式にする
-                if let Some(rest_param) = rest {
-                    items.push(Value::Symbol("&".to_string()));
-                    items.push(self.fn_param_to_value(rest_param));
-                }
-                // Listパターンの場合はList、Vectorパターンの場合はVectorとして返す
-                match param {
-                    Pattern::List(_, _) => Value::List(items.into()),
-                    _ => Value::Vector(items.into()),
-                }
-            }
-            Pattern::Map(pairs, as_var) => {
-                let mut map = HashMap::new();
-                for (key, pattern) in pairs {
-                    map.insert(key.clone(), self.fn_param_to_value(pattern));
-                }
-                // :as がある場合は追加
-                if let Some(var) = as_var {
-                    map.insert("as".to_string(), Value::Symbol(var.clone()));
-                }
-                Value::Map(map.into())
-            }
-            Pattern::As(inner, var) => {
-                // (:as inner-pattern var) の形式で表現
-                Value::List(
-                    vec![
-                        Value::Symbol("as".to_string()),
-                        self.fn_param_to_value(inner),
-                        Value::Symbol(var.clone()),
-                    ]
-                    .into(),
-                )
-            }
-            // match専用パターン（quote/マクロでも表現）
-            Pattern::Wildcard => Value::Symbol("_".to_string()),
-            Pattern::Nil => Value::Nil,
-            Pattern::Bool(b) => Value::Bool(*b),
-            Pattern::Integer(n) => Value::Integer(*n),
-            Pattern::Float(f) => Value::Float(*f),
-            Pattern::String(s) => Value::String(s.clone()),
-            Pattern::Keyword(k) => Value::Keyword(k.clone()),
-            Pattern::Transform(var, expr) => {
-                // (:transform var expr) の形式で表現
-                Value::List(
-                    vec![
-                        Value::Symbol("transform".to_string()),
-                        Value::Symbol(var.clone()),
-                        self.expr_to_value(expr).unwrap_or(Value::Nil),
-                    ]
-                    .into(),
-                )
-            }
-            Pattern::Or(patterns) => {
-                // (:or pattern1 pattern2 ...) の形式で表現
-                let mut items = vec![Value::Symbol("or".to_string())];
-                items.extend(patterns.iter().map(|p| self.fn_param_to_value(p)));
-                Value::List(items.into())
-            }
         }
     }
 

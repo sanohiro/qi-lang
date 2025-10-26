@@ -456,6 +456,8 @@ impl Debugger {
 
         // resume() されるまで待機
         // 状態を再チェックしながら待機（spurious wakeup 対策）
+        // NOTE: condvar.wait()内でself.stateが変更されるため、無限ループではない
+        #[allow(clippy::while_immutable_condition)]
         while self.state == DebuggerState::Paused {
             cvar.wait(&mut guard);
         }
