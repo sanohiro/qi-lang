@@ -1,5 +1,6 @@
 //! 文字列操作関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
@@ -42,9 +43,7 @@ fn get_or_compile_regex(pattern: &str) -> Result<Regex, regex::Error> {
 
 /// split - 文字列を分割
 pub fn native_split(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["split"]));
-    }
+    check_args!(args, 2, "split");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sep)) => {
             // 中間Vecを排除してim::Vector::from_iterを直接使用
@@ -58,9 +57,7 @@ pub fn native_split(args: &[Value]) -> Result<Value, String> {
 
 /// upper - 文字列を大文字に変換
 pub fn native_upper(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["upper"]));
-    }
+    check_args!(args, 1, "upper");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_uppercase())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["upper", "strings"])),
@@ -69,9 +66,7 @@ pub fn native_upper(args: &[Value]) -> Result<Value, String> {
 
 /// lower - 文字列を小文字に変換
 pub fn native_lower(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["lower"]));
-    }
+    check_args!(args, 1, "lower");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.to_lowercase())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["lower", "strings"])),
@@ -80,9 +75,7 @@ pub fn native_lower(args: &[Value]) -> Result<Value, String> {
 
 /// trim - 文字列の前後の空白を削除
 pub fn native_trim(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["trim"]));
-    }
+    check_args!(args, 1, "trim");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.trim().to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["trim", "strings"])),
@@ -91,9 +84,7 @@ pub fn native_trim(args: &[Value]) -> Result<Value, String> {
 
 /// contains? - 部分文字列を含むか判定
 pub fn native_contains(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["contains?"]));
-    }
+    check_args!(args, 2, "contains?");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => Ok(Value::Bool(s.contains(sub.as_str()))),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["contains?", "two strings"])),
@@ -102,9 +93,7 @@ pub fn native_contains(args: &[Value]) -> Result<Value, String> {
 
 /// starts-with? - 接頭辞判定
 pub fn native_starts_with(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["starts-with?"]));
-    }
+    check_args!(args, 2, "starts-with?");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(prefix)) => {
             Ok(Value::Bool(s.starts_with(prefix.as_str())))
@@ -115,9 +104,7 @@ pub fn native_starts_with(args: &[Value]) -> Result<Value, String> {
 
 /// ends-with? - 接尾辞判定
 pub fn native_ends_with(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["ends-with?"]));
-    }
+    check_args!(args, 2, "ends-with?");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(suffix)) => Ok(Value::Bool(s.ends_with(suffix.as_str()))),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["ends-with?", "two strings"])),
@@ -126,9 +113,7 @@ pub fn native_ends_with(args: &[Value]) -> Result<Value, String> {
 
 /// index-of - 部分文字列の最初の出現位置
 pub fn native_index_of(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["index-of"]));
-    }
+    check_args!(args, 2, "index-of");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => match s.find(sub.as_str()) {
             Some(idx) => Ok(Value::Integer(idx as i64)),
@@ -140,9 +125,7 @@ pub fn native_index_of(args: &[Value]) -> Result<Value, String> {
 
 /// last-index-of - 部分文字列の最後の出現位置
 pub fn native_last_index_of(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["last-index-of"]));
-    }
+    check_args!(args, 2, "last-index-of");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sub)) => match s.rfind(sub.as_str()) {
             Some(idx) => Ok(Value::Integer(idx as i64)),
@@ -154,9 +137,7 @@ pub fn native_last_index_of(args: &[Value]) -> Result<Value, String> {
 
 /// slice - 部分文字列を取得
 pub fn native_slice(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::Need2Or3Args, &["slice"]));
-    }
+    check_args!(args, 3, "slice");
     match (&args[0], &args[1], &args[2]) {
         (Value::String(s), Value::Integer(start), Value::Integer(end)) => {
             let char_count = s.chars().count() as i64;
@@ -185,9 +166,7 @@ pub fn native_slice(args: &[Value]) -> Result<Value, String> {
 
 /// take-str - 先頭から指定数の文字を取得
 pub fn native_take_str(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["take-str"]));
-    }
+    check_args!(args, 2, "take-str");
     match (&args[0], &args[1]) {
         (Value::Integer(n), Value::String(s)) => {
             let take_count = (*n).max(0) as usize;
@@ -209,9 +188,7 @@ pub fn native_take_str(args: &[Value]) -> Result<Value, String> {
 
 /// drop-str - 先頭から指定数の文字を削除
 pub fn native_drop_str(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["drop-str"]));
-    }
+    check_args!(args, 2, "drop-str");
     match (&args[0], &args[1]) {
         (Value::Integer(n), Value::String(s)) => {
             let drop_count = (*n).max(0) as usize;
@@ -233,9 +210,7 @@ pub fn native_drop_str(args: &[Value]) -> Result<Value, String> {
 
 /// sub-before - 区切り文字より前の部分を取得
 pub fn native_sub_before(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["sub-before"]));
-    }
+    check_args!(args, 2, "sub-before");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(delim)) => match s.find(delim.as_str()) {
             Some(idx) => Ok(Value::String(s[..idx].to_string())),
@@ -247,9 +222,7 @@ pub fn native_sub_before(args: &[Value]) -> Result<Value, String> {
 
 /// sub-after - 区切り文字より後の部分を取得
 pub fn native_sub_after(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["sub-after"]));
-    }
+    check_args!(args, 2, "sub-after");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(delim)) => match s.find(delim.as_str()) {
             Some(idx) => Ok(Value::String(s[idx + delim.len()..].to_string())),
@@ -261,9 +234,7 @@ pub fn native_sub_after(args: &[Value]) -> Result<Value, String> {
 
 /// replace - 全ての一致部分を置換
 pub fn native_replace(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::Need2Or3Args, &["replace"]));
-    }
+    check_args!(args, 3, "replace");
     match (&args[0], &args[1], &args[2]) {
         (Value::String(s), Value::String(from), Value::String(to)) => {
             Ok(Value::String(s.replace(from.as_str(), to.as_str())))
@@ -274,9 +245,7 @@ pub fn native_replace(args: &[Value]) -> Result<Value, String> {
 
 /// replace-first - 最初の一致部分のみ置換
 pub fn native_replace_first(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::Need2Or3Args, &["replace-first"]));
-    }
+    check_args!(args, 3, "replace-first");
     match (&args[0], &args[1], &args[2]) {
         (Value::String(s), Value::String(from), Value::String(to)) => match s.find(from.as_str()) {
             Some(idx) => {
@@ -297,9 +266,7 @@ pub fn native_replace_first(args: &[Value]) -> Result<Value, String> {
 
 /// lines - 改行で分割
 pub fn native_lines(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["lines"]));
-    }
+    check_args!(args, 1, "lines");
     match &args[0] {
         Value::String(s) => {
             // 中間Vecを排除してim::Vector::from_iterを直接使用
@@ -313,9 +280,7 @@ pub fn native_lines(args: &[Value]) -> Result<Value, String> {
 
 /// words - 空白で分割
 pub fn native_words(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["words"]));
-    }
+    check_args!(args, 1, "words");
     match &args[0] {
         Value::String(s) => {
             // 中間Vecを排除してim::Vector::from_iterを直接使用
@@ -331,9 +296,7 @@ pub fn native_words(args: &[Value]) -> Result<Value, String> {
 
 /// capitalize - 先頭文字を大文字に
 pub fn native_capitalize(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["capitalize"]));
-    }
+    check_args!(args, 1, "capitalize");
     match &args[0] {
         Value::String(s) => {
             let mut chars = s.chars();
@@ -351,9 +314,7 @@ pub fn native_capitalize(args: &[Value]) -> Result<Value, String> {
 
 /// trim-left - 左側の空白を削除
 pub fn native_trim_left(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["trim-left"]));
-    }
+    check_args!(args, 1, "trim-left");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.trim_start().to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["trim-left", "strings"])),
@@ -362,9 +323,7 @@ pub fn native_trim_left(args: &[Value]) -> Result<Value, String> {
 
 /// trim-right - 右側の空白を削除
 pub fn native_trim_right(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["trim-right"]));
-    }
+    check_args!(args, 1, "trim-right");
     match &args[0] {
         Value::String(s) => Ok(Value::String(s.trim_end().to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["trim-right", "strings"])),
@@ -373,9 +332,7 @@ pub fn native_trim_right(args: &[Value]) -> Result<Value, String> {
 
 /// repeat - 文字列を繰り返す
 pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["repeat"]));
-    }
+    check_args!(args, 2, "repeat");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::Integer(n)) => {
             if *n < 0 {
@@ -392,9 +349,7 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
 
 /// chars-count - Unicode文字数
 pub fn native_chars_count(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["chars-count"]));
-    }
+    check_args!(args, 1, "chars-count");
     match &args[0] {
         Value::String(s) => Ok(Value::Integer(s.chars().count() as i64)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["chars-count", "strings"])),
@@ -403,9 +358,7 @@ pub fn native_chars_count(args: &[Value]) -> Result<Value, String> {
 
 /// bytes-count - バイト数
 pub fn native_bytes_count(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["bytes-count"]));
-    }
+    check_args!(args, 1, "bytes-count");
     match &args[0] {
         Value::String(s) => Ok(Value::Integer(s.len() as i64)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["bytes-count", "strings"])),
@@ -414,9 +367,7 @@ pub fn native_bytes_count(args: &[Value]) -> Result<Value, String> {
 
 /// digit? - 全て数字か判定
 pub fn native_digit_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["digit?"]));
-    }
+    check_args!(args, 1, "digit?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(
             !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()),
@@ -427,9 +378,7 @@ pub fn native_digit_p(args: &[Value]) -> Result<Value, String> {
 
 /// alpha? - 全てアルファベットか判定
 pub fn native_alpha_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["alpha?"]));
-    }
+    check_args!(args, 1, "alpha?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(
             !s.is_empty() && s.chars().all(|c| c.is_alphabetic()),
@@ -440,9 +389,7 @@ pub fn native_alpha_p(args: &[Value]) -> Result<Value, String> {
 
 /// alnum? - 全て英数字か判定
 pub fn native_alnum_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["alnum?"]));
-    }
+    check_args!(args, 1, "alnum?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(
             !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()),
@@ -453,9 +400,7 @@ pub fn native_alnum_p(args: &[Value]) -> Result<Value, String> {
 
 /// space? - 全て空白文字か判定
 pub fn native_space_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["space?"]));
-    }
+    check_args!(args, 1, "space?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(
             !s.is_empty() && s.chars().all(|c| c.is_whitespace()),
@@ -466,9 +411,7 @@ pub fn native_space_p(args: &[Value]) -> Result<Value, String> {
 
 /// lower? - 全て小文字か判定
 pub fn native_lower_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["lower?"]));
-    }
+    check_args!(args, 1, "lower?");
     match &args[0] {
         Value::String(s) => {
             let has_alpha = s.chars().any(|c| c.is_alphabetic());
@@ -484,9 +427,7 @@ pub fn native_lower_p(args: &[Value]) -> Result<Value, String> {
 
 /// upper? - 全て大文字か判定
 pub fn native_upper_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["upper?"]));
-    }
+    check_args!(args, 1, "upper?");
     match &args[0] {
         Value::String(s) => {
             let has_alpha = s.chars().any(|c| c.is_alphabetic());
@@ -634,9 +575,7 @@ pub fn native_pad(args: &[Value]) -> Result<Value, String> {
 
 /// squish - 連続空白を1つに、前後trim
 pub fn native_squish(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["squish"]));
-    }
+    check_args!(args, 1, "squish");
     match &args[0] {
         Value::String(s) => {
             let squished = s.split_whitespace().collect::<Vec<&str>>().join(" ");
@@ -675,9 +614,7 @@ pub fn native_expand_tabs(args: &[Value]) -> Result<Value, String> {
 
 /// title - 各単語の先頭を大文字に
 pub fn native_title(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["title"]));
-    }
+    check_args!(args, 1, "title");
     match &args[0] {
         Value::String(s) => {
             let result = s
@@ -699,9 +636,7 @@ pub fn native_title(args: &[Value]) -> Result<Value, String> {
 
 /// reverse - 文字列を反転
 pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["reverse"]));
-    }
+    check_args!(args, 1, "reverse");
     match &args[0] {
         Value::String(s) => {
             let reversed: String = s.chars().rev().collect();
@@ -713,9 +648,7 @@ pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
 
 /// chars - 文字列を文字のリストに分割
 pub fn native_chars(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["chars"]));
-    }
+    check_args!(args, 1, "chars");
     match &args[0] {
         Value::String(s) => {
             // 中間Vecを排除してim::Vector::from_iterを直接使用
@@ -761,9 +694,7 @@ fn split_words(s: &str) -> Vec<String> {
 
 /// snake - スネークケースに変換
 pub fn native_snake(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["snake"]));
-    }
+    check_args!(args, 1, "snake");
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
@@ -780,9 +711,7 @@ pub fn native_snake(args: &[Value]) -> Result<Value, String> {
 
 /// camel - キャメルケースに変換
 pub fn native_camel(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["camel"]));
-    }
+    check_args!(args, 1, "camel");
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
@@ -806,9 +735,7 @@ pub fn native_camel(args: &[Value]) -> Result<Value, String> {
 
 /// kebab - ケバブケースに変換
 pub fn native_kebab(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["kebab"]));
-    }
+    check_args!(args, 1, "kebab");
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
@@ -825,9 +752,7 @@ pub fn native_kebab(args: &[Value]) -> Result<Value, String> {
 
 /// pascal - パスカルケースに変換
 pub fn native_pascal(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["pascal"]));
-    }
+    check_args!(args, 1, "pascal");
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
@@ -847,9 +772,7 @@ pub fn native_pascal(args: &[Value]) -> Result<Value, String> {
 
 /// split-camel - キャメルケースを単語に分割
 pub fn native_split_camel(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["split-camel"]));
-    }
+    check_args!(args, 1, "split-camel");
     match &args[0] {
         Value::String(s) => {
             let words = split_words(s);
@@ -941,9 +864,7 @@ pub fn native_trunc_words(args: &[Value]) -> Result<Value, String> {
 
 /// splice - 位置ベースの置換
 pub fn native_splice(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 4 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["splice", "4"]));
-    }
+    check_args!(args, 4, "splice");
     match (&args[0], &args[1], &args[2], &args[3]) {
         (
             Value::String(s),
@@ -971,9 +892,7 @@ pub fn native_splice(args: &[Value]) -> Result<Value, String> {
 
 /// numeric? - 数値として解釈可能か判定
 pub fn native_numeric_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["numeric?"]));
-    }
+    check_args!(args, 1, "numeric?");
     match &args[0] {
         Value::String(s) => {
             let is_numeric = s.parse::<f64>().is_ok();
@@ -985,9 +904,7 @@ pub fn native_numeric_p(args: &[Value]) -> Result<Value, String> {
 
 /// integer? - 整数として解釈可能か判定
 pub fn native_integer_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["integer?"]));
-    }
+    check_args!(args, 1, "integer?");
     match &args[0] {
         Value::String(s) => {
             let is_integer = s.parse::<i64>().is_ok();
@@ -999,9 +916,7 @@ pub fn native_integer_p(args: &[Value]) -> Result<Value, String> {
 
 /// blank? - 空または空白のみか判定
 pub fn native_blank_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["blank?"]));
-    }
+    check_args!(args, 1, "blank?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(s.trim().is_empty())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["blank?", "strings"])),
@@ -1010,9 +925,7 @@ pub fn native_blank_p(args: &[Value]) -> Result<Value, String> {
 
 /// ascii? - ASCII文字のみか判定
 pub fn native_ascii_p(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["ascii?"]));
-    }
+    check_args!(args, 1, "ascii?");
     match &args[0] {
         Value::String(s) => Ok(Value::Bool(s.is_ascii())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["ascii?", "strings"])),
@@ -1057,9 +970,7 @@ pub fn native_indent(args: &[Value]) -> Result<Value, String> {
 
 /// wrap - 指定幅で改行
 pub fn native_wrap(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["wrap"]));
-    }
+    check_args!(args, 2, "wrap");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::Integer(width)) => {
             let width = (*width).max(1) as usize;
@@ -1091,9 +1002,7 @@ pub fn native_wrap(args: &[Value]) -> Result<Value, String> {
 
 /// parse-int - 文字列を整数に変換
 pub fn native_parse_int(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["parse-int"]));
-    }
+    check_args!(args, 1, "parse-int");
     match &args[0] {
         Value::String(s) => match s.trim().parse::<i64>() {
             Ok(n) => Ok(Value::Integer(n)),
@@ -1108,9 +1017,7 @@ pub fn native_parse_int(args: &[Value]) -> Result<Value, String> {
 
 /// parse-float - 文字列を浮動小数点数に変換
 pub fn native_parse_float(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["parse-float"]));
-    }
+    check_args!(args, 1, "parse-float");
     match &args[0] {
         Value::String(s) => match s.trim().parse::<f64>() {
             Ok(n) => Ok(Value::Float(n)),
@@ -1125,9 +1032,7 @@ pub fn native_parse_float(args: &[Value]) -> Result<Value, String> {
 
 /// slugify - URL用のスラッグに変換
 pub fn native_slugify(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["slugify"]));
-    }
+    check_args!(args, 1, "slugify");
     match &args[0] {
         Value::String(s) => {
             let slug = s
@@ -1156,9 +1061,7 @@ pub fn native_slugify(args: &[Value]) -> Result<Value, String> {
 
 /// word-count - 単語数をカウント
 pub fn native_word_count(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["word-count"]));
-    }
+    check_args!(args, 1, "word-count");
     match &args[0] {
         Value::String(s) => {
             let count = s.split_whitespace().count() as i64;
@@ -1171,9 +1074,7 @@ pub fn native_word_count(args: &[Value]) -> Result<Value, String> {
 /// to-base64 - Base64エンコード
 #[cfg(feature = "string-encoding")]
 pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-base64"]));
-    }
+    check_args!(args, 1, "to-base64");
     match &args[0] {
         Value::String(s) => {
             let encoded = general_purpose::STANDARD.encode(s);
@@ -1186,9 +1087,7 @@ pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
 /// from-base64 - Base64デコード
 #[cfg(feature = "string-encoding")]
 pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["from-base64"]));
-    }
+    check_args!(args, 1, "from-base64");
     match &args[0] {
         Value::String(s) => match general_purpose::STANDARD.decode(s) {
             Ok(bytes) => match String::from_utf8(bytes) {
@@ -1210,9 +1109,7 @@ pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
 /// url-encode - URLエンコード
 #[cfg(feature = "string-encoding")]
 pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["url-encode"]));
-    }
+    check_args!(args, 1, "url-encode");
     match &args[0] {
         Value::String(s) => Ok(Value::String(urlencoding::encode(s).to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["url-encode", "strings"])),
@@ -1222,9 +1119,7 @@ pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
 /// url-decode - URLデコード
 #[cfg(feature = "string-encoding")]
 pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["url-decode"]));
-    }
+    check_args!(args, 1, "url-decode");
     match &args[0] {
         Value::String(s) => match urlencoding::decode(s) {
             Ok(decoded) => Ok(Value::String(decoded.to_string())),
@@ -1240,9 +1135,7 @@ pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
 /// html-encode - HTMLエンコード
 #[cfg(feature = "string-encoding")]
 pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["html-encode"]));
-    }
+    check_args!(args, 1, "html-encode");
     match &args[0] {
         Value::String(s) => Ok(Value::String(html_escape::encode_text(s).to_string())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["html-encode", "strings"])),
@@ -1252,9 +1145,7 @@ pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
 /// html-decode - HTMLデコード
 #[cfg(feature = "string-encoding")]
 pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["html-decode"]));
-    }
+    check_args!(args, 1, "html-decode");
     match &args[0] {
         Value::String(s) => Ok(Value::String(
             html_escape::decode_html_entities(s).to_string(),
@@ -1543,9 +1434,7 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
 /// format-decimal - 小数点桁数を指定してフォーマット
 /// 使い方: (str/format-decimal number decimals) または number |> (str/format-decimal _ decimals)
 pub fn native_format_decimal(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["format-decimal"]));
-    }
+    check_args!(args, 2, "format-decimal");
 
     let number = match &args[0] {
         Value::Integer(n) => *n as f64,
@@ -1576,9 +1465,7 @@ pub fn native_format_decimal(args: &[Value]) -> Result<Value, String> {
 
 /// format-comma - 3桁区切りでフォーマット
 pub fn native_format_comma(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["format-comma"]));
-    }
+    check_args!(args, 1, "format-comma");
 
     let number = match &args[0] {
         Value::Integer(n) => {

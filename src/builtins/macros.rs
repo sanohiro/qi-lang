@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_check_args_exact() {
         fn test_func(args: &[Value]) -> Result<Value, String> {
-            check_args!(args, 2, "test")?;
+            check_args!(args, 2, "test");
             Ok(Value::Nil)
         }
 
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_check_args_zero() {
         fn test_func(args: &[Value]) -> Result<Value, String> {
-            check_args!(args, 0, "test")?;
+            check_args!(args, 0, "test");
             Ok(Value::Nil)
         }
 

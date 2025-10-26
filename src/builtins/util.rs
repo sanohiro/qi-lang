@@ -1,6 +1,6 @@
 //! ユーティリティ関数（デバッグ、Railway Pipeline、Result型ヘルパー）
 
-use crate::i18n::{fmt_msg, MsgKey};
+use crate::check_args;
 use crate::value::Value;
 
 // ========================================
@@ -47,9 +47,7 @@ pub fn native_railway_pipe(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
 ) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["_railway-pipe"]));
-    }
+    check_args!(args, 2, "_railway-pipe");
 
     let func = &args[0];
     let input = &args[1];
@@ -77,9 +75,7 @@ pub fn native_railway_pipe(
 
 /// inspect - 値を整形して表示（デバッグ用）
 pub fn native_inspect(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["inspect"]));
-    }
+    check_args!(args, 1, "inspect");
 
     println!("{}", pretty_print(&args[0], 0));
     Ok(args[0].clone())
@@ -142,9 +138,7 @@ fn pretty_print(value: &Value, indent: usize) -> String {
 
 /// time - 関数実行時間を計測
 pub fn native_time(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time"]));
-    }
+    check_args!(args, 1, "time");
 
     let start = std::time::Instant::now();
     let result = evaluator.apply_function(&args[0], &[])?;

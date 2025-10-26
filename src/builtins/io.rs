@@ -1,5 +1,6 @@
 //! ファイルI/O関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use parking_lot::RwLock;
@@ -211,6 +212,7 @@ fn parse_keyword_args(
 ///   :encoding :euc-jp (EUC-JP)
 ///   :encoding :auto (自動検出)
 pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["read-file"]));
     }
@@ -294,6 +296,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
 ///
 ///   :create-dirs true (ディレクトリを自動作成、デフォルトfalse)
 pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（2 + keyword args）のため、最小2つの引数が必要
     if args.len() < 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["write-file"]));
     }
@@ -447,9 +450,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
 /// 引数: (content, path) - パイプライン対応
 /// 使い方: (content |> (io/append-file "log.txt"))
 pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["append-file"]));
-    }
+    check_args!(args, 2, "append-file");
 
     match (&args[0], &args[1]) {
         (Value::String(content), Value::String(path)) => {
@@ -476,9 +477,7 @@ pub fn native_append_file(args: &[Value]) -> Result<Value, String> {
 
 /// read-lines - ファイルを行ごとに読み込み
 pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["read-lines"]));
-    }
+    check_args!(args, 1, "read-lines");
 
     match &args[0] {
         Value::String(path) => match fs::read_to_string(path) {
@@ -500,9 +499,7 @@ pub fn native_read_lines(args: &[Value]) -> Result<Value, String> {
 
 /// file-exists? - ファイルの存在を確認
 pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["file-exists?"]));
-    }
+    check_args!(args, 1, "file-exists?");
 
     match &args[0] {
         Value::String(path) => Ok(Value::Bool(std::path::Path::new(path).exists())),
@@ -514,6 +511,7 @@ pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
 /// 引数: (file-stream "path") - テキストモード（行ごと）
 ///      (file-stream "path" :bytes) - バイナリモード（バイトベクタごと）
 pub fn native_file_stream(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（1 or 2）のため、最小1つの引数が必要
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["file-stream"]));
     }
@@ -600,9 +598,7 @@ fn create_file_byte_stream(path: &str) -> Result<Value, String> {
 /// 使い方: (stream |> (io/write-stream "output.txt"))
 /// ストリームの各要素を文字列に変換して改行付きで書き込む
 pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["write-stream"]));
-    }
+    check_args!(args, 2, "write-stream");
 
     let stream = match &args[0] {
         Value::Stream(s) => s.clone(),
@@ -669,6 +665,7 @@ pub fn native_write_stream(args: &[Value]) -> Result<Value, String> {
 ///   :pattern - グロブパターン（例: "*.txt", "**/*.rs"）
 ///   :recursive - 再帰的に検索するか（デフォルト: false）
 pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/list-dir", "1"]));
     }
@@ -741,6 +738,7 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
 /// オプション:
 ///   :parents - 親ディレクトリも作成するか（デフォルト: true）
 pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/create-dir", "1"]));
     }
@@ -785,9 +783,7 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
 /// delete-file - ファイルを削除
 /// 引数: (path)
 pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/delete-file", "1"]));
-    }
+    check_args!(args, 1, "io/delete-file");
 
     match &args[0] {
         Value::String(path) => {
@@ -807,6 +803,7 @@ pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
 /// オプション:
 ///   :recursive - 中身ごと削除するか（デフォルト: false）
 pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
+    // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["io/delete-dir", "1"]));
     }
@@ -851,9 +848,7 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
 /// copy-file - ファイルをコピー
 /// 引数: (src, dst)
 pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/copy-file", "2"]));
-    }
+    check_args!(args, 2, "io/copy-file");
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
@@ -868,9 +863,7 @@ pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
 /// move-file - ファイルを移動（名前変更）
 /// 引数: (src, dst)
 pub fn native_move_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/move-file", "2"]));
-    }
+    check_args!(args, 2, "io/move-file");
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
@@ -889,9 +882,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
     use std::collections::HashMap;
     use std::time::UNIX_EPOCH;
 
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/file-info", "1"]));
-    }
+    check_args!(args, 1, "io/file-info");
 
     match &args[0] {
         Value::String(path) => {
@@ -929,9 +920,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
 /// is-file? - ファイルかどうか判定
 /// 引数: (path)
 pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/is-file?", "1"]));
-    }
+    check_args!(args, 1, "io/is-file?");
 
     match &args[0] {
         Value::String(path) => {
@@ -945,9 +934,7 @@ pub fn native_is_file(args: &[Value]) -> Result<Value, String> {
 /// is-dir? - ディレクトリかどうか判定
 /// 引数: (path)
 pub fn native_is_dir(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["io/is-dir?", "1"]));
-    }
+    check_args!(args, 1, "io/is-dir?");
 
     match &args[0] {
         Value::String(path) => {
