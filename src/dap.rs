@@ -651,7 +651,7 @@ impl DapServer {
     }
 
     fn handle_set_breakpoints(&self, request: Request) -> Response {
-        let log_msg = format!("setBreakpoints called\n");
+        let log_msg = "setBreakpoints called\n".to_string();
         std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -1678,7 +1678,7 @@ impl DapServer {
             .map(|p| p.display().to_string())
             .unwrap_or_else(|_| "<unknown>".to_string());
 
-        dap_log(&format!("[DAP] Qi Debug Adapter starting (sync mode)..."));
+        dap_log("[DAP] Qi Debug Adapter starting (sync mode)...");
         dap_log(&format!("[DAP] Executable: {}", exe_path));
 
         // デバッガーを初期化

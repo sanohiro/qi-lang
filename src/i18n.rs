@@ -367,6 +367,7 @@ pub enum MsgKey {
     IoAppendFileFailedToWrite, // append-file: failed to write {0}: {1}
     IoAppendFileFailedToOpen, // append-file: failed to open {0}: {1}
     IoReadLinesFailedToRead,  // read-lines: failed to read {0}: {1}
+    IoEncodingNotSupportedInMinimalBuild, // Encoding '{0}' is not supported in minimal build. Only UTF-8 is available. Enable 'encoding-extended' feature for more encodings.
 
     // Featureエラー
     FeatureDisabled,     // {0} support is disabled. Build with feature '{1}': {2}
@@ -1110,6 +1111,10 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             IoReadLinesFailedToRead,
             "read-lines: failed to read {0}: {1}",
         ),
+        (
+            IoEncodingNotSupportedInMinimalBuild,
+            "Encoding '{0}' is not supported in minimal build. Only UTF-8 is available. Enable 'encoding-extended' feature for more encodings.",
+        ),
         // Featureエラー
         (
             FeatureDisabled,
@@ -1567,6 +1572,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (IoAppendFileFailedToWrite, "append-file: {0}の書き込み失敗: {1}"),
         (IoAppendFileFailedToOpen, "append-file: {0}のオープン失敗: {1}"),
         (IoReadLinesFailedToRead, "read-lines: {0}の読み込み失敗: {1}"),
+        (IoEncodingNotSupportedInMinimalBuild, "エンコーディング '{0}' は最小ビルドではサポートされていません。UTF-8のみ利用可能です。'encoding-extended' featureを有効にしてください。"),
         // Featureエラー
         (FeatureDisabled, "{0}サポートは無効化されています。feature '{1}'でビルドしてください: {2}"),
         (DbUnsupportedDriver, "サポートされていないデータベースドライバ: {0}"),

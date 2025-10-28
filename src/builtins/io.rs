@@ -271,7 +271,10 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
             && encoding_keyword != "utf-8-bom"
             && encoding_keyword != "auto"
         {
-            return Err(format!("Encoding '{}' is not supported. Only UTF-8 is available in minimal build. Enable 'encoding-extended' feature for more encodings.", encoding_keyword));
+            return Err(fmt_msg(
+                MsgKey::IoEncodingNotSupportedInMinimalBuild,
+                &[encoding_keyword],
+            ));
         }
         String::from_utf8(bytes).map_err(|_| fmt_msg(MsgKey::IoFailedToDecodeUtf8, &[path]))?
     };
@@ -392,9 +395,9 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
                 #[cfg(not(feature = "encoding-extended"))]
                 let bytes = {
                     if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-                        return Err(format!(
-                            "Encoding '{}' is not supported in minimal build",
-                            encoding_keyword
+                        return Err(fmt_msg(
+                            MsgKey::IoEncodingNotSupportedInMinimalBuild,
+                            &[encoding_keyword],
                         ));
                     }
                     content.as_bytes().to_vec()
@@ -432,9 +435,9 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     #[cfg(not(feature = "encoding-extended"))]
     let bytes = {
         if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-            return Err(format!(
-                "Encoding '{}' is not supported in minimal build",
-                encoding_keyword
+            return Err(fmt_msg(
+                MsgKey::IoEncodingNotSupportedInMinimalBuild,
+                &[encoding_keyword],
             ));
         }
         content.as_bytes().to_vec()

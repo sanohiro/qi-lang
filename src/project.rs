@@ -152,11 +152,11 @@ fn prompt_metadata(project_dir: &Path) -> Result<ProjectMetadata, String> {
 
     println!("{}", ui_msg(UiMsg::ProjectCreating));
 
-    let name = prompt_with_default(&ui_msg(UiMsg::PromptProjectName), default_name)?;
-    let version = prompt_with_default(&ui_msg(UiMsg::PromptVersion), "0.1.0")?;
-    let description = prompt_optional(&ui_msg(UiMsg::PromptDescription))?;
-    let author = prompt_optional(&ui_msg(UiMsg::PromptAuthor))?;
-    let license = prompt_with_default(&ui_msg(UiMsg::PromptLicense), "MIT")?;
+    let name = prompt_with_default(ui_msg(UiMsg::PromptProjectName), default_name)?;
+    let version = prompt_with_default(ui_msg(UiMsg::PromptVersion), "0.1.0")?;
+    let description = prompt_optional(ui_msg(UiMsg::PromptDescription))?;
+    let author = prompt_optional(ui_msg(UiMsg::PromptAuthor))?;
+    let license = prompt_with_default(ui_msg(UiMsg::PromptLicense), "MIT")?;
 
     Ok(ProjectMetadata {
         name,

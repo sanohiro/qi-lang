@@ -442,7 +442,7 @@ fn get_connection(conn_str: &str) -> Result<String, String> {
     }
     let conn_id = &conn_str["KvsConnection:".len()..];
     if !CONNECTIONS.lock().contains_key(conn_id) {
-        return Err(fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]));
+        return Err(fmt_msg(MsgKey::ConnectionNotFound, &[conn_id]));
     }
     Ok(conn_id.to_string())
 }
