@@ -5,6 +5,7 @@
 //! - stringify: 値をYAML文字列に変換
 //! - pretty: 値をYAML文字列に変換（整形済み、json/prettyとの互換性）
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_yaml;
@@ -42,9 +43,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 /// - 成功時: YAML文字列（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["yaml/stringify"]));
-    }
+    check_args!(args, 1, "yaml/stringify");
 
     match serde_yaml::to_string(&value_to_yaml(&args[0])) {
         Ok(s) => Ok(Value::String(s)),

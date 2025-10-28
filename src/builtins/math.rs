@@ -1,5 +1,6 @@
 //! 数学関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
@@ -8,12 +9,7 @@ use rand::Rng;
 
 /// pow - べき乗
 pub fn native_pow(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["pow", "2", "(base, exponent)"],
-        ));
-    }
+    check_args!(args, 2, "pow");
 
     let base_f = match &args[0] {
         Value::Integer(i) => *i as f64,
@@ -40,9 +36,7 @@ pub fn native_pow(args: &[Value]) -> Result<Value, String> {
 
 /// sqrt - 平方根
 pub fn native_sqrt(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["sqrt"]));
-    }
+    check_args!(args, 1, "sqrt");
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Float((*n as f64).sqrt())),
@@ -53,9 +47,7 @@ pub fn native_sqrt(args: &[Value]) -> Result<Value, String> {
 
 /// round - 四捨五入
 pub fn native_round(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["round"]));
-    }
+    check_args!(args, 1, "round");
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
@@ -66,9 +58,7 @@ pub fn native_round(args: &[Value]) -> Result<Value, String> {
 
 /// floor - 切り捨て
 pub fn native_floor(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["floor"]));
-    }
+    check_args!(args, 1, "floor");
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
@@ -79,9 +69,7 @@ pub fn native_floor(args: &[Value]) -> Result<Value, String> {
 
 /// ceil - 切り上げ
 pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["ceil"]));
-    }
+    check_args!(args, 1, "ceil");
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
@@ -92,12 +80,7 @@ pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
 
 /// clamp - 値を範囲内に制限
 pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["clamp", "3", "(value, min, max)"],
-        ));
-    }
+    check_args!(args, 3, "clamp");
 
     match (&args[0], &args[1], &args[2]) {
         (Value::Integer(val), Value::Integer(min), Value::Integer(max)) => {
@@ -139,12 +122,7 @@ pub fn native_rand(args: &[Value]) -> Result<Value, String> {
 /// rand-int - 0以上n未満の整数乱数
 #[cfg(feature = "std-math")]
 pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["rand-int", "1", "(upper bound)"],
-        ));
-    }
+    check_args!(args, 1, "rand-int");
 
     match &args[0] {
         Value::Integer(n) => {
@@ -164,12 +142,7 @@ pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
 /// random-range - min以上max未満の整数乱数
 #[cfg(feature = "std-math")]
 pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["random-range", "2", "(min, max)"],
-        ));
-    }
+    check_args!(args, 2, "random-range");
 
     match (&args[0], &args[1]) {
         (Value::Integer(min), Value::Integer(max)) => {
@@ -188,9 +161,7 @@ pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
 pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
     use rand::seq::SliceRandom;
 
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["shuffle"]));
-    }
+    check_args!(args, 1, "shuffle");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {

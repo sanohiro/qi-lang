@@ -5,6 +5,7 @@
 //! - stringify: 値をJSON文字列に変換（コンパクト）
 //! - pretty: 値をJSON文字列に変換（整形済み）
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use serde_json;
@@ -42,9 +43,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 /// - 成功時: JSON文字列（値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["json/stringify"]));
-    }
+    check_args!(args, 1, "json/stringify");
 
     match serde_json::to_string(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::String(s)),
@@ -61,9 +60,7 @@ pub fn native_stringify(args: &[Value]) -> Result<Value, String> {
 /// - 成功時: JSON文字列（整形済み、値そのまま）
 /// - 失敗時: {:error エラーメッセージ}
 pub fn native_pretty(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["json/pretty"]));
-    }
+    check_args!(args, 1, "json/pretty");
 
     match serde_json::to_string_pretty(&value_to_json(&args[0])) {
         Ok(s) => Ok(Value::String(s)),

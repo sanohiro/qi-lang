@@ -8,6 +8,7 @@
 //!
 //! このモジュールは `http-client` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use crossbeam_channel::bounded;
@@ -42,9 +43,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 
 /// HTTP POSTリクエスト
 pub fn native_post(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["http/post"]));
-    }
+    check_args!(args, 2, "http/post");
 
     let url = match &args[0] {
         Value::String(s) => s,
@@ -56,9 +55,7 @@ pub fn native_post(args: &[Value]) -> Result<Value, String> {
 
 /// HTTP PUTリクエスト
 pub fn native_put(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["http/put"]));
-    }
+    check_args!(args, 2, "http/put");
 
     let url = match &args[0] {
         Value::String(s) => s,
@@ -84,9 +81,7 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
 
 /// HTTP PATCHリクエスト
 pub fn native_patch(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["http/patch"]));
-    }
+    check_args!(args, 2, "http/patch");
 
     let url = match &args[0] {
         Value::String(s) => s,
@@ -230,9 +225,7 @@ pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
 
 /// HTTP POSTリクエスト (非同期)
 pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["http/post-async"]));
-    }
+    check_args!(args, 2, "http/post-async");
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),
@@ -430,9 +423,7 @@ pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
 /// 引数: (http/post-stream "url" body) - テキストモード
 ///      (http/post-stream "url" body :bytes) - バイナリモード
 pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["http/post-stream"]));
-    }
+    check_args!(args, 2, "http/post-stream");
 
     let url = match &args[0] {
         Value::String(s) => s.clone(),

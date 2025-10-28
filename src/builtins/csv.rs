@@ -1,6 +1,7 @@
 //! CSV処理関数
 //! RFC 4180 準拠の CSV パーサー・シリアライザー
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use parking_lot::RwLock;
@@ -48,9 +49,7 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
 
 /// csv/stringify - Vec<Vec<Value>> を CSV文字列に変換
 pub fn native_csv_stringify(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["csv/stringify"]));
-    }
+    check_args!(args, 1, "csv/stringify");
 
     let records = match &args[0] {
         Value::List(records) | Value::Vector(records) => records,
@@ -96,9 +95,7 @@ pub fn native_csv_stringify(args: &[Value]) -> Result<Value, String> {
 
 /// csv/read-file - CSV ファイルを読み込んで Vec<Vec<String>> に変換
 pub fn native_csv_read_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["csv/read-file"]));
-    }
+    check_args!(args, 1, "csv/read-file");
 
     let path = match &args[0] {
         Value::String(s) => s,
@@ -122,9 +119,7 @@ pub fn native_csv_read_file(args: &[Value]) -> Result<Value, String> {
 /// csv/read-stream - CSV ファイルをストリームとして読み込み
 /// 大きなCSVファイルを処理する際に、メモリを節約しながら行ごとに処理できる
 pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["csv/read-stream"]));
-    }
+    check_args!(args, 1, "csv/read-stream");
 
     let path = match &args[0] {
         Value::String(s) => s.clone(),
@@ -157,9 +152,7 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
 /// 使い方: (data |> (csv/write-file "output.csv"))
 /// csv/stringify + io/write-file の便利関数
 pub fn native_csv_write_file(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["csv/write-file"]));
-    }
+    check_args!(args, 2, "csv/write-file");
 
     // データをCSV文字列に変換
     let csv_str = native_csv_stringify(&[args[0].clone()])?;
