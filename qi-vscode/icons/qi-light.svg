@@ -1,7 +1,10 @@
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Yuji+Boku&amp;display=swap');
+      @font-face {
+        font-family: 'Yuji Boku';
+        src: url(data:font/woff2;base64,d09GMgABAAAAAAUcAA8AAAAACNQAAATFAAMAgwAAAAAAAAAAAAAAAAAAAAAAAAAAGYFSHCoGYAA0EQgKhzSFWgE2AiQDCAsGAAQgBYMwByAXJBgGG+0GUZQPTp7gywN6iMUS/hCJQAstRKpMN3rU/TD7dzewO+dbV15FUI7lXpInKIwno4HcqwqDYDQqUSOrTKcK0BIt4KEpJ9kneTS3Q+OIEMWsubep/ebQiJ1ayH/OysFzAxtQ9Auz8FxAVnw7L+7dT6v6PMG0nZoSiRrZgxLfL5MaUsDu/27e107XbqqlMhbt52FRmlj//73T+/DXFrjH3wks0kT2sjWOjzVIEv8UjjEBw0Aj1sytuUGOHqUydIoda/R6di4B1AXDhZGL5vs75DeyLBWGO8mcAsPdIF2C/IEANf9hkKPDEAmQ4PgJE9fMIHkzWoxYFUJwQdJ9QP6vAMcO3wvhae51/pkwDAtpuqd0acIJTY7soQG4MpObxElCvUwYWDIBB/ybFyj5FNIIBEhnqCeAAX8Vy9AOC4DUIqES1uUaLL4AZg8zxw5Y4v9KgHKCCAIIQBpHf2IssClJMhiFQbQYJ0gKINHDyf8y1dwDBGBALB81gHgpLRML3h0A1upLPitzMGQtzm/ztvs1EeuOVdVh59O1ydr3UndOinkCeTq4S+Zy5OGl+ecQzdjOCrWX+c1sDO4+hYV+4UkqaEl3/zw3PvdZvoxQIVUWN7G1cwUldQKQFjsBkp+jExaOA37wSXdJzCG3N0sH3wrsP7GsyvRACJkzYyrxUrXkEjybhrqMhrHw4E95CrZjKha+eUGYMOxbYsv3MDBAWVtvsqWWZ6QKKesesECxCL3ZVSMQCBm3QZu0lyUM2dUuX3amiSdUnFnpUNyubgqB6Fjvg43dlsZk3ceLiS9lM3B7G6FyLjQDaxWsfJpe0c5D/4/yq+VfIp+FOX6+uXzh+udZ0pA2imnElRwddh2EmJ/P30BeXjbWNUmp6sfKT2bK/kwYdC+96Owbd20S5CN4/dY15EIbQ/1T5TRHH6hem0nIido06qmlpWBcJAMFd8FDGvMFC5nmj8BZJwxjFCaYmSlcmlqVhUNIDlH1womotGnnnFrVaT+C2SSvHHJwmIEGAcOLoxJqv3zpIrEmnGkp0PCLUxHUnLKylozguBTdprUqx00EBU3wwzXUluTBsoNNqilLsYsml2aSnyaPGaujwDJLarOYiSvw+qlZGqP/YXFUiI+CoECNmfkh80guUAnUpvQ/7QnjzKqYMW0fuDUvti2HrZff9b3Xlc6mqCocQt0m5zj17eOjE8KOhRxv1ewDfoaFlnCyLmkUblSi/S/jyTiK25hYvLydZTgEsjHqRJhTNavgKLPaVxoGkp7D+bqDnCxQXa83AkAAWcnvyMm8gJjuV0oMewHA5fuORACukuQ0/vdvGd+HTQKoQgEClJN/DwDK+3/3RwHfB4iKLcUX8gNEC3Sp9A7Y3QWiF8iUL3eNd6esUAE4B4IIZuOIoreJGFXHECfsFxK4g/cyJMFQBxOI4cMiEYgcScoUKVMiyNUAjuLFJZNiHFkQ8nCYnSmMuBwixGJLkoS6lcNgG1OgIILEIXLR6kIgmgYbEh2RS+EhOke7UHAlMvDRcO8txdjFGKJwXXEELhXF0iFPMXy1DhtzL5Os3RxQk2boQUnxPHGfM0kxe5Ju7Xm4QiqZ/4OyH0UfkJc/WuwFTv3/WYzvAxCSPlbCwMQAAAAA) format('woff2');
+      }
     </style>
     <linearGradient id="riverBottomGradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#F8F8F2;stop-opacity:1" />
@@ -56,5 +59,5 @@
   </g>
 
   <!-- 氣の文字（中央・流れと半分重なる） -->
-  <text x="64" y="92" font-family="'Yuji Boku', 'Hiragino Mincho ProN', serif" font-size="80" fill="#282A36" text-anchor="middle" style="filter: drop-shadow(1px 1px 2px rgba(98,114,164,0.4));">氣</text>
+  <text x="64" y="92" font-family="'Yuji Boku', serif" font-size="80" fill="#282A36" text-anchor="middle" style="filter: drop-shadow(1px 1px 2px rgba(98,114,164,0.4));">氣</text>
 </svg>

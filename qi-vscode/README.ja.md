@@ -1,6 +1,6 @@
 # Qi Language VSCode 拡張機能
 
-[English](./README.md) | [日本語](./README.ja.md)
+[English](https://github.com/sanohiro/qi-lang/blob/master/qi-vscode/README.md) | [日本語](https://github.com/sanohiro/qi-lang/blob/master/qi-vscode/README.ja.md)
 
 **Qi - A Lisp that flows** の完全な言語サポート
 
@@ -187,4 +187,4 @@ Qiはフロー指向プログラミングに焦点を当てたモダンなLisp�
 
 ## ライセンス
 
-MIT
+MIT OR Apache-2.0
