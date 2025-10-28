@@ -277,6 +277,214 @@ pub struct DapServer {
     pending_launch: parking_lot::RwLock<Option<PendingLaunch>>,
 }
 
+/// DAPサーバーのコンテキスト（状態管理）
+struct DapContext {
+    server: Arc<DapServer>,
+    writer: tokio::io::BufWriter<tokio::fs::File>,
+    reader: AsyncBufReader<tokio::fs::File>,
+    event_tx: tokio::sync::mpsc::Sender<String>,
+    event_rx: tokio::sync::mpsc::Receiver<String>,
+    stopped_event_interval: tokio::time::Interval,
+    last_sent_event: Option<(String, usize, usize, String)>,
+}
+
+impl DapContext {
+    /// DAPコンテキストを初期化
+    async fn new() -> io::Result<Self> {
+        // stdin/stdoutのバックアップ
+        let original_stdin_file = unsafe { backup_stdin()? };
+        let stdin = tokio::fs::File::from_std(original_stdin_file);
+
+        let stdout_file = backup_stdout()?;
+        backup_stderr_for_logging();
+
+        let writer = tokio::io::BufWriter::new(tokio::fs::File::from_std(stdout_file));
+        let reader = AsyncBufReader::new(stdin);
+
+        // イベント送信用のchannel
+        let (event_tx, event_rx) = tokio::sync::mpsc::channel::<String>(100);
+
+        // 停止イベント監視用のタイマー
+        let stopped_event_interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+
+        Ok(Self {
+            server: Arc::new(DapServer::new()),
+            writer,
+            reader,
+            event_tx,
+            event_rx,
+            stopped_event_interval,
+            last_sent_event: None,
+        })
+    }
+
+    /// 起動ログを記録
+    fn log_startup(&self) {
+        dap_log("[DAP] Qi Debug Adapter starting (async mode)...");
+        eprintln!("[DAP] Log file: /tmp/qi-dap.log");
+
+        let exe_path = std::env::current_exe()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| "<unknown>".to_string());
+
+        std::fs::write(
+            "/tmp/qi-dap.log",
+            format!(
+                "DAP server started at {:?}\nExecutable: {}\n",
+                std::time::SystemTime::now(),
+                exe_path
+            ),
+        )
+        .ok();
+    }
+
+    /// デバッガーを初期化
+    fn initialize_debugger(&self) {
+        crate::debugger::init_global_debugger(true);
+    }
+
+    /// メインループを実行
+    async fn run_main_loop(&mut self) -> io::Result<()> {
+        loop {
+            tokio::select! {
+                _ = self.stopped_event_interval.tick() => {
+                    self.handle_stopped_event_tick().await?;
+                }
+                message_result = read_message_async(&mut self.reader) => {
+                    if !self.handle_incoming_message(message_result).await? {
+                        break;
+                    }
+                }
+                Some(event_json) = self.event_rx.recv() => {
+                    self.send_event(&event_json).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// 停止イベントのチェック
+    async fn handle_stopped_event_tick(&mut self) -> io::Result<()> {
+        let event_info = self.get_stopped_event_info();
+
+        // 前回と同じイベントは送信しない
+        if event_info.is_some() && event_info == self.last_sent_event {
+            return Ok(());
+        }
+
+        if let Some((file, line, column, reason)) = event_info.clone() {
+            self.last_sent_event = event_info;
+            self.log_stopped_event(&reason, &file, line, column);
+
+            let body = serde_json::json!({
+                "reason": reason,
+                "threadId": 1,
+                "allThreadsStopped": true,
+            });
+
+            let event = self.server.send_event("stopped", Some(body));
+            if let Ok(event_json) = serde_json::to_string(&event) {
+                write_message_async(&mut self.writer, &event_json).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 停止イベント情報を取得
+    fn get_stopped_event_info(&self) -> Option<(String, usize, usize, String)> {
+        let guard = crate::debugger::GLOBAL_DEBUGGER.read();
+        if let Some(ref dbg) = *guard {
+            dbg.get_stopped_event().cloned()
+        } else {
+            None
+        }
+    }
+
+    /// 停止イベントのログ出力
+    fn log_stopped_event(&self, reason: &str, file: &str, line: usize, column: usize) {
+        let log_msg = format!(
+            "[DAP] Sending stopped event: reason={}, file={}, line={}, column={}\n",
+            reason, file, line, column
+        );
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/qi-dap.log")
+            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+            .ok();
+    }
+
+    /// 受信メッセージの処理（戻り値: true=継続, false=終了）
+    async fn handle_incoming_message(
+        &mut self,
+        message_result: io::Result<String>,
+    ) -> io::Result<bool> {
+        match message_result {
+            Ok(message) => {
+                self.process_request(&message).await?;
+                Ok(true)
+            }
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(false),
+            Err(_) => Ok(true),
+        }
+    }
+
+    /// リクエストの処理
+    async fn process_request(&mut self, message: &str) -> io::Result<()> {
+        // JSONパース
+        let request: Request = match serde_json::from_str(message) {
+            Ok(req) => req,
+            Err(_) => return Ok(()),
+        };
+
+        // ログに記録
+        self.log_request(&request.command);
+
+        // リクエスト処理
+        let response = self
+            .server
+            .handle_request_async(request.clone(), self.event_tx.clone());
+
+        // レスポンス送信
+        let response_json = serde_json::to_string(&response)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        write_message_async(&mut self.writer, &response_json).await?;
+
+        // initialized イベント送信
+        if response.command == "initialize" && response.success {
+            self.send_initialized_event().await?;
+        }
+
+        Ok(())
+    }
+
+    /// リクエストのログ出力
+    fn log_request(&self, command: &str) {
+        let log_msg = format!("Request: {}\n", command);
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/qi-dap.log")
+            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
+            .ok();
+    }
+
+    /// initialized イベント送信
+    async fn send_initialized_event(&mut self) -> io::Result<()> {
+        let initialized_event = self.server.create_initialized_event();
+        let event_json = serde_json::to_string(&initialized_event)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        write_message_async(&mut self.writer, &event_json).await
+    }
+
+    /// イベント送信
+    async fn send_event(&mut self, event_json: &str) -> io::Result<()> {
+        write_message_async(&mut self.writer, event_json).await
+    }
+}
+
 impl DapServer {
     pub fn new() -> Self {
         DapServer {
@@ -319,15 +527,11 @@ impl DapServer {
             "disconnect" => self.handle_disconnect(request),
             "writeStdin" => self.handle_write_stdin(request),
             "evaluate" => self.handle_evaluate(request),
-            _ => Response {
-                seq: self.next_seq(),
-                msg_type: "response".to_string(),
-                request_seq: request.seq,
-                success: false,
-                command: request.command.clone(),
-                message: Some(format!("Unknown command: {}", request.command)),
-                body: None,
-            },
+            _ => self.create_error_response(
+                request.seq,
+                &request.command,
+                format!("Unknown command: {}", request.command),
+            ),
         }
     }
 
@@ -382,38 +586,22 @@ impl DapServer {
                         .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
                         .ok();
 
-                    return Response {
-                        seq: self.next_seq(),
-                        msg_type: "response".to_string(),
-                        request_seq: request.seq,
-                        success: true,
-                        command: "launch".to_string(),
-                        message: None,
-                        body: None,
-                    };
+                    return self.create_success_response(request.seq, "launch", None);
                 } else {
-                    return Response {
-                        seq: self.next_seq(),
-                        msg_type: "response".to_string(),
-                        request_seq: request.seq,
-                        success: false,
-                        command: "launch".to_string(),
-                        message: Some("No program specified".to_string()),
-                        body: None,
-                    };
+                    return self.create_error_response(
+                        request.seq,
+                        "launch",
+                        "No program specified".to_string(),
+                    );
                 }
             }
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: false,
-            command: "launch".to_string(),
-            message: Some("Invalid launch arguments".to_string()),
-            body: None,
-        }
+        self.create_error_response(
+            request.seq,
+            "launch",
+            "Invalid launch arguments".to_string(),
+        )
     }
 
     fn handle_launch(&self, request: Request) -> Response {
@@ -424,40 +612,20 @@ impl DapServer {
                     // NOTE: この同期版handle_launchは非推奨。run_async()を使用すること
                     // プログラム実行は非同期版（handle_launch_async）で実装済み
                 } else {
-                    return Response {
-                        seq: self.next_seq(),
-                        msg_type: "response".to_string(),
-                        request_seq: request.seq,
-                        success: false,
-                        command: "launch".to_string(),
-                        message: Some("No program specified".to_string()),
-                        body: None,
-                    };
+                    return self.create_error_response(
+                        request.seq,
+                        "launch",
+                        "No program specified".to_string(),
+                    );
                 }
             }
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "launch".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "launch", None)
     }
 
     fn handle_attach(&self, request: Request) -> Response {
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "attach".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "attach", None)
     }
 
     fn handle_initialize(&self, request: Request) -> Response {
@@ -474,15 +642,11 @@ impl DapServer {
         self.initialized
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "initialize".to_string(),
-            message: None,
-            body: Some(serde_json::to_value(capabilities).unwrap()),
-        }
+        self.create_success_response(
+            request.seq,
+            "initialize",
+            Some(serde_json::to_value(capabilities).unwrap()),
+        )
     }
 
     fn handle_set_breakpoints(&self, request: Request) -> Response {
@@ -563,27 +727,15 @@ impl DapServer {
 
                 let body = serde_json::json!({ "breakpoints": response_bps });
 
-                return Response {
-                    seq: self.next_seq(),
-                    msg_type: "response".to_string(),
-                    request_seq: request.seq,
-                    success: true,
-                    command: "setBreakpoints".to_string(),
-                    message: None,
-                    body: Some(body),
-                };
+                return self.create_success_response(request.seq, "setBreakpoints", Some(body));
             }
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: false,
-            command: "setBreakpoints".to_string(),
-            message: Some("Invalid arguments".to_string()),
-            body: None,
-        }
+        self.create_error_response(
+            request.seq,
+            "setBreakpoints",
+            "Invalid arguments".to_string(),
+        )
     }
 
     fn handle_threads(&self, request: Request) -> Response {
@@ -594,15 +746,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "threads": threads });
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "threads".to_string(),
-            message: None,
-            body: Some(body),
-        }
+        self.create_success_response(request.seq, "threads", Some(body))
     }
 
     fn handle_stack_trace(&self, request: Request) -> Response {
@@ -649,15 +793,7 @@ impl DapServer {
             "totalFrames": stack_frames.len()
         });
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "stackTrace".to_string(),
-            message: None,
-            body: Some(body),
-        }
+        self.create_success_response(request.seq, "stackTrace", Some(body))
     }
 
     fn handle_scopes(&self, _request: Request) -> Response {
@@ -670,15 +806,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "scopes": scopes });
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: _request.seq,
-            success: true,
-            command: "scopes".to_string(),
-            message: None,
-            body: Some(body),
-        }
+        self.create_success_response(_request.seq, "scopes", Some(body))
     }
 
     fn handle_variables(&self, _request: Request) -> Response {
@@ -712,15 +840,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "variables": variables });
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: _request.seq,
-            success: true,
-            command: "variables".to_string(),
-            message: None,
-            body: Some(body),
-        }
+        self.create_success_response(_request.seq, "variables", Some(body))
     }
 
     fn handle_continue(&self, request: Request) -> Response {
@@ -731,15 +851,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "allThreadsContinued": true });
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "continue".to_string(),
-            message: None,
-            body: Some(body),
-        }
+        self.create_success_response(request.seq, "continue", Some(body))
     }
 
     fn handle_next(&self, request: Request) -> Response {
@@ -749,15 +861,7 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "next".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "next", None)
     }
 
     fn handle_step_in(&self, request: Request) -> Response {
@@ -767,15 +871,7 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "stepIn".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "stepIn", None)
     }
 
     fn handle_step_out(&self, request: Request) -> Response {
@@ -785,27 +881,11 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "stepOut".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "stepOut", None)
     }
 
     fn handle_configuration_done(&self, request: Request) -> Response {
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "configurationDone".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "configurationDone", None)
     }
 
     /// 非同期版configurationDoneハンドラ（pending_launchがあれば実行開始）
@@ -966,27 +1046,11 @@ impl DapServer {
                 .ok();
         }
 
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "configurationDone".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "configurationDone", None)
     }
 
     fn handle_disconnect(&self, request: Request) -> Response {
-        Response {
-            seq: self.next_seq(),
-            msg_type: "response".to_string(),
-            request_seq: request.seq,
-            success: true,
-            command: "disconnect".to_string(),
-            message: None,
-            body: None,
-        }
+        self.create_success_response(request.seq, "disconnect", None)
     }
 
     /// evaluateリクエストハンドラー（デバッグコンソール入力）
@@ -995,147 +1059,167 @@ impl DapServer {
     /// `.stdin <text>` 形式の入力を標準入力に書き込みます。
     /// 引数: { "expression": "式またはコマンド", "frameId": ..., "context": ... }
     fn handle_evaluate(&self, request: Request) -> Response {
-        let expression = request
+        let Some(expr) = self.extract_expression(&request) else {
+            return self.create_error_response(
+                request.seq,
+                "evaluate",
+                "Missing 'expression' argument".to_string(),
+            );
+        };
+
+        // .stdinコマンドの処理
+        if let Some(text) = expr.strip_prefix(".stdin ") {
+            return self.handle_stdin_command(&request, text);
+        }
+
+        // ウォッチ式評価
+        self.handle_watch_expression(&request, expr)
+    }
+
+    /// リクエストから式を抽出
+    fn extract_expression<'a>(&self, request: &'a Request) -> Option<&'a str> {
+        request
             .arguments
             .as_ref()
             .and_then(|args| args.get("expression"))
-            .and_then(|v| v.as_str());
+            .and_then(|v| v.as_str())
+    }
 
-        match expression {
-            Some(expr) => {
-                // .stdin プレフィックスをチェック
-                if let Some(text) = expr.strip_prefix(".stdin ") {
-                    // エスケープシーケンスを変換（\n → 改行, \t → タブ）
-                    let text = text.replace("\\n", "\n").replace("\\t", "\t");
-                    // writeStdinを実行
-                    match write_to_stdin(&text) {
-                        Ok(()) => Response {
-                            seq: self.next_seq(),
-                            msg_type: "response".to_string(),
-                            request_seq: request.seq,
-                            success: true,
-                            command: "evaluate".to_string(),
-                            message: None,
-                            body: Some(serde_json::json!({
-                                "result": crate::i18n::fmt_ui_msg(crate::i18n::UiMsg::DapStdinSent, &[&text]),
-                                "variablesReference": 0
-                            })),
-                        },
-                        Err(e) => Response {
-                            seq: self.next_seq(),
-                            msg_type: "response".to_string(),
-                            request_seq: request.seq,
-                            success: false,
-                            command: "evaluate".to_string(),
-                            message: Some(format!("Failed to write to stdin: {}", e)),
-                            body: None,
-                        },
-                    }
-                } else {
-                    // ウォッチ式の評価
-                    if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
-                        if let Some(env_arc) = dbg.get_stopped_env() {
-                            // パーサーと評価器を使って式を評価
-                            match crate::parser::Parser::new(expr).and_then(|mut p| p.parse_all()) {
-                                Ok(exprs) => {
-                                    if exprs.is_empty() {
-                                        return Response {
-                                            seq: self.next_seq(),
-                                            msg_type: "response".to_string(),
-                                            request_seq: request.seq,
-                                            success: false,
-                                            command: "evaluate".to_string(),
-                                            message: Some(crate::i18n::fmt_msg(
-                                                crate::i18n::MsgKey::DapEmptyExpression,
-                                                &[],
-                                            )),
-                                            body: None,
-                                        };
-                                    }
+    /// .stdinコマンドの処理
+    fn handle_stdin_command(&self, request: &Request, text: &str) -> Response {
+        let text = text.replace("\\n", "\n").replace("\\t", "\t");
 
-                                    // 最初の式を評価
-                                    let evaluator = crate::eval::Evaluator::new();
-                                    match evaluator.eval_with_env(&exprs[0], env_arc.clone()) {
-                                        Ok(value) => Response {
-                                            seq: self.next_seq(),
-                                            msg_type: "response".to_string(),
-                                            request_seq: request.seq,
-                                            success: true,
-                                            command: "evaluate".to_string(),
-                                            message: None,
-                                            body: Some(serde_json::json!({
-                                                "result": format!("{}", value),
-                                                "type": value.type_name(),
-                                                "variablesReference": 0
-                                            })),
-                                        },
-                                        Err(e) => Response {
-                                            seq: self.next_seq(),
-                                            msg_type: "response".to_string(),
-                                            request_seq: request.seq,
-                                            success: false,
-                                            command: "evaluate".to_string(),
-                                            message: Some(crate::i18n::fmt_msg(
-                                                crate::i18n::MsgKey::DapEvaluationError,
-                                                &[&e],
-                                            )),
-                                            body: None,
-                                        },
-                                    }
-                                }
-                                Err(e) => Response {
-                                    seq: self.next_seq(),
-                                    msg_type: "response".to_string(),
-                                    request_seq: request.seq,
-                                    success: false,
-                                    command: "evaluate".to_string(),
-                                    message: Some(crate::i18n::fmt_msg(
-                                        crate::i18n::MsgKey::DapParseError,
-                                        &[&e],
-                                    )),
-                                    body: None,
-                                },
-                            }
-                        } else {
-                            Response {
-                                seq: self.next_seq(),
-                                msg_type: "response".to_string(),
-                                request_seq: request.seq,
-                                success: false,
-                                command: "evaluate".to_string(),
-                                message: Some(crate::i18n::fmt_msg(
-                                    crate::i18n::MsgKey::DapNoEnvironment,
-                                    &[],
-                                )),
-                                body: None,
-                            }
-                        }
-                    } else {
-                        Response {
-                            seq: self.next_seq(),
-                            msg_type: "response".to_string(),
-                            request_seq: request.seq,
-                            success: false,
-                            command: "evaluate".to_string(),
-                            message: Some(crate::i18n::fmt_msg(
-                                crate::i18n::MsgKey::DapDebuggerNotAvailable,
-                                &[],
-                            )),
-                            body: None,
-                        }
-                    }
-                }
-            }
-            None => Response {
-                seq: self.next_seq(),
-                msg_type: "response".to_string(),
-                request_seq: request.seq,
-                success: false,
-                command: "evaluate".to_string(),
-                message: Some("Missing 'expression' argument".to_string()),
-                body: None,
-            },
+        match write_to_stdin(&text) {
+            Ok(()) => self.create_success_response(
+                request.seq,
+                "evaluate",
+                Some(serde_json::json!({
+                    "result": crate::i18n::fmt_ui_msg(crate::i18n::UiMsg::DapStdinSent, &[&text]),
+                    "variablesReference": 0
+                })),
+            ),
+            Err(e) => self.create_error_response(
+                request.seq,
+                "evaluate",
+                format!("Failed to write to stdin: {}", e),
+            ),
         }
+    }
+
+    /// ウォッチ式の評価
+    fn handle_watch_expression(&self, request: &Request, expr: &str) -> Response {
+        // デバッガーの取得
+        let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() else {
+            return self.create_i18n_error_response(
+                request.seq,
+                "evaluate",
+                crate::i18n::MsgKey::DapDebuggerNotAvailable,
+                &[],
+            );
+        };
+
+        // 環境の取得
+        let Some(env_arc) = dbg.get_stopped_env() else {
+            return self.create_i18n_error_response(
+                request.seq,
+                "evaluate",
+                crate::i18n::MsgKey::DapNoEnvironment,
+                &[],
+            );
+        };
+
+        // パース
+        let exprs = match crate::parser::Parser::new(expr).and_then(|mut p| p.parse_all()) {
+            Ok(exprs) if !exprs.is_empty() => exprs,
+            Ok(_) => {
+                return self.create_i18n_error_response(
+                    request.seq,
+                    "evaluate",
+                    crate::i18n::MsgKey::DapEmptyExpression,
+                    &[],
+                )
+            }
+            Err(e) => {
+                return self.create_i18n_error_response(
+                    request.seq,
+                    "evaluate",
+                    crate::i18n::MsgKey::DapParseError,
+                    &[&e],
+                )
+            }
+        };
+
+        // 評価
+        self.evaluate_expression(request, &exprs[0], env_arc)
+    }
+
+    /// 式の評価実行
+    fn evaluate_expression(
+        &self,
+        request: &Request,
+        expr: &crate::value::Expr,
+        env_arc: std::sync::Arc<parking_lot::RwLock<crate::value::Env>>,
+    ) -> Response {
+        let evaluator = crate::eval::Evaluator::new();
+        match evaluator.eval_with_env(expr, env_arc) {
+            Ok(value) => self.create_success_response(
+                request.seq,
+                "evaluate",
+                Some(serde_json::json!({
+                    "result": format!("{}", value),
+                    "type": value.type_name(),
+                    "variablesReference": 0
+                })),
+            ),
+            Err(e) => self.create_i18n_error_response(
+                request.seq,
+                "evaluate",
+                crate::i18n::MsgKey::DapEvaluationError,
+                &[&e],
+            ),
+        }
+    }
+
+    /// 成功レスポンスの生成
+    fn create_success_response(
+        &self,
+        request_seq: i64,
+        command: &str,
+        body: Option<serde_json::Value>,
+    ) -> Response {
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq,
+            success: true,
+            command: command.to_string(),
+            message: None,
+            body,
+        }
+    }
+
+    /// エラーレスポンスの生成
+    fn create_error_response(&self, request_seq: i64, command: &str, message: String) -> Response {
+        Response {
+            seq: self.next_seq(),
+            msg_type: "response".to_string(),
+            request_seq,
+            success: false,
+            command: command.to_string(),
+            message: Some(message),
+            body: None,
+        }
+    }
+
+    /// i18nエラーレスポンスの生成
+    fn create_i18n_error_response(
+        &self,
+        request_seq: i64,
+        command: &str,
+        key: crate::i18n::MsgKey,
+        args: &[&str],
+    ) -> Response {
+        self.create_error_response(request_seq, command, crate::i18n::fmt_msg(key, args))
     }
 
     /// writeStdinリクエストハンドラー（標準入力エミュレート）
@@ -1151,34 +1235,18 @@ impl DapServer {
 
         match text {
             Some(text_str) => match write_to_stdin(text_str) {
-                Ok(()) => Response {
-                    seq: self.next_seq(),
-                    msg_type: "response".to_string(),
-                    request_seq: request.seq,
-                    success: true,
-                    command: "writeStdin".to_string(),
-                    message: None,
-                    body: None,
-                },
-                Err(e) => Response {
-                    seq: self.next_seq(),
-                    msg_type: "response".to_string(),
-                    request_seq: request.seq,
-                    success: false,
-                    command: "writeStdin".to_string(),
-                    message: Some(format!("Failed to write to stdin: {}", e)),
-                    body: None,
-                },
+                Ok(()) => self.create_success_response(request.seq, "writeStdin", None),
+                Err(e) => self.create_error_response(
+                    request.seq,
+                    "writeStdin",
+                    format!("Failed to write to stdin: {}", e),
+                ),
             },
-            None => Response {
-                seq: self.next_seq(),
-                msg_type: "response".to_string(),
-                request_seq: request.seq,
-                success: false,
-                command: "writeStdin".to_string(),
-                message: Some("Missing 'text' argument".to_string()),
-                body: None,
-            },
+            None => self.create_error_response(
+                request.seq,
+                "writeStdin",
+                "Missing 'text' argument".to_string(),
+            ),
         }
     }
 
@@ -1579,149 +1647,10 @@ fn backup_stderr_for_logging() {
 impl DapServer {
     /// DAPサーバーを起動（非同期版・推奨）
     pub async fn run_async_internal() -> io::Result<()> {
-        let server = std::sync::Arc::new(DapServer::new());
-
-        // 元の stdin (fd 0) を保存してから、Qi プログラム用のパイプに差し替える
-        let original_stdin_file = unsafe { backup_stdin()? };
-        let stdin = tokio::fs::File::from_std(original_stdin_file);
-
-        // 元のstdout/stderrをバックアップ
-        let stdout_file = backup_stdout()?;
-        backup_stderr_for_logging();
-
-        let mut writer = tokio::io::BufWriter::new(tokio::fs::File::from_std(stdout_file));
-        let mut reader = AsyncBufReader::new(stdin);
-
-        dap_log("[DAP] Qi Debug Adapter starting (async mode)...");
-        eprintln!("[DAP] Log file: /tmp/qi-dap.log");
-
-        let exe_path = std::env::current_exe()
-            .map(|p| p.display().to_string())
-            .unwrap_or_else(|_| "<unknown>".to_string());
-
-        std::fs::write(
-            "/tmp/qi-dap.log",
-            format!(
-                "DAP server started at {:?}\nExecutable: {}\n",
-                std::time::SystemTime::now(),
-                exe_path
-            ),
-        )
-        .ok();
-
-        // デバッガーを初期化
-        crate::debugger::init_global_debugger(true);
-
-        // イベント送信用のchannel
-        let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<String>(100);
-
-        // 停止イベント監視用のタイマー
-        let mut stopped_event_interval =
-            tokio::time::interval(tokio::time::Duration::from_millis(50));
-
-        // 前回送信したイベント（重複送信防止）
-        let mut last_sent_event: Option<(String, usize, usize, String)> = None;
-
-        // メインループ
-        loop {
-            tokio::select! {
-                // 停止イベントの監視（50msごと）
-                _ = stopped_event_interval.tick() => {
-                    let event_info = {
-                        let guard = crate::debugger::GLOBAL_DEBUGGER.read();
-                        if let Some(ref dbg) = *guard {
-                            dbg.get_stopped_event().cloned()
-                        } else {
-                            None
-                        }
-                    };
-
-                    // 前回と同じイベントは送信しない
-                    if event_info.is_some() && event_info == last_sent_event {
-                        continue;
-                    }
-
-                    if let Some((file, line, column, reason)) = event_info.clone() {
-                        last_sent_event = event_info;
-                        let log_msg = format!(
-                            "[DAP] Sending stopped event: reason={}, file={}, line={}, column={}\n",
-                            reason, file, line, column
-                        );
-                        std::fs::OpenOptions::new()
-                            .create(true)
-                            .append(true)
-                            .open("/tmp/qi-dap.log")
-                            .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
-                            .ok();
-
-                        let body = serde_json::json!({
-                            "reason": reason,
-                            "threadId": 1,
-                            "allThreadsStopped": true,
-                        });
-
-                        let event = server.send_event("stopped", Some(body));
-                        if let Ok(event_json) = serde_json::to_string(&event) {
-                            write_message_async(&mut writer, &event_json).await?;
-                        }
-                    }
-                }
-                // リクエスト処理
-                message_result = read_message_async(&mut reader) => {
-                    match message_result {
-                        Ok(message) => {
-                            // JSONパース
-                            let request: Request = match serde_json::from_str(&message) {
-                                Ok(req) => req,
-                                Err(_) => {
-                                    continue;
-                                }
-                            };
-
-                            // ログに記録
-                            let log_msg = format!("Request: {}\n", request.command);
-                            std::fs::OpenOptions::new()
-                                .create(true)
-                                .append(true)
-                                .open("/tmp/qi-dap.log")
-                                .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
-                                .ok();
-
-                            // リクエスト処理（イベント送信チャネルを渡す）
-                            let response = server.handle_request_async(request, event_tx.clone());
-
-                            // レスポンス送信
-                            let response_json = serde_json::to_string(&response)
-                                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-
-                            write_message_async(&mut writer, &response_json).await?;
-
-                            // initialized イベント送信（initializeリクエスト後）
-                            if response.command == "initialize" && response.success {
-                                let initialized_event = server.create_initialized_event();
-                                let event_json = serde_json::to_string(&initialized_event)
-                                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-
-                                write_message_async(&mut writer, &event_json).await?;
-                            }
-                        }
-                        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
-                            break;
-                        }
-                        Err(_) => {
-                            continue;
-                        }
-                    }
-                }
-
-                // イベント送信
-                Some(event_json) = event_rx.recv() => {
-                    write_message_async(&mut writer, &event_json).await?;
-                }
-            }
-        }
-
-        Ok(())
+        let mut context = DapContext::new().await?;
+        context.log_startup();
+        context.initialize_debugger();
+        context.run_main_loop().await
     }
 
     /// DAPサーバーを起動（エントリーポイント）
