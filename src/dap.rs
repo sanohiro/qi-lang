@@ -2,6 +2,7 @@
 //!
 //! VSCodeとの統合のためのDAPサーバー
 
+use crate::constants::dap::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -382,7 +383,7 @@ impl DapContext {
                 "allThreadsStopped": true,
             });
 
-            let event = self.server.send_event("stopped", Some(body));
+            let event = self.server.send_event(EVENT_STOPPED, Some(body));
             if let Ok(event_json) = serde_json::to_string(&event) {
                 write_message_async(&mut self.writer, &event_json).await?;
             }
@@ -453,7 +454,7 @@ impl DapContext {
         write_message_async(&mut self.writer, &response_json).await?;
 
         // initialized イベント送信
-        if response.command == "initialize" && response.success {
+        if response.command == COMMAND_INITIALIZE && response.success {
             self.send_initialized_event().await?;
         }
 
@@ -503,7 +504,7 @@ impl DapServer {
     pub fn send_event(&self, event_name: &str, body: Option<serde_json::Value>) -> Event {
         Event {
             seq: self.next_seq(),
-            msg_type: "event".to_string(),
+            msg_type: MSG_TYPE_EVENT.to_string(),
             event: event_name.to_string(),
             body,
         }
@@ -511,22 +512,22 @@ impl DapServer {
 
     pub fn handle_request(&self, request: Request) -> Response {
         match request.command.as_str() {
-            "initialize" => self.handle_initialize(request),
-            "launch" => self.handle_launch(request),
-            "attach" => self.handle_attach(request),
-            "setBreakpoints" => self.handle_set_breakpoints(request),
-            "configurationDone" => self.handle_configuration_done(request),
-            "threads" => self.handle_threads(request),
-            "stackTrace" => self.handle_stack_trace(request),
-            "scopes" => self.handle_scopes(request),
-            "variables" => self.handle_variables(request),
-            "continue" => self.handle_continue(request),
-            "next" => self.handle_next(request),
-            "stepIn" => self.handle_step_in(request),
-            "stepOut" => self.handle_step_out(request),
-            "disconnect" => self.handle_disconnect(request),
+            COMMAND_INITIALIZE => self.handle_initialize(request),
+            COMMAND_LAUNCH => self.handle_launch(request),
+            COMMAND_ATTACH => self.handle_attach(request),
+            COMMAND_SET_BREAKPOINTS => self.handle_set_breakpoints(request),
+            COMMAND_CONFIGURATION_DONE => self.handle_configuration_done(request),
+            COMMAND_THREADS => self.handle_threads(request),
+            COMMAND_STACK_TRACE => self.handle_stack_trace(request),
+            COMMAND_SCOPES => self.handle_scopes(request),
+            COMMAND_VARIABLES => self.handle_variables(request),
+            COMMAND_CONTINUE => self.handle_continue(request),
+            COMMAND_NEXT => self.handle_next(request),
+            COMMAND_STEP_IN => self.handle_step_in(request),
+            COMMAND_STEP_OUT => self.handle_step_out(request),
+            COMMAND_DISCONNECT => self.handle_disconnect(request),
             "writeStdin" => self.handle_write_stdin(request),
-            "evaluate" => self.handle_evaluate(request),
+            COMMAND_EVALUATE => self.handle_evaluate(request),
             _ => self.create_error_response(
                 request.seq,
                 &request.command,
@@ -542,8 +543,8 @@ impl DapServer {
         event_tx: tokio::sync::mpsc::Sender<String>,
     ) -> Response {
         match request.command.as_str() {
-            "launch" => self.handle_launch_async(request, event_tx),
-            "configurationDone" => self.handle_configuration_done_async(request, event_tx),
+            COMMAND_LAUNCH => self.handle_launch_async(request, event_tx),
+            COMMAND_CONFIGURATION_DONE => self.handle_configuration_done_async(request, event_tx),
             _ => {
                 // 他のコマンドは同期版を使用
                 self.handle_request(request)
@@ -586,11 +587,11 @@ impl DapServer {
                         .and_then(|mut f| std::io::Write::write_all(&mut f, log_msg.as_bytes()))
                         .ok();
 
-                    return self.create_success_response(request.seq, "launch", None);
+                    return self.create_success_response(request.seq, COMMAND_LAUNCH, None);
                 } else {
                     return self.create_error_response(
                         request.seq,
-                        "launch",
+                        COMMAND_LAUNCH,
                         "No program specified".to_string(),
                     );
                 }
@@ -599,7 +600,7 @@ impl DapServer {
 
         self.create_error_response(
             request.seq,
-            "launch",
+            COMMAND_LAUNCH,
             "Invalid launch arguments".to_string(),
         )
     }
@@ -614,18 +615,18 @@ impl DapServer {
                 } else {
                     return self.create_error_response(
                         request.seq,
-                        "launch",
+                        COMMAND_LAUNCH,
                         "No program specified".to_string(),
                     );
                 }
             }
         }
 
-        self.create_success_response(request.seq, "launch", None)
+        self.create_success_response(request.seq, COMMAND_LAUNCH, None)
     }
 
     fn handle_attach(&self, request: Request) -> Response {
-        self.create_success_response(request.seq, "attach", None)
+        self.create_success_response(request.seq, COMMAND_ATTACH, None)
     }
 
     fn handle_initialize(&self, request: Request) -> Response {
@@ -644,7 +645,7 @@ impl DapServer {
 
         self.create_success_response(
             request.seq,
-            "initialize",
+            COMMAND_INITIALIZE,
             Some(serde_json::to_value(capabilities).unwrap()),
         )
     }
@@ -727,13 +728,17 @@ impl DapServer {
 
                 let body = serde_json::json!({ "breakpoints": response_bps });
 
-                return self.create_success_response(request.seq, "setBreakpoints", Some(body));
+                return self.create_success_response(
+                    request.seq,
+                    COMMAND_SET_BREAKPOINTS,
+                    Some(body),
+                );
             }
         }
 
         self.create_error_response(
             request.seq,
-            "setBreakpoints",
+            COMMAND_SET_BREAKPOINTS,
             "Invalid arguments".to_string(),
         )
     }
@@ -746,7 +751,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "threads": threads });
 
-        self.create_success_response(request.seq, "threads", Some(body))
+        self.create_success_response(request.seq, COMMAND_THREADS, Some(body))
     }
 
     fn handle_stack_trace(&self, request: Request) -> Response {
@@ -793,7 +798,7 @@ impl DapServer {
             "totalFrames": stack_frames.len()
         });
 
-        self.create_success_response(request.seq, "stackTrace", Some(body))
+        self.create_success_response(request.seq, COMMAND_STACK_TRACE, Some(body))
     }
 
     fn handle_scopes(&self, _request: Request) -> Response {
@@ -806,7 +811,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "scopes": scopes });
 
-        self.create_success_response(_request.seq, "scopes", Some(body))
+        self.create_success_response(_request.seq, COMMAND_SCOPES, Some(body))
     }
 
     fn handle_variables(&self, _request: Request) -> Response {
@@ -840,7 +845,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "variables": variables });
 
-        self.create_success_response(_request.seq, "variables", Some(body))
+        self.create_success_response(_request.seq, COMMAND_VARIABLES, Some(body))
     }
 
     fn handle_continue(&self, request: Request) -> Response {
@@ -851,7 +856,7 @@ impl DapServer {
 
         let body = serde_json::json!({ "allThreadsContinued": true });
 
-        self.create_success_response(request.seq, "continue", Some(body))
+        self.create_success_response(request.seq, COMMAND_CONTINUE, Some(body))
     }
 
     fn handle_next(&self, request: Request) -> Response {
@@ -861,7 +866,7 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        self.create_success_response(request.seq, "next", None)
+        self.create_success_response(request.seq, COMMAND_NEXT, None)
     }
 
     fn handle_step_in(&self, request: Request) -> Response {
@@ -871,7 +876,7 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        self.create_success_response(request.seq, "stepIn", None)
+        self.create_success_response(request.seq, COMMAND_STEP_IN, None)
     }
 
     fn handle_step_out(&self, request: Request) -> Response {
@@ -881,11 +886,11 @@ impl DapServer {
             dbg.resume(); // 待機中のスレッドを起こす
         }
 
-        self.create_success_response(request.seq, "stepOut", None)
+        self.create_success_response(request.seq, COMMAND_STEP_OUT, None)
     }
 
     fn handle_configuration_done(&self, request: Request) -> Response {
-        self.create_success_response(request.seq, "configurationDone", None)
+        self.create_success_response(request.seq, COMMAND_CONFIGURATION_DONE, None)
     }
 
     /// 非同期版configurationDoneハンドラ（pending_launchがあれば実行開始）
@@ -945,8 +950,8 @@ impl DapServer {
                 };
                 let start_event = Event {
                     seq: seq_base,
-                    msg_type: "event".to_string(),
-                    event: "output".to_string(),
+                    msg_type: MSG_TYPE_EVENT.to_string(),
+                    event: EVENT_OUTPUT.to_string(),
                     body: serde_json::to_value(&start_msg).ok(),
                 };
                 if let Ok(event_json) = serde_json::to_string(&start_event) {
@@ -982,8 +987,8 @@ impl DapServer {
                         };
                         let success_event = Event {
                             seq: seq_base + 1,
-                            msg_type: "event".to_string(),
-                            event: "output".to_string(),
+                            msg_type: MSG_TYPE_EVENT.to_string(),
+                            event: EVENT_OUTPUT.to_string(),
                             body: serde_json::to_value(&success_msg).ok(),
                         };
                         if let Ok(event_json) = serde_json::to_string(&success_event) {
@@ -1006,8 +1011,8 @@ impl DapServer {
                         };
                         let error_event = Event {
                             seq: seq_base + 1,
-                            msg_type: "event".to_string(),
-                            event: "output".to_string(),
+                            msg_type: MSG_TYPE_EVENT.to_string(),
+                            event: EVENT_OUTPUT.to_string(),
                             body: serde_json::to_value(&error_msg).ok(),
                         };
                         if let Ok(event_json) = serde_json::to_string(&error_event) {
@@ -1027,8 +1032,8 @@ impl DapServer {
 
                 let terminated_event = Event {
                     seq: seq_base + 2,
-                    msg_type: "event".to_string(),
-                    event: "terminated".to_string(),
+                    msg_type: MSG_TYPE_EVENT.to_string(),
+                    event: EVENT_TERMINATED.to_string(),
                     body: None,
                 };
 
@@ -1046,11 +1051,11 @@ impl DapServer {
                 .ok();
         }
 
-        self.create_success_response(request.seq, "configurationDone", None)
+        self.create_success_response(request.seq, COMMAND_CONFIGURATION_DONE, None)
     }
 
     fn handle_disconnect(&self, request: Request) -> Response {
-        self.create_success_response(request.seq, "disconnect", None)
+        self.create_success_response(request.seq, COMMAND_DISCONNECT, None)
     }
 
     /// evaluateリクエストハンドラー（デバッグコンソール入力）
@@ -1062,7 +1067,7 @@ impl DapServer {
         let Some(expr) = self.extract_expression(&request) else {
             return self.create_error_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 "Missing 'expression' argument".to_string(),
             );
         };
@@ -1092,7 +1097,7 @@ impl DapServer {
         match write_to_stdin(&text) {
             Ok(()) => self.create_success_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 Some(serde_json::json!({
                     "result": crate::i18n::fmt_ui_msg(crate::i18n::UiMsg::DapStdinSent, &[&text]),
                     "variablesReference": 0
@@ -1100,7 +1105,7 @@ impl DapServer {
             ),
             Err(e) => self.create_error_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 format!("Failed to write to stdin: {}", e),
             ),
         }
@@ -1112,7 +1117,7 @@ impl DapServer {
         let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() else {
             return self.create_i18n_error_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 crate::i18n::MsgKey::DapDebuggerNotAvailable,
                 &[],
             );
@@ -1122,7 +1127,7 @@ impl DapServer {
         let Some(env_arc) = dbg.get_stopped_env() else {
             return self.create_i18n_error_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 crate::i18n::MsgKey::DapNoEnvironment,
                 &[],
             );
@@ -1134,7 +1139,7 @@ impl DapServer {
             Ok(_) => {
                 return self.create_i18n_error_response(
                     request.seq,
-                    "evaluate",
+                    COMMAND_EVALUATE,
                     crate::i18n::MsgKey::DapEmptyExpression,
                     &[],
                 )
@@ -1142,7 +1147,7 @@ impl DapServer {
             Err(e) => {
                 return self.create_i18n_error_response(
                     request.seq,
-                    "evaluate",
+                    COMMAND_EVALUATE,
                     crate::i18n::MsgKey::DapParseError,
                     &[&e],
                 )
@@ -1164,7 +1169,7 @@ impl DapServer {
         match evaluator.eval_with_env(expr, env_arc) {
             Ok(value) => self.create_success_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 Some(serde_json::json!({
                     "result": format!("{}", value),
                     "type": value.type_name(),
@@ -1173,7 +1178,7 @@ impl DapServer {
             ),
             Err(e) => self.create_i18n_error_response(
                 request.seq,
-                "evaluate",
+                COMMAND_EVALUATE,
                 crate::i18n::MsgKey::DapEvaluationError,
                 &[&e],
             ),
@@ -1189,7 +1194,7 @@ impl DapServer {
     ) -> Response {
         Response {
             seq: self.next_seq(),
-            msg_type: "response".to_string(),
+            msg_type: MSG_TYPE_RESPONSE.to_string(),
             request_seq,
             success: true,
             command: command.to_string(),
@@ -1202,7 +1207,7 @@ impl DapServer {
     fn create_error_response(&self, request_seq: i64, command: &str, message: String) -> Response {
         Response {
             seq: self.next_seq(),
-            msg_type: "response".to_string(),
+            msg_type: MSG_TYPE_RESPONSE.to_string(),
             request_seq,
             success: false,
             command: command.to_string(),
@@ -1259,8 +1264,8 @@ impl DapServer {
 
         Event {
             seq: self.next_seq(),
-            msg_type: "event".to_string(),
-            event: "stopped".to_string(),
+            msg_type: MSG_TYPE_EVENT.to_string(),
+            event: EVENT_STOPPED.to_string(),
             body: Some(body),
         }
     }
@@ -1268,8 +1273,8 @@ impl DapServer {
     pub fn create_initialized_event(&self) -> Event {
         Event {
             seq: self.next_seq(),
-            msg_type: "event".to_string(),
-            event: "initialized".to_string(),
+            msg_type: MSG_TYPE_EVENT.to_string(),
+            event: EVENT_INITIALIZED.to_string(),
             body: None,
         }
     }
@@ -1725,7 +1730,7 @@ impl DapServer {
                         "allThreadsStopped": true,
                     });
 
-                    let event = server_clone.send_event("stopped", Some(body));
+                    let event = server_clone.send_event(EVENT_STOPPED, Some(body));
                     if let Ok(event_json) = serde_json::to_string(&event) {
                         let mut stdout_guard = stdout_clone.lock();
                         let _ = write_message(&mut *stdout_guard, &event_json);
@@ -1767,7 +1772,7 @@ impl DapServer {
             }
 
             // initialized イベント送信（initializeリクエスト後）
-            if response.command == "initialize" && response.success {
+            if response.command == COMMAND_INITIALIZE && response.success {
                 let initialized_event = server.create_initialized_event();
                 let event_json = serde_json::to_string(&initialized_event)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -1847,7 +1852,7 @@ async fn run_qi_program_async(
 // ========================================
 
 mod stdio_redirect {
-    use super::{Event, OutputEventBody};
+    use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
     use std::io;
 
     // プラットフォーム固有の型定義
@@ -2153,8 +2158,8 @@ mod stdio_redirect {
                             };
                             let output_event = Event {
                                 seq,
-                                msg_type: "event".to_string(),
-                                event: "output".to_string(),
+                                msg_type: MSG_TYPE_EVENT.to_string(),
+                                event: EVENT_OUTPUT.to_string(),
                                 body: serde_json::to_value(&output_msg).ok(),
                             };
                             if let Ok(event_json) = serde_json::to_string(&output_event) {
