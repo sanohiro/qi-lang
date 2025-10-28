@@ -63,46 +63,60 @@ fn compress_gzip_response(body: &str) -> Result<String, std::io::Error> {
 
 /// JSONボディをパースしてリクエストに追加
 fn apply_json_body_middleware(req: &Value) -> Value {
-    if let Value::Map(req_map) = req {
-        if let Some(Value::String(body)) = req_map.get("body") {
-            if !body.is_empty() {
-                if let Ok(Value::Map(result)) =
-                    crate::builtins::json::native_parse(&[Value::String(body.clone())])
-                {
-                    if let Some(json_value) = result.get("ok") {
-                        let mut new_req = req_map.clone();
-                        new_req.insert("json".to_string(), json_value.clone());
-                        return Value::Map(new_req);
-                    }
-                }
-            }
-        }
+    let Value::Map(req_map) = req else {
+        return req.clone();
+    };
+
+    let Some(Value::String(body)) = req_map.get("body") else {
+        return req.clone();
+    };
+
+    if body.is_empty() {
+        return req.clone();
     }
-    req.clone()
+
+    let Ok(Value::Map(result)) =
+        crate::builtins::json::native_parse(&[Value::String(body.clone())])
+    else {
+        return req.clone();
+    };
+
+    let Some(json_value) = result.get("ok") else {
+        return req.clone();
+    };
+
+    // JSON解析成功 → 変更が必要なのでclone
+    let mut new_req = req_map.clone();
+    new_req.insert("json".to_string(), json_value.clone());
+    Value::Map(new_req)
 }
 
 /// Bearerトークンを抽出してリクエストに追加
 fn apply_bearer_middleware(req: &Value) -> Value {
-    if let Value::Map(req_map) = req {
-        let mut new_req = req_map.clone();
-        let token = req_map
-            .get("headers")
-            .and_then(|h| match h {
-                Value::Map(headers) => headers.get("authorization"),
-                _ => None,
-            })
-            .and_then(|v| match v {
-                Value::String(s) => Some(s.clone()),
-                _ => None,
-            })
-            .and_then(|auth| auth.strip_prefix("Bearer ").map(|t| t.to_string()));
+    let Value::Map(req_map) = req else {
+        return req.clone();
+    };
 
-        if let Some(t) = token {
-            new_req.insert("bearer-token".to_string(), Value::String(t));
-        }
-        return Value::Map(new_req);
-    }
-    req.clone()
+    let token = req_map
+        .get("headers")
+        .and_then(|h| match h {
+            Value::Map(headers) => headers.get("authorization"),
+            _ => None,
+        })
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.as_str()),
+            _ => None,
+        })
+        .and_then(|auth| auth.strip_prefix("Bearer "));
+
+    let Some(token) = token else {
+        return req.clone(); // トークンなし → 変更不要
+    };
+
+    // トークンあり → 変更が必要なのでclone
+    let mut new_req = req_map.clone();
+    new_req.insert("bearer-token".to_string(), Value::String(token.to_string()));
+    Value::Map(new_req)
 }
 
 /// リクエストをロギング
@@ -128,63 +142,73 @@ fn apply_logging_middleware(req: &Value) {
 
 /// CORSヘッダーを追加
 fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
-    if let Value::Map(resp_map) = resp {
-        let mut new_resp = resp_map.clone();
-        let origin = origins
-            .get(0)
-            .and_then(|v| match v {
-                Value::String(s) => Some(s.clone()),
-                _ => None,
-            })
-            .unwrap_or_else(|| "*".to_string());
+    let Value::Map(resp_map) = resp else {
+        return resp.clone();
+    };
 
-        let mut headers = match resp_map.get("headers") {
-            Some(Value::Map(h)) => h.clone(),
-            _ => crate::new_hashmap(),
-        };
+    let origin = origins
+        .get(0)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.clone()),
+            _ => None,
+        })
+        .unwrap_or_else(|| "*".to_string());
 
-        headers.insert(
-            "Access-Control-Allow-Origin".to_string(),
-            Value::String(origin),
-        );
-        headers.insert(
-            "Access-Control-Allow-Methods".to_string(),
-            Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()),
-        );
-        headers.insert(
-            "Access-Control-Allow-Headers".to_string(),
-            Value::String("Content-Type, Authorization".to_string()),
-        );
+    let mut headers = match resp_map.get("headers") {
+        Some(Value::Map(h)) => h.clone(),
+        _ => crate::new_hashmap(),
+    };
 
-        new_resp.insert("headers".to_string(), Value::Map(headers));
-        return Value::Map(new_resp);
-    }
-    resp.clone()
+    headers.insert(
+        "Access-Control-Allow-Origin".to_string(),
+        Value::String(origin),
+    );
+    headers.insert(
+        "Access-Control-Allow-Methods".to_string(),
+        Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()),
+    );
+    headers.insert(
+        "Access-Control-Allow-Headers".to_string(),
+        Value::String("Content-Type, Authorization".to_string()),
+    );
+
+    // CORSヘッダー追加 → 変更が必要なのでclone
+    let mut new_resp = resp_map.clone();
+    new_resp.insert("headers".to_string(), Value::Map(headers));
+    Value::Map(new_resp)
 }
 
 /// レスポンスボディを圧縮
 fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
-    if let Value::Map(resp_map) = resp {
-        if let Some(Value::String(body)) = resp_map.get("body") {
-            if body.len() >= min_size {
-                if let Ok(compressed) = compress_gzip_response(body) {
-                    let mut new_resp = resp_map.clone();
-                    let mut headers = match resp_map.get("headers") {
-                        Some(Value::Map(h)) => h.clone(),
-                        _ => crate::new_hashmap(),
-                    };
-                    headers.insert(
-                        "Content-Encoding".to_string(),
-                        Value::String("gzip".to_string()),
-                    );
-                    new_resp.insert("headers".to_string(), Value::Map(headers));
-                    new_resp.insert("body".to_string(), Value::String(compressed));
-                    return Value::Map(new_resp);
-                }
-            }
-        }
+    let Value::Map(resp_map) = resp else {
+        return resp.clone();
+    };
+
+    let Some(Value::String(body)) = resp_map.get("body") else {
+        return resp.clone();
+    };
+
+    if body.len() < min_size {
+        return resp.clone(); // 圧縮不要 → 変更不要
     }
-    resp.clone()
+
+    let Ok(compressed) = compress_gzip_response(body) else {
+        return resp.clone(); // 圧縮失敗 → 変更不要
+    };
+
+    // 圧縮成功 → 変更が必要なのでclone
+    let mut new_resp = resp_map.clone();
+    let mut headers = match resp_map.get("headers") {
+        Some(Value::Map(h)) => h.clone(),
+        _ => crate::new_hashmap(),
+    };
+    headers.insert(
+        "Content-Encoding".to_string(),
+        Value::String("gzip".to_string()),
+    );
+    new_resp.insert("headers".to_string(), Value::Map(headers));
+    new_resp.insert("body".to_string(), Value::String(compressed));
+    Value::Map(new_resp)
 }
 
 /// クエリパラメータをパース

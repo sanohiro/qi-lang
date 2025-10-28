@@ -693,12 +693,16 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         receiver: in_receiver,
     });
 
+    // Arcで共有することでワーカー起動時のcloneコストを削減
+    let f = Arc::new(f);
+    let evaluator = Arc::new(evaluator.clone());
+
     // ワーカーを起動
     for _ in 0..n {
         let in_receiver = in_channel.receiver.clone();
         let out_sender = out_sender.clone();
-        let f = f.clone();
-        let eval = evaluator.clone();
+        let f = Arc::clone(&f);
+        let evaluator = Arc::clone(&evaluator);
 
         std::thread::spawn(move || {
             while let Ok(msg) = in_receiver.recv() {
@@ -706,7 +710,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
                 if let Value::Vector(vec) = msg {
                     if vec.len() == 2 {
                         if let Value::Integer(idx) = vec[0] {
-                            match eval.apply_function(&f, &[vec[1].clone()]) {
+                            match evaluator.apply_function(&f, &[vec[1].clone()]) {
                                 Ok(result) => {
                                     if out_sender
                                         .send(Value::Vector(
@@ -800,12 +804,16 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
         receiver: in_receiver,
     });
 
+    // Arcで共有することでワーカー起動時のcloneコストを削減
+    let pred = Arc::new(pred);
+    let evaluator = Arc::new(evaluator.clone());
+
     // ワーカーを起動
     for _ in 0..n {
         let in_receiver = in_channel.receiver.clone();
         let out_sender = out_sender.clone();
-        let pred = pred.clone();
-        let eval = evaluator.clone();
+        let pred = Arc::clone(&pred);
+        let evaluator = Arc::clone(&evaluator);
 
         std::thread::spawn(move || {
             while let Ok(msg) = in_receiver.recv() {
@@ -813,7 +821,7 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
                 if let Value::Vector(vec) = msg {
                     if vec.len() == 2 {
                         if let Value::Integer(idx) = vec[0] {
-                            match eval.apply_function(&pred, &[vec[1].clone()]) {
+                            match evaluator.apply_function(&pred, &[vec[1].clone()]) {
                                 Ok(result) if result.is_truthy() => {
                                     // マッチした場合は送信
                                     if out_sender
@@ -1206,6 +1214,9 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
     // 実際にはValueとして評価済みのものが来るので、
     // 関数を受け取る形式にする
 
+    // Arcで共有することでcloneコストを削減
+    let evaluator = Arc::new(evaluator.clone());
+
     // 結果を格納するチャネルのベクタ
     let channels: Vec<_> = args
         .iter()
@@ -1216,12 +1227,12 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
                 receiver: receiver.clone(),
             });
 
-            let func_clone = func.clone();
-            let evaluator_clone = evaluator.clone();
+            let func = Arc::new(func.clone());
+            let evaluator = Arc::clone(&evaluator);
 
             // 各タスクを並列実行
             std::thread::spawn(move || {
-                let result = evaluator_clone.apply_function(&func_clone, &[]);
+                let result = evaluator.apply_function(&func, &[]);
                 let _ = sender.send(result.unwrap_or(Value::Nil));
             });
 

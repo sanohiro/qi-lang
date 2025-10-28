@@ -90,7 +90,7 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -100,7 +100,7 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -111,11 +111,7 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
 
     // 非同期処理を同期的に実行（グローバルランタイムを使用）
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.get(&key).await }
-        })
-        .await;
+        let result = execute_with_retry(url, |mut conn| async move { conn.get(key).await }).await;
 
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
@@ -139,7 +135,7 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -149,7 +145,7 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -175,10 +171,9 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<String> = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
+        let result: redis::RedisResult<String> = execute_with_retry(url, |mut conn| {
             let value = value.clone();
-            async move { conn.set(&key, &value).await }
+            async move { conn.set(key, &value).await }
         })
         .await;
 
@@ -202,7 +197,7 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -212,7 +207,7 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -222,11 +217,7 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.del(&key).await }
-        })
-        .await;
+        let result = execute_with_retry(url, |mut conn| async move { conn.del(key).await }).await;
 
         match result {
             Ok(count) => Ok(Value::Integer(count)),
@@ -248,7 +239,7 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -258,7 +249,7 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -268,11 +259,8 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.exists(&key).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.exists(key).await }).await;
 
         match result {
             Ok(exists) => Ok(Value::Bool(exists)),
@@ -294,7 +282,7 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -304,7 +292,7 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
     };
 
     let pattern = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -314,11 +302,8 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<Vec<String>> = execute_with_retry(&url, |mut conn| {
-            let pattern = pattern.clone();
-            async move { conn.keys(&pattern).await }
-        })
-        .await;
+        let result: redis::RedisResult<Vec<String>> =
+            execute_with_retry(url, |mut conn| async move { conn.keys(pattern).await }).await;
 
         match result {
             Ok(keys) => Ok(Value::Vector(
@@ -346,7 +331,7 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -356,7 +341,7 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -376,9 +361,8 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.expire(&key, seconds as i64).await }
+        let result = execute_with_retry(url, |mut conn| async move {
+            conn.expire(key, seconds as i64).await
         })
         .await;
 
@@ -402,7 +386,7 @@ pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -412,7 +396,7 @@ pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -422,11 +406,7 @@ pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.ttl(&key).await }
-        })
-        .await;
+        let result = execute_with_retry(url, |mut conn| async move { conn.ttl(key).await }).await;
 
         match result {
             Ok(ttl) => Ok(Value::Integer(ttl)),
@@ -448,7 +428,7 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -458,7 +438,7 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -468,11 +448,8 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.incr(&key, 1).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.incr(key, 1).await }).await;
 
         match result {
             Ok(value) => Ok(Value::Integer(value)),
@@ -494,7 +471,7 @@ pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -504,7 +481,7 @@ pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -514,11 +491,8 @@ pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.decr(&key, 1).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.decr(key, 1).await }).await;
 
         match result {
             Ok(value) => Ok(Value::Integer(value)),
@@ -541,7 +515,7 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -551,7 +525,7 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -577,10 +551,9 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
+        let result = execute_with_retry(url, |mut conn| {
             let value = value.clone();
-            async move { conn.lpush(&key, &value).await }
+            async move { conn.lpush(key, &value).await }
         })
         .await;
 
@@ -605,7 +578,7 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -615,7 +588,7 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -641,10 +614,9 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
+        let result = execute_with_retry(url, |mut conn| {
             let value = value.clone();
-            async move { conn.rpush(&key, &value).await }
+            async move { conn.rpush(key, &value).await }
         })
         .await;
 
@@ -668,7 +640,7 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -678,7 +650,7 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -688,11 +660,8 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.lpop(&key, None).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.lpop(key, None).await }).await;
 
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
@@ -715,7 +684,7 @@ pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -725,7 +694,7 @@ pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -735,11 +704,8 @@ pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.rpop(&key, None).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.rpop(key, None).await }).await;
 
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
@@ -764,7 +730,7 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -774,7 +740,7 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -784,7 +750,7 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
     };
 
     let field = match &args[2] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -810,11 +776,9 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            let field = field.clone();
+        let result = execute_with_retry(url, |mut conn| {
             let value = value.clone();
-            async move { conn.hset(&key, &field, &value).await }
+            async move { conn.hset(key, field, &value).await }
         })
         .await;
 
@@ -839,7 +803,7 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -849,7 +813,7 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -859,7 +823,7 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
     };
 
     let field = match &args[2] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -869,12 +833,8 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            let field = field.clone();
-            async move { conn.hget(&key, &field).await }
-        })
-        .await;
+        let result =
+            execute_with_retry(url, |mut conn| async move { conn.hget(key, field).await }).await;
 
         match result {
             Ok(Some(value)) => Ok(Value::String(value)),
@@ -897,7 +857,7 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -907,7 +867,7 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -918,11 +878,7 @@ pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
 
     TOKIO_RT.block_on(async {
         let result: redis::RedisResult<Vec<(String, String)>> =
-            execute_with_retry(&url, |mut conn| {
-                let key = key.clone();
-                async move { conn.hgetall(&key).await }
-            })
-            .await;
+            execute_with_retry(url, |mut conn| async move { conn.hgetall(key).await }).await;
 
         match result {
             Ok(pairs) => {
@@ -952,7 +908,7 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -962,7 +918,7 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -988,10 +944,9 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
+        let result = execute_with_retry(url, |mut conn| {
             let member = member.clone();
-            async move { conn.sadd(&key, &member).await }
+            async move { conn.sadd(key, &member).await }
         })
         .await;
 
@@ -1015,7 +970,7 @@ pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1025,7 +980,7 @@ pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1035,11 +990,8 @@ pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<Vec<String>> = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.smembers(&key).await }
-        })
-        .await;
+        let result: redis::RedisResult<Vec<String>> =
+            execute_with_retry(url, |mut conn| async move { conn.smembers(key).await }).await;
 
         match result {
             Ok(members) => Ok(Value::Vector(
@@ -1067,7 +1019,7 @@ pub fn native_redis_mget(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1096,7 +1048,7 @@ pub fn native_redis_mget(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<Vec<redis::Value>> = execute_with_retry(&url, |mut conn| {
+        let result: redis::RedisResult<Vec<redis::Value>> = execute_with_retry(url, |mut conn| {
             let keys = keys.to_vec();
             async move {
                 let mut cmd = redis::cmd("MGET");
@@ -1141,7 +1093,7 @@ pub fn native_redis_mset(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1174,7 +1126,7 @@ pub fn native_redis_mset(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<String> = execute_with_retry(&url, |mut conn| {
+        let result: redis::RedisResult<String> = execute_with_retry(url, |mut conn| {
             let pairs = pairs.clone();
             async move {
                 let mut cmd = redis::cmd("MSET");
@@ -1208,7 +1160,7 @@ pub fn native_redis_lrange(args: &[Value]) -> Result<Value, String> {
     }
 
     let url = match &args[0] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1218,7 +1170,7 @@ pub fn native_redis_lrange(args: &[Value]) -> Result<Value, String> {
     };
 
     let key = match &args[1] {
-        Value::String(s) => s.clone(),
+        Value::String(s) => s.as_str(),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -1248,11 +1200,11 @@ pub fn native_redis_lrange(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result: redis::RedisResult<Vec<String>> = execute_with_retry(&url, |mut conn| {
-            let key = key.clone();
-            async move { conn.lrange(&key, start, stop).await }
-        })
-        .await;
+        let result: redis::RedisResult<Vec<String>> =
+            execute_with_retry(url, |mut conn| async move {
+                conn.lrange(key, start, stop).await
+            })
+            .await;
 
         match result {
             Ok(values) => Ok(Value::Vector(
