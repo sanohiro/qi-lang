@@ -105,6 +105,7 @@ impl PartialEq for Stream {
 
 impl Value {
     /// 真偽値判定（nilとfalse以外はすべてtruthy）
+    #[inline]
     pub fn is_truthy(&self) -> bool {
         !matches!(self, Value::Nil | Value::Bool(false))
     }
@@ -426,6 +427,7 @@ impl Env {
         }
     }
 
+    #[inline]
     pub fn with_parent(parent: Arc<RwLock<Env>>) -> Self {
         Env {
             bindings: crate::new_hashmap(),
@@ -433,6 +435,7 @@ impl Env {
         }
     }
 
+    #[inline]
     pub fn get(&self, name: &str) -> Option<Value> {
         self.bindings
             .get(name)
