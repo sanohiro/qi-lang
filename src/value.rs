@@ -54,6 +54,14 @@ pub enum Value {
 }
 
 /// チャネル（送信・受信両方可能）
+///
+/// goroutine風の並行処理で使用する通信チャネル。
+/// `crossbeam_channel`をラップしており、複数スレッド間で安全に共有できます。
+///
+/// # 特徴
+/// - MPMC（Multiple Producer, Multiple Consumer）
+/// - スレッドセーフ
+/// - `Arc`でラップされているため、複数のスレッドで共有可能
 #[derive(Debug, Clone)]
 pub struct Channel {
     pub sender: Sender<Value>,
@@ -393,6 +401,17 @@ impl PartialEq for Binding {
 }
 
 /// 環境（変数の束縛を保持）
+///
+/// レキシカルスコープを実装するための環境チェーン。
+/// 親環境への参照を持ち、変数探索時に上位スコープを辿ります。
+///
+/// # 構造
+/// - `bindings`: 現在のスコープの変数束縛
+/// - `parent`: 親環境への参照（グローバル環境の場合は`None`）
+///
+/// # スレッドセーフ性
+/// - `Arc<RwLock<Env>>`でラップされ、複数スレッドから安全にアクセス可能
+/// - 並行処理（goroutine）でのクロージャキャプチャで使用
 #[derive(Debug, Clone)]
 pub struct Env {
     bindings: crate::HashMap<String, Binding>,

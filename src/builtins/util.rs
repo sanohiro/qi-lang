@@ -43,6 +43,28 @@ pub fn to_map_key(key: &str) -> String {
 /// (10 |>? (fn [x] (* x 2)))  ;; => 20
 /// (10 |>? (fn [x] {:error "fail"}))  ;; => {:error "fail"}
 /// ```
+///
+/// # Railway Oriented Programming (ROP) の実装
+///
+/// ## 概念
+/// - 成功パス（正常な値）とエラーパス（`{:error ...}`）を分離
+/// - エラー発生時は後続の関数をスキップ（ショートサーキット）
+/// - `Result<T, E>`を使わずに値の中でエラーを表現
+///
+/// ## 利点
+/// - パイプライン内でエラーハンドリングを自然に記述
+/// - 例: `(parse-json data) |>? (get :user) |>? (validate)`
+///   → どこかでエラーが発生したら後続をスキップ
+///
+/// ## 設計
+/// - `{:error ...}`のみをエラーとして扱う（シンプルで一貫性がある）
+/// - その他の全ての値（`nil`含む）は成功として扱う
+/// - エラーマップはそのまま返す（ラップしない）
+///
+/// ## なぜ`{:error}`だけをエラーとするのか
+/// - `nil`は有効な値として扱いたいケースがある（例: オプショナル値）
+/// - 明示的なエラー表現により、意図が明確になる
+/// - `{:error "message" :code 404}`のような詳細なエラー情報を含められる
 pub fn native_railway_pipe(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
@@ -55,7 +77,7 @@ pub fn native_railway_pipe(
     // 入力値の処理
     let value_to_pass = match input {
         Value::Map(m) => {
-            // {:error ...}ならショートサーキット
+            // {:error ...}ならショートサーキット（後続の関数をスキップ）
             if m.contains_key(":error") {
                 return Ok(input.clone());
             }
@@ -64,7 +86,7 @@ pub fn native_railway_pipe(
                 input
             }
         }
-        // マップ以外はそのまま渡す
+        // マップ以外（nil含む）はそのまま渡す
         _ => input,
     };
 

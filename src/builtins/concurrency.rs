@@ -19,7 +19,19 @@ fn create_promise_channel() -> Arc<Channel> {
 
 /// スレッドを起動してPromiseを返す汎用ヘルパー
 ///
-/// クロージャ内でチャネルのsenderに結果を送信する処理を実行する
+/// # Promise風の非同期実行
+///
+/// ## 設計
+/// - capacity=1のboundedチャネルを作成（単一の結果を保持）
+/// - スレッドを起動してクロージャ内でsenderに結果を送信
+/// - チャネルを即座に返し、呼び出し側はreceiverで結果を待機可能
+///
+/// ## なぜsender.clone()が必要か
+/// - `channel`はArc<Channel>で共有されるため、senderを別途cloneして
+///   スレッドに移動させる必要がある（channelの所有権は返す）
+/// - スレッドクロージャは`move`なので、senderの所有権を移動
+///
+/// ## クロージャ内でチャネルのsenderに結果を送信する処理を実行する
 fn spawn_promise<F>(f: F) -> Value
 where
     F: FnOnce(crossbeam_channel::Sender<Value>) + Send + 'static,
@@ -693,7 +705,17 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         receiver: in_receiver,
     });
 
-    // Arcで共有することでワーカー起動時のcloneコストを削減
+    // 並列mapの実装（順序保持 + Arc最適化）
+    //
+    // Arc最適化:
+    //   - 関数fとevaluatorを事前にArcでラップ
+    //   - n個のワーカー起動時にArc::cloneのみ（参照カウンタのインクリメント）
+    //   - 各ワーカーでのcloneコストを削減（特にevaluatorは大きい）
+    //
+    // 順序保持:
+    //   - 各要素を [idx, value] の形式で送信
+    //   - ワーカーは [idx, result] の形式で返す
+    //   - 受信側でインデックス順にソートして元の順序を復元
     let f = Arc::new(f);
     let evaluator = Arc::new(evaluator.clone());
 
@@ -706,12 +728,13 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
 
         std::thread::spawn(move || {
             while let Ok(msg) = in_receiver.recv() {
-                // [idx, value] の形式
+                // [idx, value] の形式でメッセージを受信
                 if let Value::Vector(vec) = msg {
                     if vec.len() == 2 {
                         if let Value::Integer(idx) = vec[0] {
                             match evaluator.apply_function(&f, &[vec[1].clone()]) {
                                 Ok(result) => {
+                                    // [idx, result] の形式で結果を返す
                                     if out_sender
                                         .send(Value::Vector(
                                             vec![Value::Integer(idx), result].into(),
@@ -730,7 +753,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         });
     }
 
-    // 入力を送信
+    // 入力を送信（インデックス付き）
     for (i, item) in items.iter().enumerate() {
         let _ = in_sender.send(Value::Vector(
             vec![Value::Integer(i as i64), item.clone()].into(),
@@ -897,6 +920,25 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
 ///    [ch2 (fn [v] (println "ch2:" v))]
 ///    [:timeout 1000 (fn [] (println "timeout"))]])
 /// ```
+///
+/// # select!の実装（crossbeam-channel::Selectを使用）
+///
+/// ## ケース解析
+/// - 通常ケース: `[channel handler]` → チャネルから受信したらハンドラを実行
+/// - タイムアウトケース: `[:timeout ms handler]` → 指定時間後にハンドラを実行
+///
+/// ## Selectの仕組み
+/// 1. `sel.recv()`で各チャネルを登録
+/// 2. タイムアウトがあれば別スレッドでスリープ後にダミーチャネルに送信
+/// 3. `sel.select()`で最初に準備ができたチャネルを選択
+/// 4. `oper.index()`で選ばれたチャネルのインデックスを取得
+///    - `0..channels.len()`: 通常ケース
+///    - `channels.len()`: タイムアウトケース
+///
+/// ## タイムアウトの実装
+/// - 別スレッドで指定時間スリープ後、ダミーチャネルに送信
+/// - Selectに登録されるインデックスは`channels.len()`（最後）
+/// - タイムアウトケースは1つのみ許可
 pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(
@@ -986,15 +1028,17 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
         sel.recv(rx);
     }
 
-    // 選択を実行
+    // 選択を実行（ブロッキング）
     let oper = sel.select();
     let index = oper.index();
 
-    // どのケースが選択されたかを判定
+    // インデックスでどのケースが選択されたかを判定
+    // - 0..channels.len(): 通常のチャネルケース
+    // - channels.len(): タイムアウトケース
     if let Some(ref rx) = timeout_receiver {
         if index == channels.len() {
             // タイムアウトケースが選択された
-            let _ = oper.recv(rx); // 操作を完了させる
+            let _ = oper.recv(rx); // 操作を完了させる（ダミー受信）
             if let Some(handler) = timeout_handler {
                 return evaluator.apply_function(&handler, &[]);
             }

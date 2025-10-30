@@ -2,6 +2,30 @@ use crate::error::{QiError, SourceLocation};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::FStringPart;
 
+// レキサーの容量推定用定数
+
+/// 一般的な文字列リテラルの平均長（変数名、短いメッセージ等）
+const TYPICAL_STRING_CAPACITY: usize = 32;
+
+/// 長い文字列リテラルの推定容量（ドキュメント文字列、長いメッセージ等）
+const LONG_STRING_CAPACITY: usize = 128;
+
+/// f-string内のパーツ数（通常2-4個: Text, Code, Text等）
+const FSTRING_PARTS_CAPACITY: usize = 4;
+
+/// f-string内のテキスト部分の推定容量
+const FSTRING_TEXT_CAPACITY: usize = 32;
+
+/// f-string内のコード部分の推定容量（変数名や簡単な式）
+const FSTRING_CODE_CAPACITY: usize = 16;
+
+/// トークン数推定ヒューリスティック: 平均5文字に1トークン
+/// 例: "(+ 1 2)" → 7文字、5トークン（空白込み）
+const CHARS_PER_TOKEN: usize = 5;
+
+/// 最小トークン数（短いコードでも再アロケーションを回避）
+const MIN_TOKEN_CAPACITY: usize = 16;
+
 /// ソースコード上の位置
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Span {
@@ -118,10 +142,18 @@ impl Token {
     }
 }
 
+/// Qiソースコードのレキサー
+///
+/// ソースコードをトークン列に分割します。
+/// 位置情報（行、列、オフセット）を記録し、エラーメッセージで使用します。
 pub struct Lexer {
+    /// 入力文字列（Unicodeコードポイント単位）
     input: Vec<char>,
+    /// 現在の読み取り位置（文字インデックス）
     pos: usize,
+    /// 現在の行番号（1始まり）
     line: usize,
+    /// 現在の列番号（1始まり）
     column: usize,
 }
 
@@ -257,9 +289,7 @@ impl Lexer {
 
     fn read_string(&mut self) -> Result<String, String> {
         self.advance(); // 先頭の "
-                        // 32: 一般的な文字列リテラル（変数名、短いメッセージ等）の平均長
-                        // 例: "hello", "error message", "path/to/file" など
-        let mut result = String::with_capacity(32);
+        let mut result = String::with_capacity(TYPICAL_STRING_CAPACITY);
 
         while let Some(ch) = self.current() {
             if ch == '"' {
@@ -285,7 +315,7 @@ impl Lexer {
 
         // 128: 複数行文字列は通常ドキュメントやテンプレートなので長め
         // 例: docstring, SQLクエリ, HTMLテンプレート等
-        let mut result = String::with_capacity(128);
+        let mut result = String::with_capacity(LONG_STRING_CAPACITY);
 
         while let Some(ch) = self.current() {
             // """ で終了チェック
@@ -305,14 +335,26 @@ impl Lexer {
         Err(self.error(MsgKey::UnclosedString, &[]))
     }
 
+    /// f-stringを読み取る: f"text {code} text"
+    ///
+    /// f-string内で文字列リテラル（"で囲まれた部分）とコード部分を区別するための複雑な状態管理。
+    ///
+    /// 処理ルール:
+    /// - 文字列リテラル内では{}をエスケープとして扱わない（通常の文字として処理）
+    /// - コード部分では{}がネストを制御する（深さカウント）
+    /// - \"は文字列リテラルの開始/終了を示す
+    ///
+    /// 例: f"Hello {\"quoted {name}\"}"
+    ///   → Text("Hello "), Code("\"quoted {name}\"")
+    ///   コード部分内の{}は文字列リテラル内なので深さカウントに影響しない
     fn read_fstring(&mut self) -> Result<Vec<FStringPart>, String> {
         self.advance(); // f
         self.advance(); // "
                         // 4: f-stringは通常 [Text, Code, Text, ...] のパターンで2-4個
                         // 例: f"Hello {name}, you are {age} years old" → [Text, Code, Text, Code, Text]
-        let mut parts = Vec::with_capacity(4);
+        let mut parts = Vec::with_capacity(FSTRING_PARTS_CAPACITY);
         // 32: f-string内のテキスト部分は短いことが多い
-        let mut current_text = String::with_capacity(32);
+        let mut current_text = String::with_capacity(FSTRING_TEXT_CAPACITY);
 
         while let Some(ch) = self.current() {
             if ch == '"' {
@@ -332,12 +374,14 @@ impl Lexer {
                 self.advance(); // {
                                 // 16: f-string内の式は通常短い（変数名や簡単な演算）
                                 // 例: {name}, {age + 1}, {user.name} など
-                let mut code = String::with_capacity(16);
+                let mut code = String::with_capacity(FSTRING_CODE_CAPACITY);
                 let mut depth = 1;
+                // f-string内の文字列リテラル（"で囲まれた部分）とコード部分を区別するフラグ
+                // 文字列リテラル内では{}をエスケープとして扱わず、通常の文字として処理
                 let mut in_string = false;
                 while let Some(ch) = self.current() {
                     if in_string {
-                        // 文字列リテラル内
+                        // 文字列リテラル内の処理
                         if ch == '\\' && self.peek(1) == Some('"') {
                             // \" は f-string のエスケープシーケンス（文字列リテラルの終了）
                             in_string = false;
@@ -345,7 +389,7 @@ impl Lexer {
                             code.push('"'); // " を追加
                             self.advance();
                         } else if ch == '\\' {
-                            // その他のエスケープシーケンス処理
+                            // その他のエスケープシーケンス処理（\n, \t等）
                             code.push(ch);
                             self.advance();
                             if let Some(next_ch) = self.current() {
@@ -358,11 +402,12 @@ impl Lexer {
                             code.push(ch);
                             self.advance();
                         } else {
+                            // 通常の文字（{}も含む）
                             code.push(ch);
                             self.advance();
                         }
                     } else {
-                        // 文字列リテラル外
+                        // コード部分の処理
                         if ch == '\\' && self.peek(1) == Some('"') {
                             // \" は Qi ソースコードとしての " （文字列リテラルの開始）
                             in_string = true;
@@ -375,12 +420,15 @@ impl Lexer {
                             code.push(ch);
                             self.advance();
                         } else if ch == '{' {
+                            // ネストした{}の開始
                             depth += 1;
                             code.push(ch);
                             self.advance();
                         } else if ch == '}' {
+                            // {}の終了
                             depth -= 1;
                             if depth == 0 {
+                                // f-string内のコード部分終了
                                 self.advance(); // }
                                 break;
                             }
@@ -422,10 +470,8 @@ impl Lexer {
         self.advance(); // "
         self.advance(); // "
 
-        // 4: f-stringは通常 [Text, Code, Text, ...] のパターンで2-4個
-        let mut parts = Vec::with_capacity(4);
-        // 128: 複数行f-stringなので長め（テンプレート等）
-        let mut current_text = String::with_capacity(128);
+        let mut parts = Vec::with_capacity(FSTRING_PARTS_CAPACITY);
+        let mut current_text = String::with_capacity(LONG_STRING_CAPACITY);
 
         while let Some(ch) = self.current() {
             // """ で終了チェック
@@ -753,7 +799,7 @@ impl Lexer {
         // トークン数推定: 平均的なLispコードでは5文字に1トークン程度
         // 例: "(defn add [a b] (+ a b))" → 20文字、7トークン（約1/3）
         // 空白・改行を含めると約1/5になる。最小16を保証。
-        let estimated_tokens = (self.input.len() / 5).max(16);
+        let estimated_tokens = (self.input.len() / CHARS_PER_TOKEN).max(MIN_TOKEN_CAPACITY);
         let mut tokens = Vec::with_capacity(estimated_tokens);
         loop {
             let loc_token = self.next_token()?;
