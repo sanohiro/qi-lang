@@ -140,6 +140,40 @@ impl Token {
             Token::Eof => "EOF".to_string(),
         }
     }
+
+    /// トークンのソースコード上での文字数を返す
+    ///
+    /// エラーメッセージでキャレット（^）の範囲を正確に表示するために使用
+    pub fn source_length(&self) -> usize {
+        match self {
+            // リテラル: 表示名の長さ
+            Token::Integer(_) | Token::Float(_) => self.display_name().len(),
+            Token::String(s) => s.len() + 2, // クォート含む
+            Token::FString(_) => 8,          // "f-string" の推定長（正確には難しい）
+            Token::Symbol(s) => s.len(),
+            Token::Keyword(k) => k.len() + 1, // :を含む
+            Token::True => 4,                 // "true"
+            Token::False => 5,                // "false"
+            Token::Nil => 3,                  // "nil"
+            // 括弧・記号: 固定長
+            Token::LParen
+            | Token::RParen
+            | Token::LBracket
+            | Token::RBracket
+            | Token::LBrace
+            | Token::RBrace
+            | Token::Quote
+            | Token::Backquote
+            | Token::Unquote
+            | Token::At
+            | Token::Bar => 1,
+            Token::UnquoteSplice => 2,                         // ",@"
+            Token::Arrow | Token::FatArrow | Token::Pipe => 2, // "->", "=>", "|>"
+            Token::PipeRailway | Token::Ellipsis | Token::ParallelPipe => 3, // "|>?", "...", "||>"
+            Token::AsyncPipe => 2,                             // "~>"
+            Token::Eof => 3,                                   // "EOF"
+        }
+    }
 }
 
 /// Qiソースコードのレキサー

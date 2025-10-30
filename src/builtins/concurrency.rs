@@ -293,7 +293,12 @@ pub fn native_then(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
     Ok(spawn_promise(move |sender| {
         if let Ok(value) = promise.receiver.recv() {
             let result = eval.apply_function(&f, &[value]);
-            let _ = sender.send(result.unwrap_or_else(Value::String));
+            // エラー情報を保持（Railway Oriented Programming）
+            let value = match result {
+                Ok(v) => v,
+                Err(e) => Value::error(e),
+            };
+            let _ = sender.send(value);
         }
     }))
 }
@@ -340,7 +345,12 @@ pub fn native_catch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Stri
         Err(_) => {
             let result =
                 eval.apply_function(&handler, &[Value::String("channel closed".to_string())]);
-            let _ = sender.send(result.unwrap_or(Value::Nil));
+            // エラー情報を保持（Railway Oriented Programming）
+            let value = match result {
+                Ok(v) => v,
+                Err(e) => Value::error(e),
+            };
+            let _ = sender.send(value);
         }
     }))
 }
@@ -472,7 +482,12 @@ pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
             Value::Function(ref _f) => eval.apply_function(&expr, &[]),
             _ => Ok(expr.clone()),
         };
-        let _ = sender.send(result.unwrap_or_else(Value::String));
+        // エラー情報を保持（Railway Oriented Programming）
+        let value = match result {
+            Ok(v) => v,
+            Err(e) => Value::error(e),
+        };
+        let _ = sender.send(value);
     }))
 }
 
@@ -1129,7 +1144,12 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
     // 新しいスレッドで実行
     std::thread::spawn(move || {
         let result = evaluator_clone.apply_function(&func, &[]);
-        let _ = sender.send(result.unwrap_or(Value::Nil));
+        // エラー情報を保持（Railway Oriented Programming）
+        let value = match result {
+            Ok(v) => v,
+            Err(e) => Value::error(e),
+        };
+        let _ = sender.send(value);
     });
 
     Ok(ch)
@@ -1277,7 +1297,12 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
             // 各タスクを並列実行
             std::thread::spawn(move || {
                 let result = evaluator.apply_function(&func, &[]);
-                let _ = sender.send(result.unwrap_or(Value::Nil));
+                // エラー情報を保持（Railway Oriented Programming）
+                let value = match result {
+                    Ok(v) => v,
+                    Err(e) => Value::error(e),
+                };
+                let _ = sender.send(value);
             });
 
             ch

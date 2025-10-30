@@ -113,7 +113,7 @@ impl Parser {
                     file: file_name,
                     line: span.line,
                     column: span.column,
-                    length: 1, // TODO: トークンの長さを正確に取得
+                    length: self.tokens[self.pos].token.source_length(),
                     source_line,
                 };
 

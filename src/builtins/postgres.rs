@@ -242,10 +242,20 @@ impl DbConnection for PostgresConnection {
     }
 
     fn columns(&self, table: &str) -> DbResult<Vec<ColumnInfo>> {
-        let sql = "SELECT column_name, data_type, is_nullable, column_default \
-                   FROM information_schema.columns \
-                   WHERE table_name = $1 \
-                   ORDER BY ordinal_position";
+        // カラム情報と主キー情報を同時に取得
+        let sql = "SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, \
+                          CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key \
+                   FROM information_schema.columns c \
+                   LEFT JOIN ( \
+                       SELECT ku.column_name \
+                       FROM information_schema.table_constraints tc \
+                       JOIN information_schema.key_column_usage ku \
+                           ON tc.constraint_name = ku.constraint_name \
+                       WHERE tc.constraint_type = 'PRIMARY KEY' \
+                           AND tc.table_name = $1 \
+                   ) pk ON c.column_name = pk.column_name \
+                   WHERE c.table_name = $1 \
+                   ORDER BY c.ordinal_position";
 
         let rows = self.query(
             sql,
@@ -260,13 +270,17 @@ impl DbConnection for PostgresConnection {
                 let data_type = row.get("data_type")?.as_string()?;
                 let nullable = row.get("is_nullable")?.as_string()? == "YES";
                 let default_value = row.get("column_default").and_then(|v| v.as_string());
+                let primary_key = row
+                    .get("is_primary_key")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
 
                 Some(ColumnInfo {
                     name,
                     data_type,
                     nullable,
                     default_value,
-                    primary_key: false, // TODO: 主キー情報を取得
+                    primary_key,
                 })
             })
             .collect();
@@ -275,9 +289,18 @@ impl DbConnection for PostgresConnection {
     }
 
     fn indexes(&self, table: &str) -> DbResult<Vec<IndexInfo>> {
-        let sql = "SELECT indexname, indexdef \
-                   FROM pg_indexes \
-                   WHERE tablename = $1";
+        // インデックス情報、カラム、ユニーク制約を取得
+        let sql = "SELECT i.indexname, \
+                          ix.indisunique, \
+                          array_agg(a.attname ORDER BY ak.attnum) as column_names \
+                   FROM pg_indexes i \
+                   JOIN pg_class c ON c.relname = i.tablename \
+                   JOIN pg_index ix ON ix.indrelid = c.oid \
+                   JOIN pg_class ci ON ci.oid = ix.indexrelid \
+                   JOIN pg_attribute ak ON ak.attrelid = ix.indexrelid \
+                   JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(ix.indkey) \
+                   WHERE i.tablename = $1 AND i.indexname = ci.relname \
+                   GROUP BY i.indexname, ix.indisunique";
 
         let rows = self.query(
             sql,
@@ -289,12 +312,28 @@ impl DbConnection for PostgresConnection {
             .into_iter()
             .filter_map(|row| {
                 let name = row.get("indexname")?.as_string()?;
+                let unique = row
+                    .get("indisunique")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                // PostgreSQLの配列型から文字列のベクタに変換
+                let columns = if let Some(Value::String(col_str)) = row.get("column_names") {
+                    // PostgreSQLの配列は "{col1,col2}" の形式なので "{" と "}" を除去して分割
+                    col_str
+                        .trim_matches(|c| c == '{' || c == '}')
+                        .split(',')
+                        .map(|s| s.to_string())
+                        .collect()
+                } else {
+                    vec![]
+                };
 
                 Some(IndexInfo {
                     name,
                     table: table.to_string(),
-                    columns: vec![], // TODO: カラム情報を取得
-                    unique: false,   // TODO: ユニーク制約を取得
+                    columns,
+                    unique,
                 })
             })
             .collect();
@@ -302,9 +341,54 @@ impl DbConnection for PostgresConnection {
         Ok(indexes)
     }
 
-    fn foreign_keys(&self, _table: &str) -> DbResult<Vec<ForeignKeyInfo>> {
-        // TODO: 外部キー情報の実装
-        Ok(vec![])
+    fn foreign_keys(&self, table: &str) -> DbResult<Vec<ForeignKeyInfo>> {
+        // 外部キー情報を取得
+        let sql = "SELECT \
+                       tc.constraint_name, \
+                       kcu.column_name, \
+                       ccu.table_name AS referenced_table, \
+                       ccu.column_name AS referenced_column, \
+                       rc.update_rule, \
+                       rc.delete_rule \
+                   FROM information_schema.table_constraints AS tc \
+                   JOIN information_schema.key_column_usage AS kcu \
+                       ON tc.constraint_name = kcu.constraint_name \
+                   JOIN information_schema.constraint_column_usage AS ccu \
+                       ON ccu.constraint_name = tc.constraint_name \
+                   JOIN information_schema.referential_constraints AS rc \
+                       ON rc.constraint_name = tc.constraint_name \
+                   WHERE tc.constraint_type = 'FOREIGN KEY' \
+                       AND tc.table_name = $1";
+
+        let rows = self.query(
+            sql,
+            &[Value::String(table.to_string())],
+            &QueryOptions::default(),
+        )?;
+
+        let foreign_keys = rows
+            .into_iter()
+            .filter_map(|row| {
+                let name = row.get("constraint_name")?.as_string()?;
+                let column = row.get("column_name")?.as_string()?;
+                let referenced_table = row.get("referenced_table")?.as_string()?;
+                let referenced_column = row.get("referenced_column")?.as_string()?;
+                let on_update = row.get("update_rule").and_then(|v| v.as_string());
+                let on_delete = row.get("delete_rule").and_then(|v| v.as_string());
+
+                Some(ForeignKeyInfo {
+                    name,
+                    table: table.to_string(),
+                    column,
+                    referenced_table,
+                    referenced_column,
+                    on_update,
+                    on_delete,
+                })
+            })
+            .collect();
+
+        Ok(foreign_keys)
     }
 
     fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
@@ -337,11 +421,47 @@ impl DbConnection for PostgresConnection {
         })
     }
 
-    fn query_info(&self, _sql: &str) -> DbResult<QueryInfo> {
-        // TODO: PREPARE文を使ってカラム情報を取得
-        Err(DbError::new(
-            "Query info not yet implemented for PostgreSQL",
-        ))
+    fn query_info(&self, sql: &str) -> DbResult<QueryInfo> {
+        // PREPARE文を使ってクエリのメタ情報を取得
+        let stmt_name = format!(
+            "qi_query_info_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        );
+
+        let client = self.client.lock();
+        let runtime = self.runtime.lock();
+
+        // PREPARE文でクエリを準備
+        let prepare_sql = format!("PREPARE {} AS {}", stmt_name, sql);
+        runtime
+            .block_on(client.execute(&prepare_sql, &[]))
+            .map_err(|e| DbError::new(&format!("Failed to prepare query: {}", e)))?;
+
+        // DESCRIBE文でカラム情報を取得
+        let describe_sql = format!("DESCRIBE {}", stmt_name);
+        let rows = runtime
+            .block_on(client.query(&describe_sql, &[]))
+            .map_err(|e| DbError::new(&format!("Failed to describe query: {}", e)))?;
+
+        let columns: Vec<String> = rows
+            .iter()
+            .map(|row| {
+                let name: String = row.get(0);
+                name
+            })
+            .collect();
+
+        // PREPARE文をクリーンアップ
+        let deallocate_sql = format!("DEALLOCATE {}", stmt_name);
+        let _ = runtime.block_on(client.execute(&deallocate_sql, &[]));
+
+        Ok(QueryInfo {
+            columns,
+            param_count: 0, // PostgreSQLの場合、パラメータ数を動的に取得するのは難しい
+        })
     }
 }
 

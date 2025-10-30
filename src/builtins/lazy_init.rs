@@ -41,34 +41,3 @@ pub mod http_server {
         })
     }
 }
-
-// TODO: Phase 4で実装
-// /// PostgreSQLドライバのLazy初期化
-// #[cfg(feature = "db-postgres")]
-// pub mod postgres {
-//     use super::*;
-//
-//     pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-//         tokio::runtime::Builder::new_multi_thread()
-//             .enable_all()
-//             .worker_threads(4)
-//             .thread_name("qi-postgres")
-//             .build()
-//             .expect("Failed to create PostgreSQL runtime")
-//     });
-// }
-//
-// /// MySQLドライバのLazy初期化
-// #[cfg(feature = "db-mysql")]
-// pub mod mysql {
-//     use super::*;
-//
-//     pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-//         tokio::runtime::Builder::new_multi_thread()
-//             .enable_all()
-//             .worker_threads(4)
-//             .thread_name("qi-mysql")
-//             .build()
-//             .expect("Failed to create MySQL runtime")
-//     });
-// }

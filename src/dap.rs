@@ -802,7 +802,7 @@ impl DapServer {
     }
 
     fn handle_scopes(&self, _request: Request) -> Response {
-        // TODO: 実際のスコープ情報を取得
+        // 現在はLocalスコープのみ対応（グローバル、クロージャスコープは未実装）
         let scopes = vec![Scope {
             name: "Local".to_string(),
             variables_reference: 1,
@@ -836,7 +836,7 @@ impl DapServer {
                             name,
                             value: format!("{}", binding.value),
                             var_type: Some(binding.value.type_name().to_string()),
-                            variables_reference: 0, // TODO: ネストした値の展開は後で実装
+                            variables_reference: 0, // ネストした値（map/vector/list）の展開は未実装
                         });
                     }
                 }
