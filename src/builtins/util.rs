@@ -3,18 +3,6 @@
 use crate::check_args;
 use crate::value::Value;
 
-// ========================================
-// Result型マップ生成ヘルパー（後方互換性のため残存）
-// ========================================
-
-/// {:error message} 形式のマップを生成
-///
-/// **非推奨**: 新しいコードでは `Value::error(message)` を使用してください
-#[deprecated(note = "Use Value::error(message) instead")]
-pub fn err_map(message: String) -> Value {
-    Value::error(message)
-}
-
 /// キーワード形式のマップキーを生成
 ///
 /// 文字列からキーワードキー（`:key`形式）を生成する

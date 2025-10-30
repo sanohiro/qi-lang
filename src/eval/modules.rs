@@ -114,8 +114,6 @@ impl Evaluator {
     /// 1. 絶対パス・相対パスの場合はそのまま使用
     /// 2. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
     /// 3. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
-    /// 4. 後方互換性: カレントディレクトリの`{name}.qi`
-    /// 5. 後方互換性: `examples/{name}.qi`
     pub(super) fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
         let mut paths = Vec::new();
 
@@ -164,12 +162,6 @@ impl Evaluator {
                 }
             }
         }
-
-        // 3. 後方互換性: カレントディレクトリの.qiファイル
-        paths.push(format!("{}.qi", name));
-
-        // 4. 後方互換性: examples/
-        paths.push(format!("examples/{}.qi", name));
 
         Ok(paths)
     }
