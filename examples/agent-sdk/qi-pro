@@ -1,154 +1,17 @@
-#!/usr/bin/env node
+#!/usr/bin/env bash
+# qi-pro - Qi言語コードレビューエージェント（ラッパースクリプト）
 
-/**
- * qi-pro - Qi言語専門レビューエージェント
- *
- * Claude Code SDKラッパー
- * Qiのソースコードを評価し、言語仕様とベストプラクティスに基づいた改善を提案します。
- */
+# スクリプトのディレクトリ
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import fs from 'fs';
+# Qiインタープリターのパス
+QI="${QI:-qi}"
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+# 引数チェック
+if [ $# -eq 0 ] || [ "$1" = "--help" ]; then
+    exec "$QI" "$SCRIPT_DIR/qi-pro.qi" "--help"
+fi
 
-// エージェント定義ファイルのパス
-const agentPath = join(__dirname, 'qi-pro.md');
-
-// エージェントファイルの存在確認
-if (!fs.existsSync(agentPath)) {
-  console.error(`Error: Agent definition not found at ${agentPath}`);
-  process.exit(1);
-}
-
-// エージェント定義を読み込み
-const agentContent = fs.readFileSync(agentPath, 'utf-8');
-
-// YAMLフロントマターとシステムプロンプトを抽出
-const frontmatterMatch = agentContent.match(/^---\n([\s\S]*?)\n---/);
-if (!frontmatterMatch) {
-  console.error('Error: Invalid agent definition (missing YAML frontmatter)');
-  process.exit(1);
-}
-
-const yamlContent = frontmatterMatch[1];
-const systemPrompt = agentContent.substring(frontmatterMatch[0].length).trim();
-
-// エージェント名を抽出
-const nameMatch = yamlContent.match(/name:\s*(.+)/);
-const agentName = nameMatch ? nameMatch[1].trim() : 'qi-pro';
-
-// コマンドライン引数の処理
-const args = process.argv.slice(2);
-
-if (args.length === 0) {
-  console.log(`Usage: qi-pro <file.qi|directory>
-
-Qi言語のソースコードをレビューし、改善提案を行います。
-
-Examples:
-  qi-pro examples/hello.qi          # 単一ファイルのレビュー
-  qi-pro examples/cms/              # ディレクトリ全体のレビュー
-  qi-pro src/main.qi --fix          # 改善案を自動適用
-
-Options:
-  --fix     改善案を自動的に適用（注意: ファイルを上書きします）
-  --help    このヘルプを表示
-`);
-  process.exit(0);
-}
-
-// ヘルプオプション
-if (args.includes('--help') || args.includes('-h')) {
-  console.log(systemPrompt);
-  process.exit(0);
-}
-
-// レビュー対象のパス
-const targetPath = args[0];
-const autoFix = args.includes('--fix');
-
-// パスの存在確認
-if (!fs.existsSync(targetPath)) {
-  console.error(`Error: File or directory not found: ${targetPath}`);
-  process.exit(1);
-}
-
-// レビュー対象ファイルの収集
-let files = [];
-const stat = fs.statSync(targetPath);
-
-if (stat.isDirectory()) {
-  // ディレクトリの場合、.qiファイルを再帰的に収集
-  const walkDir = (dir) => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walkDir(fullPath);
-      } else if (entry.name.endsWith('.qi')) {
-        files.push(fullPath);
-      }
-    }
-  };
-  walkDir(targetPath);
-} else if (targetPath.endsWith('.qi')) {
-  files.push(targetPath);
-} else {
-  console.error('Error: Please provide a .qi file or directory');
-  process.exit(1);
-}
-
-if (files.length === 0) {
-  console.error('Error: No .qi files found');
-  process.exit(1);
-}
-
-console.log(`\n=== Qi Pro Agent ===`);
-console.log(`Found ${files.length} file(s) to review\n`);
-
-// Claude Codeにプロンプトを送信
-const prompt = `
-Qi言語のコードレビューを実施してください。
-
-${systemPrompt}
-
-## レビュー対象ファイル
-
-${files.map(f => `- ${f}`).join('\n')}
-
-## 指示
-
-1. 各ファイルを読み込み、以下の観点でレビューしてください：
-   - Flow-Oriented Programmingの適用状況
-   - パイプライン演算子の適切な使用
-   - 並行・並列処理の最適化
-   - パターンマッチングの活用
-   - エラーハンドリングの一貫性
-   - モジュール設計の品質
-   - コードスタイルの遵守
-
-2. 改善点がある場合は、具体的なコード例を示してください。
-
-3. ${autoFix ? '改善案を自動的に適用してください（Edit toolを使用）。' : '改善案を提示してください（ファイルの変更はしないでください）。'}
-
-4. レビュー結果をまとめて報告してください。
-
-## 参照ドキュメント
-
-必要に応じて以下のドキュメントを参照してください：
-- docs/spec/README.md
-- docs/spec/01-overview.md
-- docs/spec/02-flow-pipes.md
-- docs/spec/03-concurrency.md
-- docs/spec/04-match.md
-- docs/spec/FUNCTION-INDEX.md
-
-よろしくお願いします。
-`.trim();
-
-// Claude Codeへの入力として標準出力に送信
-console.log(prompt);
+# 第1引数（ファイルパス）を環境変数として渡してQiスクリプトを実行
+export QI_PRO_FILE="$1"
+exec "$QI" "$SCRIPT_DIR/qi-pro.qi"

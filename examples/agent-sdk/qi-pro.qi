@@ -1,0 +1,104 @@
+;; qi-pro.qi - Qi言語専門レビューエージェント
+;;
+;; Claude APIを使用してQiコードをレビューします
+;;
+;; 使い方:
+;;   qi qi-pro.qi <file.qi>
+;;   qi qi-pro.qi --help
+
+;; 設定
+(def AGENT-VERSION "1.0.0")
+(def CLAUDE-API-KEY (env/get "ANTHROPIC_API_KEY"))
+(def CLAUDE-API-URL "https://api.anthropic.com/v1/messages")
+(def CLAUDE-MODEL "claude-sonnet-4-5-20250929")
+
+(def SYSTEM-PROMPT (str
+  "Qi言語のコードレビューを行う専門エージェントです。\n\n"
+  "レビューの観点:\n"
+  "1. Flow-Oriented Programming - パイプライン演算子(|>, |>?, ||>, ~>)の活用\n"
+  "2. 並行・並列処理 - 適切な並列化（100要素以上推奨）\n"
+  "3. パターンマッチング - matchによるデータ分解\n"
+  "4. エラーハンドリング - Railway Pipeline（|>?）\n"
+  "5. モジュール設計 - module/export/useの使用\n"
+  "6. コードスタイル - 命名規則（述語?, 破壊的!）\n\n"
+  "改善点を具体的なコード例と共に提示してください。"))
+
+;; ヘルプ表示
+(defn show-help []
+  (println (str
+    "\nUsage: qi qi-pro.qi <file.qi>\n\n"
+    "Qi言語のソースコードをレビューし、改善提案を行います。\n\n"
+    "Examples:\n"
+    "  qi qi-pro.qi examples/hello.qi\n"
+    "  qi qi-pro.qi test-sample.qi\n\n"
+    "Options:\n"
+    "  --help    このヘルプを表示\n\n"
+    "Environment Variables:\n"
+    "  ANTHROPIC_API_KEY    Claude APIキー（必須）\n")))
+
+;; Claude API呼び出し
+(defn call-claude [file-path file-content]
+  (if (nil? CLAUDE-API-KEY)
+    {:error "ANTHROPIC_API_KEY not set"}
+    (let [user-prompt (str
+                       "以下のQiコードをレビューしてください:\n\n"
+                       "ファイル: " file-path "\n\n"
+                       "```qi\n" file-content "\n```\n\n"
+                       "改善点を具体的なコード例と共に提示してください。")
+          request-body {:model CLAUDE-MODEL
+                        :max_tokens 4096
+                        :system SYSTEM-PROMPT
+                        :messages [{:role "user" :content user-prompt}]}]
+      (match (try
+               (http/request {:method "POST"
+                              :url CLAUDE-API-URL
+                              :headers {:Authorization (str "Bearer " CLAUDE-API-KEY)
+                                        :Content-Type "application/json"
+                                        :anthropic-version "2023-06-01"}
+                              :body (json/stringify request-body)
+                              :timeout 60000}))
+        {:error e} -> {:error (str "API request failed: " e)}
+        response ->
+          (match (try (json/parse (get response :body)))
+            {:error e} -> {:error (str "JSON parse failed: " e)}
+            data ->
+              (let [content (get data :content)]
+                (if (nil? content)
+                  {:error "No content in response"}
+                  (let [first-item (first content)]
+                    (if (nil? first-item)
+                      {:error "Empty content"}
+                      (get first-item :text))))))))))
+
+;; メイン処理
+(defn main []
+  (let [file-path (args/get 2)]
+    (if (nil? file-path)
+      (do (show-help) 1)
+      (if (= file-path "--help")
+        (do (show-help) 0)
+        (do
+          (println (str "\n=== Qi Pro Agent v" AGENT-VERSION " ===\n"))
+          (println (str "Reviewing: " file-path "\n"))
+
+          (match (try (io/read-file file-path))
+            {:error e} ->
+              (do
+                (println (str "Error: Failed to read file - " e))
+                1)
+            content ->
+              (do
+                (println "Calling Claude API...\n")
+                (match (call-claude file-path content)
+                  {:error e} ->
+                    (do
+                      (println (str "Error: " e))
+                      1)
+                  result ->
+                    (do
+                      (println result)
+                      (println "\n=== Review Complete ===")
+                      0)))))))))
+
+;; メイン処理を実行
+(main)
