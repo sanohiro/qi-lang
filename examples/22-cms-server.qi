@@ -1,0 +1,368 @@
+;; 22-cms-server.qi - Qiで作るCMSサーバー
+;;
+;; 機能:
+;; - 記事管理 (CRUD)
+;; - ユーザー認証 (JWT)
+;; - 画像アップロード
+;; - SQLiteデータベース
+;; - パイプライン指向設計
+;;
+;; 実行: qi examples/22-cms-server.qi
+;; テスト: curl http://localhost:3000/api/posts
+
+(println "=== CMS Server ===\n")
+
+;; ========================================
+;; データベース初期化
+;; ========================================
+
+(println "Initializing database...")
+(def db (db/connect "sqlite://cms.db"))
+
+;; テーブル作成
+(db/exec db "
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'user',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+" [])
+
+(db/exec db "
+  CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    content TEXT NOT NULL,
+    author_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'draft',
+    featured_image TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES users(id)
+  )
+" [])
+
+(db/exec db "
+  CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    author_name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id)
+  )
+" [])
+
+(println "Database initialized.\n")
+
+;; ========================================
+;; ユーティリティ関数
+;; ========================================
+
+;; スラッグ生成（タイトルからURL安全な文字列を作成）
+(defn make-slug [title]
+  (title
+   |> string/lower
+   |> (string/replace " " "-")
+   |> (string/replace "[^a-z0-9-]" "")))
+
+;; JWTトークン生成
+(defn create-token [user-id username]
+  (jwt/sign
+   {:sub user-id :username username :exp (+ (time/now) 86400)}
+   "secret-key-change-in-production"))
+
+;; JWTトークン検証
+(defn verify-token [token]
+  (try
+    (jwt/verify token "secret-key-change-in-production")))
+
+;; 認証ミドルウェア
+(defn with-auth [handler]
+  (fn [req]
+    (let [auth-header (get-in req [:headers "authorization"])
+          token (if auth-header
+                  (string/trim (string/replace auth-header "Bearer " ""))
+                  nil)]
+      (if (nil? token)
+        (server/response 401 "Unauthorized")
+        (match (verify-token token)
+          {:error e} -> (server/response 401 "Invalid token")
+          payload -> (handler (assoc req :user payload)))))))
+
+;; ページネーション
+(defn paginate [page per-page]
+  (let [p (max 1 page)
+        limit per-page
+        offset (* (- p 1) per-page)]
+    {:limit limit :offset offset}))
+
+;; ========================================
+;; モデル層
+;; ========================================
+
+;; ユーザー作成
+(defn create-user [username password role]
+  (let [hash (password/hash password)]
+    (db/exec db
+      "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
+      [username hash role])
+    (db/query db
+      "SELECT id, username, role, created_at FROM users WHERE username = ?"
+      [username]
+      |> first)))
+
+;; ユーザー認証
+(defn authenticate [username password]
+  (let [rows (db/query db
+               "SELECT id, username, password_hash, role FROM users WHERE username = ?"
+               [username])]
+    (if (empty? rows)
+      {:error "User not found"}
+      (let [user (first rows)
+            hash (get user "password_hash")]
+        (if (password/verify password hash)
+          {:ok {:id (get user "id")
+                :username (get user "username")
+                :role (get user "role")}}
+          {:error "Invalid password"})))))
+
+;; 記事作成
+(defn create-post [title content author-id]
+  (let [slug (make-slug title)]
+    (db/exec db
+      "INSERT INTO posts (title, slug, content, author_id, status) VALUES (?, ?, ?, ?, 'draft')"
+      [title slug content author-id])
+    (db/query db
+      "SELECT * FROM posts WHERE slug = ?"
+      [slug]
+      |> first)))
+
+;; 記事一覧取得
+(defn list-posts [status limit offset]
+  (if (nil? status)
+    (db/query db
+      "SELECT p.*, u.username as author_name
+       FROM posts p
+       JOIN users u ON p.author_id = u.id
+       ORDER BY p.created_at DESC
+       LIMIT ? OFFSET ?"
+      [limit offset])
+    (db/query db
+      "SELECT p.*, u.username as author_name
+       FROM posts p
+       JOIN users u ON p.author_id = u.id
+       WHERE p.status = ?
+       ORDER BY p.created_at DESC
+       LIMIT ? OFFSET ?"
+      [status limit offset])))
+
+;; 記事取得（スラッグ）
+(defn get-post-by-slug [slug]
+  (db/query db
+    "SELECT p.*, u.username as author_name
+     FROM posts p
+     JOIN users u ON p.author_id = u.id
+     WHERE p.slug = ?"
+    [slug]
+    |> first))
+
+;; 記事更新
+(defn update-post [id title content status]
+  (let [slug (make-slug title)]
+    (db/exec db
+      "UPDATE posts SET title = ?, slug = ?, content = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?"
+      [title slug content status id])
+    (db/query db "SELECT * FROM posts WHERE id = ?" [id] |> first)))
+
+;; 記事削除
+(defn delete-post [id]
+  (db/exec db "DELETE FROM posts WHERE id = ?" [id]))
+
+;; コメント作成
+(defn create-comment [post-id author-name content]
+  (db/exec db
+    "INSERT INTO comments (post_id, author_name, content) VALUES (?, ?, ?)"
+    [post-id author-name content])
+  (db/query db
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC"
+    [post-id]
+    |> first))
+
+;; コメント一覧取得
+(defn list-comments [post-id]
+  (db/query db
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC"
+    [post-id]))
+
+;; ========================================
+;; APIハンドラー
+;; ========================================
+
+;; 認証API
+(defn auth-handler [req]
+  (match [(get req :method) (get req :path)]
+    ;; POST /api/auth/register - ユーザー登録
+    ["POST" "/api/auth/register"] ->
+      (match (try (json/parse (get req :body)))
+        {:error e} -> (server/response 400 "Invalid JSON")
+        data ->
+          (let [username (get data "username")
+                password (get data "password")
+                role (or (get data "role") "user")]
+            (if (or (nil? username) (nil? password))
+              (server/response 400 "Username and password required")
+              (match (try (create-user username password role))
+                {:error e} -> (server/response 400 e)
+                user -> (server/json {:user user :message "User created"})))))
+
+    ;; POST /api/auth/login - ログイン
+    ["POST" "/api/auth/login"] ->
+      (match (try (json/parse (get req :body)))
+        {:error e} -> (server/response 400 "Invalid JSON")
+        data ->
+          (let [username (get data "username")
+                password (get data "password")]
+            (match (authenticate username password)
+              {:error e} -> (server/response 401 e)
+              {:ok user} ->
+                (let [token (create-token (get user :id) (get user :username))]
+                  (server/json {:token token :user user})))))
+
+    _ -> (server/response 404 "Not Found")))
+
+;; 記事API
+(defn posts-handler [req]
+  (match [(get req :method) (get req :path)]
+    ;; GET /api/posts - 記事一覧
+    ["GET" "/api/posts"] ->
+      (let [query-params (get req :query-params {})
+            page (or (get query-params "page") 1)
+            per-page (or (get query-params "per_page") 10)
+            status (get query-params "status")
+            pagination (paginate page per-page)
+            posts (list-posts status (get pagination :limit) (get pagination :offset))]
+        (server/json {:posts posts :page page :per_page per-page}))
+
+    ;; POST /api/posts - 記事作成（認証必要）
+    ["POST" "/api/posts"] ->
+      ((with-auth
+         (fn [req]
+           (match (try (json/parse (get req :body)))
+             {:error e} -> (server/response 400 "Invalid JSON")
+             data ->
+               (let [title (get data "title")
+                     content (get data "content")
+                     user (get req :user)
+                     author-id (get user :sub)]
+                 (if (or (nil? title) (nil? content))
+                   (server/response 400 "Title and content required")
+                   (match (try (create-post title content author-id))
+                     {:error e} -> (server/response 400 e)
+                     post -> (server/json {:post post :message "Post created"})))))))
+       req)
+
+    ;; GET /api/posts/:slug - 記事詳細
+    ["GET" path] when (str/starts-with? path "/api/posts/") ->
+      (let [slug (string/replace path "/api/posts/" "")]
+        (match (get-post-by-slug slug)
+          nil -> (server/response 404 "Post not found")
+          post ->
+            (let [comments (list-comments (get post "id"))]
+              (server/json {:post post :comments comments}))))
+
+    ;; PUT /api/posts/:id - 記事更新（認証必要）
+    ["PUT" path] when (str/starts-with? path "/api/posts/") ->
+      ((with-auth
+         (fn [req]
+           (let [id-str (string/replace path "/api/posts/" "")]
+             (match (try (string/to-int id-str))
+               {:error _} -> (server/response 400 "Invalid ID")
+               id ->
+                 (match (try (json/parse (get req :body)))
+                   {:error e} -> (server/response 400 "Invalid JSON")
+                   data ->
+                     (let [title (get data "title")
+                           content (get data "content")
+                           status (or (get data "status") "draft")]
+                       (match (try (update-post id title content status))
+                         {:error e} -> (server/response 400 e)
+                         post -> (server/json {:post post :message "Post updated"}))))))))
+       req)
+
+    ;; DELETE /api/posts/:id - 記事削除（認証必要）
+    ["DELETE" path] when (str/starts-with? path "/api/posts/") ->
+      ((with-auth
+         (fn [req]
+           (let [id-str (string/replace path "/api/posts/" "")]
+             (match (try (string/to-int id-str))
+               {:error _} -> (server/response 400 "Invalid ID")
+               id ->
+                 (do
+                   (delete-post id)
+                   (server/json {:message "Post deleted"}))))))
+       req)
+
+    _ -> (server/response 404 "Not Found")))
+
+;; コメントAPI
+(defn comments-handler [req]
+  (match [(get req :method) (get req :path)]
+    ;; POST /api/posts/:id/comments - コメント作成
+    ["POST" path] when (str/starts-with? path "/api/posts/") ->
+      (let [path-parts (string/split path "/")
+            id-str (get path-parts 3)]
+        (match (try (string/to-int id-str))
+          {:error _} -> (server/response 400 "Invalid post ID")
+          post-id ->
+            (match (try (json/parse (get req :body)))
+              {:error e} -> (server/response 400 "Invalid JSON")
+              data ->
+                (let [author-name (get data "author_name")
+                      content (get data "content")]
+                  (if (or (nil? author-name) (nil? content))
+                    (server/response 400 "Author name and content required")
+                    (match (try (create-comment post-id author-name content))
+                      {:error e} -> (server/response 400 e)
+                      comment -> (server/json {:comment comment :message "Comment created"})))))))
+
+    _ -> (server/response 404 "Not Found")))
+
+;; ルートハンドラー
+(defn root-handler [req]
+  (server/json {:message "Qi CMS API" :version "1.0.0"}))
+
+;; メインハンドラー
+(defn app [req]
+  (let [path (get req :path)]
+    (match path
+      "/" -> (root-handler req)
+      _ when (str/starts-with? path "/api/auth") -> (auth-handler req)
+      _ when (str/starts-with? path "/api/posts") ->
+        (if (str/includes? path "/comments")
+          (comments-handler req)
+          (posts-handler req))
+      _ -> (server/response 404 "Not Found"))))
+
+;; ========================================
+;; サーバー起動
+;; ========================================
+
+(println "\n=== Starting CMS Server ===")
+(println "Server running on http://127.0.0.1:3000")
+(println "\nAPI Endpoints:")
+(println "  POST /api/auth/register - ユーザー登録")
+(println "  POST /api/auth/login - ログイン")
+(println "  GET  /api/posts - 記事一覧")
+(println "  POST /api/posts - 記事作成 (要認証)")
+(println "  GET  /api/posts/:slug - 記事詳細")
+(println "  PUT  /api/posts/:id - 記事更新 (要認証)")
+(println "  DELETE /api/posts/:id - 記事削除 (要認証)")
+(println "  POST /api/posts/:id/comments - コメント作成")
+(println "\nPress Ctrl+C to stop\n")
+
+(server/serve app {:port 3000})

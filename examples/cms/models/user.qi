@@ -1,0 +1,31 @@
+;; models/user.qi - ユーザーモデル
+
+(module "user-model")
+
+;; ユーザー作成
+(defn create [db username password role]
+  (let [hash (password/hash password)]
+    (db/exec db
+      "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
+      [username hash role])
+    (db/query db
+      "SELECT id, username, role, created_at FROM users WHERE username = ?"
+      [username]
+      |> first)))
+
+;; ユーザー認証
+(defn authenticate [db username password]
+  (let [rows (db/query db
+               "SELECT id, username, password_hash, role FROM users WHERE username = ?"
+               [username])]
+    (if (empty? rows)
+      {:error "User not found"}
+      (let [user (first rows)
+            hash (get user "password_hash")]
+        (if (password/verify password hash)
+          {:ok {:id (get user "id")
+                :username (get user "username")
+                :role (get user "role")}}
+          {:error "Invalid password"})))))
+
+(export create authenticate)

@@ -1,0 +1,21 @@
+;; models/comment.qi - コメントモデル
+
+(module "comment-model")
+
+;; コメント作成
+(defn create [db post-id author-name content]
+  (db/exec db
+    "INSERT INTO comments (post_id, author_name, content) VALUES (?, ?, ?)"
+    [post-id author-name content])
+  (db/query db
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC LIMIT 1"
+    [post-id]
+    |> first))
+
+;; コメント一覧取得
+(defn list-by-post [db post-id]
+  (db/query db
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC"
+    [post-id]))
+
+(export create list-by-post)

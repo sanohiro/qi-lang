@@ -1,0 +1,19 @@
+;; utils/auth.qi - 認証ユーティリティ
+
+(module "auth")
+
+;; JWT秘密鍵（本番環境では環境変数から読み込むこと）
+(def secret-key "secret-key-change-in-production")
+
+;; JWTトークン生成
+(defn create-token [user-id username]
+  (jwt/sign
+   {:sub user-id :username username :exp (+ (time/now) 86400)}
+   secret-key))
+
+;; JWTトークン検証
+(defn verify-token [token]
+  (try
+    (jwt/verify token secret-key)))
+
+(export create-token verify-token)

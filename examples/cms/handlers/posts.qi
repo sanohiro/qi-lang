@@ -1,0 +1,86 @@
+;; handlers/posts.qi - 記事ハンドラー
+
+(module "posts-handler")
+
+(use "./models/post" :as post)
+(use "./models/comment" :as comment)
+(use "./middleware/auth" :as auth-mw)
+(use "./utils/pagination" :as pg)
+
+;; 記事ハンドラー
+(defn handler [db req]
+  (match [(get req :method) (get req :path)]
+    ;; GET /api/posts - 記事一覧
+    ["GET" "/api/posts"] ->
+      (let [query-params (get req :query-params {})
+            page (or (get query-params "page") 1)
+            per-page (or (get query-params "per_page") 10)
+            status (get query-params "status")
+            pagination (pg/paginate page per-page)
+            posts (post/list-all db status
+                                 (get pagination :limit)
+                                 (get pagination :offset))]
+        (server/json {:posts posts :page page :per_page per-page}))
+
+    ;; POST /api/posts - 記事作成（認証必要）
+    ["POST" "/api/posts"] ->
+      ((auth-mw/with-auth
+         (fn [authenticated-req]
+           (match (try (json/parse (get authenticated-req :body)))
+             {:error e} -> (server/response 400 "Invalid JSON")
+             data ->
+               (let [title (get data "title")
+                     content (get data "content")
+                     user (get authenticated-req :user)
+                     author-id (get user :sub)]
+                 (if (or (nil? title) (nil? content))
+                   (server/response 400 "Title and content required")
+                   (match (try (post/create db title content author-id))
+                     {:error e} -> (server/response 400 e)
+                     created-post -> (server/json {:post created-post :message "Post created"})))))))
+       req)
+
+    ;; GET /api/posts/:slug - 記事詳細
+    ["GET" path] when (str/starts-with? path "/api/posts/") ->
+      (let [post-slug (string/replace path "/api/posts/" "")]
+        (match (post/get-by-slug db post-slug)
+          nil -> (server/response 404 "Post not found")
+          found-post ->
+            (let [comments (comment/list-by-post db (get found-post "id"))]
+              (server/json {:post found-post :comments comments}))))
+
+    ;; PUT /api/posts/:id - 記事更新（認証必要）
+    ["PUT" path] when (str/starts-with? path "/api/posts/") ->
+      ((auth-mw/with-auth
+         (fn [authenticated-req]
+           (let [id-str (string/replace path "/api/posts/" "")]
+             (match (try (string/to-int id-str))
+               {:error _} -> (server/response 400 "Invalid ID")
+               id ->
+                 (match (try (json/parse (get authenticated-req :body)))
+                   {:error e} -> (server/response 400 "Invalid JSON")
+                   data ->
+                     (let [title (get data "title")
+                           content (get data "content")
+                           status (or (get data "status") "draft")]
+                       (match (try (post/update db id title content status))
+                         {:error e} -> (server/response 400 e)
+                         updated-post -> (server/json {:post updated-post :message "Post updated"}))))))))
+       req)
+
+    ;; DELETE /api/posts/:id - 記事削除（認証必要）
+    ["DELETE" path] when (str/starts-with? path "/api/posts/") ->
+      ((auth-mw/with-auth
+         (fn [authenticated-req]
+           (let [id-str (string/replace path "/api/posts/" "")]
+             (match (try (string/to-int id-str))
+               {:error _} -> (server/response 400 "Invalid ID")
+               id ->
+                 (do
+                   (post/delete db id)
+                   (server/json {:message "Post deleted"}))))))
+       req)
+
+    _ -> (server/response 404 "Not Found")))
+
+(export handler)

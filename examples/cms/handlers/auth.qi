@@ -1,0 +1,42 @@
+;; handlers/auth.qi - 認証ハンドラー
+
+(module "auth-handler")
+
+(use "./models/user" :as user)
+(use "./utils/auth" :as auth-util)
+
+;; 認証ハンドラー
+(defn handler [db req]
+  (match [(get req :method) (get req :path)]
+    ;; POST /api/auth/register - ユーザー登録
+    ["POST" "/api/auth/register"] ->
+      (match (try (json/parse (get req :body)))
+        {:error e} -> (server/response 400 "Invalid JSON")
+        data ->
+          (let [username (get data "username")
+                password (get data "password")
+                role (or (get data "role") "user")]
+            (if (or (nil? username) (nil? password))
+              (server/response 400 "Username and password required")
+              (match (try (user/create db username password role))
+                {:error e} -> (server/response 400 e)
+                created-user -> (server/json {:user created-user :message "User created"})))))
+
+    ;; POST /api/auth/login - ログイン
+    ["POST" "/api/auth/login"] ->
+      (match (try (json/parse (get req :body)))
+        {:error e} -> (server/response 400 "Invalid JSON")
+        data ->
+          (let [username (get data "username")
+                password (get data "password")]
+            (match (user/authenticate db username password)
+              {:error e} -> (server/response 401 e)
+              {:ok authenticated-user} ->
+                (let [token (auth-util/create-token
+                             (get authenticated-user :id)
+                             (get authenticated-user :username))]
+                  (server/json {:token token :user authenticated-user})))))
+
+    _ -> (server/response 404 "Not Found")))
+
+(export handler)

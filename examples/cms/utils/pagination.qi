@@ -1,0 +1,12 @@
+;; utils/pagination.qi - ページネーションユーティリティ
+
+(module "pagination")
+
+;; ページネーション計算
+(defn paginate [page per-page]
+  (let [p (max 1 page)
+        limit per-page
+        offset (* (- p 1) per-page)]
+    {:limit limit :offset offset}))
+
+(export paginate)

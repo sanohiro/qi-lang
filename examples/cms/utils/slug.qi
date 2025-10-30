@@ -1,0 +1,12 @@
+;; utils/slug.qi - スラッグ生成ユーティリティ
+
+(module "slug")
+
+;; スラッグ生成（タイトルからURL安全な文字列を作成）
+(defn make-slug [title]
+  (title
+   |> string/lower
+   |> (string/replace " " "-")
+   |> (string/replace "[^a-z0-9-]" "")))
+
+(export make-slug)

@@ -1,0 +1,50 @@
+;; db.qi - データベース初期化
+
+(module "database")
+
+;; データベーススキーマ初期化
+(defn init [db]
+  (println "Initializing database...")
+
+  ;; ユーザーテーブル
+  (db/exec db "
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT DEFAULT 'user',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  " [])
+
+  ;; 記事テーブル
+  (db/exec db "
+    CREATE TABLE IF NOT EXISTS posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      content TEXT NOT NULL,
+      author_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'draft',
+      featured_image TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (author_id) REFERENCES users(id)
+    )
+  " [])
+
+  ;; コメントテーブル
+  (db/exec db "
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id INTEGER NOT NULL,
+      author_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (post_id) REFERENCES posts(id)
+    )
+  " [])
+
+  (println "Database initialized.\n"))
+
+(export init)

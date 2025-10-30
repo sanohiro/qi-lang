@@ -1,0 +1,58 @@
+;; main.qi - CMSサーバーメインエントリーポイント
+;;
+;; モジュール分割したQi CMS
+;; 実行: qi examples/cms/main.qi
+
+(println "=== Qi CMS Server ===\n")
+
+;; モジュールインポート
+(use "./db" :as database)
+(use "./handlers/auth" :as auth-handler)
+(use "./handlers/posts" :as posts-handler)
+(use "./handlers/comments" :as comments-handler)
+
+;; ========================================
+;; データベース初期化
+;; ========================================
+
+(def db (db/connect "sqlite://cms.db"))
+(database/init db)
+
+;; ========================================
+;; ルーティング
+;; ========================================
+
+;; ルートハンドラー
+(defn root-handler [req]
+  (server/json {:message "Qi CMS API" :version "1.0.0"}))
+
+;; メインハンドラー
+(defn app [req]
+  (let [path (get req :path)]
+    (match path
+      "/" -> (root-handler req)
+      _ when (str/starts-with? path "/api/auth") -> (auth-handler/handler db req)
+      _ when (str/starts-with? path "/api/posts") ->
+        (if (str/includes? path "/comments")
+          (comments-handler/handler db req)
+          (posts-handler/handler db req))
+      _ -> (server/response 404 "Not Found"))))
+
+;; ========================================
+;; サーバー起動
+;; ========================================
+
+(println "=== Starting CMS Server ===")
+(println "Server running on http://127.0.0.1:3000")
+(println "\nAPI Endpoints:")
+(println "  POST /api/auth/register - ユーザー登録")
+(println "  POST /api/auth/login - ログイン")
+(println "  GET  /api/posts - 記事一覧")
+(println "  POST /api/posts - 記事作成 (要認証)")
+(println "  GET  /api/posts/:slug - 記事詳細")
+(println "  PUT  /api/posts/:id - 記事更新 (要認証)")
+(println "  DELETE /api/posts/:id - 記事削除 (要認証)")
+(println "  POST /api/posts/:id/comments - コメント作成")
+(println "\nPress Ctrl+C to stop\n")
+
+(server/serve app {:port 3000})
