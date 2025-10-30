@@ -393,17 +393,15 @@ impl DbConnection for MysqlConnection {
                 let column = row.get("column_name")?.as_string()?;
                 let referenced_table = row.get("referenced_table")?.as_string()?;
                 let referenced_column = row.get("referenced_column")?.as_string()?;
-                let on_update = row.get("update_rule").and_then(|v| v.as_string());
-                let on_delete = row.get("delete_rule").and_then(|v| v.as_string());
+                let _on_update = row.get("update_rule").and_then(|v| v.as_string());
+                let _on_delete = row.get("delete_rule").and_then(|v| v.as_string());
 
                 Some(ForeignKeyInfo {
                     name,
                     table: table.to_string(),
-                    column,
+                    columns: vec![column],
                     referenced_table,
-                    referenced_column,
-                    on_update,
-                    on_delete,
+                    referenced_columns: vec![referenced_column],
                 })
             })
             .collect();
@@ -417,37 +415,28 @@ impl DbConnection for MysqlConnection {
         let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
 
         let mut conn = self.conn.lock();
-        let mysql_params = params_to_mysql(params);
+        let runtime = self.runtime.lock();
 
-        // CALLを実行
-        let result = conn
-            .exec_iter(&call_sql, mysql_params)
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> =
+            params.iter().map(Self::value_to_mysql_value).collect();
+
+        // CALLを実行して結果を取得
+        let rows: Vec<MyRow> = runtime
+            .block_on(async { conn.exec(&call_sql, mysql_params).await })
             .map_err(|e| DbError::new(&format!("Failed to call procedure: {}", e)))?;
 
-        // 結果セットを収集
-        let mut all_rows = Vec::new();
-
-        for result_set in result {
-            let result_set =
-                result_set.map_err(|e| DbError::new(&format!("Failed to fetch results: {}", e)))?;
-
-            let rows: Result<Vec<Row>, _> = result_set
-                .map(|row| {
-                    row.map_err(|e| DbError::new(&format!("Failed to read row: {}", e)))
-                        .and_then(mysql_row_to_row)
-                })
-                .collect();
-
-            all_rows.push(rows?);
+        // 結果をRow形式に変換
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(Self::row_to_hashmap(&row)?);
         }
 
-        // 結果の形式を判定
-        if all_rows.is_empty() {
+        // 結果の形式に応じて返す
+        if results.is_empty() {
             Ok(CallResult::Value(Value::Nil))
-        } else if all_rows.len() == 1 {
-            Ok(CallResult::Rows(all_rows.into_iter().next().unwrap()))
         } else {
-            Ok(CallResult::Multiple(all_rows))
+            Ok(CallResult::Rows(results))
         }
     }
 
@@ -486,30 +475,24 @@ impl DbConnection for MysqlConnection {
         );
 
         let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
 
         // PREPARE文でクエリを準備
         let prepare_sql = format!("PREPARE {} FROM '{}'", stmt_name, sql.replace("'", "''"));
-        conn.query_drop(&prepare_sql)
+        runtime
+            .block_on(async { conn.query_drop(&prepare_sql).await })
             .map_err(|e| DbError::new(&format!("Failed to prepare query: {}", e)))?;
-
-        // EXPLAIN文でカラム情報を推測（MySQLにはDESCRIBE PREPAREがないため）
-        // 注: これは完全な解決策ではなく、SELECT文のみ対応
-        let explain_sql = format!("EXPLAIN {}", sql);
-        let result = conn.query_map(&explain_sql, |_: mysql::Row| ());
 
         // PREPARE文をクリーンアップ
         let deallocate_sql = format!("DEALLOCATE PREPARE {}", stmt_name);
-        let _ = conn.query_drop(&deallocate_sql);
+        let _ = runtime.block_on(async { conn.query_drop(&deallocate_sql).await });
 
         // MySQLの場合、カラム情報を正確に取得するのは困難なため、
         // 空のリストとパラメータ数0を返す
-        match result {
-            Ok(_) => Ok(QueryInfo {
-                columns: vec![],
-                param_count: 0,
-            }),
-            Err(e) => Err(DbError::new(&format!("Failed to analyze query: {}", e))),
-        }
+        Ok(QueryInfo {
+            columns: vec![],
+            parameter_count: 0,
+        })
     }
 }
 

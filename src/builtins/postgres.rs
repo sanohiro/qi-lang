@@ -272,7 +272,10 @@ impl DbConnection for PostgresConnection {
                 let default_value = row.get("column_default").and_then(|v| v.as_string());
                 let primary_key = row
                     .get("is_primary_key")
-                    .and_then(|v| v.as_bool())
+                    .and_then(|v| match v {
+                        Value::Bool(b) => Some(*b),
+                        _ => None,
+                    })
                     .unwrap_or(false);
 
                 Some(ColumnInfo {
@@ -314,7 +317,10 @@ impl DbConnection for PostgresConnection {
                 let name = row.get("indexname")?.as_string()?;
                 let unique = row
                     .get("indisunique")
-                    .and_then(|v| v.as_bool())
+                    .and_then(|v| match v {
+                        Value::Bool(b) => Some(*b),
+                        _ => None,
+                    })
                     .unwrap_or(false);
 
                 // PostgreSQLの配列型から文字列のベクタに変換
@@ -373,17 +379,15 @@ impl DbConnection for PostgresConnection {
                 let column = row.get("column_name")?.as_string()?;
                 let referenced_table = row.get("referenced_table")?.as_string()?;
                 let referenced_column = row.get("referenced_column")?.as_string()?;
-                let on_update = row.get("update_rule").and_then(|v| v.as_string());
-                let on_delete = row.get("delete_rule").and_then(|v| v.as_string());
+                let _on_update = row.get("update_rule").and_then(|v| v.as_string());
+                let _on_delete = row.get("delete_rule").and_then(|v| v.as_string());
 
                 Some(ForeignKeyInfo {
                     name,
                     table: table.to_string(),
-                    column,
+                    columns: vec![column],
                     referenced_table,
-                    referenced_column,
-                    on_update,
-                    on_delete,
+                    referenced_columns: vec![referenced_column],
                 })
             })
             .collect();
@@ -414,7 +418,7 @@ impl DbConnection for PostgresConnection {
             Err(_) => {
                 // SELECT失敗時はCALLでプロシージャとして試行
                 let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
-                self.execute(&call_sql, params)?;
+                self.query(&call_sql, params, &QueryOptions::default())?;
                 Ok(CallResult::Value(Value::Nil))
             }
         }
@@ -463,27 +467,15 @@ impl DbConnection for PostgresConnection {
             .block_on(client.execute(&prepare_sql, &[]))
             .map_err(|e| DbError::new(&format!("Failed to prepare query: {}", e)))?;
 
-        // DESCRIBE文でカラム情報を取得
-        let describe_sql = format!("DESCRIBE {}", stmt_name);
-        let rows = runtime
-            .block_on(client.query(&describe_sql, &[]))
-            .map_err(|e| DbError::new(&format!("Failed to describe query: {}", e)))?;
-
-        let columns: Vec<String> = rows
-            .iter()
-            .map(|row| {
-                let name: String = row.get(0);
-                name
-            })
-            .collect();
-
         // PREPARE文をクリーンアップ
         let deallocate_sql = format!("DEALLOCATE {}", stmt_name);
         let _ = runtime.block_on(client.execute(&deallocate_sql, &[]));
 
+        // PostgreSQLの場合、PREPARE文からカラム情報を取得するのは複雑なため、
+        // 空のカラム情報を返す（実際のクエリ実行時に情報が得られる）
         Ok(QueryInfo {
-            columns,
-            param_count: 0, // PostgreSQLの場合、パラメータ数を動的に取得するのは難しい
+            columns: vec![],
+            parameter_count: 0,
         })
     }
 }
