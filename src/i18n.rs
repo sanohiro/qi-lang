@@ -89,7 +89,6 @@ pub enum MsgKey {
     SymbolNotFound,
     ModuleNotFound,
     SymbolNotExported,
-    UseAsNotImplemented,
 
     // 引数エラー（汎用）
     NeedAtLeastNArgs, // {0}には少なくとも{1}個の引数が必要
@@ -636,7 +635,6 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             SymbolNotExported,
             "symbol {0} is not exported from module {1}",
         ),
-        (UseAsNotImplemented, ":as mode is not implemented yet"),
         // 引数エラー
         (NeedAtLeastNArgs, "{0} requires at least {1} argument(s)"),
         (NeedExactlyNArgs, "{0} requires exactly {1} argument(s)"),
@@ -1252,10 +1250,6 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (
             SymbolNotExported,
             "シンボル{0}はモジュール{1}からエクスポートされていません",
-        ),
-        (
-            UseAsNotImplemented,
-            ":asモードはまだ実装されていません",
         ),
         // 引数エラー
         (

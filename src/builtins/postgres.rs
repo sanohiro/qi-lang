@@ -391,10 +391,33 @@ impl DbConnection for PostgresConnection {
         Ok(foreign_keys)
     }
 
-    fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
-        Err(DbError::new(
-            "Stored procedures not yet implemented for PostgreSQL",
-        ))
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult> {
+        // PostgreSQLではSELECTで関数を呼び出すかCALLでプロシージャを実行
+        // まずSELECTで関数として試行
+        let placeholders: Vec<String> = (1..=params.len()).map(|i| format!("${}", i)).collect();
+        let select_sql = format!("SELECT {}({})", name, placeholders.join(", "));
+
+        match self.query(&select_sql, params, &QueryOptions::default()) {
+            Ok(rows) => {
+                // 関数の結果を取得
+                if rows.is_empty() {
+                    Ok(CallResult::Value(Value::Nil))
+                } else if rows.len() == 1 && rows[0].len() == 1 {
+                    // 単一の戻り値
+                    let value = rows[0].values().next().cloned().unwrap_or(Value::Nil);
+                    Ok(CallResult::Value(value))
+                } else {
+                    // 複数行または複数カラムの結果
+                    Ok(CallResult::Rows(rows))
+                }
+            }
+            Err(_) => {
+                // SELECT失敗時はCALLでプロシージャとして試行
+                let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
+                self.execute(&call_sql, params)?;
+                Ok(CallResult::Value(Value::Nil))
+            }
+        }
     }
 
     fn supports(&self, feature: &str) -> bool {

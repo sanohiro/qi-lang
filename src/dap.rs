@@ -802,42 +802,72 @@ impl DapServer {
     }
 
     fn handle_scopes(&self, _request: Request) -> Response {
-        // 現在はLocalスコープのみ対応（グローバル、クロージャスコープは未実装）
-        let scopes = vec![Scope {
-            name: "Local".to_string(),
-            variables_reference: 1,
-            expensive: false,
-        }];
+        // Localスコープとグローバルスコープに対応
+        let scopes = vec![
+            Scope {
+                name: "Local".to_string(),
+                variables_reference: 1, // ローカル変数用の参照ID
+                expensive: false,
+            },
+            Scope {
+                name: "Global".to_string(),
+                variables_reference: 2, // グローバル変数用の参照ID
+                expensive: true,        // グローバルは大きい可能性があるのでexpensive
+            },
+        ];
 
         let body = serde_json::json!({ "scopes": scopes });
 
         self.create_success_response(_request.seq, COMMAND_SCOPES, Some(body))
     }
 
-    fn handle_variables(&self, _request: Request) -> Response {
-        // 停止時の環境から変数一覧を取得
+    fn handle_variables(&self, request: Request) -> Response {
+        use crate::value::Value;
+
+        // argumentsからvariables_referenceを取得
+        let variables_reference: i64 = request
+            .arguments
+            .as_ref()
+            .and_then(|args| args.get("variablesReference"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1);
+
         let mut variables: Vec<Variable> = vec![];
 
         if let Some(ref dbg) = *crate::debugger::GLOBAL_DEBUGGER.read() {
             if let Some(env_arc) = dbg.get_stopped_env() {
                 let env = env_arc.read();
 
-                // ローカル変数のみを取得（親環境にあるグローバル変数/関数を除外）
-                for (name, binding) in env.local_bindings() {
-                    // 関数・マクロ・ネイティブ関数は除外（データのみ表示）
-                    use crate::value::Value;
-                    let is_callable = matches!(
-                        binding.value,
-                        Value::Function(_) | Value::Macro(_) | Value::NativeFunc(_)
-                    );
+                // variables_reference に応じてスコープを切り替え
+                match variables_reference {
+                    1 => {
+                        // ローカル変数
+                        for (name, binding) in env.local_bindings() {
+                            let is_callable = matches!(
+                                binding.value,
+                                Value::Function(_) | Value::Macro(_) | Value::NativeFunc(_)
+                            );
 
-                    if !is_callable {
-                        variables.push(Variable {
-                            name,
-                            value: format!("{}", binding.value),
-                            var_type: Some(binding.value.type_name().to_string()),
-                            variables_reference: 0, // ネストした値（map/vector/list）の展開は未実装
-                        });
+                            if !is_callable {
+                                Self::push_variable(&mut variables, name, &binding.value);
+                            }
+                        }
+                    }
+                    2 => {
+                        // グローバル変数（全バインディングから取得）
+                        for (name, binding) in env.all_bindings() {
+                            let is_callable = matches!(
+                                binding.value,
+                                Value::Function(_) | Value::Macro(_) | Value::NativeFunc(_)
+                            );
+
+                            if !is_callable {
+                                Self::push_variable(&mut variables, name.clone(), &binding.value);
+                            }
+                        }
+                    }
+                    _ => {
+                        // 今のところネストした値の展開は未対応（将来的に実装予定）
                     }
                 }
             }
@@ -845,7 +875,33 @@ impl DapServer {
 
         let body = serde_json::json!({ "variables": variables });
 
-        self.create_success_response(_request.seq, COMMAND_VARIABLES, Some(body))
+        self.create_success_response(request.seq, COMMAND_VARIABLES, Some(body))
+    }
+
+    /// 変数を変数リストに追加するヘルパー関数
+    fn push_variable(variables: &mut Vec<Variable>, name: String, value: &crate::value::Value) {
+        use crate::value::Value;
+
+        // ネストした値（map/vector/list）の場合はvariables_referenceを設定
+        let (value_str, var_ref) = match value {
+            Value::Map(m) if !m.is_empty() => {
+                (format!("Map({})", m.len()), 0) // 将来的に展開対応予定
+            }
+            Value::Vector(v) if !v.is_empty() => {
+                (format!("Vector[{}]", v.len()), 0) // 将来的に展開対応予定
+            }
+            Value::List(l) if !l.is_empty() => {
+                (format!("List({})", l.len()), 0) // 将来的に展開対応予定
+            }
+            _ => (format!("{}", value), 0),
+        };
+
+        variables.push(Variable {
+            name,
+            value: value_str,
+            var_type: Some(value.type_name().to_string()),
+            variables_reference: var_ref,
+        });
     }
 
     fn handle_continue(&self, request: Request) -> Response {

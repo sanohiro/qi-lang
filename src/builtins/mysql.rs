@@ -411,10 +411,44 @@ impl DbConnection for MysqlConnection {
         Ok(foreign_keys)
     }
 
-    fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
-        Err(DbError::new(
-            "Stored procedures not yet implemented for MySQL",
-        ))
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult> {
+        // MySQLではCALLでプロシージャを実行
+        let placeholders: Vec<String> = params.iter().map(|_| "?".to_string()).collect();
+        let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
+
+        let mut conn = self.conn.lock();
+        let mysql_params = params_to_mysql(params);
+
+        // CALLを実行
+        let result = conn
+            .exec_iter(&call_sql, mysql_params)
+            .map_err(|e| DbError::new(&format!("Failed to call procedure: {}", e)))?;
+
+        // 結果セットを収集
+        let mut all_rows = Vec::new();
+
+        for result_set in result {
+            let result_set =
+                result_set.map_err(|e| DbError::new(&format!("Failed to fetch results: {}", e)))?;
+
+            let rows: Result<Vec<Row>, _> = result_set
+                .map(|row| {
+                    row.map_err(|e| DbError::new(&format!("Failed to read row: {}", e)))
+                        .and_then(mysql_row_to_row)
+                })
+                .collect();
+
+            all_rows.push(rows?);
+        }
+
+        // 結果の形式を判定
+        if all_rows.is_empty() {
+            Ok(CallResult::Value(Value::Nil))
+        } else if all_rows.len() == 1 {
+            Ok(CallResult::Rows(all_rows.into_iter().next().unwrap()))
+        } else {
+            Ok(CallResult::Multiple(all_rows))
+        }
     }
 
     fn supports(&self, feature: &str) -> bool {
