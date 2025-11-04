@@ -180,8 +180,10 @@
 (println (monitor-errors log-content |> (str/join "\n")))
 
 (println "\n=== クリーンアップ ===")
-(cmd/exec ["rm" "/tmp/app.log"])
-(println "サンプルログを削除しました")
+(def cleanup-exit (cmd/exec "rm /tmp/app.log"))
+(if (= cleanup-exit 0)
+  (println "サンプルログを削除しました")
+  (println "クリーンアップに失敗しました"))
 
 (println "\n=== Qiでログ解析が簡単に！ ===")
 (println "次は 10-file-processing.qi でファイル処理を学びましょう")

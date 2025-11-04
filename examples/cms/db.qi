@@ -6,6 +6,9 @@
 (defn init [db]
   (println "Initializing database...")
 
+  ;; 外部キー制約を有効化（SQLiteのデフォルトは無効）
+  (db/exec db "PRAGMA foreign_keys = ON" [])
+
   ;; ユーザーテーブル
   (db/exec db "
     CREATE TABLE IF NOT EXISTS users (
@@ -41,7 +44,7 @@
       author_name TEXT NOT NULL,
       content TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (post_id) REFERENCES posts(id)
+      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
     )
   " [])
 

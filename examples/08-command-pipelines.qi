@@ -11,16 +11,16 @@
 ;; cmd/exec - 基本的なコマンド実行
 (println "=== cmd/exec - 基本 ===")
 
-(def result (cmd/exec "echo 'Hello from shell'"))
-(println f"stdout: {(get result \"stdout\")}")
-(println f"exit code: {(get result \"exit\")}")
+(def exit-code (cmd/exec "echo 'Hello from shell'"))
+(println f"Exit code: {exit-code}")
+(println "(標準出力は直接ターミナルに表示されます)")
 
-;; リスト形式でコマンド実行（より安全）
-(println "\n=== リスト形式 ===")
+;; cmd/pipe - コマンドの出力を取得
+(println "\n=== cmd/pipe - 出力を取得 ===")
 
-(def ls-result (cmd/exec ["ls" "-la" "/tmp"]))
+(def ls-output (cmd/pipe "ls -la /tmp"))
 (println "最初の10行:")
-(println ((get ls-result "stdout")
+(println (ls-output
           |> (str/split "\n")
           |> (take 10)
           |> (str/join "\n")))
@@ -28,9 +28,8 @@
 ;; パイプラインでコマンド結果を処理
 (println "\n=== パイプラインでコマンド結果を処理 ===")
 
-(def date-result (cmd/exec "date"))
-(println (date-result
-          |> (fn [r] (get r "stdout"))
+(def date-output (cmd/pipe "date"))
+(println (date-output
           |> str/trim
           |> str/upper))
 
@@ -38,10 +37,10 @@
 (println "\n=== コマンドチェーン ===")
 
 ; ディレクトリ一覧を取得
-(def files (cmd/exec ["ls" "-1" "/tmp"]))
+(def files-output (cmd/pipe "ls -1 /tmp"))
 
 (println "ファイル数:")
-(println ((get files "stdout")
+(println (files-output
           |> (str/split "\n")
           |> (filter (fn [s] (> (len s) 0)))
           |> len))
@@ -50,10 +49,10 @@
 (println "\n=== ファイル処理パイプライン ===")
 
 ; 現在のディレクトリのファイル一覧
-(def current-files (cmd/exec "ls -1"))
+(def current-files-output (cmd/pipe "ls -1"))
 
 (println "拡張子ごとのカウント:")
-(println ((get current-files "stdout")
+(println (current-files-output
           |> (str/split "\n")
           |> (filter (fn [s] (> (len s) 0)))
           |> (map (fn [f]
@@ -68,10 +67,10 @@
 (println "\n=== grep風の処理 ===")
 
 ; Cargo.tomlの内容を取得して特定行を抽出
-(def cargo-content (cmd/exec "cat Cargo.toml"))
+(def cargo-content (cmd/pipe "cat Cargo.toml"))
 
 (println "dependenciesセクション:")
-(println ((get cargo-content "stdout")
+(println (cargo-content
           |> (str/split "\n")
           |> (filter (fn [line] (str/includes? line "=")))
           |> (take 5)
@@ -80,11 +79,11 @@
 ;; Unixパイプラインの再現
 (println "\n=== Unixパイプライン風 ===")
 
-; ps aux | grep qi | wc -l 的な処理
-(def ps-result (cmd/exec "ps aux"))
+; ps aux | wc -l 的な処理
+(def ps-output (cmd/pipe "ps aux"))
 
 (println "現在実行中のプロセス数:")
-(println ((get ps-result "stdout")
+(println (ps-output
           |> (str/split "\n")
           |> (filter (fn [line] (> (len line) 0)))
           |> len))
@@ -97,16 +96,16 @@
    :words (len (flatten (map (fn [line] (str/split line " ")) (str/split text "\n"))))
    :chars (len text)})
 
-(def readme (cmd/exec "cat README.md"))
+(def readme-content (cmd/pipe "cat README.md"))
 (println "README.md statistics:")
-(println (word-count (get readme "stdout")))
+(println (word-count readme-content))
 
 ;; find風の処理
 (println "\n=== find風のファイル検索 ===")
 
 (defn find-files [dir ext]
-  (let [result (cmd/exec ["ls" "-R" dir])]
-    ((get result "stdout")
+  (let [output (cmd/pipe (str "ls -R " dir))]
+    (output
      |> (str/split "\n")
      |> (filter (fn [f] (str/ends-with? f ext))))))
 
@@ -117,10 +116,10 @@
 (println "\n=== データ変換パイプライン ===")
 
 ; システム情報を取得して整形
-(def uname (cmd/exec "uname -a"))
+(def uname-output (cmd/pipe "uname -a"))
 
 (println "システム情報:")
-(println ((get uname "stdout")
+(println (uname-output
           |> str/trim
           |> (str/split " ")
           |> (map (fn [part] (str "- " part)))
@@ -130,10 +129,10 @@
 (println "\n=== エラーハンドリング ===")
 
 (defn safe-exec [cmd]
-  (let [result (cmd/exec cmd)]
-    (if (= (get result "exit") 0)
-      (get result "stdout")
-      {:error (get result "stderr")})))
+  (let [exit-code (cmd/exec cmd)]
+    (if (= exit-code 0)
+      "Success"
+      {:error (str "Command failed with exit code: " exit-code)})))
 
 (println (safe-exec "echo 'success'"))
 (println (safe-exec "nonexistent-command"))
@@ -143,10 +142,10 @@
 
 (def commands ["date" "whoami" "pwd" "hostname"])
 
-(println "並列実行:")
+(println "並列実行（各コマンドの出力）:")
 (println (commands
-          ||> cmd/exec
-          ||> (fn [r] {:cmd (str (get r "stdout")) :exit (get r "exit")})))
+          ||> cmd/pipe
+          ||> str/trim))
 
 ;; ログ解析風
 (println "\n=== ログ解析風 ===")
@@ -160,22 +159,22 @@
 
 (println "最近のログ（システムによって異なります）:")
 ; macOSではdmesgが使えないことがあるので、代替としてlsを使用
-(def log-result (cmd/exec "ls -lt /var/log | head -20"))
-(println (analyze-log (get log-result "stdout")))
+(def log-output (cmd/pipe "ls -lt /var/log | head -20"))
+(println (analyze-log log-output))
 
 ;; テキスト処理パイプライン
 (println "\n=== テキスト処理パイプライン ===")
 
 (defn process-text-file [filename]
-  (let [content (cmd/exec ["cat" filename])]
-    (if (= (get content "exit") 0)
-      ((get content "stdout")
+  (try
+    (let [content (cmd/pipe (str "cat " filename))]
+      (content
        |> (str/split "\n")
        |> (map str/trim)
        |> (filter (fn [line] (> (len line) 0)))
        |> (map str/lower)
-       |> distinct)
-      {:error "File not found"})))
+       |> distinct))
+    {:error "File not found"}))
 
 (println "README.mdの処理:")
 (println (take 5 (process-text-file "README.md")))
@@ -183,9 +182,9 @@
 ;; 実用例: ディスク使用量チェック
 (println "\n=== ディスク使用量チェック ===")
 
-(def df-result (cmd/exec "df -h"))
+(def df-output (cmd/pipe "df -h"))
 (println "ディスク使用状況（最初の5行）:")
-(println ((get df-result "stdout")
+(println (df-output
           |> (str/split "\n")
           |> (take 5)
           |> (str/join "\n")))

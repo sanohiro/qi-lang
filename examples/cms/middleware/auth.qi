@@ -7,14 +7,16 @@
 ;; 認証ミドルウェア
 (defn with-auth [handler]
   (fn [req]
-    (let [auth-header (get-in req [:headers "authorization"])
-          token (if auth-header
-                  (string/trim (string/replace auth-header "Bearer " ""))
-                  nil)]
-      (if (nil? token)
+    (let [headers (get req :headers)]
+      (if (nil? headers)
         (server/response 401 "Unauthorized")
-        (match (auth/verify-token token)
-          {:error e} -> (server/response 401 "Invalid token")
-          payload -> (handler (assoc req :user payload)))))))
+        (let [auth-header (get headers "authorization")]
+          (if (nil? auth-header)
+            (server/response 401 "Unauthorized")
+            (let [token (str/trim (str/replace auth-header "Bearer " ""))]
+              (match (auth/verify-token token)
+                {:error e} -> (server/response 401 "Invalid token")
+                {:ok user-data} -> (let [new-req (assoc req :user user-data)]
+                                     (handler new-req))))))))))
 
 (export with-auth)

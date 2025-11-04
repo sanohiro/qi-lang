@@ -89,6 +89,7 @@ pub enum MsgKey {
     SymbolNotFound,
     ModuleNotFound,
     SymbolNotExported,
+    FileNotFound, // file not found: {0} ({1})
 
     // 引数エラー（汎用）
     NeedAtLeastNArgs, // {0}には少なくとも{1}個の引数が必要
@@ -309,6 +310,7 @@ pub enum MsgKey {
     ServerStaticFileTooLarge, // server/static-file: file too large: {0} bytes (max: {1} bytes / {2} MB). Consider using streaming in the future.
     ServerStaticFileFailedToRead, // server/static-file: failed to read file: {0}
     ServerStaticDirNotDirectory, // server/static-dir: {0} is not a directory
+    ServerFailedToCreateRuntime, // Failed to create Tokio runtime: {0}
 
     // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
     DbFailedToConnect,             // Failed to connect to database: {0}
@@ -635,6 +637,7 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             SymbolNotExported,
             "symbol {0} is not exported from module {1}",
         ),
+        (FileNotFound, "file not found: {0} ({1})"),
         // 引数エラー
         (NeedAtLeastNArgs, "{0} requires at least {1} argument(s)"),
         (NeedExactlyNArgs, "{0} requires exactly {1} argument(s)"),
@@ -1000,6 +1003,10 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             ServerStaticDirNotDirectory,
             "server/static-dir: {0} is not a directory",
         ),
+        (
+            ServerFailedToCreateRuntime,
+            "Failed to create Tokio runtime: {0}",
+        ),
         // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
         (DbFailedToConnect, "Failed to connect to database: {0}"),
         (DbFailedToExecuteQuery, "Failed to execute query: {0}"),
@@ -1238,7 +1245,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             ":onlyリストにはシンボルが必要です",
         ),
         (AsNeedsAlias, ":asにはエイリアス名が必要です"),
-        (UseNeedsMode, "useには:onlyまたは:asが必要です"),
+        (UseNeedsMode, "useには:only, :as, :allのいずれかが必要です"),
         (
             SymbolNotFound,
             "シンボル{0}が見つかりません（モジュール: {1}）",
@@ -1251,6 +1258,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             SymbolNotExported,
             "シンボル{0}はモジュール{1}からエクスポートされていません",
         ),
+        (FileNotFound, "ファイルが見つかりません: {0} ({1})"),
         // 引数エラー
         (
             NeedAtLeastNArgs,
@@ -1517,6 +1525,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ServerStaticFileTooLarge, "server/static-file: ファイルが大きすぎます: {0}バイト (最大: {1}バイト / {2}MB)。将来的にストリーミングの使用を検討してください。"),
         (ServerStaticFileFailedToRead, "server/static-file: ファイル読み込み失敗: {0}"),
         (ServerStaticDirNotDirectory, "server/static-dir: {0}はディレクトリではありません"),
+        (ServerFailedToCreateRuntime, "Tokioランタイム作成失敗: {0}"),
         // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
         (DbFailedToConnect, "データベース接続失敗: {0}"),
         (DbFailedToExecuteQuery, "クエリ実行失敗: {0}"),

@@ -29,3 +29,12 @@ pub type HashMap<K, V> = im::HashMap<K, V, FxBuildHasher>;
 pub fn new_hashmap<K, V>() -> HashMap<K, V> {
     im::HashMap::with_hasher(FxBuildHasher)
 }
+
+/// Qi専用のHashSet型（im::HashSetにFxHasherを適用）
+pub type HashSet<T> = im::HashSet<T, FxBuildHasher>;
+
+/// Qi専用HashSetを作成するヘルパー関数
+#[inline]
+pub fn new_hashset<T>() -> HashSet<T> {
+    im::HashSet::with_hasher(FxBuildHasher)
+}

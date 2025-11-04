@@ -1,0 +1,161 @@
+;; data-tool - データ変換CLIツール
+;;
+;; Qiのパイプライン処理と外部コマンド実行を活用したデータ変換ツール
+;; jq/yqライクなJSON/YAML/TOML変換、SQL整形などを提供
+
+;; ========================================
+;; ヘルプ・使い方
+;; ========================================
+
+(defn show-help []
+  (do
+    (println "")
+    (println "=== Qi Data Tool - データ変換CLIツール ===")
+    (println "")
+    (println "使い方:")
+    (println "  qi main.qi <command> [options] [input-file]")
+    (println "")
+    (println "コマンド:")
+    (println "  json:pretty [file]     - JSON整形（読みやすく）")
+    (println "  json:minify [file]     - JSON圧縮（1行に）")
+    (println "  json:filter <jq-expr> [file] - jqでフィルタリング")
+    (println "  yaml:to-json [file]    - YAML → JSON変換")
+    (println "  json:to-yaml [file]    - JSON → YAML変換")
+    (println "  sql:format [file]      - SQL整形")
+    (println "  help                   - このヘルプを表示")
+    (println "")
+    (println "例:")
+    (println "  # JSON整形")
+    (println "  qi main.qi json:pretty test/sample.json")
+    (println "  cat test/sample.json | qi main.qi json:pretty")
+    (println "")
+    (println "  # jqでフィルタリング（アクティブユーザーのみ）")
+    (println "  qi main.qi json:filter '.users[] | select(.active == true)' test/sample.json")
+    (println "")
+    (println "  # YAML → JSON変換")
+    (println "  qi main.qi yaml:to-json test/sample.yaml")
+    (println "")
+    (println "  # SQL整形")
+    (println "  qi main.qi sql:format test/sample.sql")
+    (println "")
+    (println "必要な外部コマンド:")
+    (println "  jq        - JSON処理 (brew install jq)")
+    (println "  yq        - YAML処理 (brew install yq)")
+    (println "  sqlformat - SQL整形 (pip3 install sqlparse)")
+    (println "")))
+
+;; ========================================
+;; ユーティリティ関数
+;; ========================================
+
+;; ファイルまたはSTDINから読み込み
+(defn read-input [file-arg]
+  (if (nil? file-arg)
+    (join "\n" (io/stdin-lines))
+    (io/read-file file-arg)))
+
+;; コマンドが存在するかチェック
+(defn command-exists? [cmd]
+  (= (cmd/exec ["which" cmd]) 0))
+
+;; 外部コマンド実行（エラーハンドリング付き）
+;; Note: 新しいcmd/pipe APIは成功時stdoutを返し、失敗時は自動でエラーを投げる
+(defn pipe-to-cmd [cmd args input]
+  (let [cmd-list (cons cmd args)]
+    (cmd/pipe cmd-list input)))
+
+;; ========================================
+;; JSON処理
+;; ========================================
+
+;; JSON整形（pretty-print）
+(defn json-pretty [input]
+  (if (command-exists? "jq")
+    (pipe-to-cmd "jq" ["."] input)
+    ;; jqがない場合はQi標準ライブラリで処理（インデントなし）
+    (input
+     |> json/parse
+     |> json/stringify)))
+
+;; JSON圧縮（minify）
+(defn json-minify [input]
+  (if (command-exists? "jq")
+    (pipe-to-cmd "jq" ["-c" "."] input)
+    ;; jqがない場合はQi標準ライブラリで処理
+    (input
+     |> json/parse
+     |> json/stringify)))
+
+;; jqフィルタリング
+(defn json-filter [expr input]
+  (if (command-exists? "jq")
+    (pipe-to-cmd "jq" [expr] input)
+    (error "エラー: jqコマンドが見つかりません。インストール: brew install jq")))
+
+;; ========================================
+;; YAML処理
+;; ========================================
+
+;; YAML → JSON変換
+(defn yaml-to-json [input]
+  (if (command-exists? "yq")
+    (pipe-to-cmd "yq" ["-o=json" "."] input)
+    (error "エラー: yqコマンドが見つかりません。インストール: brew install yq")))
+
+;; JSON → YAML変換
+(defn json-to-yaml [input]
+  (if (command-exists? "yq")
+    (pipe-to-cmd "yq" ["-P" "."] input)
+    (error "エラー: yqコマンドが見つかりません。インストール: brew install yq")))
+
+;; ========================================
+;; SQL処理
+;; ========================================
+
+;; SQL整形
+(defn sql-format [input]
+  (if (command-exists? "sqlformat")
+    (pipe-to-cmd "sqlformat" ["-r" "-k" "upper" "-"] input)
+    (error "エラー: sqlformatコマンドが見つかりません。インストール: pip3 install sqlparse")))
+
+;; ========================================
+;; メインルーター
+;; ========================================
+
+(defn main [args]
+  (if (< (len args) 3)
+    (show-help)
+    (let [command (nth args 2)]
+      (match command
+        ;; ヘルプ
+        "help" -> (show-help)
+
+        ;; JSON処理
+        "json:pretty" -> (let [input (read-input (nth args 3))]
+                          (println (json-pretty input)))
+        "json:minify" -> (let [input (read-input (nth args 3))]
+                          (println (json-minify input)))
+        "json:filter" -> (if (< (len args) 4)
+                           (error "エラー: jq式が必要です。例: qi main.qi json:filter '.users[] | select(.active)' file.json")
+                           (let [expr (nth args 3)
+                                 input (read-input (nth args 4))]
+                             (println (json-filter expr input))))
+
+        ;; YAML処理
+        "yaml:to-json" -> (let [input (read-input (nth args 3))]
+                           (println (yaml-to-json input)))
+        "json:to-yaml" -> (let [input (read-input (nth args 3))]
+                           (println (json-to-yaml input)))
+
+        ;; SQL処理
+        "sql:format" -> (let [input (read-input (nth args 3))]
+                         (println (sql-format input)))
+
+        ;; 不明なコマンド
+        _ -> (do
+               (println f"エラー: 不明なコマンド '{command}'")
+               (println "")
+               (show-help))))))
+
+;; エントリーポイント
+(main (args/all))

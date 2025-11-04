@@ -416,6 +416,10 @@ impl PartialEq for Binding {
 pub struct Env {
     bindings: crate::HashMap<String, Binding>,
     parent: Option<Arc<RwLock<Env>>>,
+    /// モジュール名（moduleで設定、未設定ならファイル名のbasename）
+    module_name: Option<String>,
+    /// 公開シンボルのリスト（Noneなら全公開、Someなら選択公開）
+    exports: Option<crate::HashSet<String>>,
 }
 
 // NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
@@ -424,6 +428,8 @@ impl PartialEq for Env {
     fn eq(&self, other: &Self) -> bool {
         // 環境はポインタ比較とバインディング比較の組み合わせ
         self.bindings == other.bindings
+            && self.module_name == other.module_name
+            && self.exports == other.exports
             && match (&self.parent, &other.parent) {
                 (Some(a), Some(b)) => Arc::ptr_eq(a, b),
                 (None, None) => true,
@@ -443,6 +449,8 @@ impl Env {
         Env {
             bindings: crate::new_hashmap(),
             parent: None,
+            module_name: None,
+            exports: None,
         }
     }
 
@@ -451,6 +459,8 @@ impl Env {
         Env {
             bindings: crate::new_hashmap(),
             parent: Some(parent),
+            module_name: None,
+            exports: None,
         }
     }
 
@@ -513,6 +523,55 @@ impl Env {
             }
         }
         result
+    }
+
+    // ========================================
+    // モジュールシステム関連
+    // ========================================
+
+    /// モジュール名を設定（module宣言で使用）
+    pub fn set_module_name(&mut self, name: String) {
+        self.module_name = Some(name);
+    }
+
+    /// モジュール名を取得
+    pub fn module_name(&self) -> Option<&str> {
+        self.module_name.as_deref()
+    }
+
+    /// 公開シンボルを追加（export宣言で使用）
+    pub fn add_exports(&mut self, symbols: Vec<String>) {
+        if let Some(ref mut exports) = self.exports {
+            exports.extend(symbols);
+        } else {
+            self.exports = Some(symbols.into_iter().collect());
+        }
+    }
+
+    /// シンボルが公開されているか確認
+    pub fn is_exported(&self, name: &str) -> bool {
+        // defn- (is_private=true) は常に非公開
+        if let Some(binding) = self.bindings.get(name) {
+            if binding.is_private {
+                return false;
+            }
+        }
+
+        // exportsがNoneなら全公開（デフォルト）
+        // exportsがSomeなら、リストに含まれるもののみ公開
+        match &self.exports {
+            None => true,
+            Some(exports) => exports.contains(name),
+        }
+    }
+
+    /// 公開されているバインディングのみを取得
+    pub fn exported_bindings(&self) -> Vec<(String, Value)> {
+        self.bindings
+            .iter()
+            .filter(|(name, _)| self.is_exported(name))
+            .map(|(name, binding)| (name.clone(), binding.value.clone()))
+            .collect()
     }
 }
 

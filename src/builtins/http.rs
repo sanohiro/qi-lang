@@ -130,9 +130,31 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeMap, &["http/request", "argument"])),
     };
 
-    // オプションをパース
+    // オプションをパース（キーワードキーに対応）
+    let method_key = Value::Keyword("method".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "method".to_string());
+    let url_key = Value::Keyword("url".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "url".to_string());
+    let body_key = Value::Keyword("body".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "body".to_string());
+    let headers_key = Value::Keyword("headers".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "headers".to_string());
+    let basic_auth_key = Value::Keyword("basic-auth".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "basic-auth".to_string());
+    let bearer_token_key = Value::Keyword("bearer-token".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "bearer-token".to_string());
+    let timeout_key = Value::Keyword("timeout".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "timeout".to_string());
+
     let method = opts
-        .get("method")
+        .get(&method_key)
         .and_then(|v| match v {
             Value::String(s) => Some(s.as_str()),
             Value::Keyword(s) => Some(s.as_str()),
@@ -141,17 +163,17 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         .unwrap_or("GET");
 
     let url = opts
-        .get("url")
+        .get(&url_key)
         .and_then(|v| match v {
             Value::String(s) => Some(s.as_str()),
             _ => None,
         })
         .ok_or_else(|| fmt_msg(MsgKey::HttpRequestUrlRequired, &[]))?;
 
-    let body = opts.get("body");
+    let body = opts.get(&body_key);
 
     let mut headers = opts
-        .get("headers")
+        .get(&headers_key)
         .and_then(|v| match v {
             Value::Map(m) => Some(m.clone()),
             _ => None,
@@ -159,7 +181,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         .unwrap_or_default();
 
     // Basic Auth処理
-    if let Some(Value::Vector(v)) = opts.get("basic-auth") {
+    if let Some(Value::Vector(v)) = opts.get(&basic_auth_key) {
         if v.len() == 2 {
             if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
                 use base64::{engine::general_purpose, Engine as _};
@@ -174,7 +196,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     }
 
     // Bearer Token処理
-    if let Some(Value::String(token)) = opts.get("bearer-token") {
+    if let Some(Value::String(token)) = opts.get(&bearer_token_key) {
         headers.insert(
             "authorization".to_string(),
             Value::String(format!("Bearer {}", token)),
@@ -188,7 +210,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     };
 
     let timeout = opts
-        .get("timeout")
+        .get(&timeout_key)
         .and_then(|v| match v {
             Value::Integer(i) if *i > 0 => Some(*i as u64),
             _ => None,
@@ -359,11 +381,22 @@ fn http_request(
             // ボディを取得
             let body = response.text().unwrap_or_else(|_| String::new());
 
+            // キーワードキーを生成
+            let status_key = Value::Keyword("status".to_string())
+                .to_map_key()
+                .expect("status keyword should be valid");
+            let headers_key = Value::Keyword("headers".to_string())
+                .to_map_key()
+                .expect("headers keyword should be valid");
+            let body_key = Value::Keyword("body".to_string())
+                .to_map_key()
+                .expect("body keyword should be valid");
+
             Ok(Value::Map(
                 [
-                    ("status".to_string(), Value::Integer(status)),
-                    ("headers".to_string(), Value::Map(headers)),
-                    ("body".to_string(), Value::String(body)),
+                    (status_key, Value::Integer(status)),
+                    (headers_key, Value::Map(headers)),
+                    (body_key, Value::String(body)),
                 ]
                 .into_iter()
                 .collect(),
@@ -378,13 +411,24 @@ fn http_request(
                 "unknown"
             };
 
+            // エラーレスポンスもキーワードキーに変更
+            let error_key = Value::Keyword("error".to_string())
+                .to_map_key()
+                .expect("error keyword should be valid");
+            let type_key = Value::Keyword("type".to_string())
+                .to_map_key()
+                .expect("type keyword should be valid");
+            let message_key = Value::Keyword("message".to_string())
+                .to_map_key()
+                .expect("message keyword should be valid");
+
             Ok(Value::Map(
                 [(
-                    ":error".to_string(),
+                    error_key,
                     Value::Map(
                         [
-                            ("type".to_string(), Value::String(error_type.to_string())),
-                            ("message".to_string(), Value::String(e.to_string())),
+                            (type_key, Value::String(error_type.to_string())),
+                            (message_key, Value::String(e.to_string())),
                         ]
                         .into_iter()
                         .collect(),
@@ -453,17 +497,28 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let method = match config.get("method") {
+    // キーワードキーを生成
+    let method_key = Value::Keyword("method".to_string())
+        .to_map_key()
+        .expect("method keyword should be valid");
+    let url_key = Value::Keyword("url".to_string())
+        .to_map_key()
+        .expect("url keyword should be valid");
+    let body_key = Value::Keyword("body".to_string())
+        .to_map_key()
+        .expect("body keyword should be valid");
+
+    let method = match config.get(&method_key) {
         Some(Value::String(s)) => s.as_str(),
         _ => "GET",
     };
 
-    let url = match config.get("url") {
+    let url = match config.get(&url_key) {
         Some(Value::String(s)) => s.clone(),
         _ => return Err(fmt_msg(MsgKey::KeyNotFound, &["url"])),
     };
 
-    let body = config.get("body");
+    let body = config.get(&body_key);
 
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
 

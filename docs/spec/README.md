@@ -81,10 +81,13 @@
 - **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐ NEW
   - PostgreSQL接続（クエリ実行、コマンド実行）
   - パラメータ化クエリ、Result型統合
-- **[18-stdlib-validation.md](18-stdlib-validation.md)** - データ検証 ⭐ NEW
+- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket通信 ⭐ NEW
+  - WebSocketクライアント（接続、送信、受信、クローズ）
+  - TLS/SSL対応（wss://）、メッセージタイプ（テキスト、バイナリ、クローズ、エラー）
+- **[19-stdlib-validation.md](19-stdlib-validation.md)** - データ検証 ⭐ NEW
   - スキーマベースのバリデーション（型チェック、必須フィールド、文字列長、数値範囲、パターンマッチング）
   - ネストしたマップの検証、Result型統合
-- **[19-stdlib-debug.md](19-stdlib-debug.md)** - デバッグ機能 ⭐ NEW
+- **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能 ⭐ NEW
   - トレース機能（debug/trace）、ブレークポイント（debug/break）
   - スタックトレース取得（debug/stack）、デバッガ情報（debug/info）
 
@@ -222,13 +225,14 @@
 ### 標準ライブラリ関数
 
 - **HTTP**: `http/get`, `http/post`, `server/serve` → [11-stdlib-http.md](11-stdlib-http.md)
+- **WebSocket**: `ws/connect`, `ws/send`, `ws/receive`, `ws/close` → [18-stdlib-websocket.md](18-stdlib-websocket.md)
 - **JSON/YAML**: `json/parse`, `json/stringify`, `yaml/parse` → [12-stdlib-json.md](12-stdlib-json.md)
 - **Math**: `math/pow`, `math/sqrt`, `math/round`, `math/rand` → [15-stdlib-math.md](15-stdlib-math.md)
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
 - **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)
 - **Database**: `db/connect`, `db/query`, `db/exec` (PostgreSQL/MySQL/SQLite) → [17-stdlib-database.md](17-stdlib-database.md)
-- **Debug**: `debug/trace`, `debug/break`, `debug/stack`, `debug/info` → [19-stdlib-debug.md](19-stdlib-debug.md)
+- **Debug**: `debug/trace`, `debug/break`, `debug/stack`, `debug/info` → [20-stdlib-debug.md](20-stdlib-debug.md)
 
 **📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 

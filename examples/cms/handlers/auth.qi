@@ -9,7 +9,7 @@
 (defn handler [db req]
   (match [(get req :method) (get req :path)]
     ;; POST /api/auth/register - ユーザー登録
-    ["POST" "/api/auth/register"] ->
+    [:post "/api/auth/register"] ->
       (match (try (json/parse (get req :body)))
         {:error e} -> (server/response 400 "Invalid JSON")
         data ->
@@ -23,7 +23,7 @@
                 created-user -> (server/json {:user created-user :message "User created"})))))
 
     ;; POST /api/auth/login - ログイン
-    ["POST" "/api/auth/login"] ->
+    [:post "/api/auth/login"] ->
       (match (try (json/parse (get req :body)))
         {:error e} -> (server/response 400 "Invalid JSON")
         data ->

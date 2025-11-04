@@ -1,0 +1,31 @@
+;; 標準ライブラリドキュメント - WebSocket
+;; WebSocket Functions (4 functions)
+
+(def __doc__ws/connect
+  {:desc "WebSocketサーバーに接続します。"
+   :params [{:name "url" :type "string" :desc "WebSocket URL（ws://またはwss://）"}]
+   :returns {:type "integer" :desc "接続ID"}
+   :examples ["(def conn (ws/connect \"ws://localhost:8080/ws\"))"
+              "(def conn (ws/connect \"wss://echo.websocket.org\"))"]})
+
+(def __doc__ws/send
+  {:desc "WebSocketでメッセージを送信します。"
+   :params [{:name "conn-id" :type "integer" :desc "接続ID"}
+            {:name "message" :type "string" :desc "送信するメッセージ"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(ws/send conn \"Hello, WebSocket!\")"
+              "(ws/send conn (json/stringify {:type \"chat\" :msg \"Hello\"}))"]})
+
+(def __doc__ws/receive
+  {:desc "WebSocketからメッセージを受信します。受信するまでブロックします。"
+   :params [{:name "conn-id" :type "integer" :desc "接続ID"}]
+   :returns {:type "map" :desc "メッセージマップ（:type, :data, :code, :reason, :error）"}
+   :examples ["(def msg (ws/receive conn))"
+              "(match (get msg :type)\n  \"message\" -> (println (get msg :data))\n  \"close\" -> (println \"接続が閉じられました\")\n  \"error\" -> (println (get msg :error)))"]})
+
+(def __doc__ws/close
+  {:desc "WebSocket接続をクローズします。"
+   :params [{:name "conn-id" :type "integer" :desc "接続ID"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(ws/close conn)"
+              "(do\n  (ws/send conn \"bye\")\n  (ws/close conn))"]})

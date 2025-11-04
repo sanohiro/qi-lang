@@ -266,7 +266,7 @@ impl QiError {
     }
 
     /// 型エラー
-    pub fn undefined_function(expected: &str, actual: &str) -> Self {
+    pub fn type_mismatch(expected: &str, actual: &str) -> Self {
         QiError::new(
             ErrorCode::E0101,
             format!("型の不一致: 期待 {}, 実際 {}", expected, actual),

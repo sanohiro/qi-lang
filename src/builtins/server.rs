@@ -67,7 +67,8 @@ fn apply_json_body_middleware(req: &Value) -> Value {
         return req.clone();
     };
 
-    let Some(Value::String(body)) = req_map.get("body") else {
+    let body_key = Value::Keyword("body".to_string()).to_map_key().unwrap();
+    let Some(Value::String(body)) = req_map.get(&body_key) else {
         return req.clone();
     };
 
@@ -81,13 +82,15 @@ fn apply_json_body_middleware(req: &Value) -> Value {
         return req.clone();
     };
 
-    let Some(json_value) = result.get("ok") else {
+    let ok_key = Value::Keyword("ok".to_string()).to_map_key().unwrap();
+    let Some(json_value) = result.get(&ok_key) else {
         return req.clone();
     };
 
     // JSON解析成功 → 変更が必要なのでclone
     let mut new_req = req_map.clone();
-    new_req.insert("json".to_string(), json_value.clone());
+    let json_key = Value::Keyword("json".to_string()).to_map_key().unwrap();
+    new_req.insert(json_key, json_value.clone());
     Value::Map(new_req)
 }
 
@@ -97,10 +100,13 @@ fn apply_bearer_middleware(req: &Value) -> Value {
         return req.clone();
     };
 
+    let headers_key = Value::Keyword("headers".to_string()).to_map_key().unwrap();
+    let auth_header_key = "authorization"; // HTTPヘッダーは文字列キーのまま
+
     let token = req_map
-        .get("headers")
+        .get(&headers_key)
         .and_then(|h| match h {
-            Value::Map(headers) => headers.get("authorization"),
+            Value::Map(headers) => headers.get(auth_header_key),
             _ => None,
         })
         .and_then(|v| match v {
@@ -115,22 +121,28 @@ fn apply_bearer_middleware(req: &Value) -> Value {
 
     // トークンあり → 変更が必要なのでclone
     let mut new_req = req_map.clone();
-    new_req.insert("bearer-token".to_string(), Value::String(token.to_string()));
+    let bearer_key = Value::Keyword("bearer-token".to_string())
+        .to_map_key()
+        .unwrap();
+    new_req.insert(bearer_key, Value::String(token.to_string()));
     Value::Map(new_req)
 }
 
 /// リクエストをロギング
 fn apply_logging_middleware(req: &Value) {
     if let Value::Map(req_map) = req {
+        let method_key = Value::Keyword("method".to_string()).to_map_key().unwrap();
+        let path_key = Value::Keyword("path".to_string()).to_map_key().unwrap();
+
         let method = req_map
-            .get("method")
+            .get(&method_key)
             .and_then(|v| match v {
                 Value::Keyword(k) => Some(k.to_uppercase()),
                 _ => None,
             })
             .unwrap_or_else(|| "?".to_string());
         let path = req_map
-            .get("path")
+            .get(&path_key)
             .and_then(|v| match v {
                 Value::String(s) => Some(s.clone()),
                 _ => None,
@@ -146,6 +158,8 @@ fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
         return resp.clone();
     };
 
+    let headers_key = Value::Keyword("headers".to_string()).to_map_key().unwrap();
+
     let origin = origins
         .get(0)
         .and_then(|v| match v {
@@ -154,7 +168,7 @@ fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
         })
         .unwrap_or_else(|| "*".to_string());
 
-    let mut headers = match resp_map.get("headers") {
+    let mut headers = match resp_map.get(&headers_key) {
         Some(Value::Map(h)) => h.clone(),
         _ => crate::new_hashmap(),
     };
@@ -174,7 +188,7 @@ fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -> Value {
 
     // CORSヘッダー追加 → 変更が必要なのでclone
     let mut new_resp = resp_map.clone();
-    new_resp.insert("headers".to_string(), Value::Map(headers));
+    new_resp.insert(headers_key, Value::Map(headers));
     Value::Map(new_resp)
 }
 
@@ -184,7 +198,10 @@ fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
         return resp.clone();
     };
 
-    let Some(Value::String(body)) = resp_map.get("body") else {
+    let body_key = Value::Keyword("body".to_string()).to_map_key().unwrap();
+    let headers_key = Value::Keyword("headers".to_string()).to_map_key().unwrap();
+
+    let Some(Value::String(body)) = resp_map.get(&body_key) else {
         return resp.clone();
     };
 
@@ -198,7 +215,7 @@ fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
 
     // 圧縮成功 → 変更が必要なのでclone
     let mut new_resp = resp_map.clone();
-    let mut headers = match resp_map.get("headers") {
+    let mut headers = match resp_map.get(&headers_key) {
         Some(Value::Map(h)) => h.clone(),
         _ => crate::new_hashmap(),
     };
@@ -206,8 +223,8 @@ fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
         "Content-Encoding".to_string(),
         Value::String("gzip".to_string()),
     );
-    new_resp.insert("headers".to_string(), Value::Map(headers));
-    new_resp.insert("body".to_string(), Value::String(compressed));
+    new_resp.insert(headers_key.clone(), Value::Map(headers));
+    new_resp.insert(body_key, Value::String(compressed));
     Value::Map(new_resp)
 }
 
@@ -297,22 +314,41 @@ async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value,
     let query = parts.uri.query().unwrap_or("").to_string();
     let query_params = parse_query_params(&query);
 
-    // ヘッダー
+    // ヘッダー（HTTPヘッダーは大文字小文字を区別しないため、小文字に正規化）
     let mut headers = crate::new_hashmap();
     for (name, value) in parts.headers.iter() {
         if let Ok(v) = value.to_str() {
-            headers.insert(name.as_str().to_string(), Value::String(v.to_string()));
+            let key = Value::String(name.as_str().to_lowercase()).to_map_key()?;
+            headers.insert(key, Value::String(v.to_string()));
         }
     }
 
     // リクエストマップ
     let mut req_map = crate::new_hashmap();
-    req_map.insert("method".to_string(), Value::Keyword(method));
-    req_map.insert("path".to_string(), Value::String(path));
-    req_map.insert("query".to_string(), Value::String(query));
-    req_map.insert("query-params".to_string(), Value::Map(query_params));
-    req_map.insert("headers".to_string(), Value::Map(headers));
-    req_map.insert("body".to_string(), Value::String(body_str.clone()));
+    req_map.insert(
+        Value::Keyword("method".to_string()).to_map_key()?,
+        Value::Keyword(method),
+    );
+    req_map.insert(
+        Value::Keyword("path".to_string()).to_map_key()?,
+        Value::String(path),
+    );
+    req_map.insert(
+        Value::Keyword("query".to_string()).to_map_key()?,
+        Value::String(query),
+    );
+    req_map.insert(
+        Value::Keyword("query-params".to_string()).to_map_key()?,
+        Value::Map(query_params),
+    );
+    req_map.insert(
+        Value::Keyword("headers".to_string()).to_map_key()?,
+        Value::Map(headers),
+    );
+    req_map.insert(
+        Value::Keyword("body".to_string()).to_map_key()?,
+        Value::String(body_str.clone()),
+    );
 
     Ok((Value::Map(req_map), body_str))
 }
@@ -352,7 +388,14 @@ async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infal
     match value {
         Value::Map(m) => {
             // {:status 200, :headers {...}, :body "..." or :body-file "/path"}
-            let status = match m.get("status") {
+            let status_key = Value::Keyword("status".to_string()).to_map_key().unwrap();
+            let headers_key = Value::Keyword("headers".to_string()).to_map_key().unwrap();
+            let body_key = Value::Keyword("body".to_string()).to_map_key().unwrap();
+            let body_file_key = Value::Keyword("body-file".to_string())
+                .to_map_key()
+                .unwrap();
+
+            let status = match m.get(&status_key) {
                 Some(Value::Integer(s)) => *s as u16,
                 _ => 200,
             };
@@ -360,7 +403,7 @@ async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infal
             let mut response = Response::builder().status(status);
 
             // ヘッダー設定
-            if let Some(Value::Map(headers)) = m.get("headers") {
+            if let Some(Value::Map(headers)) = m.get(&headers_key) {
                 for (k, v) in headers {
                     if let Value::String(val) = v {
                         response = response.header(k.as_str(), val.as_str());
@@ -370,12 +413,12 @@ async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infal
 
             // ボディの生成: :body-file が優先
             let body: BoxBody<Bytes, Infallible> =
-                if let Some(Value::String(file_path)) = m.get("body-file") {
+                if let Some(Value::String(file_path)) = m.get(&body_file_key) {
                     // ファイルストリーミング
                     create_file_stream_body(file_path).await?
                 } else {
                     // 従来の :body 処理
-                    let body_str = match m.get("body") {
+                    let body_str = match m.get(&body_key) {
                         Some(Value::String(s)) => s.clone(),
                         Some(v) => format!("{}", v),
                         None => String::new(),
@@ -417,15 +460,24 @@ pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
     };
 
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(200));
-    resp.insert("body".to_string(), Value::String(body));
+    resp.insert(
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(200),
+    );
+    resp.insert(
+        Value::Keyword("body".to_string()).to_map_key().unwrap(),
+        Value::String(body),
+    );
 
     let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("text/plain; charset=utf-8".to_string()),
     );
-    resp.insert("headers".to_string(), Value::Map(headers));
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
 
     Ok(Value::Map(resp))
 }
@@ -439,16 +491,17 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     // データをJSON文字列に変換
     let json_result = crate::builtins::json::native_stringify(&[args[0].clone()])?;
     let json_str = match json_result {
-        Value::Map(m) => match m.get(":ok") {
-            Some(Value::String(s)) => s.clone(),
-            _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
-        },
+        Value::String(s) => s,
+        Value::Map(m) if m.contains_key(":error") => {
+            return Err(fmt_msg(MsgKey::JsonStringifyError, &[]));
+        }
         _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
     };
 
     let status = if args.len() > 1 {
         if let Value::Map(opts) = &args[1] {
-            match opts.get("status") {
+            let status_key = Value::Keyword("status".to_string()).to_map_key().unwrap();
+            match opts.get(&status_key) {
                 Some(Value::Integer(s)) => *s,
                 _ => 200,
             }
@@ -460,15 +513,71 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     };
 
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(status));
-    resp.insert("body".to_string(), Value::String(json_str));
+    resp.insert(
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(status),
+    );
+    resp.insert(
+        Value::Keyword("body".to_string()).to_map_key().unwrap(),
+        Value::String(json_str),
+    );
 
     let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("application/json; charset=utf-8".to_string()),
     );
-    resp.insert("headers".to_string(), Value::Map(headers));
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
+
+    Ok(Value::Map(resp))
+}
+
+/// server/response - 汎用HTTPレスポンスを作成
+/// (server/response status body)
+/// status: HTTPステータスコード (Integer)
+/// body: レスポンスボディ (String)
+pub fn native_server_response(args: &[Value]) -> Result<Value, String> {
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/response", "2"]));
+    }
+
+    let status = match &args[0] {
+        Value::Integer(n) => *n,
+        _ => {
+            return Err(fmt_msg(
+                MsgKey::FirstArgMustBe,
+                &["server/response", "an integer"],
+            ))
+        }
+    };
+
+    let body = match &args[1] {
+        Value::String(s) => s.clone(),
+        v => format!("{}", v),
+    };
+
+    let mut resp = crate::new_hashmap();
+    resp.insert(
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(status),
+    );
+    resp.insert(
+        Value::Keyword("body".to_string()).to_map_key().unwrap(),
+        Value::String(body),
+    );
+
+    let mut headers = crate::new_hashmap();
+    headers.insert(
+        "Content-Type".to_string(),
+        Value::String("text/plain; charset=utf-8".to_string()),
+    );
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
 
     Ok(Value::Map(resp))
 }
@@ -485,15 +594,24 @@ pub fn native_server_not_found(args: &[Value]) -> Result<Value, String> {
     };
 
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(404));
-    resp.insert("body".to_string(), Value::String(body));
+    resp.insert(
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(404),
+    );
+    resp.insert(
+        Value::Keyword("body".to_string()).to_map_key().unwrap(),
+        Value::String(body),
+    );
 
     let mut headers = crate::new_hashmap();
     headers.insert(
         "Content-Type".to_string(),
         Value::String("text/plain; charset=utf-8".to_string()),
     );
-    resp.insert("headers".to_string(), Value::Map(headers));
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
 
     Ok(Value::Map(resp))
 }
@@ -501,8 +619,14 @@ pub fn native_server_not_found(args: &[Value]) -> Result<Value, String> {
 /// server/no-content - 204 No Contentレスポンスを作成
 pub fn native_server_no_content(_args: &[Value]) -> Result<Value, String> {
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(204));
-    resp.insert("body".to_string(), Value::String(String::new()));
+    resp.insert(
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(204),
+    );
+    resp.insert(
+        Value::Keyword("body".to_string()).to_map_key().unwrap(),
+        Value::String(String::new()),
+    );
     Ok(Value::Map(resp))
 }
 
@@ -535,36 +659,39 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
         crate::new_hashmap()
     };
 
-    let port = match opts.get("port") {
+    let port_key = Value::Keyword("port".to_string()).to_map_key().unwrap();
+    let host_key = Value::Keyword("host".to_string()).to_map_key().unwrap();
+    let timeout_key = Value::Keyword("timeout".to_string()).to_map_key().unwrap();
+
+    let port = match opts.get(&port_key) {
         Some(Value::Integer(p)) => *p as u16,
         _ => 3000,
     };
 
-    let host = match opts.get("host") {
+    let host = match opts.get(&host_key) {
         Some(Value::String(h)) => h.clone(),
         _ => "127.0.0.1".to_string(),
     };
 
-    let timeout_secs = match opts.get("timeout") {
+    let timeout_secs = match opts.get(&timeout_key) {
         Some(Value::Integer(t)) => *t as u64,
         _ => 30,
     };
-
-    // サーバーを別スレッドで起動
-    let host_clone = host.clone();
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async move {
-            if let Err(e) = run_server(&host_clone, port, handler, timeout_secs).await {
-                eprintln!("Server error: {}", e);
-            }
-        });
-    });
 
     println!(
         "HTTP server started on http://{}:{} (timeout: {}s)",
         host, port, timeout_secs
     );
+
+    // ブロッキングで実行（Ctrl+Cでシャットダウンするまで待つ）
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| fmt_msg(MsgKey::ServerFailedToCreateRuntime, &[&e.to_string()]))?;
+
+    rt.block_on(async move {
+        if let Err(e) = run_server(&host, port, handler, timeout_secs).await {
+            eprintln!("Server error: {}", e);
+        }
+    });
 
     Ok(Value::Nil)
 }
@@ -587,17 +714,39 @@ async fn run_server(
     let shutdown = Arc::new(tokio::sync::Notify::new());
     let shutdown_clone = shutdown.clone();
 
-    // シグナルハンドラー（Ctrl+C）
+    // シグナルハンドラー（Ctrl+C と SIGTERM）
     tokio::spawn(async move {
-        match tokio::signal::ctrl_c().await {
-            Ok(()) => {
-                println!("\nReceived shutdown signal, gracefully shutting down...");
-                shutdown_clone.notify_waiters();
-            }
-            Err(err) => {
-                eprintln!("Error listening for shutdown signal: {}", err);
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut sigterm =
+                signal(SignalKind::terminate()).expect("failed to create SIGTERM signal handler");
+            let mut sigint =
+                signal(SignalKind::interrupt()).expect("failed to create SIGINT signal handler");
+
+            tokio::select! {
+                _ = sigterm.recv() => {
+                    println!("\nReceived SIGTERM, gracefully shutting down...");
+                }
+                _ = sigint.recv() => {
+                    println!("\nReceived SIGINT (Ctrl+C), gracefully shutting down...");
+                }
             }
         }
+        #[cfg(not(unix))]
+        {
+            // Windows環境ではCtrl+Cのみ対応
+            match tokio::signal::ctrl_c().await {
+                Ok(()) => {
+                    println!("\nReceived shutdown signal, gracefully shutting down...");
+                }
+                Err(err) => {
+                    eprintln!("Error listening for shutdown signal: {}", err);
+                    return;
+                }
+            }
+        }
+        shutdown_clone.notify_waiters();
     });
 
     loop {
@@ -686,8 +835,11 @@ async fn handle_request(
 
 /// ルーティング処理
 fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, String> {
+    let method_key = Value::Keyword("method".to_string()).to_map_key().unwrap();
+    let path_key = Value::Keyword("path".to_string()).to_map_key().unwrap();
+
     let method = match req {
-        Value::Map(m) => match m.get("method") {
+        Value::Map(m) => match m.get(&method_key) {
             Some(Value::Keyword(k)) => k.clone(),
             _ => {
                 return Err(fmt_msg(
@@ -700,7 +852,7 @@ fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, Strin
     };
 
     let path = match req {
-        Value::Map(m) => match m.get("path") {
+        Value::Map(m) => match m.get(&path_key) {
             Some(Value::String(p)) => p.clone(),
             _ => {
                 return Err(fmt_msg(
@@ -751,7 +903,9 @@ fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, Strin
                                 Value::Map(m) => m.clone(),
                                 _ => crate::new_hashmap(),
                             };
-                            req_with_params.insert("params".to_string(), Value::Map(params));
+                            let params_key =
+                                Value::Keyword("params".to_string()).to_map_key().unwrap();
+                            req_with_params.insert(params_key, Value::Map(params));
 
                             // ミドルウェアを適用してハンドラーを実行
                             let eval = Evaluator::new();
@@ -769,8 +923,10 @@ fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, Strin
 
 /// 静的ファイルを配信（ストリーミング対応）
 fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
+    let path_key = Value::Keyword("path".to_string()).to_map_key().unwrap();
+
     let path = match req {
-        Value::Map(m) => match m.get("path") {
+        Value::Map(m) => match m.get(&path_key) {
             Some(Value::String(p)) => p,
             _ => {
                 return Err(fmt_msg(
@@ -812,9 +968,14 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
         .ok_or_else(|| fmt_msg(MsgKey::InvalidFilePath, &["serve_static_file"]))?;
 
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(200));
     resp.insert(
-        "body-file".to_string(),
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(200),
+    );
+    resp.insert(
+        Value::Keyword("body-file".to_string())
+            .to_map_key()
+            .unwrap(),
         Value::String(file_path_str.to_string()),
     );
 
@@ -823,7 +984,10 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
         "Content-Type".to_string(),
         Value::String(content_type.to_string()),
     );
-    resp.insert("headers".to_string(), Value::Map(headers));
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
 
     Ok(Value::Map(resp))
 }
@@ -845,8 +1009,10 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                     if let Value::Map(req_map) = req {
                         let authorized = if let Some(Value::Map(users)) = m.get("__users__") {
                             // Authorizationヘッダーを取得
+                            let headers_key =
+                                Value::Keyword("headers".to_string()).to_map_key().unwrap();
                             let auth_header = req_map
-                                .get("headers")
+                                .get(&headers_key)
                                 .and_then(|h| match h {
                                     Value::Map(headers) => headers.get("authorization"),
                                     _ => None,
@@ -897,9 +1063,12 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                         if !authorized {
                             // 401 Unauthorized を返す
                             let mut resp = crate::new_hashmap();
-                            resp.insert("status".to_string(), Value::Integer(401));
                             resp.insert(
-                                "body".to_string(),
+                                Value::Keyword("status".to_string()).to_map_key().unwrap(),
+                                Value::Integer(401),
+                            );
+                            resp.insert(
+                                Value::Keyword("body".to_string()).to_map_key().unwrap(),
                                 Value::String("Unauthorized".to_string()),
                             );
                             let mut headers = crate::new_hashmap();
@@ -907,7 +1076,10 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                                 "WWW-Authenticate".to_string(),
                                 Value::String("Basic realm=\"Restricted\"".to_string()),
                             );
-                            resp.insert("headers".to_string(), Value::Map(headers));
+                            resp.insert(
+                                Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+                                Value::Map(headers),
+                            );
                             return Ok(Value::Map(resp));
                         }
                     }
@@ -953,8 +1125,10 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                     "logging" => {
                         // レスポンスステータスをログ出力
                         if let Value::Map(resp_map) = &response {
+                            let status_key =
+                                Value::Keyword("status".to_string()).to_map_key().unwrap();
                             let status = resp_map
-                                .get("status")
+                                .get(&status_key)
                                 .and_then(|v| match v {
                                     Value::Integer(i) => Some(*i),
                                     _ => None,
@@ -967,7 +1141,9 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                     "no-cache" => {
                         // キャッシュ無効化ヘッダーを追加
                         if let Value::Map(mut resp_map) = response.clone() {
-                            let mut headers = match resp_map.get("headers") {
+                            let headers_key =
+                                Value::Keyword("headers".to_string()).to_map_key().unwrap();
+                            let mut headers = match resp_map.get(&headers_key) {
                                 Some(Value::Map(h)) => h.clone(),
                                 _ => crate::new_hashmap(),
                             };
@@ -984,7 +1160,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                             );
                             headers.insert("Expires".to_string(), Value::String("0".to_string()));
 
-                            resp_map.insert("headers".to_string(), Value::Map(headers));
+                            resp_map.insert(headers_key, Value::Map(headers));
                             Value::Map(resp_map)
                         } else {
                             response
@@ -996,36 +1172,54 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                             if let Some(Value::Map(opts)) = m.get("__cache_opts__") {
                                 let mut cache_parts = Vec::new();
 
+                                let max_age_key =
+                                    Value::Keyword("max-age".to_string()).to_map_key().unwrap();
+                                let public_key =
+                                    Value::Keyword("public".to_string()).to_map_key().unwrap();
+                                let private_key =
+                                    Value::Keyword("private".to_string()).to_map_key().unwrap();
+                                let no_store_key =
+                                    Value::Keyword("no-store".to_string()).to_map_key().unwrap();
+                                let must_revalidate_key =
+                                    Value::Keyword("must-revalidate".to_string())
+                                        .to_map_key()
+                                        .unwrap();
+                                let immutable_key = Value::Keyword("immutable".to_string())
+                                    .to_map_key()
+                                    .unwrap();
+
                                 // max-age
-                                if let Some(Value::Integer(age)) = opts.get("max-age") {
+                                if let Some(Value::Integer(age)) = opts.get(&max_age_key) {
                                     cache_parts.push(format!("max-age={}", age));
                                 }
 
                                 // public/private
-                                if let Some(Value::Bool(true)) = opts.get("public") {
+                                if let Some(Value::Bool(true)) = opts.get(&public_key) {
                                     cache_parts.push("public".to_string());
-                                } else if let Some(Value::Bool(true)) = opts.get("private") {
+                                } else if let Some(Value::Bool(true)) = opts.get(&private_key) {
                                     cache_parts.push("private".to_string());
                                 }
 
                                 // no-store
-                                if let Some(Value::Bool(true)) = opts.get("no-store") {
+                                if let Some(Value::Bool(true)) = opts.get(&no_store_key) {
                                     cache_parts.push("no-store".to_string());
                                 }
 
                                 // must-revalidate
-                                if let Some(Value::Bool(true)) = opts.get("must-revalidate") {
+                                if let Some(Value::Bool(true)) = opts.get(&must_revalidate_key) {
                                     cache_parts.push("must-revalidate".to_string());
                                 }
 
                                 // immutable
-                                if let Some(Value::Bool(true)) = opts.get("immutable") {
+                                if let Some(Value::Bool(true)) = opts.get(&immutable_key) {
                                     cache_parts.push("immutable".to_string());
                                 }
 
                                 if !cache_parts.is_empty() {
                                     let cache_control = cache_parts.join(", ");
-                                    let mut headers = match resp_map.get("headers") {
+                                    let headers_key =
+                                        Value::Keyword("headers".to_string()).to_map_key().unwrap();
+                                    let mut headers = match resp_map.get(&headers_key) {
                                         Some(Value::Map(h)) => h.clone(),
                                         _ => crate::new_hashmap(),
                                     };
@@ -1033,7 +1227,7 @@ fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Va
                                         "Cache-Control".to_string(),
                                         Value::String(cache_control),
                                     );
-                                    resp_map.insert("headers".to_string(), Value::Map(headers));
+                                    resp_map.insert(headers_key, Value::Map(headers));
                                 }
                             }
 
@@ -1127,16 +1321,19 @@ pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
     // オプション引数（CORS設定）
     let origins = if args.len() > 1 {
         match &args[1] {
-            Value::Map(m) => match m.get("origins") {
-                Some(Value::Vector(v)) => v
-                    .iter()
-                    .filter_map(|val| match val {
-                        Value::String(s) => Some(s.clone()),
-                        _ => None,
-                    })
-                    .collect(),
-                _ => vec!["*".to_string()],
-            },
+            Value::Map(m) => {
+                let origins_key = Value::Keyword("origins".to_string()).to_map_key().unwrap();
+                match m.get(&origins_key) {
+                    Some(Value::Vector(v)) => v
+                        .iter()
+                        .filter_map(|val| match val {
+                            Value::String(s) => Some(s.clone()),
+                            _ => None,
+                        })
+                        .collect(),
+                    _ => vec!["*".to_string()],
+                }
+            }
             _ => vec!["*".to_string()],
         }
     } else {
@@ -1190,10 +1387,13 @@ pub fn native_server_with_compression(args: &[Value]) -> Result<Value, String> {
     // オプション引数（圧縮設定）
     let min_size = if args.len() > 1 {
         match &args[1] {
-            Value::Map(m) => match m.get("min-size") {
-                Some(Value::Integer(s)) => *s as usize,
-                _ => 1024, // デフォルト: 1KB以上で圧縮
-            },
+            Value::Map(m) => {
+                let min_size_key = Value::Keyword("min-size".to_string()).to_map_key().unwrap();
+                match m.get(&min_size_key) {
+                    Some(Value::Integer(s)) => *s as usize,
+                    _ => 1024, // デフォルト: 1KB以上で圧縮
+                }
+            }
             _ => 1024,
         }
     } else {
@@ -1287,9 +1487,14 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     let content_type = get_content_type(file_path);
 
     let mut resp = crate::new_hashmap();
-    resp.insert("status".to_string(), Value::Integer(200));
     resp.insert(
-        "body-file".to_string(),
+        Value::Keyword("status".to_string()).to_map_key().unwrap(),
+        Value::Integer(200),
+    );
+    resp.insert(
+        Value::Keyword("body-file".to_string())
+            .to_map_key()
+            .unwrap(),
         Value::String(file_path.to_string()),
     );
 
@@ -1298,7 +1503,10 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
         "Content-Type".to_string(),
         Value::String(content_type.to_string()),
     );
-    resp.insert("headers".to_string(), Value::Map(headers));
+    resp.insert(
+        Value::Keyword("headers".to_string()).to_map_key().unwrap(),
+        Value::Map(headers),
+    );
 
     Ok(Value::Map(resp))
 }
@@ -1352,10 +1560,13 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
     // ユーザー設定（オプション引数）
     let users = if args.len() > 1 {
         match &args[1] {
-            Value::Map(m) => match m.get("users") {
-                Some(Value::Map(u)) => u.clone(),
-                _ => crate::new_hashmap(),
-            },
+            Value::Map(m) => {
+                let users_key = Value::Keyword("users".to_string()).to_map_key().unwrap();
+                match m.get(&users_key) {
+                    Some(Value::Map(u)) => u.clone(),
+                    _ => crate::new_hashmap(),
+                }
+            }
             _ => crate::new_hashmap(),
         }
     } else {
@@ -1456,12 +1667,13 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 /// @qi-doc:category server
-/// @qi-doc:functions serve, router, ok, json, not-found, no-content, with-logging, with-cors, with-json-body, static-file, static-dir
+/// @qi-doc:functions serve, router, ok, json, response, not-found, no-content, with-logging, with-cors, with-json-body, static-file, static-dir
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("server/serve", native_server_serve),
     ("server/router", native_server_router),
     ("server/ok", native_server_ok),
     ("server/json", native_server_json),
+    ("server/response", native_server_response),
     ("server/not-found", native_server_not_found),
     ("server/no-content", native_server_no_content),
     ("server/with-logging", native_server_with_logging),

@@ -111,22 +111,56 @@ impl Evaluator {
     /// モジュール名から実際のファイルパスを解決します。
     ///
     /// # 検索順序
-    /// 1. 絶対パス・相対パスの場合はそのまま使用
-    /// 2. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
-    /// 3. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
+    /// 1. 絶対パス・相対パスの場合は現在のソースファイルのディレクトリを基準に解決
+    /// 2. 標準ライブラリ（カレントディレクトリ基準）: `./std/lib/{name}.qi`
+    /// 3. 標準ライブラリ（Qi実行ファイル基準）: `{qi_exe_dir}/std/lib/{name}.qi`
+    /// 4. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
+    /// 5. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
     pub(super) fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
         let mut paths = Vec::new();
 
-        // 絶対パスまたは相対パスの場合はそのまま使用
+        // 絶対パスまたは相対パスの場合
         if name.starts_with("./") || name.starts_with("../") || name.starts_with("/") {
-            paths.push(format!("{}.qi", name));
+            // 現在のソースファイルのディレクトリを基準に相対パスを解決
+            let base_dir = if let Some(source_name) = self.source_name.read().as_ref() {
+                std::path::Path::new(source_name)
+                    .parent()
+                    .map(|p| p.to_path_buf())
+            } else {
+                None
+            };
+
+            let resolved_path = if let Some(base) = base_dir {
+                // ソースファイルのディレクトリを基準に相対パスを解決
+                base.join(name).with_extension("qi").display().to_string()
+            } else {
+                // ソース名がない場合はカレントディレクトリを基準にする
+                format!("{}.qi", name)
+            };
+
+            paths.push(resolved_path);
             return Ok(paths);
         }
 
-        // 1. プロジェクトローカル: ./qi_packages/{name}/mod.qi
+        // 1. 標準ライブラリ（カレントディレクトリ基準）: ./std/lib/{name}.qi
+        paths.push(format!("./std/lib/{}.qi", name));
+
+        // 2. 標準ライブラリ（Qi実行ファイル基準）: {qi_exe_dir}/std/lib/{name}.qi
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let std_lib_path = exe_dir
+                    .join("std/lib")
+                    .join(format!("{}.qi", name))
+                    .to_string_lossy()
+                    .to_string();
+                paths.push(std_lib_path);
+            }
+        }
+
+        // 3. プロジェクトローカル: ./qi_packages/{name}/mod.qi
         paths.push(format!("./qi_packages/{}/mod.qi", name));
 
-        // 2. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
+        // 4. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
         #[cfg(feature = "repl")]
         {
             if let Some(home) = dirs::home_dir() {

@@ -11,11 +11,11 @@
 ```qi
 ;; http/get - HTTP GETリクエスト
 (http/get "https://httpbin.org/get")
-;; => {"status" 200 "headers" {...} "body" "..."}
+;; => {:status 200 :headers {...} :body "..."}
 
 ;; http/post - HTTP POSTリクエスト
 (http/post "https://api.example.com/users" {"name" "Alice" "email" "alice@example.com"})
-;; => {"status" 201 "body" "..."}
+;; => {:status 201 :body "..."}
 
 ;; http/put - HTTP PUTリクエスト
 (http/put "https://api.example.com/users/1" {"name" "Alice Updated"})
@@ -38,11 +38,11 @@
 ```qi
 ;; http/request - カスタムリクエスト
 (http/request {
-  "method" "POST"
-  "url" "https://api.example.com/data"
-  "headers" {"Authorization" "Bearer token123"}
-  "body" {"data" "value"}
-  "timeout" 5000
+  :method "POST"
+  :url "https://api.example.com/data"
+  :headers {"Authorization" "Bearer token123"}
+  :body {"data" "value"}
+  :timeout 5000
 })
 ```
 
@@ -51,14 +51,14 @@
 ```qi
 ;; Basic認証
 (http/request {
-  "url" "https://api.example.com/data"
-  "basic-auth" ["username" "password"]
+  :url "https://api.example.com/data"
+  :basic-auth ["username" "password"]
 })
 
 ;; Bearer Token認証
 (http/request {
-  "url" "https://api.example.com/data"
-  "bearer-token" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  :url "https://api.example.com/data"
+  :bearer-token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 })
 ```
 
@@ -71,7 +71,7 @@
 ;; 送信時の圧縮
 (http/post "https://example.com/api"
   {"data" "large payload"}
-  {"headers" {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮
+  {:headers {"content-encoding" "gzip"}})  ;; ボディを自動的にgzip圧縮
 ```
 
 ### Railway Pipelineとの統合
@@ -81,7 +81,7 @@
 (match (try
          ("https://api.github.com/users/octocat"
           |> http/get
-          |> (fn [resp] (get resp "body"))
+          |> (fn [resp] (get resp :body))
           |>? json/parse
           |>? (fn [data] (get data "name"))))
   {:error e} -> (log/error "Failed:" e)
@@ -92,7 +92,7 @@
 (match (try
          ("https://invalid.com/api"
           |> http/get
-          |> (fn [resp] (get resp "body"))
+          |> (fn [resp] (get resp :body))
           |>? json/parse))
   {:error e} -> (log/error "Connection failed:" e)
   data -> data)
@@ -110,11 +110,11 @@
 ```qi
 ;; server/ok - 200 OKレスポンス
 (server/ok "Hello, World!")
-;; => {"status" 200 "headers" {...} "body" "Hello, World!"}
+;; => {:status 200 :headers {...} :body "Hello, World!"}
 
 ;; server/json - JSONレスポンス
 (server/json {"message" "hello" "status" "success"})
-;; => {"status" 200 "headers" {"Content-Type" "application/json"} "body" "{...}"}
+;; => {:status 200 :headers {"Content-Type" "application/json"} :body "{...}"}
 
 ;; server/not-found - 404 Not Foundレスポンス
 (server/not-found "Page not found")
@@ -127,16 +127,16 @@
 
 ```qi
 ;; server/router - ルーター作成
-(server/router [["/" {"get" hello-handler}]
-                ["/api/users" {"get" list-users "post" create-user}]
-                ["/api/users/:id" {"get" get-user}]])
+(server/router [["/" {:get hello-handler}]
+                ["/api/users" {:get list-users :post create-user}]
+                ["/api/users/:id" {:get get-user}]])
 
 ;; server/serve - サーバー起動
-(server/serve app {"port" 3000})
+(server/serve app {:port 3000})
 ;; => HTTP server started on http://127.0.0.1:3000
 
 ;; server/serve - 詳細設定
-(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
 ;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
 ```
 
@@ -150,7 +150,7 @@
 (def handler (server/with-cors (fn [req] (server/json {...}))))
 
 ;; server/with-json-body - リクエストボディを自動的にJSONパース
-(def handler (server/with-json-body (fn [req] (get req "json"))))
+(def handler (server/with-json-body (fn [req] (get req :json))))
 
 ;; server/with-compression - レスポンスボディをgzip圧縮
 (def handler (server/with-compression (fn [req] (server/ok "..."))))
@@ -159,7 +159,7 @@
 (def handler (server/with-basic-auth (fn [req] ...) "user" "pass"))
 
 ;; server/with-bearer - Bearer Token抽出
-(def handler (server/with-bearer (fn [req] (get req "token"))))
+(def handler (server/with-bearer (fn [req] (get req :token))))
 
 ;; server/with-no-cache - キャッシュ無効化ヘッダーを追加
 (def handler (server/with-no-cache (fn [req] (server/ok "..."))))
@@ -190,11 +190,11 @@
   (fn [req] (server/ok "Hello, World!")))
 
 ;; ルート定義（データ駆動）
-(def routes [["/" {"get" hello-handler}]])
+(def routes [["/" {:get hello-handler}]])
 
 ;; アプリ起動
 (def app (server/router routes))
-(server/serve app {"port" 3000})
+(server/serve app {:port 3000})
 ```
 
 ### JSON API with パスパラメータ
@@ -208,22 +208,22 @@
 
 (def get-user
   (fn [req]
-    (let [user-id (get-in req ["params" "id"])]
+    (let [user-id (get-in req [:params "id"])]
       (server/json {"id" user-id "name" "Alice"}))))
 
 (def create-user
   (fn [req]
-    (server/json {"status" "created"} {"status" 201})))
+    (server/json {"status" "created"} {:status 201})))
 
 ;; ルート定義（パスパラメータ: /users/:id 形式）
 (def routes
-  [["/api/users" {"get" list-users "post" create-user}]
-   ["/api/users/:id" {"get" get-user}]
-   ["/api/users/:user_id/posts/:post_id" {"get" get-post}]])
+  [["/api/users" {:get list-users :post create-user}]
+   ["/api/users/:id" {:get get-user}]
+   ["/api/users/:user_id/posts/:post_id" {:get get-post}]])
 
 ;; アプリ起動
 (def app (server/router routes))
-(server/serve app {"port" 8080 "host" "0.0.0.0" "timeout" 30})
+(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
 ```
 
 ### ミドルウェアの組み合わせ
@@ -232,7 +232,7 @@
 ;; 複数のミドルウェアを重ねる
 (def api-handler
   (-> (fn [req]
-        (let [json-data (get req "json")]
+        (let [json-data (get req :json)]
           (server/json {"received" json-data})))
       server/with-json-body
       server/with-cors
@@ -248,31 +248,31 @@
     server/with-json-body))
 
 (def routes
-  [["/api/data" {"post" (protected-api handle-data)}]])
+  [["/api/data" {:post (protected-api handle-data)}]])
 ```
 
 ### リクエスト/レスポンスオブジェクト
 
 ```qi
 ;; リクエスト構造
-{"method" "get"                      ;; HTTPメソッド（小文字）
- "path" "/api/users/123"             ;; リクエストパス
- "query" "page=1&limit=10"           ;; クエリ文字列（生）
- "query-params" {"page" "1"          ;; クエリパラメータ（自動パース）
-                 "limit" "10"}
- "headers" {"content-type" "application/json" ...}
- "body" "..."                        ;; リクエストボディ（文字列）
- "params" {"id" "123"}}              ;; パスパラメータ（マッチした場合のみ）
+{:method :get                       ;; HTTPメソッド（キーワード）
+ :path "/api/users/123"             ;; リクエストパス
+ :query "page=1&limit=10"           ;; クエリ文字列（生）
+ :query-params {"page" "1"          ;; クエリパラメータ（自動パース）
+                "limit" "10"}
+ :headers {"content-type" "application/json" ...}
+ :body "..."                        ;; リクエストボディ（文字列）
+ :params {"id" "123"}}              ;; パスパラメータ（マッチした場合のみ）
 
 ;; レスポンス構造
-{"status" 200                        ;; HTTPステータスコード
- "headers" {"Content-Type" "text/plain; charset=utf-8" ...}
- "body" "Hello, World!"}             ;; レスポンスボディ（文字列、JSON、HTML等）
+{:status 200                        ;; HTTPステータスコード
+ :headers {"Content-Type" "text/plain; charset=utf-8" ...}
+ :body "Hello, World!"}             ;; レスポンスボディ（文字列、JSON、HTML等）
 
 ;; レスポンス構造（ストリーミング配信）
-{"status" 200
- "headers" {"Content-Type" "video/mp4" ...}
- "body-file" "/path/to/large-file.mp4"}  ;; ファイルパス（大きなファイル用）
+{:status 200
+ :headers {"Content-Type" "video/mp4" ...}
+ :body-file "/path/to/large-file.mp4"}  ;; ファイルパス（大きなファイル用）
 ```
 
 ---

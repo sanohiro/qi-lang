@@ -204,9 +204,9 @@
   (let [method (get request :method)
         path (get request :path)]
     (match [method path]
-      ["POST" "/api/register"] -> (handle-register request)
-      ["POST" "/api/login"] -> (handle-login request)
-      ["GET" "/api/profile"] -> ((require-auth handle-profile) request)
+      [:post "/api/register"] -> (handle-register request)
+      [:post "/api/login"] -> (handle-login request)
+      [:get "/api/profile"] -> ((require-auth handle-profile) request)
       _ -> {:status 404
            :headers {:content-type "application/json"}
            :body (json/stringify {:error "Not found"})})))

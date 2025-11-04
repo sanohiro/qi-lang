@@ -580,9 +580,22 @@ impl Parser {
         // パラメータリストのパース
         let (params, is_variadic) = self.parse_fn_params()?;
 
-        // 本体のパース
-        let body = Box::new(self.parse_expr()?);
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
         self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            body_exprs.into_iter().next().unwrap()
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
 
         // (fn [params] body) を構築
         let fn_expr = Expr::Fn {
@@ -642,9 +655,22 @@ impl Parser {
 
         let (params, is_variadic) = self.parse_fn_params()?;
 
-        // 本体のパース
-        let body = Box::new(self.parse_expr()?);
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
         self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            body_exprs.into_iter().next().unwrap()
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
 
         Ok(Expr::Fn {
             params,
@@ -825,9 +851,22 @@ impl Parser {
 
         self.expect(Token::RBracket)?;
 
-        // 本体のパース
-        let body = Box::new(self.parse_expr()?);
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
         self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            body_exprs.into_iter().next().unwrap()
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
 
         Ok(Expr::Let {
             bindings,
@@ -1581,6 +1620,7 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::String(_)) => self.take_string().unwrap(),
             _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
         };
 

@@ -8,10 +8,10 @@
     (db/exec db
       "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
       [username hash role])
-    (db/query db
-      "SELECT id, username, role, created_at FROM users WHERE username = ?"
-      [username]
-      |> first)))
+    (let [rows (db/query db
+                "SELECT id, username, role, created_at FROM users WHERE username = ?"
+                [username])]
+      (first rows))))
 
 ;; ユーザー認証
 (defn authenticate [db username password]

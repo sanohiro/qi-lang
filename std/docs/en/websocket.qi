@@ -1,0 +1,31 @@
+;; Standard Library Documentation - WebSocket
+;; WebSocket Functions (4 functions)
+
+(def __doc__ws/connect
+  {:desc "Connects to a WebSocket server."
+   :params [{:name "url" :type "string" :desc "WebSocket URL (ws:// or wss://)"}]
+   :returns {:type "integer" :desc "Connection ID"}
+   :examples ["(def conn (ws/connect \"ws://localhost:8080/ws\"))"
+              "(def conn (ws/connect \"wss://echo.websocket.org\"))"]})
+
+(def __doc__ws/send
+  {:desc "Sends a message over WebSocket."
+   :params [{:name "conn-id" :type "integer" :desc "Connection ID"}
+            {:name "message" :type "string" :desc "Message to send"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(ws/send conn \"Hello, WebSocket!\")"
+              "(ws/send conn (json/stringify {:type \"chat\" :msg \"Hello\"}))"]})
+
+(def __doc__ws/receive
+  {:desc "Receives a message from WebSocket. Blocks until a message is received."
+   :params [{:name "conn-id" :type "integer" :desc "Connection ID"}]
+   :returns {:type "map" :desc "Message map (:type, :data, :code, :reason, :error)"}
+   :examples ["(def msg (ws/receive conn))"
+              "(match (get msg :type)\n  \"message\" -> (println (get msg :data))\n  \"close\" -> (println \"Connection closed\")\n  \"error\" -> (println (get msg :error)))"]})
+
+(def __doc__ws/close
+  {:desc "Closes the WebSocket connection."
+   :params [{:name "conn-id" :type "integer" :desc "Connection ID"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(ws/close conn)"
+              "(do\n  (ws/send conn \"bye\")\n  (ws/close conn))"]})

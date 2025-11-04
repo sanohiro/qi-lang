@@ -131,6 +131,9 @@ pub mod kvs;
 #[cfg(feature = "http-server")]
 pub mod server;
 
+#[cfg(feature = "websocket")]
+pub mod websocket;
+
 #[cfg(feature = "auth-jwt")]
 pub mod jwt;
 
@@ -248,6 +251,9 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "http-server")]
     register_functions(&mut env_write, server::FUNCTIONS);
+
+    #[cfg(feature = "websocket")]
+    register_functions(&mut env_write, websocket::FUNCTIONS);
 
     #[cfg(feature = "std-stats")]
     register_functions(&mut env_write, stats::FUNCTIONS);

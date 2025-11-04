@@ -1,13 +1,14 @@
 ;; Standard Library Documentation - Command Execution
-;; Command Execution Functions (10 functions - cmd/*)
+;; Command Execution Functions (11 functions - cmd/*)
 ;; This module is compiled with the `cmd-exec` feature
 
 (def __doc__cmd/exec
-  {:desc "Executes a command and returns the result. Can be specified as a string or vector."
+  {:desc "Executes a command and returns the exit code. Can be specified as a string or vector."
    :params [{:name "command" :type "string|vector" :desc "Command (string runs via shell, vector runs directly)"}]
-   :returns {:type "map" :desc "Format: {:stdout \"...\" :stderr \"...\" :exit 0}"}
-   :examples ["(cmd/exec \"ls -la\") ;=> {:stdout \"...\", :stderr \"\", :exit 0}"
-              "(cmd/exec [\"ls\" \"-la\"]) ;=> {:stdout \"...\", :stderr \"\", :exit 0}"]})
+   :returns {:type "integer" :desc "Exit code (0=success, non-zero=failure)"}
+   :examples ["(cmd/exec \"ls -la\") ;=> 0"
+              "(cmd/exec [\"ls\" \"-la\"]) ;=> 0"
+              "(cmd/exec \"false\") ;=> 1"]})
 
 (def __doc__cmd/sh
   {:desc "Executes a command via shell. Allows shell features like pipes and variable expansion."
@@ -17,12 +18,21 @@
               "(cmd/sh \"echo $HOME\")"]})
 
 (def __doc__cmd/pipe
-  {:desc "Pipes data to a command's standard input and executes it."
+  {:desc "Pipes data to a command's standard input and returns stdout. Throws error on failure."
    :params [{:name "command" :type "string|vector" :desc "Command"}
             {:name "data" :type "string|list" :desc "Data to pass to standard input"}]
-   :returns {:type "map" :desc "Format: {:stdout \"...\" :stderr \"...\" :exit 0}"}
-   :examples ["(\"hello\\nworld\" |> (cmd/pipe \"sort\"))"
-              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\"))"]})
+   :returns {:type "string" :desc "Command's stdout"}
+   :examples ["(\"hello\\nworld\" |> (cmd/pipe \"sort\")) ;=> \"hello\\nworld\\n\""
+              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\")) ;=> \"       3\\n\""]})
+
+(def __doc__cmd/pipe!
+  {:desc "Pipes data to a command's standard input and returns detailed information. Always returns result regardless of success/failure."
+   :params [{:name "command" :type "string|vector" :desc "Command"}
+            {:name "data" :type "string|list" :desc "Data to pass to standard input"}]
+   :returns {:type "vector" :desc "Vector of [stdout stderr exitcode]"}
+   :examples ["(let [[out err code] (\"test\" |> (cmd/pipe! \"cat\"))] ...)"
+              "(\"data\" |> (cmd/pipe! \"grep pattern\")) ;=> [\"matched\\n\" \"\" 0]"
+              "(\"data\" |> (cmd/pipe! \"false\")) ;=> [\"\" \"\" 1]"]})
 
 (def __doc__cmd/lines
   {:desc "Splits text into a list of lines."

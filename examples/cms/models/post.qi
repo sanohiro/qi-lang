@@ -10,10 +10,10 @@
     (db/exec db
       "INSERT INTO posts (title, slug, content, author_id, status) VALUES (?, ?, ?, ?, 'draft')"
       [title post-slug content author-id])
-    (db/query db
-      "SELECT * FROM posts WHERE slug = ?"
-      [post-slug]
-      |> first)))
+    (let [rows (db/query db
+                "SELECT * FROM posts WHERE slug = ?"
+                [post-slug])]
+      (first rows))))
 
 ;; 記事一覧取得
 (defn list-all [db status limit offset]
@@ -36,20 +36,20 @@
 
 ;; 記事取得（スラッグ）
 (defn get-by-slug [db post-slug]
-  (db/query db
-    "SELECT p.*, u.username as author_name
-     FROM posts p
-     JOIN users u ON p.author_id = u.id
-     WHERE p.slug = ?"
-    [post-slug]
-    |> first))
+  (let [rows (db/query db
+              "SELECT p.*, u.username as author_name
+               FROM posts p
+               JOIN users u ON p.author_id = u.id
+               WHERE p.slug = ?"
+              [post-slug])]
+    (first rows)))
 
 ;; 記事取得（ID）
 (defn get-by-id [db id]
-  (db/query db
-    "SELECT * FROM posts WHERE id = ?"
-    [id]
-    |> first))
+  (let [rows (db/query db
+              "SELECT * FROM posts WHERE id = ?"
+              [id])]
+    (first rows)))
 
 ;; 記事更新
 (defn update [db id title content status]

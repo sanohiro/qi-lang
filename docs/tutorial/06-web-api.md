@@ -14,7 +14,7 @@ QiでHTTPサーバーとJSON APIを構築する方法を学びます。シンプ
 (defn handler [req]
   (server/text "Hello, World!"))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ; => サーバーが起動: http://localhost:3000
 ```
 
@@ -29,9 +29,9 @@ QiでHTTPサーバーとJSON APIを構築する方法を学びます。シンプ
 ハンドラーには、以下のようなリクエストマップが渡されます：
 
 ```qi
-{:method "GET"
+{:method :get
  :path "/users/123"
- :headers {:content-type "application/json"}
+ :headers {"content-type" "application/json"}
  :body "..."}
 ```
 
@@ -42,18 +42,18 @@ Qiは、便利なレスポンスヘルパーを提供しています。
 ```qi
 ; テキストレスポンス
 (server/text "Hello")
-; => {:status 200 :headers {:content-type "text/plain"} :body "Hello"}
+; => {:status 200 :headers {"Content-Type" "text/plain"} :body "Hello"}
 
 ; JSONレスポンス
-(server/json {:message "Success" :data [1 2 3]})
-; => {:status 200 :headers {:content-type "application/json"} :body "..."}
+(server/json {"message" "Success" "data" [1 2 3]})
+; => {:status 200 :headers {"Content-Type" "application/json"} :body "..."}
 
 ; HTMLレスポンス
 (server/html "<h1>Welcome</h1>")
-; => {:status 200 :headers {:content-type "text/html"} :body "..."}
+; => {:status 200 :headers {"Content-Type" "text/html"} :body "..."}
 
 ; カスタムステータス
-(server/response 201 {:message "Created"})
+(server/response 201 {"message" "Created"})
 ; => {:status 201 ...}
 ```
 
@@ -71,7 +71,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
     "/api/status" -> (server/json {:status "ok"})
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 ### メソッドとパスの組み合わせ
@@ -85,7 +85,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
     ["GET" "/users/123"] -> (server/json {:id 123 :name "Alice"})
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 ---
@@ -118,7 +118,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
         (get-user req id))
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 **テスト**:
@@ -153,7 +153,7 @@ curl http://localhost:3000/api/users/999
     ["POST" "/api/users"] -> (create-user req)
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 **テスト**:
@@ -282,7 +282,7 @@ Railway Pipelineを使って、エラーを優雅に処理します。
         (delete-user req id))
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 **テスト**:
@@ -330,7 +330,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 
 (def app (logger my-handler))
 
-(server/serve 3000 app)
+(server/serve app {:port 3000})
 ```
 
 ### CORSミドルウェア
@@ -346,7 +346,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 
 (def app (cors my-handler))
 
-(server/serve 3000 app)
+(server/serve app {:port 3000})
 ```
 
 ### ミドルウェアの合成
@@ -357,7 +357,7 @@ curl -X DELETE http://localhost:3000/api/users/1
       logger
       cors))
 
-(server/serve 3000 app)
+(server/serve app {:port 3000})
 ```
 
 ### 認証ミドルウェア（JWT）
@@ -400,7 +400,7 @@ JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
     ["GET" "/api/profile"] -> ((require-auth handle-profile) req)
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 **認証フローの例**:
@@ -465,7 +465,7 @@ curl http://localhost:3000/api/profile
         (get-post req id))
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 (logger (cors handler)))
+(server/serve (logger (cors handler)) {:port 3000})
 ```
 
 ---
@@ -501,7 +501,7 @@ curl http://localhost:3000/api/profile
         (server/json {:count @count}))
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 </details>
@@ -551,7 +551,7 @@ curl http://localhost:3000/api/profile
         (complete-todo req id))
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 handler)
+(server/serve handler {:port 3000})
 ```
 
 </details>

@@ -1,0 +1,137 @@
+;; OpenAPI 3.0 Specification Generator for Qi REST APIs
+;;
+;; Usage:
+;;   (use "std/lib/openapi" :as openapi)
+;;   (openapi/register-api :post "/api/users" {...spec...} handler-fn)
+;;   (server/serve router {:port 3000})
+
+(module openapi)
+
+;; ========================================
+;; グローバルレジストリ
+;; ========================================
+
+;; APIエンドポイント登録用レジストリ
+(def registry (atom []))
+
+;; レジストリをクリア（テスト用）
+(defn clear-registry []
+  (reset! registry []))
+
+;; ========================================
+;; APIエンドポイント定義マクロ
+;; ========================================
+
+;; register-api - APIエンドポイントをレジストリに登録
+;;
+;; 引数:
+;;   method: HTTPメソッド (:get, :post, :put, :delete等)
+;;   path: エンドポイントパス (例: "/api/users")
+;;   spec: OpenAPI仕様のmap (summary, requestBody, responses等)
+;;   handler: ハンドラー関数
+;;
+;; 例:
+;;   (defn api-create-user [req]
+;;     (let [body (json/parse (get req :body))]
+;;       ...))
+;;
+;;   (register-api :post "/api/users"
+;;     {:summary "ユーザー登録"
+;;      :requestBody {:content {"application/json" {:schema {...}}}}
+;;      :responses {201 {:description "Created"}}}
+;;     api-create-user)
+(defn register-api [method path spec handler]
+  (swap! registry conj
+    {:method method
+     :path path
+     :spec spec
+     :handler handler}))
+
+;; ========================================
+;; OpenAPI仕様生成
+;; ========================================
+
+;; paths オブジェクトを構築
+(defn- build-paths [routes]
+  (reduce
+    (fn [acc route]
+      (let [path (get route :path)
+            method (get route :method)
+            spec (get route :spec)]
+        (map/assoc-in acc [path method] spec)))
+    {}
+    routes))
+
+;; OpenAPI 3.0 仕様を生成
+;;
+;; 引数:
+;;   info: APIのメタ情報map
+;;     :title - APIタイトル (必須)
+;;     :version - APIバージョン (必須)
+;;     :description - API説明 (オプション)
+;;
+;; 戻り値:
+;;   OpenAPI 3.0仕様のmap
+;;
+;; 例:
+;;   (generate {:title "My API" :version "1.0.0"})
+(defn generate [info]
+  {:openapi "3.0.0"
+   :info info
+   :paths (build-paths @registry)})
+
+;; ========================================
+;; Swaggerエンドポイント生成
+;; ========================================
+
+;; Swagger JSONを返すハンドラーを生成
+;;
+;; 引数:
+;;   info: APIのメタ情報map
+;;
+;; 戻り値:
+;;   Swagger JSONを返すハンドラー関数
+;;
+;; 例:
+;;   (def swagger-handler (swagger-endpoint {:title "My API" :version "1.0.0"}))
+;;   (swagger-handler req) ;=> OpenAPI JSONレスポンス
+(defn swagger-endpoint [info]
+  (fn [req]
+    (server/json (generate info))))
+
+;; ========================================
+;; ルーター統合ヘルパー
+;; ========================================
+
+;; ルーターにSwaggerエンドポイントを統合
+;;
+;; 引数:
+;;   base-router: 既存のルーター関数
+;;   info: APIのメタ情報map
+;;   swagger-path: Swagger JSONのパス (オプション、デフォルト: "/api/swagger.json")
+;;
+;; 戻り値:
+;;   Swaggerエンドポイントを含む新しいルーター関数
+;;
+;; 例:
+;;   (def router (with-swagger api-router {:title "My API" :version "1.0.0"}))
+;;   (def router (with-swagger api-router {:title "My API" :version "1.0.0"} "/docs/openapi.json"))
+(defn with-swagger [base-router info & rest]
+  (let [swagger-path (if (empty? rest) "/api/swagger.json" (first rest))
+        swagger-handler (swagger-endpoint info)]
+    (fn [req]
+      (if (= (get req :path) swagger-path)
+        (swagger-handler req)
+        (base-router req)))))
+
+;; ========================================
+;; エクスポート
+;; ========================================
+
+(export
+  register-api
+  registry
+  clear-registry
+  generate
+  swagger-endpoint
+  with-swagger)

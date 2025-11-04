@@ -6,25 +6,24 @@
 
 ;; コメントハンドラー
 (defn handler [db req]
-  (match [(get req :method) (get req :path)]
-    ;; POST /api/posts/:id/comments - コメント作成
-    ["POST" path] when (str/starts-with? path "/api/posts/") ->
-      (let [path-parts (string/split path "/")
-            id-str (get path-parts 3)]
-        (match (try (string/to-int id-str))
+  (let [method (get req :method)
+        path (get req :path)]
+    (if (and (= method :post) (str/contains? path "/comments"))
+      (let [path-parts (str/split path "/")
+            id-str (nth path-parts 3)]
+        (match (try (to-int id-str))
           {:error _} -> (server/response 400 "Invalid post ID")
           post-id ->
             (match (try (json/parse (get req :body)))
               {:error e} -> (server/response 400 "Invalid JSON")
               data ->
-                (let [author-name (get data "author_name")
+                (let [author-name (get data "author")
                       content (get data "content")]
                   (if (or (nil? author-name) (nil? content))
-                    (server/response 400 "Author name and content required")
+                    (server/response 400 "Author and content required")
                     (match (try (comment/create db post-id author-name content))
                       {:error e} -> (server/response 400 e)
                       created-comment -> (server/json {:comment created-comment :message "Comment created"})))))))
-
-    _ -> (server/response 404 "Not Found")))
+      (server/response 404 "Not Found"))))
 
 (export handler)

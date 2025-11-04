@@ -15,7 +15,7 @@
 ;; Create
 (defn create-todo [title]
   (let [id @next-id
-        todo {:id id :title title :completed false :created_at (get (cmd/exec "date") "stdout")}]
+        todo {:id id :title title :completed false :created_at (str/trim (cmd/pipe "date"))}]
     (do
       (swap! next-id inc)
       (swap! todos assoc id todo)
@@ -79,11 +79,11 @@
 (defn todos-handler [req]
   (match [(get req :method) (get req :path)]
     ;; GET /api/todos - 全取得
-    ["GET" "/api/todos"] ->
+    [:get "/api/todos"] ->
       (server/json {:todos (get-all-todos)})
 
     ;; POST /api/todos - 新規作成
-    ["POST" "/api/todos"] ->
+    [:post "/api/todos"] ->
       (let [body (json/parse (get req :body))]
         (if (error? body)
           (server/response 400 "Invalid JSON")
@@ -93,7 +93,7 @@
               (server/json (create-todo title))))))
 
     ;; GET /api/todos/:id - 個別取得
-    ["GET" path] when (str/starts-with? path "/api/todos/") ->
+    [:get path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
             id (try (string/to-int id-str))]
         (if (error? id)
@@ -104,7 +104,7 @@
               (server/json todo)))))
 
     ;; PUT /api/todos/:id - 更新
-    ["PUT" path] when (str/starts-with? path "/api/todos/") ->
+    [:put path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
             id (try (string/to-int id-str))
             body (json/parse (get req :body))]
@@ -116,7 +116,7 @@
               (server/json updated)))))
 
     ;; DELETE /api/todos/:id - 削除
-    ["DELETE" path] when (str/starts-with? path "/api/todos/") ->
+    [:delete path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
             id (try (string/to-int id-str))]
         (if (error? id)
@@ -130,13 +130,13 @@
 
 ;; テスト
 (println "GET /api/todos:")
-(println (todos-handler {:method "GET" :path "/api/todos"}))
+(println (todos-handler {:method :get :path "/api/todos"}))
 
 (println "\nGET /api/todos/1:")
-(println (todos-handler {:method "GET" :path "/api/todos/1"}))
+(println (todos-handler {:method :get :path "/api/todos/1"}))
 
 (println "\nPUT /api/todos/1:")
-(println (todos-handler {:method "PUT" :path "/api/todos/1"
+(println (todos-handler {:method :put :path "/api/todos/1"
                          :body "{\"completed\":true}"}))
 
 ;; フィルタリングとソート
@@ -245,14 +245,14 @@
 
 (defn api-router [req]
   (match [(get req :method) (get req :path)]
-    ["GET" "/api/todos"] -> (filter-todos-handler req)
-    ["POST" "/api/todos"] -> (create-todo-validated req)
-    ["GET" "/api/todos/stats"] -> (stats-handler req)
-    ["GET" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
-    ["PUT" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
-    ["DELETE" path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    [:get "/api/todos"] -> (filter-todos-handler req)
+    [:post "/api/todos"] -> (create-todo-validated req)
+    [:get "/api/todos/stats"] -> (stats-handler req)
+    [:get path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    [:put path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
+    [:delete path] when (str/starts-with? path "/api/todos/") -> (todos-handler req)
     _ -> (server/response 404 "API endpoint not found")))
 
 (println "\n=== 完全なREST APIが構築できました！ ===")
 (println "実際のサーバーとして起動する場合:")
-(println "(server/serve 3000 api-router)")
+(println "(server/serve api-router {:port 3000})")

@@ -4,9 +4,9 @@
 
 ;; スラッグ生成（タイトルからURL安全な文字列を作成）
 (defn make-slug [title]
-  (title
-   |> string/lower
-   |> (string/replace " " "-")
-   |> (string/replace "[^a-z0-9-]" "")))
+  (let [lower (str/lower title)
+        dashed (str/replace lower " " "-")
+        cleaned (str/replace dashed "[^a-z0-9-]" "")]
+    cleaned))
 
 (export make-slug)

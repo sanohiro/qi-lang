@@ -109,10 +109,10 @@
 ;; ディレクトリ内のファイルを処理
 (println "\n=== ディレクトリ内のファイル処理 ===")
 
-(def tmp-files (cmd/exec ["ls" "/tmp"]))
+(def tmp-files-output (cmd/pipe "ls /tmp"))
 
 (println "tmpディレクトリのファイル数:")
-(println ((get tmp-files "stdout")
+(println (tmp-files-output
           |> (str/split "\n")
           |> (filter (fn [s] (> (len s) 0)))
           |> len))
@@ -171,11 +171,11 @@
 ;; クリーンアップ
 (println "\n=== クリーンアップ ===")
 
-(cmd/exec ["rm" "/tmp/users.csv"])
-(cmd/exec ["rm" "/tmp/users_processed.csv"])
-(cmd/exec ["rm" "/tmp/file1.txt"])
-(cmd/exec ["rm" "/tmp/file2.txt"])
-(cmd/exec ["rm" "/tmp/file3.txt"])
+(cmd/exec "rm /tmp/users.csv")
+(cmd/exec "rm /tmp/users_processed.csv")
+(cmd/exec "rm /tmp/file1.txt")
+(cmd/exec "rm /tmp/file2.txt")
+(cmd/exec "rm /tmp/file3.txt")
 
 (println "サンプルファイルを削除しました")
 

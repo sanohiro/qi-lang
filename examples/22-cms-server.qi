@@ -207,7 +207,7 @@
 (defn auth-handler [req]
   (match [(get req :method) (get req :path)]
     ;; POST /api/auth/register - ユーザー登録
-    ["POST" "/api/auth/register"] ->
+    [:post "/api/auth/register"] ->
       (match (try (json/parse (get req :body)))
         {:error e} -> (server/response 400 "Invalid JSON")
         data ->
@@ -221,7 +221,7 @@
                 user -> (server/json {:user user :message "User created"})))))
 
     ;; POST /api/auth/login - ログイン
-    ["POST" "/api/auth/login"] ->
+    [:post "/api/auth/login"] ->
       (match (try (json/parse (get req :body)))
         {:error e} -> (server/response 400 "Invalid JSON")
         data ->
@@ -239,7 +239,7 @@
 (defn posts-handler [req]
   (match [(get req :method) (get req :path)]
     ;; GET /api/posts - 記事一覧
-    ["GET" "/api/posts"] ->
+    [:get "/api/posts"] ->
       (let [query-params (get req :query-params {})
             page (or (get query-params "page") 1)
             per-page (or (get query-params "per_page") 10)
@@ -249,7 +249,7 @@
         (server/json {:posts posts :page page :per_page per-page}))
 
     ;; POST /api/posts - 記事作成（認証必要）
-    ["POST" "/api/posts"] ->
+    [:post "/api/posts"] ->
       ((with-auth
          (fn [req]
            (match (try (json/parse (get req :body)))
@@ -267,7 +267,7 @@
        req)
 
     ;; GET /api/posts/:slug - 記事詳細
-    ["GET" path] when (str/starts-with? path "/api/posts/") ->
+    [:get path] when (str/starts-with? path "/api/posts/") ->
       (let [slug (string/replace path "/api/posts/" "")]
         (match (get-post-by-slug slug)
           nil -> (server/response 404 "Post not found")
@@ -276,7 +276,7 @@
               (server/json {:post post :comments comments}))))
 
     ;; PUT /api/posts/:id - 記事更新（認証必要）
-    ["PUT" path] when (str/starts-with? path "/api/posts/") ->
+    [:put path] when (str/starts-with? path "/api/posts/") ->
       ((with-auth
          (fn [req]
            (let [id-str (string/replace path "/api/posts/" "")]
@@ -295,7 +295,7 @@
        req)
 
     ;; DELETE /api/posts/:id - 記事削除（認証必要）
-    ["DELETE" path] when (str/starts-with? path "/api/posts/") ->
+    [:delete path] when (str/starts-with? path "/api/posts/") ->
       ((with-auth
          (fn [req]
            (let [id-str (string/replace path "/api/posts/" "")]
@@ -313,7 +313,7 @@
 (defn comments-handler [req]
   (match [(get req :method) (get req :path)]
     ;; POST /api/posts/:id/comments - コメント作成
-    ["POST" path] when (str/starts-with? path "/api/posts/") ->
+    [:post path] when (str/starts-with? path "/api/posts/") ->
       (let [path-parts (string/split path "/")
             id-str (get path-parts 3)]
         (match (try (string/to-int id-str))

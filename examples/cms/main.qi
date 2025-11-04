@@ -10,13 +10,76 @@
 (use "./handlers/auth" :as auth-handler)
 (use "./handlers/posts" :as posts-handler)
 (use "./handlers/comments" :as comments-handler)
+(use "openapi" :as openapi)
 
 ;; ========================================
 ;; データベース初期化
 ;; ========================================
 
-(def db (db/connect "sqlite://cms.db"))
+(def db (db/connect "sqlite:///cms.db"))
+
+;; SQLiteは接続ごとに外部キー制約を有効化する必要がある
+(db/exec db "PRAGMA foreign_keys = ON" [])
+
 (database/init db)
+
+;; ========================================
+;; OpenAPI 定義
+;; ========================================
+
+;; 認証API
+(openapi/register-api :post "/api/auth/register"
+  {:summary "ユーザー登録"
+   :tags ["auth"]
+   :requestBody {:required true
+                 :content {"application/json" {:schema {:type "object"
+                                                         :properties {"username" {:type "string"}
+                                                                      "password" {:type "string"}
+                                                                      "role" {:type "string" :default "user"}}
+                                                         :required ["username" "password"]}}}}
+   :responses {200 {:description "登録成功"}
+               400 {:description "不正なリクエスト"}}}
+  (fn [req] (auth-handler/handler db req)))
+
+(openapi/register-api :post "/api/auth/login"
+  {:summary "ログイン"
+   :tags ["auth"]
+   :requestBody {:required true
+                 :content {"application/json" {:schema {:type "object"
+                                                         :properties {"username" {:type "string"}
+                                                                      "password" {:type "string"}}
+                                                         :required ["username" "password"]}}}}
+   :responses {200 {:description "ログイン成功"}
+               401 {:description "認証失敗"}}}
+  (fn [req] (auth-handler/handler db req)))
+
+;; 記事API
+(openapi/register-api :get "/api/posts"
+  {:summary "記事一覧取得"
+   :tags ["posts"]
+   :responses {200 {:description "成功"}}}
+  (fn [req] (posts-handler/handler db req)))
+
+(openapi/register-api :post "/api/posts"
+  {:summary "記事作成"
+   :tags ["posts"]
+   :requestBody {:required true
+                 :content {"application/json" {:schema {:type "object"
+                                                         :properties {"title" {:type "string"}
+                                                                      "content" {:type "string"}
+                                                                      "slug" {:type "string"}}
+                                                         :required ["title" "content" "slug"]}}}}
+   :responses {201 {:description "作成成功"}
+               401 {:description "認証が必要"}}}
+  (fn [req] (posts-handler/handler db req)))
+
+(openapi/register-api :get "/api/posts/{slug}"
+  {:summary "記事詳細取得"
+   :tags ["posts"]
+   :parameters [{:name "slug" :in "path" :required true :schema {:type "string"}}]
+   :responses {200 {:description "成功"}
+               404 {:description "記事が見つかりません"}}}
+  (fn [req] (posts-handler/handler db req)))
 
 ;; ========================================
 ;; ルーティング
@@ -24,19 +87,31 @@
 
 ;; ルートハンドラー
 (defn root-handler [req]
-  (server/json {:message "Qi CMS API" :version "1.0.0"}))
+  (server/json {"message" "Qi CMS API" "version" "1.0.0"}))
 
-;; メインハンドラー
-(defn app [req]
+;; API ルーター（OpenAPI登録されたハンドラーは使用せず、既存のハンドラーを使用）
+(defn api-router [req]
   (let [path (get req :path)]
-    (match path
-      "/" -> (root-handler req)
-      _ when (str/starts-with? path "/api/auth") -> (auth-handler/handler db req)
-      _ when (str/starts-with? path "/api/posts") ->
-        (if (str/includes? path "/comments")
+    (if (str/starts-with? path "/api/auth")
+      (auth-handler/handler db req)
+      (if (str/starts-with? path "/api/posts")
+        (if (str/contains? path "/comments")
           (comments-handler/handler db req)
           (posts-handler/handler db req))
-      _ -> (server/response 404 "Not Found"))))
+        (server/not-found "Not Found")))))
+
+;; Swaggerエンドポイントを統合
+(def app
+  (openapi/with-swagger
+    (fn [req]
+      (let [path (get req :path)]
+        (if (= path "/")
+          (root-handler req)
+          (api-router req))))
+    {:title "Qi CMS API"
+     :version "1.0.0"
+     :description "QiによるCMSのREST API"}
+    "/api/swagger.json"))
 
 ;; ========================================
 ;; サーバー起動
@@ -53,6 +128,9 @@
 (println "  PUT  /api/posts/:id - 記事更新 (要認証)")
 (println "  DELETE /api/posts/:id - 記事削除 (要認証)")
 (println "  POST /api/posts/:id/comments - コメント作成")
+(println "\nOpenAPI:")
+(println "  GET  /api/swagger.json - OpenAPI 3.0 Specification")
 (println "\nPress Ctrl+C to stop\n")
 
+;; サーバーを起動（ブロッキング - Ctrl+Cで終了）
 (server/serve app {:port 3000})

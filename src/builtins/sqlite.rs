@@ -32,10 +32,18 @@ impl SqliteDriver {
 
 impl DbDriver for SqliteDriver {
     fn connect(&self, url: &str, opts: &ConnectionOptions) -> DbResult<Arc<dyn DbConnection>> {
-        // URL形式: "sqlite:path/to/db.db" または "sqlite::memory:"
-        let path = url.strip_prefix("sqlite:").ok_or_else(|| {
-            DbError::new("Invalid SQLite URL. Expected format: sqlite:path/to/db.db")
-        })?;
+        // URL形式: "sqlite:///path/to/db.db" (相対パス) または "sqlite:////abs/path.db" (絶対パス)
+        let path = if let Some(rest) = url.strip_prefix("sqlite:///") {
+            // sqlite:/// の場合、残りがパス（相対または絶対）
+            rest.to_string()
+        } else if let Some(rest) = url.strip_prefix("sqlite://") {
+            // sqlite:// の場合もサポート（権限部分なし）
+            rest.trim_start_matches('/').to_string()
+        } else {
+            return Err(DbError::new(
+                "Invalid SQLite URL. Expected format: sqlite:///path/to/db.db or sqlite:///:memory:"
+            ));
+        };
 
         let conn = if opts.read_only {
             SqliteConn::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
@@ -51,6 +59,14 @@ impl DbDriver for SqliteDriver {
                     DbError::new(fmt_msg(MsgKey::SqliteFailedToSetTimeout, &[&e.to_string()]))
                 })?;
         }
+
+        // 外部キー制約を有効化（SQLiteはデフォルトで無効）
+        conn.execute("PRAGMA foreign_keys = ON", []).map_err(|e| {
+            DbError::new(fmt_msg(
+                MsgKey::SqliteFailedToExecuteStatement,
+                &[&e.to_string()],
+            ))
+        })?;
 
         Ok(Arc::new(SqliteConnection {
             conn: Arc::new(Mutex::new(conn)),
@@ -121,7 +137,10 @@ impl SqliteConnection {
                 }
             };
 
-            map.insert(column_name, value);
+            let key = Value::String(column_name)
+                .to_map_key()
+                .map_err(|e| DbError::new(e))?;
+            map.insert(key, value);
         }
 
         Ok(map)

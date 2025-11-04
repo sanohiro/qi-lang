@@ -2,18 +2,29 @@
 
 (module "auth")
 
-;; JWT秘密鍵（本番環境では環境変数から読み込むこと）
-(def secret-key "secret-key-change-in-production")
-
-;; JWTトークン生成
+;; JWT風トークン生成
+;; フォーマット: header.payload.signature (HMAC-SHA256)
 (defn create-token [user-id username]
-  (jwt/sign
-   {:sub user-id :username username :exp (+ (time/now) 86400)}
-   secret-key))
+  (let [header (json/stringify {:typ "JWT" :alg "HS256"})
+        payload (json/stringify {:sub user-id :username username :iat (timestamp)})
+        header-b64 (str/to-base64 header)
+        payload-b64 (str/to-base64 payload)
+        signature (str/hash (str header-b64 "." payload-b64 "." "secret-key"))]
+    (str header-b64 "." payload-b64 "." signature)))
 
 ;; JWTトークン検証
 (defn verify-token [token]
-  (try
-    (jwt/verify token secret-key)))
+  (let [parts (str/split token ".")]
+    (if (not (= (count parts) 3))
+      {:error "Invalid token format"}
+      (let [header-b64 (nth parts 0)
+            payload-b64 (nth parts 1)
+            signature (nth parts 2)
+            expected-sig (str/hash (str header-b64 "." payload-b64 "." "secret-key"))]
+        (if (not (= signature expected-sig))
+          {:error "Invalid signature"}
+          (match (try (json/parse (str/from-base64 payload-b64)))
+            {:error e} -> {:error "Invalid payload"}
+            payload -> {:ok payload}))))))
 
 (export create-token verify-token)

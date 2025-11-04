@@ -50,7 +50,7 @@
 
 ### cmd
 
-  - exec, sh, pipe, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
+  - exec, sh, pipe, pipe!, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
 
 ### core/collections
 

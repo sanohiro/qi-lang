@@ -209,7 +209,7 @@ done
     ["POST" "/api/users"] -> (create-user req)
     _ -> (server/response 404 "Not Found")))
 
-(server/serve 3000 api-handler)
+(server/serve api-handler {:port 3000})
 ```
 
 **例**: [12-web-server.qi](12-web-server.qi), [13-rest-api.qi](13-rest-api.qi)

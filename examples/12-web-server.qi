@@ -42,20 +42,20 @@
 
 (defn api-router [req]
   (match [(get req :method) (get req :path)]
-    ["GET" "/"] -> (server/text "Home")
-    ["GET" "/users"] -> (server/json {:users []})
-    ["POST" "/users"] -> (server/json {:message "User created"})
-    ["GET" "/api/health"] -> (server/json {:status "healthy"})
+    [:get "/"] -> (server/text "Home")
+    [:get "/users"] -> (server/json {"users" []})
+    [:post "/users"] -> (server/json {"message" "User created"})
+    [:get "/api/health"] -> (server/json {"status" "healthy"})
     _ -> (server/response 404 "Not Found")))
 
 (println "GET /:")
-(println (api-router {:method "GET" :path "/"}))
+(println (api-router {:method :get :path "/"}))
 
 (println "\nGET /users:")
-(println (api-router {:method "GET" :path "/users"}))
+(println (api-router {:method :get :path "/users"}))
 
 (println "\nPOST /users:")
-(println (api-router {:method "POST" :path "/users"}))
+(println (api-router {:method :post :path "/users"}))
 
 ;; JSONデータの処理
 (println "\n=== JSONデータの処理 ===")
@@ -116,9 +116,9 @@
 
 (defn users-api [req]
   (match [(get req :method) (get req :path)]
-    ["GET" "/api/users"] -> (list-users req)
-    ["POST" "/api/users"] -> (create-user req)
-    ["GET" path] when (str/starts-with? path "/api/users/") ->
+    [:get "/api/users"] -> (list-users req)
+    [:post "/api/users"] -> (create-user req)
+    [:get path] when (str/starts-with? path "/api/users/") ->
       (let [id-str (str/replace path "/api/users/" "")
             id (try (string/to-int id-str))]
         (if (error? id)
@@ -127,10 +127,10 @@
     _ -> (server/response 404 "Not Found")))
 
 (println "GET /api/users:")
-(println (users-api {:method "GET" :path "/api/users"}))
+(println (users-api {:method :get :path "/api/users"}))
 
 (println "\nGET /api/users/1:")
-(println (users-api {:method "GET" :path "/api/users/1"}))
+(println (users-api {:method :get :path "/api/users/1"}))
 
 ;; ミドルウェア風の処理
 (println "\n=== ミドルウェア風の処理 ===")
@@ -154,10 +154,10 @@
       (fn [req] (server/json {:message "Protected resource"})))))
 
 (println "Without auth:")
-(println (protected-handler {:method "GET" :path "/protected" :headers {}}))
+(println (protected-handler {:method :get :path "/protected" :headers {}}))
 
 (println "\nWith auth:")
-(println (protected-handler {:method "GET" :path "/protected"
+(println (protected-handler {:method :get :path "/protected"
                              :headers {"Authorization" "Bearer secret-token"}}))
 
 ;; エラーハンドリング
@@ -236,7 +236,7 @@
 (println "    [\"GET\" \"/api/status\"] -> (server/json {:status \"ok\"})")
 (println "    _ -> (server/response 404 \"Not Found\")))")
 (println "")
-(println "(server/serve 3000 main-handler)")
+(println "(server/serve main-handler {:port 3000})")
 (println "")
 (println "ブラウザで http://localhost:3000 を開くとアクセスできます")
 
