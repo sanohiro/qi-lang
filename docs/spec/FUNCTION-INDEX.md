@@ -209,6 +209,10 @@
 
   - validate
 
+### table
+
+  - select, order-by, take, drop
+
 ### zip
 
   - create, extract, list, gzip, gunzip
@@ -216,7 +220,7 @@
 ---
 
 Statistics:
-  - Function categories: 48
-  - Tagged files: 44
+  - Function categories: 49
+  - Tagged files: 45
   - Special forms: 1
   - Operators: 5

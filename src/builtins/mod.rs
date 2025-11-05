@@ -90,6 +90,7 @@ pub mod debug;
 pub mod env;
 pub mod flow;
 pub mod log;
+pub mod table;
 pub mod util;
 
 #[cfg(feature = "util-zip")]
@@ -184,6 +185,7 @@ const CORE_MODULES: &[NativeFunctions] = &[
 const STANDARD_MODULES: &[NativeFunctions] = &[
     math::FUNCTIONS,
     csv::FUNCTIONS,
+    table::FUNCTIONS,
     path::FUNCTIONS,
     env::FUNCTIONS,
     log::FUNCTIONS,

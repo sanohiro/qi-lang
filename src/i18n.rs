@@ -220,6 +220,19 @@ pub enum MsgKey {
     CsvDelimiterMustBeSingleChar, // csv/parse: delimiter must be a single character
     CsvInvalidDelimiterArg,       // csv/parse: invalid delimiter argument (use :delimiter "char")
 
+    // Table エラー
+    TableInvalidFormat,         // table: invalid format (expected {0})
+    TableColumnNotFound,        // table: column '{0}' not found
+    TableNoHeaders,             // table: no headers (cannot access by column name)
+    TableColumnIndexOutOfRange, // table: column index {0} out of range
+    TableColumnSelectorInvalid, // table: column selector must be {0}
+    TableSelectNeedsList,       // table/select: column selectors must be {0}
+    TableOrderByInvalidOrder,   // table/order-by: order must be {0}
+    TableTakeNegative,          // table/take: n must be non-negative (got {0})
+    TableTakeNotInteger,        // table/take: n must be an integer
+    TableDropNegative,          // table/drop: n must be non-negative (got {0})
+    TableDropNotInteger,        // table/drop: n must be an integer
+
     // コマンド実行エラー
     CmdEmptyCommand,         // Command cannot be empty
     CmdFirstArgMustBeString, // First element of command list must be a string
@@ -1064,6 +1077,42 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             CsvWriteFileFailedToWrite,
             "csv/write-file: failed to write '{0}': {1}",
         ),
+        // Tableエラー
+        (
+            TableInvalidFormat,
+            "table: invalid format (expected {0})",
+        ),
+        (TableColumnNotFound, "table: column '{0}' not found"),
+        (
+            TableNoHeaders,
+            "table: no headers (cannot access by column name)",
+        ),
+        (
+            TableColumnIndexOutOfRange,
+            "table: column index {0} out of range",
+        ),
+        (
+            TableColumnSelectorInvalid,
+            "table: column selector must be {0}",
+        ),
+        (
+            TableSelectNeedsList,
+            "table/select: column selectors must be {0}",
+        ),
+        (
+            TableOrderByInvalidOrder,
+            "table/order-by: order must be {0}",
+        ),
+        (
+            TableTakeNegative,
+            "table/take: n must be non-negative (got {0})",
+        ),
+        (TableTakeNotInteger, "table/take: n must be an integer"),
+        (
+            TableDropNegative,
+            "table/drop: n must be non-negative (got {0})",
+        ),
+        (TableDropNotInteger, "table/drop: n must be an integer"),
         // ログエラー
         (
             LogSetLevelInvalidLevel,
@@ -1550,6 +1599,18 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         // CSVエラー（詳細）
         (CsvWriteFileStringifyFailed, "csv/write-file: 文字列化失敗"),
         (CsvWriteFileFailedToWrite, "csv/write-file: '{0}'の書き込み失敗: {1}"),
+        // Tableエラー
+        (TableInvalidFormat, "テーブル: 無効な形式 (期待: {0})"),
+        (TableColumnNotFound, "テーブル: 列'{0}'が見つかりません"),
+        (TableNoHeaders, "テーブル: ヘッダーがありません（列名でアクセスできません）"),
+        (TableColumnIndexOutOfRange, "テーブル: 列インデックス{0}が範囲外です"),
+        (TableColumnSelectorInvalid, "テーブル: 列セレクタは{0}である必要があります"),
+        (TableSelectNeedsList, "table/select: 列セレクタは{0}である必要があります"),
+        (TableOrderByInvalidOrder, "table/order-by: 順序は{0}である必要があります"),
+        (TableTakeNegative, "table/take: nは非負である必要があります (指定値: {0})"),
+        (TableTakeNotInteger, "table/take: nは整数である必要があります"),
+        (TableDropNegative, "table/drop: nは非負である必要があります (指定値: {0})"),
+        (TableDropNotInteger, "table/drop: nは整数である必要があります"),
         // ログエラー
         (LogSetLevelInvalidLevel, "log/set-level: 不正なレベル'{0}' (有効: debug, info, warn, error)"),
         (LogSetFormatInvalidFormat, "log/set-format: 不正なフォーマット'{0}' (有効: text, json)"),
