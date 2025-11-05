@@ -155,16 +155,37 @@ pub type NativeEvalFn = fn(&[Value], &Evaluator) -> Result<Value, String>;
 /// FUNCTIONS配列の型（Evaluator不要な関数用）
 pub type NativeFunctions = &'static [(&'static str, NativeFn)];
 
-/// Evaluator必要な関数の配列型（将来の拡張用）
-#[allow(dead_code)]
+/// Evaluator必要な関数の配列型
 pub type NativeEvalFunctions = &'static [(&'static str, NativeEvalFn)];
 
-/// FUNCTIONS配列から関数を登録するヘルパー
+/// FUNCTIONS配列から関数を登録するヘルパー（Evaluator不要な関数）
 fn register_functions(env: &mut Env, functions: NativeFunctions) {
     for (name, func) in functions {
         env.set(
             name.to_string(),
             Value::NativeFunc(NativeFunc { name, func: *func }),
+        );
+    }
+}
+
+/// Evaluator必要な関数を登録するヘルパー
+///
+/// 注: これらの関数は`Evaluator::try_eval_special_form`から呼ばれるため、
+/// 環境への登録は不要ですが、シンボル解決のためにプレースホルダーを登録します。
+/// 実際の呼び出しは`call.rs`の特殊形式ディスパッチで行われます。
+fn register_eval_functions(env: &mut Env, functions: NativeEvalFunctions) {
+    // Evaluator必要な関数は、環境に登録する際にプレースホルダー関数を設定
+    for (name, _func) in functions {
+        // エラーメッセージを返すプレースホルダー関数
+        // 実際の呼び出しはtry_eval_special_formで行われる
+        env.set(
+            name.to_string(),
+            Value::NativeFunc(NativeFunc {
+                name,
+                func: |_| {
+                    Err("Internal error: NativeEvalFn should be called via Evaluator".to_string())
+                },
+            }),
         );
     }
 }
@@ -284,6 +305,10 @@ pub fn register_all(env: &Arc<RwLock<Env>>) {
 
     #[cfg(feature = "auth-password")]
     register_functions(&mut env_write, password::FUNCTIONS);
+
+    // Evaluator必要な関数をプレースホルダーとして登録
+    // （実際の呼び出しはtry_eval_special_formで行われる）
+    register_eval_functions(&mut env_write, table::EVAL_FUNCTIONS);
 }
 
 // ========================================
@@ -516,6 +541,11 @@ pub fn test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> 
 /// test/assert-throws - 式が例外を投げることをアサート
 pub fn test_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     test::native_assert_throws(args, evaluator)
+}
+
+/// table/where - テーブルの行をフィルタリング
+pub fn table_where(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    table::native_table_where(args, evaluator)
 }
 
 #[cfg(test)]

@@ -211,7 +211,7 @@
 
 ### table
 
-  - select, order-by, take, drop
+  - select, order-by, take, drop, where
 
 ### zip
 

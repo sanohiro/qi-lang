@@ -3,6 +3,7 @@
 //! CSV、JSON、データベース結果などの表形式データを扱うための関数群。
 //! awk/SQL風のデータ操作を提供する。
 
+use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use crate::{check_args, new_hashmap};
@@ -211,13 +212,20 @@ impl Table {
     /// カラムインデックスを解決
     fn resolve_column(&self, selector: &Value) -> Result<usize, String> {
         match selector {
-            Value::String(name) => {
-                // 名前でアクセス
+            Value::String(name) | Value::Keyword(name) => {
+                // 名前でアクセス（StringとKeywordの両方をサポート）
                 if let Some(headers) = &self.headers {
+                    // キーワードの場合は:を含めた形式で検索
+                    let search_key = if matches!(selector, Value::Keyword(_)) {
+                        format!(":{}", name)
+                    } else {
+                        name.clone()
+                    };
+
                     headers
                         .iter()
-                        .position(|h| h == name)
-                        .ok_or_else(|| fmt_msg(MsgKey::TableColumnNotFound, &[name]))
+                        .position(|h| h == &search_key)
+                        .ok_or_else(|| fmt_msg(MsgKey::TableColumnNotFound, &[&search_key]))
                 } else {
                     Err(fmt_msg(MsgKey::TableNoHeaders, &[]))
                 }
@@ -243,7 +251,7 @@ impl Table {
             }
             _ => Err(fmt_msg(
                 MsgKey::TableColumnSelectorInvalid,
-                &["string or integer"],
+                &["string, keyword, or integer"],
             )),
         }
     }
@@ -253,9 +261,54 @@ impl Table {
 // 関数実装
 // ========================================
 
-// TODO: table/where は Evaluator が必要なため、後で実装
-// 引数: (table, column-selector, predicate-fn)
-// 例: (table/where data "age" (fn [x] (> x 25)))
+/// table/where - 述語関数で行をフィルタリング
+///
+/// 引数: (table, predicate-fn)
+/// 例: (table/where data (fn [row] (> (get row "age") 25)))
+///
+/// 注: この関数はEvaluatorが必要なため、NativeEvalFnとして実装されています。
+pub fn native_table_where(args: &[Value], eval: &Evaluator) -> Result<Value, String> {
+    check_args!(args, 2, "table/where");
+
+    let table = Table::from_value(&args[0])?;
+    let predicate = &args[1];
+
+    let mut filtered_rows = Vec::new();
+    for row in &table.rows {
+        // 各行をMapまたはVectorに変換（元の形式に応じて）
+        let row_value = match &table.format {
+            TableFormat::MapList => {
+                // MapList形式はMapとして渡す（キーは":key"形式）
+                let headers = table.headers.as_ref().unwrap();
+                let mut map = new_hashmap();
+                for (i, header) in headers.iter().enumerate() {
+                    map.insert(header.clone(), row.get(i).cloned().unwrap_or(Value::Nil));
+                }
+                Value::Map(map)
+            }
+            TableFormat::ArrayWithHeader | TableFormat::ArrayNoHeader => {
+                // 配列形式（ヘッダーの有無に関わらず）はVectorとして渡す
+                // ユーザーはnthでインデックスアクセスできる
+                Value::Vector(row.clone().into())
+            }
+        };
+
+        // 述語関数を呼び出し
+        let result = eval.apply_function(predicate, &[row_value])?;
+
+        if result.is_truthy() {
+            filtered_rows.push(row.clone());
+        }
+    }
+
+    let new_table = Table {
+        format: table.format,
+        headers: table.headers,
+        rows: filtered_rows,
+    };
+
+    Ok(new_table.to_value())
+}
 
 /// table/select - 指定した列のみ抽出
 ///
@@ -450,11 +503,14 @@ fn compare_values(a: &Value, b: &Value) -> std::cmp::Ordering {
 // ========================================
 
 /// @qi-doc:category table
-/// @qi-doc:functions select, order-by, take, drop
-/// @qi-doc:note テーブル処理（awk/SQL風）- where は Evaluator 対応後に追加予定
+/// @qi-doc:functions select, order-by, take, drop, where
+/// @qi-doc:note テーブル処理（awk/SQL風）
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("table/select", native_table_select),
     ("table/order-by", native_table_order_by),
     ("table/take", native_table_take),
     ("table/drop", native_table_drop),
 ];
+
+/// Evaluator必要な関数
+pub const EVAL_FUNCTIONS: super::NativeEvalFunctions = &[("table/where", native_table_where)];

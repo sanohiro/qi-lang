@@ -715,6 +715,16 @@ impl Evaluator {
         builtins::test_assert_throws(&[func], self)
     }
 
+    /// table/where - テーブルの行をフィルタリング
+    fn eval_table_where(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err(qerr(MsgKey::Need2Args, &["table/where"]));
+        }
+        let table = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        let predicate = self.eval_with_env(&args[1], Arc::clone(&env))?;
+        builtins::table_where(&[table, predicate], self)
+    }
+
     /// and論理演算子（短絡評価）
     fn eval_and(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.is_empty() {

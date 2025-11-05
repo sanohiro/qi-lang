@@ -89,6 +89,7 @@ impl Evaluator {
                 "time" => Some(self.eval_time(args, env)),
                 "update-in" => Some(self.eval_update_in(args, env)),
                 "update" => Some(self.eval_update(args, env)),
+                "table/where" => Some(self.eval_table_where(args, env)),
                 _ => None,
             }
         } else {
