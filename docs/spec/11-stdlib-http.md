@@ -6,16 +6,23 @@
 
 ## HTTPクライアント（http/）
 
-### 基本メソッド
+Qiでは2種類のHTTPクライアント関数を提供しています：
+
+- **シンプル版**（`http/get`, `http/post`等）: レスポンスボディのみを返す
+- **詳細版**（`http/get!`, `http/post!`等）: ステータスコード、ヘッダー、ボディを含む詳細情報を返す
+
+### シンプル版 - レスポンスボディのみ取得
+
+多くの場合、レスポンスボディだけが必要です。シンプル版は**文字列**を返します。
 
 ```qi
-;; http/get - HTTP GETリクエスト
+;; http/get - HTTP GETリクエスト（ボディのみ）
 (http/get "https://httpbin.org/get")
-;; => {:status 200 :headers {...} :body "..."}
+;; => "{\"args\": {}, \"headers\": {...}}"
 
 ;; http/post - HTTP POSTリクエスト
 (http/post "https://api.example.com/users" {"name" "Alice" "email" "alice@example.com"})
-;; => {:status 201 :body "..."}
+;; => "{\"id\": 123, \"name\": \"Alice\"}"
 
 ;; http/put - HTTP PUTリクエスト
 (http/put "https://api.example.com/users/1" {"name" "Alice Updated"})
@@ -31,6 +38,48 @@
 
 ;; http/options - HTTP OPTIONSリクエスト
 (http/options "https://api.example.com")
+
+;; シンプルな使い方 - ボディを直接JSONパース
+(def users (http/get "https://api.example.com/users" |> json/parse))
+```
+
+### 詳細版 - ステータスコード・ヘッダー付き
+
+ステータスコードやヘッダーが必要な場合は、感嘆符（`!`）付きの詳細版を使用します。
+
+```qi
+;; http/get! - HTTP GETリクエスト（詳細情報）
+(http/get! "https://httpbin.org/get")
+;; => {:status 200 :headers {"content-type" "application/json" ...} :body "..."}
+
+;; http/post! - HTTP POSTリクエスト（詳細情報）
+(http/post! "https://api.example.com/users" {"name" "Alice"})
+;; => {:status 201 :headers {...} :body "..."}
+
+;; http/put! - HTTP PUTリクエスト（詳細情報）
+(http/put! "https://api.example.com/users/1" {"name" "Alice Updated"})
+
+;; http/delete! - HTTP DELETEリクエスト（詳細情報）
+(http/delete! "https://api.example.com/users/1")
+
+;; http/patch! - HTTP PATCHリクエスト（詳細情報）
+(http/patch! "https://api.example.com/users/1" {"email" "newemail@example.com"})
+
+;; http/head! - HTTP HEADリクエスト（詳細情報）
+(http/head! "https://api.example.com/status")
+
+;; http/options! - HTTP OPTIONSリクエスト（詳細情報）
+(http/options! "https://api.example.com")
+
+;; ステータスコードをチェック
+(let [res (http/get! "https://api.example.com/users")]
+  (if (= 200 (:status res))
+    (json/parse (:body res))
+    (error (str "HTTP error: " (:status res)))))
+
+;; ヘッダーを取得
+(let [res (http/get! "https://api.example.com/data")]
+  (get-in res [:headers "content-type"]))
 ```
 
 ### 詳細設定
@@ -77,26 +126,40 @@
 ### Railway Pipelineとの統合
 
 ```qi
-;; GitHub APIからユーザー名を取得（HTTPは例外を投げるのでtryでキャッチ）
+;; シンプル版でパイプライン - ボディが直接返される
+("https://api.github.com/users/octocat"
+ |> http/get
+ |> json/parse
+ |> (fn [data] (get data "name")))
+;; => "The Octocat"
+
+;; 詳細版でパイプライン - ステータスコードをチェック
+("https://api.github.com/users/octocat"
+ |> http/get!
+ |> (fn [resp]
+      (if (= 200 (:status resp))
+        (:body resp)
+        (error (str "HTTP " (:status resp)))))
+ |> json/parse
+ |> (fn [data] (get data "name")))
+;; => "The Octocat"
+
+;; エラーハンドリング（tryで例外をキャッチ）
 (match (try
          ("https://api.github.com/users/octocat"
           |> http/get
-          |> (fn [resp] (get resp :body))
-          |>? json/parse
-          |>? (fn [data] (get data "name"))))
+          |> json/parse
+          |> (fn [data] (get data "name"))))
   {:error e} -> (log/error "Failed:" e)
   name -> name)
 ;; => "The Octocat" (成功時) または {:error ...} (失敗時)
 
-;; エラーハンドリング（tryで例外をキャッチ）
-(match (try
-         ("https://invalid.com/api"
-          |> http/get
-          |> (fn [resp] (get resp :body))
-          |>? json/parse))
-  {:error e} -> (log/error "Connection failed:" e)
-  data -> data)
-;; => {:error "..."} (HTTP接続エラー)
+;; Railway演算子でエラーハンドリング
+("https://api.github.com/users/octocat"
+ |> (try (http/get _))
+ |>? json/parse
+ |>? (fn [data] (get data "name")))
+;; => "The Octocat" (成功時) または {:error ...} (失敗時)
 ```
 
 ---

@@ -27,7 +27,11 @@ fn compress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     encoder.finish()
 }
 
-/// HTTP GETリクエスト
+/// HTTP GETリクエスト（シンプル版）
+/// 引数: URL文字列
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/get "https://api.example.com")  ;=> "{"data": "..."}"
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/get"]));
@@ -41,7 +45,29 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
     http_request("GET", url, None, None, 30000)
 }
 
-/// HTTP POSTリクエスト
+/// HTTP GETリクエスト（詳細版）
+/// 引数: URL文字列
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/get! "https://api.example.com")  ;=> {:status 200 :body "..."}
+pub fn native_get_bang(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/get!"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get!", "URL"])),
+    };
+
+    http_request_detailed("GET", url, None, None, 30000)
+}
+
+/// HTTP POSTリクエスト（シンプル版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/post "https://api.example.com" {:key "value"})
 pub fn native_post(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "http/post");
 
@@ -53,7 +79,27 @@ pub fn native_post(args: &[Value]) -> Result<Value, String> {
     http_request("POST", url, Some(&args[1]), None, 30000)
 }
 
-/// HTTP PUTリクエスト
+/// HTTP POSTリクエスト（詳細版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/post! "https://api.example.com" {:key "value"})
+pub fn native_post_bang(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 2, "http/post!");
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post!", "URL"])),
+    };
+
+    http_request_detailed("POST", url, Some(&args[1]), None, 30000)
+}
+
+/// HTTP PUTリクエスト（シンプル版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/put "https://api.example.com/1" {:key "value"})
 pub fn native_put(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "http/put");
 
@@ -65,7 +111,27 @@ pub fn native_put(args: &[Value]) -> Result<Value, String> {
     http_request("PUT", url, Some(&args[1]), None, 30000)
 }
 
-/// HTTP DELETEリクエスト
+/// HTTP PUTリクエスト（詳細版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/put! "https://api.example.com/1" {:key "value"})
+pub fn native_put_bang(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 2, "http/put!");
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/put!", "URL"])),
+    };
+
+    http_request_detailed("PUT", url, Some(&args[1]), None, 30000)
+}
+
+/// HTTP DELETEリクエスト（シンプル版）
+/// 引数: URL文字列
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/delete "https://api.example.com/1")
 pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/delete"]));
@@ -79,7 +145,29 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     http_request("DELETE", url, None, None, 30000)
 }
 
-/// HTTP PATCHリクエスト
+/// HTTP DELETEリクエスト（詳細版）
+/// 引数: URL文字列
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/delete! "https://api.example.com/1")
+pub fn native_delete_bang(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/delete!"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/delete!", "URL"])),
+    };
+
+    http_request_detailed("DELETE", url, None, None, 30000)
+}
+
+/// HTTP PATCHリクエスト（シンプル版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/patch "https://api.example.com/1" {:key "value"})
 pub fn native_patch(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "http/patch");
 
@@ -91,7 +179,27 @@ pub fn native_patch(args: &[Value]) -> Result<Value, String> {
     http_request("PATCH", url, Some(&args[1]), None, 30000)
 }
 
-/// HTTP HEADリクエスト
+/// HTTP PATCHリクエスト（詳細版）
+/// 引数: URL文字列、ボディデータ
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/patch! "https://api.example.com/1" {:key "value"})
+pub fn native_patch_bang(args: &[Value]) -> Result<Value, String> {
+    check_args!(args, 2, "http/patch!");
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/patch!", "URL"])),
+    };
+
+    http_request_detailed("PATCH", url, Some(&args[1]), None, 30000)
+}
+
+/// HTTP HEADリクエスト（シンプル版）
+/// 引数: URL文字列
+/// 戻り値: レスポンスボディ（文字列、通常は空）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/head "https://api.example.com")
 pub fn native_head(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/head"]));
@@ -105,7 +213,29 @@ pub fn native_head(args: &[Value]) -> Result<Value, String> {
     http_request("HEAD", url, None, None, 30000)
 }
 
-/// HTTP OPTIONSリクエスト
+/// HTTP HEADリクエスト（詳細版）
+/// 引数: URL文字列
+/// 戻り値: {:status 200 :headers {...} :body ""}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/head! "https://api.example.com")
+pub fn native_head_bang(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/head!"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/head!", "URL"])),
+    };
+
+    http_request_detailed("HEAD", url, None, None, 30000)
+}
+
+/// HTTP OPTIONSリクエスト（シンプル版）
+/// 引数: URL文字列
+/// 戻り値: レスポンスボディ（文字列）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (http/options "https://api.example.com")
 pub fn native_options(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/options"]));
@@ -117,6 +247,24 @@ pub fn native_options(args: &[Value]) -> Result<Value, String> {
     };
 
     http_request("OPTIONS", url, None, None, 30000)
+}
+
+/// HTTP OPTIONSリクエスト（詳細版）
+/// 引数: URL文字列
+/// 戻り値: {:status 200 :headers {...} :body "..."}
+/// エラー時: {:error {:type "timeout" :message "..."}}
+/// 例: (http/options! "https://api.example.com")
+pub fn native_options_bang(args: &[Value]) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["http/options!"]));
+    }
+
+    let url = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/options!", "URL"])),
+    };
+
+    http_request_detailed("OPTIONS", url, None, None, 30000)
 }
 
 /// 詳細なHTTPリクエスト
@@ -217,7 +365,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         })
         .unwrap_or(30000);
 
-    http_request(method, url, body, headers_ref, timeout)
+    http_request_detailed(method, url, body, headers_ref, timeout)
 }
 
 /// HTTP GETリクエスト (非同期)
@@ -270,8 +418,52 @@ pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Channel(result_channel))
 }
 
-/// HTTPリクエストの実装
+/// HTTPリクエストの実装（シンプル版：bodyの文字列のみ返す）
 fn http_request(
+    method: &str,
+    url: &str,
+    body: Option<&Value>,
+    headers: Option<&crate::HashMap<String, Value>>,
+    timeout_ms: u64,
+) -> Result<Value, String> {
+    // 詳細版を呼び出してbodyだけを取り出す
+    let result = http_request_detailed(method, url, body, headers, timeout_ms)?;
+
+    // 詳細版の戻り値からbodyを取り出す
+    match result {
+        Value::Map(m) => {
+            let body_key = Value::Keyword("body".to_string())
+                .to_map_key()
+                .expect("body keyword should be valid");
+
+            // bodyキーがあればそれを返す
+            if let Some(body_val) = m.get(&body_key) {
+                Ok(body_val.clone())
+            } else {
+                // errorキーがある場合はエラーメッセージを返す
+                let error_key = Value::Keyword("error".to_string())
+                    .to_map_key()
+                    .expect("error keyword should be valid");
+
+                if let Some(Value::Map(err_map)) = m.get(&error_key) {
+                    let message_key = Value::Keyword("message".to_string())
+                        .to_map_key()
+                        .expect("message keyword should be valid");
+
+                    if let Some(Value::String(msg)) = err_map.get(&message_key) {
+                        return Err(msg.clone());
+                    }
+                }
+
+                Err("Unexpected response format".to_string())
+            }
+        }
+        _ => Err("Unexpected response format".to_string()),
+    }
+}
+
+/// HTTPリクエストの実装（詳細版：Map形式で詳細情報を返す）
+fn http_request_detailed(
     method: &str,
     url: &str,
     body: Option<&Value>,
@@ -628,8 +820,9 @@ fn http_stream(
 
 /// 登録すべき関数のリスト
 /// @qi-doc:category net/http
-/// @qi-doc:functions get, post, put, delete, patch, head, options, request, get-stream, post-stream, request-stream
+/// @qi-doc:functions get, post, put, delete, patch, head, options, request, get!, post!, put!, delete!, patch!, head!, options!, get-stream, post-stream, request-stream
 pub const FUNCTIONS: super::NativeFunctions = &[
+    // シンプル版（bodyのみ返す）
     ("http/get", native_get),
     ("http/post", native_post),
     ("http/put", native_put),
@@ -637,9 +830,20 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("http/patch", native_patch),
     ("http/head", native_head),
     ("http/options", native_options),
+    // 詳細版（!付き、Map形式で詳細情報を返す）
+    ("http/get!", native_get_bang),
+    ("http/post!", native_post_bang),
+    ("http/put!", native_put_bang),
+    ("http/delete!", native_delete_bang),
+    ("http/patch!", native_patch_bang),
+    ("http/head!", native_head_bang),
+    ("http/options!", native_options_bang),
+    // 詳細制御版（元からの仕様）
     ("http/request", native_request),
+    // 非同期版
     ("http/get-async", native_get_async),
     ("http/post-async", native_post_async),
+    // ストリーミング版
     ("http/get-stream", native_get_stream),
     ("http/post-stream", native_post_stream),
     ("http/request-stream", native_request_stream),

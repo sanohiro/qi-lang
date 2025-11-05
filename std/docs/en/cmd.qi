@@ -11,11 +11,20 @@
               "(cmd/exec \"false\") ;=> 1"]})
 
 (def __doc__cmd/sh
-  {:desc "Executes a command via shell. Allows shell features like pipes and variable expansion."
+  {:desc "Executes a command via shell (simple version). Returns only the exit code. Allows shell features like pipes and variable expansion."
+   :params [{:name "command" :type "string" :desc "Shell command"}]
+   :returns {:type "integer" :desc "Exit code (0=success, non-zero=failure)"}
+   :examples ["(cmd/sh \"cat *.txt | grep pattern | wc -l\") ;=> 0"
+              "(cmd/sh \"test -f data.json\") ;=> 0"
+              "(if (= 0 (cmd/sh \"test -f data.json\")) (println \"File exists\") (println \"File not found\"))"]})
+
+(def __doc__cmd/sh!
+  {:desc "Executes a command via shell (detailed version). Returns a map containing stdout, stderr, and exit code. Allows shell features like pipes and variable expansion."
    :params [{:name "command" :type "string" :desc "Shell command"}]
    :returns {:type "map" :desc "Format: {:stdout \"...\" :stderr \"...\" :exit 0}"}
-   :examples ["(cmd/sh \"cat *.txt | grep pattern | wc -l\")"
-              "(cmd/sh \"echo $HOME\")"]})
+   :examples ["(cmd/sh! \"cat *.txt | grep pattern | wc -l\") ;=> {:stdout \"10\\n\" :stderr \"\" :exit 0}"
+              "(cmd/sh! \"echo $HOME\") ;=> {:stdout \"/home/user\\n\" :stderr \"\" :exit 0}"
+              "(let [res (cmd/sh! \"git status --porcelain\")] (if (= 0 (:exit res)) (println (:stdout res)) (println (:stderr res))))"]})
 
 (def __doc__cmd/pipe
   {:desc "Pipes data to a command's standard input and returns stdout. Throws error on failure."

@@ -1,53 +1,103 @@
 ;; Standard Library Documentation - HTTP Client
-;; HTTP Client Functions (11 functions)
+;; HTTP Client Functions (18 functions)
 
+;; Simple version - returns response body only
 (def __doc__http/get
-  {:desc "Sends an HTTP GET request."
+  {:desc "Sends an HTTP GET request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "Response map (:status, :headers, :body)"}
-   :examples ["(http/get \"https://api.example.com/data\")"
-              "(http/get \"http://localhost:3000/api/users\")"]})
+   :returns {:type "string" :desc "Response body"}
+   :examples ["(http/get \"https://api.example.com/data\") ;=> \"{\\\"result\\\": ...}\""
+              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"]})
 
 (def __doc__http/post
-  {:desc "Sends an HTTP POST request."
+  {:desc "Sends an HTTP POST request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "Request body (string or map)"}]
-   :returns {:type "map" :desc "Response map"}
-   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"
-              "(http/post url (json/stringify data))"]})
+   :returns {:type "string" :desc "Response body"}
+   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
+              "(http/post url (json/stringify data) |> json/parse)"]})
 
 (def __doc__http/put
-  {:desc "Sends an HTTP PUT request."
+  {:desc "Sends an HTTP PUT request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "Request body"}]
-   :returns {:type "map" :desc "Response map"}
+   :returns {:type "string" :desc "Response body"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
 
 (def __doc__http/delete
-  {:desc "Sends an HTTP DELETE request."
+  {:desc "Sends an HTTP DELETE request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "Response map"}
+   :returns {:type "string" :desc "Response body"}
    :examples ["(http/delete \"https://api.example.com/users/1\")"]})
 
 (def __doc__http/patch
-  {:desc "Sends an HTTP PATCH request."
+  {:desc "Sends an HTTP PATCH request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "Request body"}]
-   :returns {:type "map" :desc "Response map"}
+   :returns {:type "string" :desc "Response body"}
    :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
 
 (def __doc__http/head
-  {:desc "Sends an HTTP HEAD request."
+  {:desc "Sends an HTTP HEAD request (simple version). Returns only the response body (usually empty string)."
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "Response map (no body)"}
+   :returns {:type "string" :desc "Response body (usually empty)"}
    :examples ["(http/head \"https://example.com\")"]})
 
 (def __doc__http/options
-  {:desc "Sends an HTTP OPTIONS request."
+  {:desc "Sends an HTTP OPTIONS request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "Response map"}
+   :returns {:type "string" :desc "Response body"}
    :examples ["(http/options \"https://api.example.com\")"]})
 
+;; Detailed version - returns a map with status code, headers, and body
+(def __doc__http/get!
+  {:desc "Sends an HTTP GET request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map (:status, :headers, :body)"}
+   :examples ["(http/get! \"https://api.example.com/data\") ;=> {:status 200 :headers {...} :body \"...\"}"
+              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"]})
+
+(def __doc__http/post!
+  {:desc "Sends an HTTP POST request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body (string or map)"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
+              "(http/post! url data |> (fn [r] (:status r)))"]})
+
+(def __doc__http/put!
+  {:desc "Sends an HTTP PUT request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+
+(def __doc__http/delete!
+  {:desc "Sends an HTTP DELETE request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/delete! \"https://api.example.com/users/1\")"]})
+
+(def __doc__http/patch!
+  {:desc "Sends an HTTP PATCH request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+
+(def __doc__http/head!
+  {:desc "Sends an HTTP HEAD request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map (no body)"}
+   :examples ["(http/head! \"https://example.com\")"]})
+
+(def __doc__http/options!
+  {:desc "Sends an HTTP OPTIONS request (detailed version). Returns a map containing status code, headers, and body."
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "Response map"}
+   :examples ["(http/options! \"https://api.example.com\")"]})
+
+;; Detailed request
 (def __doc__http/request
   {:desc "Sends a detailed HTTP request."
    :params [{:name "options" :type "map" :desc "Request options (:method, :url, :headers, :body, :timeout, etc.)"}]
@@ -55,6 +105,7 @@
    :examples ["(http/request {:method :get :url \"https://example.com\" :headers {:Authorization \"Bearer token\"}})"
               "(http/request {:method :post :url url :body data :timeout 5000})"]})
 
+;; Async & Streaming
 (def __doc__http/get-async
   {:desc "Sends an asynchronous HTTP GET request."
    :params [{:name "url" :type "string" :desc "URL"}]

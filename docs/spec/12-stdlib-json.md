@@ -47,7 +47,6 @@
 (match (try
          ("https://api.example.com/users/123"
           |> http/get
-          |> (fn [resp] (get resp "body"))
           |>? json/parse
           |>? (fn [data] (assoc data "processed" true))
           |>? json/pretty
@@ -120,7 +119,6 @@
   (match (try
            (url
             |> http/get
-            |> (fn [resp] (get resp "body"))
             |>? json/parse
             |>? json/pretty
             |>? (fn [json-str] (io/write-file output-file json-str))))

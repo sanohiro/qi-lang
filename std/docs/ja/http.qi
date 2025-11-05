@@ -1,53 +1,103 @@
 ;; 標準ライブラリドキュメント - HTTPクライアント
-;; HTTP Client Functions (11 functions)
+;; HTTP Client Functions (18 functions)
 
+;; シンプル版 - レスポンスボディのみを返す
 (def __doc__http/get
-  {:desc "HTTP GETリクエストを送信します。"
+  {:desc "HTTP GETリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "レスポンスマップ（:status, :headers, :body）"}
-   :examples ["(http/get \"https://api.example.com/data\")"
-              "(http/get \"http://localhost:3000/api/users\")"]})
+   :returns {:type "string" :desc "レスポンスボディ"}
+   :examples ["(http/get \"https://api.example.com/data\") ;=> \"{\\\"result\\\": ...}\""
+              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"]})
 
 (def __doc__http/post
-  {:desc "HTTP POSTリクエストを送信します。"
+  {:desc "HTTP POSTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}]
-   :returns {:type "map" :desc "レスポンスマップ"}
-   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"})"
-              "(http/post url (json/stringify data))"]})
+   :returns {:type "string" :desc "レスポンスボディ"}
+   :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
+              "(http/post url (json/stringify data) |> json/parse)"]})
 
 (def __doc__http/put
-  {:desc "HTTP PUTリクエストを送信します。"
+  {:desc "HTTP PUTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "リクエストボディ"}]
-   :returns {:type "map" :desc "レスポンスマップ"}
+   :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
 
 (def __doc__http/delete
-  {:desc "HTTP DELETEリクエストを送信します。"
+  {:desc "HTTP DELETEリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "レスポンスマップ"}
+   :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/delete \"https://api.example.com/users/1\")"]})
 
 (def __doc__http/patch
-  {:desc "HTTP PATCHリクエストを送信します。"
+  {:desc "HTTP PATCHリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
             {:name "body" :type "any" :desc "リクエストボディ"}]
-   :returns {:type "map" :desc "レスポンスマップ"}
+   :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
 
 (def __doc__http/head
-  {:desc "HTTP HEADリクエストを送信します。"
+  {:desc "HTTP HEADリクエストを送信します（シンプル版）。レスポンスボディのみを返します（通常は空文字列）。"
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "レスポンスマップ（ボディなし）"}
+   :returns {:type "string" :desc "レスポンスボディ（通常は空）"}
    :examples ["(http/head \"https://example.com\")"]})
 
 (def __doc__http/options
-  {:desc "HTTP OPTIONSリクエストを送信します。"
+  {:desc "HTTP OPTIONSリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}]
-   :returns {:type "map" :desc "レスポンスマップ"}
+   :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/options \"https://api.example.com\")"]})
 
+;; 詳細版 - ステータスコード・ヘッダー・ボディを含むマップを返す
+(def __doc__http/get!
+  {:desc "HTTP GETリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ（:status, :headers, :body）"}
+   :examples ["(http/get! \"https://api.example.com/data\") ;=> {:status 200 :headers {...} :body \"...\"}"
+              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"]})
+
+(def __doc__http/post!
+  {:desc "HTTP POSTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
+              "(http/post! url data |> (fn [r] (:status r)))"]})
+
+(def __doc__http/put!
+  {:desc "HTTP PUTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+
+(def __doc__http/delete!
+  {:desc "HTTP DELETEリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/delete! \"https://api.example.com/users/1\")"]})
+
+(def __doc__http/patch!
+  {:desc "HTTP PATCHリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+
+(def __doc__http/head!
+  {:desc "HTTP HEADリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ（ボディなし）"}
+   :examples ["(http/head! \"https://example.com\")"]})
+
+(def __doc__http/options!
+  {:desc "HTTP OPTIONSリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
+   :params [{:name "url" :type "string" :desc "URL"}]
+   :returns {:type "map" :desc "レスポンスマップ"}
+   :examples ["(http/options! \"https://api.example.com\")"]})
+
+;; 詳細リクエスト
 (def __doc__http/request
   {:desc "詳細なHTTPリクエストを送信します。"
    :params [{:name "options" :type "map" :desc "リクエストオプション（:method, :url, :headers, :body, :timeout等）"}]
@@ -55,6 +105,7 @@
    :examples ["(http/request {:method :get :url \"https://example.com\" :headers {:Authorization \"Bearer token\"}})"
               "(http/request {:method :post :url url :body data :timeout 5000})"]})
 
+;; 非同期・ストリーミング
 (def __doc__http/get-async
   {:desc "非同期HTTP GETリクエストを送信します。"
    :params [{:name "url" :type "string" :desc "URL"}]

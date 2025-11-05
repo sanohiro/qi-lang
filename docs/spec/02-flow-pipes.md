@@ -152,8 +152,7 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 ```qi
 ;; HTTPリクエスト + データ変換（シンプル！）
 ("https://api.example.com/users/123"
- |> http/get                 ;; => {:status 200 :body "..."}
- |>? (fn [resp] (get resp :body))  ;; 値を返すだけ！
+ |> http/get                 ;; => "{\"user\": {...}}"（ボディのみ）
  |>? json/parse              ;; => パース結果（値そのまま）
  |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
 ;; => ユーザーデータ（値そのまま）

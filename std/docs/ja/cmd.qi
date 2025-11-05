@@ -11,11 +11,20 @@
               "(cmd/exec \"false\") ;=> 1"]})
 
 (def __doc__cmd/sh
-  {:desc "シェル経由でコマンドを実行します。パイプや変数展開などのシェル機能が使えます。"
+  {:desc "シェル経由でコマンドを実行します（シンプル版）。終了コードのみを返します。パイプや変数展開などのシェル機能が使えます。"
+   :params [{:name "command" :type "string" :desc "シェルコマンド"}]
+   :returns {:type "integer" :desc "終了コード（0=成功、非0=失敗）"}
+   :examples ["(cmd/sh \"cat *.txt | grep pattern | wc -l\") ;=> 0"
+              "(cmd/sh \"test -f data.json\") ;=> 0"
+              "(if (= 0 (cmd/sh \"test -f data.json\")) (println \"ファイル存在\") (println \"ファイルなし\"))"]})
+
+(def __doc__cmd/sh!
+  {:desc "シェル経由でコマンドを実行します（詳細版）。stdout、stderr、終了コードを含むマップを返します。パイプや変数展開などのシェル機能が使えます。"
    :params [{:name "command" :type "string" :desc "シェルコマンド"}]
    :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
-   :examples ["(cmd/sh \"cat *.txt | grep pattern | wc -l\")"
-              "(cmd/sh \"echo $HOME\")"]})
+   :examples ["(cmd/sh! \"cat *.txt | grep pattern | wc -l\") ;=> {:stdout \"10\\n\" :stderr \"\" :exit 0}"
+              "(cmd/sh! \"echo $HOME\") ;=> {:stdout \"/home/user\\n\" :stderr \"\" :exit 0}"
+              "(let [res (cmd/sh! \"git status --porcelain\")] (if (= 0 (:exit res)) (println (:stdout res)) (println (:stderr res))))"]})
 
 (def __doc__cmd/pipe
   {:desc "データをコマンドの標準入力へパイプして、標準出力を返します。コマンドが失敗した場合はエラーを投げます。"

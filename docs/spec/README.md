@@ -126,7 +126,7 @@
 
 ```qi
 ;; HTTPレスポンスのパターンマッチング（tryでエラーキャッチ）
-(match (try (http/get url))
+(match (try (http/get! url))  ;; 詳細版でステータスコードを取得
   {:error e} -> (log-error e)
   {:status 200 :body body} -> (process-body body)
   {:status 404} -> nil

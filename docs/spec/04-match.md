@@ -208,8 +208,8 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 ### 例1: HTTPレスポンスのハンドリング
 
 ```qi
-;; http/getは例外を投げる可能性があるのでtryでキャッチ
-(match (try (http/get url))
+;; http/get!は例外を投げる可能性があるのでtryでキャッチ
+(match (try (http/get! url))  ;; 詳細版でステータスコードを取得
   {:error e} -> (log-error e)
   {:status 200 :body body} -> (process-body body)
   {:status 404} -> nil

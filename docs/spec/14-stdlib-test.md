@@ -309,16 +309,15 @@ finished in 0.08s
 ```qi
 ;; tests/http_test.qi
 (test/run "http/get success" (fn []
-  (def result (http/get "https://httpbin.org/get"))
+  (def result (http/get! "https://httpbin.org/get"))  ;; 詳細版でステータスを取得
   (test/assert (map? result))
-  (test/assert-eq 200 (get result "status"))))
+  (test/assert-eq 200 (get result :status))))
 
 (test/run "railway pipeline with http" (fn []
   (def result
     (match (try
              ("https://httpbin.org/get"
-              |> http/get
-              |> (fn [resp] (get resp "body"))
+              |> http/get  ;; シンプル版（ボディのみ）
               |>? json/parse))
       {:error e} -> {:error e}
       data -> data))

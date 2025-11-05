@@ -106,10 +106,12 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// sh - シェル経由で実行
+/// sh - シェル経由で実行（シンプル版）
 /// 引数: コマンド文字列
-/// 戻り値: {:stdout "..." :stderr "..." :exit 0}
-/// 例: (cmd/sh "cat *.txt | grep pattern | wc -l")
+/// 戻り値: 終了コード（整数）
+/// エラー時: Err(エラーメッセージ)
+/// 例: (cmd/sh "ls -la")  ;=> 0
+///     (cmd/sh "false")  ;=> 1
 pub fn native_sh(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/sh", "1"]));
@@ -118,6 +120,36 @@ pub fn native_sh(args: &[Value]) -> Result<Value, String> {
     let cmd = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/sh", "a string"])),
+    };
+
+    #[cfg(unix)]
+    let output = Command::new("sh").arg("-c").arg(cmd).output();
+
+    #[cfg(windows)]
+    let output = Command::new("cmd").arg("/C").arg(cmd).output();
+
+    match output {
+        Ok(output) => {
+            let exit_code = output.status.code().unwrap_or(-1);
+            Ok(Value::Integer(exit_code as i64))
+        }
+        Err(e) => Err(fmt_msg(MsgKey::CmdExecutionFailed, &[&e.to_string()])),
+    }
+}
+
+/// sh! - シェル経由で実行（詳細版）
+/// 引数: コマンド文字列
+/// 戻り値: {:stdout "..." :stderr "..." :exit 0}
+/// エラー時: Err(エラーメッセージ)
+/// 例: (cmd/sh! "cat *.txt | grep pattern | wc -l")
+pub fn native_sh_bang(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/sh!", "1"]));
+    }
+
+    let cmd = match &args[0] {
+        Value::String(s) => s,
+        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/sh!", "a string"])),
     };
 
     #[cfg(unix)]
@@ -222,7 +254,9 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
                     let exit_code = output.status.code().unwrap_or(-1);
                     if exit_code == 0 {
                         // 成功: stdoutを返す
-                        Ok(Value::String(String::from_utf8_lossy(&output.stdout).to_string()))
+                        Ok(Value::String(
+                            String::from_utf8_lossy(&output.stdout).to_string(),
+                        ))
                     } else {
                         // 失敗: エラーを投げる（stderrも含める）
                         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -352,11 +386,14 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
                     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
                     // [stdout stderr exitcode] のベクタを返す
-                    Ok(Value::Vector(vec![
-                        Value::String(stdout),
-                        Value::String(stderr),
-                        Value::Integer(exit_code as i64),
-                    ].into()))
+                    Ok(Value::Vector(
+                        vec![
+                            Value::String(stdout),
+                            Value::String(stderr),
+                            Value::Integer(exit_code as i64),
+                        ]
+                        .into(),
+                    ))
                 }
                 Err(e) => Err(fmt_msg(MsgKey::CmdWaitFailed, &[&e.to_string()])),
             }
@@ -777,10 +814,11 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 /// @qi-doc:category cmd
-/// @qi-doc:functions exec, sh, pipe, pipe!, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
+/// @qi-doc:functions exec, sh, sh!, pipe, pipe!, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("cmd/exec", native_exec),
     ("cmd/sh", native_sh),
+    ("cmd/sh!", native_sh_bang),
     ("cmd/pipe", native_pipe),
     ("cmd/pipe!", native_pipe_bang),
     ("cmd/lines", native_lines),

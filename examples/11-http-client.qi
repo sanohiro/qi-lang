@@ -7,23 +7,28 @@
 
 (println "=== HTTPクライアント ===\n")
 
-;; GET リクエスト
-(println "=== GET リクエスト ===")
+;; GET リクエスト（シンプル版）- ボディのみ取得
+(println "=== GET リクエスト（シンプル版） ===")
 
 (def response (http/get "https://httpbin.org/get"))
-(println f"Status: {(get response :status)}")
-(println f"Body (first 200 chars): {(str/slice (get response :body) 0 200)}")
+(println f"Body (first 200 chars): {(str/slice response 0 200)}")
 
-;; パイプラインでレスポンスを処理
-(println "\n=== パイプラインでレスポンス処理 ===")
+;; GET リクエスト（詳細版）- ステータス・ヘッダー・ボディを取得
+(println "\n=== GET リクエスト（詳細版） ===")
+
+(def response-detail (http/get! "https://httpbin.org/get"))
+(println f"Status: {(get response-detail :status)}")
+(println f"Body (first 200 chars): {(str/slice (get response-detail :body) 0 200)}")
+
+;; パイプラインでレスポンスを処理（シンプル版）
+(println "\n=== パイプラインでレスポンス処理（シンプル版） ===")
 
 (println ("https://httpbin.org/get"
           |> http/get
-          |> (fn [r] (get r :body))
           |> json/parse
           |> (fn [data] (get data "headers"))))
 
-;; POST リクエスト
+;; POST リクエスト（シンプル版）
 (println "\n=== POST リクエスト ===")
 
 (def post-data {:name "Alice" :age 25})
@@ -31,7 +36,14 @@
                               {:body (json/stringify post-data)
                                :headers {"Content-Type" "application/json"}}))
 
-(println f"POST Status: {(get post-response :status)}")
+(println f"POST Response (first 200 chars): {(str/slice post-response 0 200)}")
+
+;; POST リクエスト（詳細版）
+(def post-response-detail (http/post! "https://httpbin.org/post"
+                                      {:body (json/stringify post-data)
+                                       :headers {"Content-Type" "application/json"}}))
+
+(println f"POST Status: {(get post-response-detail :status)}")
 
 ;; Railway Pipeline でエラーハンドリング
 (println "\n=== エラーハンドリング ===")
@@ -40,11 +52,10 @@
   (try (http/get url)))
 
 (println (safe-http-get "https://httpbin.org/get"
-          |>? (fn [r] (get r :body))
           |>? json/parse
           |>? (fn [data] (get data "url"))))
 
-;; 複数URLの並列取得
+;; 複数URLの並列取得（詳細版使用）
 (println "\n=== 並列HTTP取得 ===")
 
 (def urls
@@ -54,29 +65,29 @@
 
 (println "並列取得:")
 (println (urls
-          ||> http/get
+          ||> http/get!
           ||> (fn [r] {:status (get r :status) :size (len (get r :body))})))
 
 ;; REST API風の操作
 (println "\n=== REST API風の操作 ===")
 
-; GET - リソース取得
+; GET - リソース取得（詳細版でステータスコード取得）
 (defn get-resource [id]
-  (http/get f"https://httpbin.org/get?id={id}")
+  (http/get! f"https://httpbin.org/get?id={id}")
   |> (fn [r] (get r :status)))
 
 (println f"GET /resource/123: {(get-resource 123)}")
 
-; POST - リソース作成
+; POST - リソース作成（詳細版でステータスコード取得）
 (defn create-resource [data]
-  (http/post "https://httpbin.org/post"
-             {:body (json/stringify data)
-              :headers {"Content-Type" "application/json"}})
+  (http/post! "https://httpbin.org/post"
+              {:body (json/stringify data)
+               :headers {"Content-Type" "application/json"}})
   |> (fn [r] (get r :status)))
 
 (println f"POST /resource: {(create-resource {:name \"Bob\" :value 42})}")
 
-;; matchでレスポンス処理
+;; matchでレスポンス処理（詳細版使用）
 (println "\n=== matchでレスポンス処理 ===")
 
 (defn handle-http-response [response]
@@ -86,25 +97,24 @@
     {:status 500} -> "Server Error"
     _ -> "Unknown response"))
 
-(println (handle-http-response (http/get "https://httpbin.org/get")))
+(println (handle-http-response (http/get! "https://httpbin.org/get")))
 
-;; JSONデータの取得と変換パイプライン
+;; JSONデータの取得と変換パイプライン（シンプル版）
 (println "\n=== JSONデータパイプライン ===")
 
 (println ("https://httpbin.org/get"
           |> http/get
-          |> (fn [r] (get r :body))
           |> json/parse
           |> (fn [data] (get data "headers"))
           |> (fn [headers] (get headers "Host"))))
 
-;; カスタムヘッダー
+;; カスタムヘッダー（詳細版でステータス確認）
 (println "\n=== カスタムヘッダー ===")
 
 (def custom-response
-  (http/get "https://httpbin.org/headers"
-            {:headers {"User-Agent" "Qi/0.1.0"
-                      "X-Custom-Header" "Hello from Qi"}}))
+  (http/get! "https://httpbin.org/headers"
+             {:headers {"User-Agent" "Qi/0.1.0"
+                       "X-Custom-Header" "Hello from Qi"}}))
 
 (println f"Custom headers response: {(get custom-response :status)}")
 
@@ -123,7 +133,8 @@
         result))))
 
 (println (retry-http-get "https://httpbin.org/get" 3
-          |> (fn [r] (get r :status))))
+          |> json/parse
+          |> (fn [data] (get data "url"))))
 
 ;; API レスポンスのキャッシュ（Atomを使用）
 (println "\n=== APIキャッシュ ===")
@@ -142,8 +153,8 @@
           (swap! api-cache assoc url response)
           response)))))
 
-(println (cached-http-get "https://httpbin.org/get" |> (fn [r] (get r :status))))
-(println (cached-http-get "https://httpbin.org/get" |> (fn [r] (get r :status))))  ; Cache hit
+(println (cached-http-get "https://httpbin.org/get" |> json/parse |> (fn [data] (get data "url"))))
+(println (cached-http-get "https://httpbin.org/get" |> json/parse |> (fn [data] (get data "url"))))  ; Cache hit
 
 (println "\n=== QiでHTTPクライアントが簡単に！ ===")
 (println "次は 12-web-server.qi でWebサーバーを学びましょう")

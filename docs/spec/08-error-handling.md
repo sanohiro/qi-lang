@@ -52,8 +52,7 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
 ```qi
 ;; HTTPリクエスト + エラーハンドリング（シンプル！）
 ("https://api.example.com/users/123"
- |> http/get                      ;; => {:status 200 :body "..."}
- |>? (fn [resp] (get resp :body))  ;; 値を返すだけ！
+ |> http/get                      ;; => "{\"user\": {...}}"（ボディのみ）
  |>? json/parse                   ;; => パース結果（値そのまま）
  |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
 ;; 成功時 => ユーザーデータ、エラー時 => {:error ...}
@@ -339,10 +338,6 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
   (user-id
    |> (str "https://api.example.com/users/" _)
    |> http/get
-   |>? (fn [resp]
-         (if (= (get resp "status") 200)
-           (get resp "body")
-           {:error "Failed to fetch"}))
    |>? json/parse
    |>? validate-user))
 

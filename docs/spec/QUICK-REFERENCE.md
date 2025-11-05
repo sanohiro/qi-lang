@@ -212,7 +212,12 @@ nil               ;; nil
 ### HTTPクライアント
 
 ```qi
+;; シンプル版（ボディのみ）
 (def resp (http/get "https://api.example.com/data"))
+(def data (json/parse resp))
+
+;; 詳細版（ステータス・ヘッダー・ボディ）
+(def resp (http/get! "https://api.example.com/data"))
 (def data (json/parse (get resp :body)))
 ```
 
