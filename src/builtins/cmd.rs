@@ -135,38 +135,44 @@ pub fn native_sh(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// pipe - データをコマンドの標準入力へパイプ（標準出力を返す）
-/// 引数: コマンド, 入力データ（文字列 or リスト）
+/// pipe - コマンドを実行して標準出力を返す
+/// 引数: コマンド, [入力データ（文字列 or リスト）]
 /// 戻り値: 標準出力（文字列）。コマンドが失敗した場合はエラーを投げる
-/// 例: ("hello\nworld\n" |> (cmd/pipe "sort"))  ;=> "hello\nworld\n"
+/// 例: (cmd/pipe "ls -la")  ;=> "total 48\ndrwxr-xr-x ...\n"
+///     ("hello\nworld\n" |> (cmd/pipe "sort"))  ;=> "hello\nworld\n"
 ///     (["line1" "line2"] |> (cmd/pipe "wc -l"))  ;=> "       2\n"
 pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/pipe", "2"]));
+    if args.is_empty() || args.len() > 2 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/pipe", "1 or 2"]));
     }
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
-    // 入力データを準備
-    let input_data = match &args[1] {
-        Value::String(s) => s.as_bytes().to_vec(),
-        Value::List(items) | Value::Vector(items) => {
-            // リスト/ベクタの場合、各要素を改行で結合
-            let lines: Vec<String> = items
-                .iter()
-                .map(|v| match v {
-                    Value::String(s) => s.clone(),
-                    Value::Integer(i) => i.to_string(),
-                    Value::Float(f) => f.to_string(),
-                    _ => format!("{:?}", v),
-                })
-                .collect();
-            lines.join("\n").into_bytes()
+    // 入力データを準備（第2引数がある場合）
+    let input_data = if args.len() == 2 {
+        match &args[1] {
+            Value::String(s) => s.as_bytes().to_vec(),
+            Value::List(items) | Value::Vector(items) => {
+                // リスト/ベクタの場合、各要素を改行で結合
+                let lines: Vec<String> = items
+                    .iter()
+                    .map(|v| match v {
+                        Value::String(s) => s.clone(),
+                        Value::Integer(i) => i.to_string(),
+                        Value::Float(f) => f.to_string(),
+                        _ => format!("{:?}", v),
+                    })
+                    .collect();
+                lines.join("\n").into_bytes()
+            }
+            _ => {
+                // その他の型は文字列化
+                format!("{:?}", args[1]).into_bytes()
+            }
         }
-        _ => {
-            // その他の型は文字列化
-            format!("{:?}", args[1]).into_bytes()
-        }
+    } else {
+        // 第2引数がない場合は空の入力
+        Vec::new()
     };
 
     let child = if cmd_args.is_empty() {
@@ -257,38 +263,44 @@ pub fn native_lines(args: &[Value]) -> Result<Value, String> {
     Ok(Value::List(lines.into()))
 }
 
-/// pipe! - データをコマンドの標準入力へパイプ（詳細情報を返す）
-/// 引数: コマンド, 入力データ（文字列 or リスト）
+/// pipe! - コマンドを実行して詳細情報を返す
+/// 引数: コマンド, [入力データ（文字列 or リスト）]
 /// 戻り値: [stdout stderr exitcode] ベクタ
-/// 例: (let [[out err code] ("test" |> (cmd/pipe! "cat"))] ...)
+/// 例: (cmd/pipe! "ls -la")  ;=> ["total 48\n..." "" 0]
+///     (let [[out err code] ("test" |> (cmd/pipe! "cat"))] ...)
 ///     (["line1" "line2"] |> (cmd/pipe! ["wc" "-l"]))  ;=> ["       2\n" "" 0]
 pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/pipe!", "2"]));
+    if args.is_empty() || args.len() > 2 {
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/pipe!", "1 or 2"]));
     }
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
-    // 入力データを準備
-    let input_data = match &args[1] {
-        Value::String(s) => s.as_bytes().to_vec(),
-        Value::List(items) | Value::Vector(items) => {
-            // リスト/ベクタの場合、各要素を改行で結合
-            let lines: Vec<String> = items
-                .iter()
-                .map(|v| match v {
-                    Value::String(s) => s.clone(),
-                    Value::Integer(i) => i.to_string(),
-                    Value::Float(f) => f.to_string(),
-                    _ => format!("{:?}", v),
-                })
-                .collect();
-            lines.join("\n").into_bytes()
+    // 入力データを準備（第2引数がある場合）
+    let input_data = if args.len() == 2 {
+        match &args[1] {
+            Value::String(s) => s.as_bytes().to_vec(),
+            Value::List(items) | Value::Vector(items) => {
+                // リスト/ベクタの場合、各要素を改行で結合
+                let lines: Vec<String> = items
+                    .iter()
+                    .map(|v| match v {
+                        Value::String(s) => s.clone(),
+                        Value::Integer(i) => i.to_string(),
+                        Value::Float(f) => f.to_string(),
+                        _ => format!("{:?}", v),
+                    })
+                    .collect();
+                lines.join("\n").into_bytes()
+            }
+            _ => {
+                // その他の型は文字列化
+                format!("{:?}", args[1]).into_bytes()
+            }
         }
-        _ => {
-            // その他の型は文字列化
-            format!("{:?}", args[1]).into_bytes()
-        }
+    } else {
+        // 第2引数がない場合は空の入力
+        Vec::new()
     };
 
     let child = if cmd_args.is_empty() {

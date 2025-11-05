@@ -1650,7 +1650,7 @@ static EN_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         // REPL
         (ReplWelcome, "Qi REPL v{0}"),
-        (ReplPressCtrlC, "Press Ctrl+C to exit"),
+        (ReplPressCtrlC, "Press Ctrl+D to exit, Ctrl+C to cancel input"),
         (ReplGoodbye, "Goodbye!"),
         (ReplLoading, "Loading {0}..."),
         (ReplLoaded, "Loaded {0}"),
@@ -1854,7 +1854,7 @@ static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         // REPL
         (ReplWelcome, "Qi REPL v{0}"),
-        (ReplPressCtrlC, "終了するには Ctrl+C を押してください"),
+        (ReplPressCtrlC, "終了するには Ctrl+D、入力キャンセルは Ctrl+C"),
         (ReplGoodbye, "さようなら！"),
         (ReplLoading, "{0}を読み込んでいます..."),
         (ReplLoaded, "{0}を読み込みました"),
