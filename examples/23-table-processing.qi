@@ -1,0 +1,132 @@
+;; テーブル処理ライブラリの使用例
+;;
+;; std/lib/tableは、CSV、JSON、データベース結果などの
+;; 表形式データを扱うための便利な関数を提供します。
+
+(use "std/lib/table" :as table)
+
+(println "=== テーブル処理ライブラリ(std/lib/table)のデモ ===")
+(println "")
+
+;; ========================================
+;; サンプルデータの準備
+;; ========================================
+
+(def products [
+  {:id 1 :name "Laptop" :category "electronics" :price 1000 :stock 5}
+  {:id 2 :name "Mouse" :category "electronics" :price 25 :stock 50}
+  {:id 3 :name "Book" :category "books" :price 15 :stock 100}
+  {:id 4 :name "Keyboard" :category "electronics" :price 75 :stock 30}
+  {:id 5 :name "Novel" :category "books" :price 20 :stock 80}
+  {:id 6 :name "Laptop" :category "electronics" :price 1000 :stock 5}])  ;; 重複データ
+
+(println "## 元データ:")
+(println products)
+(println "")
+
+;; ========================================
+;; 1. グループ化 (group-by)
+;; ========================================
+
+(println "## 1. カテゴリ別にグループ化")
+(println "")
+
+;; キーワードでグループ化（推奨）
+(def by-category (table/group-by products :category))
+(println "(table/group-by products :category)")
+(println by-category)
+(println "")
+
+;; 関数でグループ化（カスタムロジック用）
+(println "## 2. 価格帯でグループ化（関数使用）")
+(def by-price-range
+  (table/group-by products
+    (fn [p]
+      (if (< (get p :price) 50)
+        "cheap"
+        "expensive"))))
+(println "(table/group-by products (fn [p] ...))")
+(println by-price-range)
+(println "")
+
+;; ========================================
+;; 2. 重複除去 (distinct-table)
+;; ========================================
+
+(println "## 3. 重複除去（全カラム）")
+(def unique-all (table/distinct-table products))
+(println "(table/distinct-table products)")
+(println (str "元データ: " (len products) " 行"))
+(println (str "重複除去後: " (len unique-all) " 行"))
+(println unique-all)
+(println "")
+
+(println "## 4. 重複除去（特定キーのみ）")
+(def unique-partial (table/distinct-table products :name :price))
+(println "(table/distinct-table products :name :price)")
+(println (str ":name + :price で重複除去: " (len unique-partial) " 行"))
+(println unique-partial)
+(println "")
+
+;; ========================================
+;; 3. 実用例: データ分析
+;; ========================================
+
+(println "## 5. 実用例: カテゴリ別在庫数の集計")
+(println "")
+
+;; カテゴリ別にグループ化
+(def grouped (table/group-by products :category))
+
+;; 各カテゴリの統計を計算（注: 現在のmapはMapをイテレートできないため手動処理）
+(println "electronics カテゴリ:")
+(def electronics-items (get grouped "String(\"electronics\")"))
+(if (not (nil? electronics-items))
+  (do
+    (println (str "  商品数: " (len electronics-items)))
+    (def total-stock (reduce (fn [sum item] (+ sum (get item :stock))) 0 electronics-items))
+    (println (str "  総在庫: " total-stock))
+    (def avg-price (/ (reduce (fn [sum item] (+ sum (get item :price))) 0 electronics-items) (len electronics-items)))
+    (println (str "  平均価格: " avg-price)))
+  (println "  データなし"))
+(println "")
+
+(println "books カテゴリ:")
+(def books-items (get grouped "String(\"books\")"))
+(if (not (nil? books-items))
+  (do
+    (println (str "  商品数: " (len books-items)))
+    (def total-stock (reduce (fn [sum item] (+ sum (get item :stock))) 0 books-items))
+    (println (str "  総在庫: " total-stock))
+    (def avg-price (/ (reduce (fn [sum item] (+ sum (get item :price))) 0 books-items) (len books-items)))
+    (println (str "  平均価格: " avg-price)))
+  (println "  データなし"))
+(println "")
+
+;; ========================================
+;; 4. こんな時に使う
+;; ========================================
+
+(println "=== こんな時に使う ===")
+(println "")
+(println "1. CSVやJSONからロードしたデータの集計")
+(println "   - (use \"data/csv\" :as csv)")
+(println "   - (def data (csv/read-file \"sales.csv\"))")
+(println "   - (table/group-by data :date)")
+(println "")
+(println "2. データベース結果の後処理")
+(println "   - (def results (db/query conn \"SELECT * FROM orders\"))")
+(println "   - (table/group-by results :customer_id)")
+(println "")
+(println "3. ログファイルの分析")
+(println "   - (def logs (json/parse (io/read-file \"app.log\")))")
+(println "   - (table/group-by logs :level)  ;; ERROR, WARN, INFOごとに集計")
+(println "")
+(println "4. 重複データのクリーニング")
+(println "   - (def cleaned (table/distinct-table data :email))  ;; メールアドレスで重複除去")
+(println "")
+(println "5. awk/SQL的なデータ操作")
+(println "   - SQLのGROUP BYやDISTINCTと同様の操作をQiで実現")
+(println "")
+
+(println "=== デモ完了 ===")

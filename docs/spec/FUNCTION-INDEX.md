@@ -213,6 +213,10 @@
 
   - select, order-by, take, drop, where
 
+### table (std/lib/table)
+
+  - group-by, distinct-table
+
 ### zip
 
   - create, extract, list, gzip, gunzip

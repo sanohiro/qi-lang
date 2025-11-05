@@ -112,8 +112,8 @@ impl Evaluator {
     ///
     /// # 検索順序
     /// 1. 絶対パス・相対パスの場合は現在のソースファイルのディレクトリを基準に解決
-    /// 2. 標準ライブラリ（カレントディレクトリ基準）: `./std/lib/{name}.qi`
-    /// 3. 標準ライブラリ（Qi実行ファイル基準）: `{qi_exe_dir}/std/lib/{name}.qi`
+    /// 2. 標準ライブラリ（カレントディレクトリ基準）: `./std/{name}.qi`（サブディレクトリ対応）
+    /// 3. 標準ライブラリ（Qi実行ファイル基準）: `{qi_exe_dir}/std/{name}.qi`（サブディレクトリ対応）
     /// 4. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
     /// 5. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
     pub(super) fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
@@ -142,56 +142,77 @@ impl Evaluator {
             return Ok(paths);
         }
 
-        // 1. 標準ライブラリ（カレントディレクトリ基準）: ./std/lib/{name}.qi
-        paths.push(format!("./std/lib/{}.qi", name));
+        // 標準ライブラリのパス解決（std/配下のサブディレクトリに対応）
+        // 例: "std/lib/table" -> "./std/lib/table.qi" と "{qi_exe_dir}/std/lib/table.qi"
+        if let Some(relative_path) = name.strip_prefix("std/") {
+            // 1. カレントディレクトリの./std/配下を検索
+            paths.push(format!("./std/{}.qi", relative_path));
 
-        // 2. 標準ライブラリ（Qi実行ファイル基準）: {qi_exe_dir}/std/lib/{name}.qi
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                let std_lib_path = exe_dir
-                    .join("std/lib")
-                    .join(format!("{}.qi", name))
-                    .to_string_lossy()
-                    .to_string();
-                paths.push(std_lib_path);
+            // 2. Qi実行ファイルと同じディレクトリのstd/配下を検索
+            if let Ok(exe_path) = std::env::current_exe() {
+                if let Some(exe_dir) = exe_path.parent() {
+                    let std_path = exe_dir
+                        .join("std")
+                        .join(format!("{}.qi", relative_path))
+                        .to_string_lossy()
+                        .to_string();
+                    paths.push(std_path);
+                }
             }
-        }
+        } else {
+            // stdで始まらない場合は従来の検索パスを使用
 
-        // 3. プロジェクトローカル: ./qi_packages/{name}/mod.qi
-        paths.push(format!("./qi_packages/{}/mod.qi", name));
+            // 1. 標準ライブラリトップレベル: ./std/{name}.qi
+            paths.push(format!("./std/{}.qi", name));
 
-        // 4. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
-        #[cfg(feature = "repl")]
-        {
-            if let Some(home) = dirs::home_dir() {
-                let packages_dir = home.join(".qi").join("packages").join(name);
+            // 2. 標準ライブラリトップレベル（Qi実行ファイル基準）
+            if let Ok(exe_path) = std::env::current_exe() {
+                if let Some(exe_dir) = exe_path.parent() {
+                    let std_path = exe_dir
+                        .join("std")
+                        .join(format!("{}.qi", name))
+                        .to_string_lossy()
+                        .to_string();
+                    paths.push(std_path);
+                }
+            }
 
-                // バージョンディレクトリを探す（最新版を使用）
-                if let Ok(entries) = std::fs::read_dir(&packages_dir) {
-                    let mut versions: Vec<String> = entries
-                        .filter_map(|e| e.ok())
-                        .filter(|e| e.path().is_dir())
-                        .filter_map(|e| e.file_name().into_string().ok())
-                        .collect();
+            // 3. プロジェクトローカル: ./qi_packages/{name}/mod.qi
+            paths.push(format!("./qi_packages/{}/mod.qi", name));
 
-                    // セマンティックバージョニングでソート（簡易版）
-                    versions.sort_by(|a, b| {
-                        let a_parts: Vec<u32> =
-                            a.split('.').filter_map(|s| s.parse().ok()).collect();
-                        let b_parts: Vec<u32> =
-                            b.split('.').filter_map(|s| s.parse().ok()).collect();
-                        b_parts.cmp(&a_parts) // 降順（新しい順）
-                    });
+            // 4. グローバルキャッシュ: ~/.qi/packages/{name}/{version}/mod.qi
+            #[cfg(feature = "repl")]
+            {
+                if let Some(home) = dirs::home_dir() {
+                    let packages_dir = home.join(".qi").join("packages").join(name);
 
-                    // 最新バージョンのmod.qiを追加
-                    if let Some(latest) = versions.first() {
-                        paths.push(
-                            packages_dir
-                                .join(latest)
-                                .join("mod.qi")
-                                .to_string_lossy()
-                                .to_string(),
-                        );
+                    // バージョンディレクトリを探す（最新版を使用）
+                    if let Ok(entries) = std::fs::read_dir(&packages_dir) {
+                        let mut versions: Vec<String> = entries
+                            .filter_map(|e| e.ok())
+                            .filter(|e| e.path().is_dir())
+                            .filter_map(|e| e.file_name().into_string().ok())
+                            .collect();
+
+                        // セマンティックバージョニングでソート（簡易版）
+                        versions.sort_by(|a, b| {
+                            let a_parts: Vec<u32> =
+                                a.split('.').filter_map(|s| s.parse().ok()).collect();
+                            let b_parts: Vec<u32> =
+                                b.split('.').filter_map(|s| s.parse().ok()).collect();
+                            b_parts.cmp(&a_parts) // 降順（新しい順）
+                        });
+
+                        // 最新バージョンのmod.qiを追加
+                        if let Some(latest) = versions.first() {
+                            paths.push(
+                                packages_dir
+                                    .join(latest)
+                                    .join("mod.qi")
+                                    .to_string_lossy()
+                                    .to_string(),
+                            );
+                        }
                     }
                 }
             }

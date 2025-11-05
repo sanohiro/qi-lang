@@ -1,0 +1,66 @@
+;; table.qi - テーブル処理ユーティリティ (Phase 1)
+;;
+;; 既存のlist/コレクション関数のシンタックスシュガー
+;; SQL/awkライクなテーブル操作を提供
+
+(module table)
+
+;; ========================================
+;; グループ化
+;; ========================================
+
+;; テーブルをキーでグループ化
+;; 引数: (table key-selector)
+;;   table: テーブルデータ (list of maps or arrays)
+;;   key-selector: キーワード (例: :category) または関数
+;; 戻り値: {group-key: [rows...], ...}
+;;
+;; 例:
+;;   (table/group-by data :category)
+;;   ;=> {:electronics [{...}, {...}], :books [{...}]}
+;;
+;;   (table/group-by data (fn [row] (get row :year)))
+;;   ;=> {2024 [{...}], 2023 [{...}]}
+(defn group-by [table key-selector]
+  (list/group-by
+    (if (keyword? key-selector)
+      (fn [row] (get row key-selector))
+      key-selector)
+    table))
+
+;; ========================================
+;; 重複除去
+;; ========================================
+
+;; テーブルから重複行を除去
+;; 引数: (table & keys)
+;;   table: テーブルデータ
+;;   keys: 比較するキー (省略時は全カラム)
+;; 戻り値: 重複除去されたテーブル
+;;
+;; 例:
+;;   (table/distinct data)
+;;   ;=> 全カラムで重複除去
+;;
+;;   (table/distinct data :user_id :email)
+;;   ;=> user_idとemailの組み合わせで重複除去
+(defn distinct-table [table & keys]
+  (if (empty? keys)
+    ;; キー指定なし: 全カラムで重複除去
+    (distinct table)
+    ;; キー指定あり: 指定されたキーで重複除去
+    (let [key-fn (fn [row] (map (fn [k] (get row k)) keys))
+          seen (atom [])]
+      (filter
+        (fn [row]
+          (let [key-val (key-fn row)]
+            (if (list/some? (fn [x] (= x key-val)) @seen)
+              false
+              (do (swap! seen conj key-val) true))))
+        table))))
+
+;; ========================================
+;; エクスポート
+;; ========================================
+
+(export group-by distinct-table)

@@ -1,0 +1,115 @@
+;; std/lib/table - Table Processing Library (Phase 1)
+
+(def __module__
+  {:name "std/lib/table"
+   :desc "Table processing utilities - Provides SQL/awk-like table operations"
+   :category "data"
+   :usage "(use \"std/lib/table\" :as table)"})
+
+;; ========================================
+;; Grouping
+;; ========================================
+
+(def __doc__group-by
+  {:desc "Group table by key"
+   :params [{:name "table" :type "list/vector" :desc "Table data (list of maps or arrays)"}
+            {:name "key-selector" :type "keyword/function" :desc "Keyword (:category) or function"}]
+   :returns {:type "map" :desc "{group-key: [rows...], ...}"}
+   :examples [
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def products ["
+     "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
+     "  {:id 2 :name \"Mouse\" :category \"electronics\" :price 25}"
+     "  {:id 3 :name \"Book\" :category \"books\" :price 15}])"
+     ""
+     ";; Group by keyword"
+     "(table/group-by products :category)"
+     ";=> {\"electronics\" [{...}, {...}], \"books\" [{...}]}"
+     ""
+     ";; Group by function"
+     "(table/group-by products (fn [row] (get row :category)))"
+     ";=> {\"electronics\" [{...}, {...}], \"books\" [{...}]}"
+   ]
+   :see-also ["list/group-by" "table/distinct-table"]
+   :note "Wrapper around list/group-by for concise keyword-based grouping"})
+
+;; ========================================
+;; Deduplication
+;; ========================================
+
+(def __doc__distinct-table
+  {:desc "Remove duplicate rows from table"
+   :params [{:name "table" :type "list/vector" :desc "Table data"}
+            {:name "keys" :type "keyword..." :desc "Keys to compare (variadic, all columns if omitted)"}]
+   :returns {:type "list/vector" :desc "Deduplicated table"}
+   :examples [
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def products ["
+     "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
+     "  {:id 2 :name \"Mouse\" :category \"electronics\" :price 25}"
+     "  {:id 3 :name \"Laptop\" :category \"electronics\" :price 1000}])"  ;; Duplicate
+     ""
+     ";; Remove duplicates (all columns)"
+     "(table/distinct-table products)"
+     ";=> 6 rows → 5 rows (removes exact matches)"
+     ""
+     ";; Remove duplicates (specific keys)"
+     "(table/distinct-table products :name :price)"
+     ";=> Deduplicate by :name + :price combination"
+   ]
+   :see-also ["distinct" "list/group-by" "table/group-by"]
+   :note "Uses global distinct function for full-column comparison"})
+
+;; ========================================
+;; Usage Examples
+;; ========================================
+
+(def __examples__
+  {:desc "std/lib/table usage examples"
+   :examples [
+     ";; ========================================="
+     ";; Basic Usage"
+     ";; ========================================="
+     ""
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def sales-data ["
+     "  {:date \"2024-01-01\" :category \"electronics\" :amount 1000}"
+     "  {:date \"2024-01-01\" :category \"books\" :amount 200}"
+     "  {:date \"2024-01-02\" :category \"electronics\" :amount 1500}"
+     "  {:date \"2024-01-02\" :category \"books\" :amount 300}"
+     "  {:date \"2024-01-03\" :category \"electronics\" :amount 1200}])"
+     ""
+     ";; Group by category"
+     "(def by-category (table/group-by sales-data :category))"
+     ";=> {\"electronics\" [3 items], \"books\" [2 items]}"
+     ""
+     ";; Group by date"
+     "(def by-date (table/group-by sales-data :date))"
+     ";=> {\"2024-01-01\" [2 items], \"2024-01-02\" [2 items], ...}"
+     ""
+     ";; Remove duplicates"
+     "(def unique-sales (table/distinct-table sales-data :category :date))"
+     ";=> Deduplicate by :category + :date combination"
+     ""
+     ";; ========================================="
+     ";; Combined with Pipelines"
+     ";; ========================================="
+     ""
+     ";; Group by category (Note: current map cannot iterate Maps)"
+     "(def by-cat (table/group-by sales-data :category))"
+     ""
+     ";; Aggregation requires alternative approach"
+     ""
+     ";; ========================================="
+     ";; Use Cases"
+     ";; ========================================="
+     ""
+     ";; 1. Aggregate CSV or JSON data"
+     ";; 2. Post-process database results"
+     ";; 3. Analyze log files (by date, category, etc.)"
+     ";; 4. Clean duplicate data"
+     ";; 5. awk/SQL-like data manipulation"
+   ]})

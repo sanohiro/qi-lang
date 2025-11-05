@@ -1,0 +1,115 @@
+;; std/lib/table - テーブル処理ライブラリ (Phase 1)
+
+(def __module__
+  {:name "std/lib/table"
+   :desc "テーブル処理ユーティリティ - SQL/awkライクなテーブル操作を提供"
+   :category "data"
+   :usage "(use \"std/lib/table\" :as table)"})
+
+;; ========================================
+;; グループ化
+;; ========================================
+
+(def __doc__group-by
+  {:desc "テーブルをキーでグループ化"
+   :params [{:name "table" :type "list/vector" :desc "テーブルデータ (list of maps or arrays)"}
+            {:name "key-selector" :type "keyword/function" :desc "キーワード (:category) または関数"}]
+   :returns {:type "map" :desc "{group-key: [rows...], ...}"}
+   :examples [
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def products ["
+     "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
+     "  {:id 2 :name \"Mouse\" :category \"electronics\" :price 25}"
+     "  {:id 3 :name \"Book\" :category \"books\" :price 15}])"
+     ""
+     ";; キーワードでグループ化"
+     "(table/group-by products :category)"
+     ";=> {\"electronics\" [{...}, {...}], \"books\" [{...}]}"
+     ""
+     ";; 関数でグループ化"
+     "(table/group-by products (fn [row] (get row :category)))"
+     ";=> {\"electronics\" [{...}, {...}], \"books\" [{...}]}"
+   ]
+   :see-also ["list/group-by" "table/distinct-table"]
+   :note "既存のlist/group-by関数のラッパーで、キーワードによる簡潔な記述を可能にします"})
+
+;; ========================================
+;; 重複除去
+;; ========================================
+
+(def __doc__distinct-table
+  {:desc "テーブルから重複行を除去"
+   :params [{:name "table" :type "list/vector" :desc "テーブルデータ"}
+            {:name "keys" :type "keyword..." :desc "比較するキー (可変長引数、省略時は全カラム)"}]
+   :returns {:type "list/vector" :desc "重複除去されたテーブル"}
+   :examples [
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def products ["
+     "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
+     "  {:id 2 :name \"Mouse\" :category \"electronics\" :price 25}"
+     "  {:id 3 :name \"Laptop\" :category \"electronics\" :price 1000}])"  ;; 重複
+     ""
+     ";; 全カラムで重複除去"
+     "(table/distinct-table products)"
+     ";=> 6行 → 5行（完全に一致する行を除去）"
+     ""
+     ";; 特定キーで重複除去"
+     "(table/distinct-table products :name :price)"
+     ";=> :nameと:priceの組み合わせで重複除去"
+   ]
+   :see-also ["distinct" "list/group-by" "table/group-by"]
+   :note "全カラム比較の場合はグローバルdistinct関数を使用します"})
+
+;; ========================================
+;; 使用例
+;; ========================================
+
+(def __examples__
+  {:desc "std/lib/tableの使用例"
+   :examples [
+     ";; ========================================="
+     ";; 基本的な使い方"
+     ";; ========================================="
+     ""
+     "(use \"std/lib/table\" :as table)"
+     ""
+     "(def sales-data ["
+     "  {:date \"2024-01-01\" :category \"electronics\" :amount 1000}"
+     "  {:date \"2024-01-01\" :category \"books\" :amount 200}"
+     "  {:date \"2024-01-02\" :category \"electronics\" :amount 1500}"
+     "  {:date \"2024-01-02\" :category \"books\" :amount 300}"
+     "  {:date \"2024-01-03\" :category \"electronics\" :amount 1200}])"
+     ""
+     ";; カテゴリ別にグループ化"
+     "(def by-category (table/group-by sales-data :category))"
+     ";=> {\"electronics\" [3 items], \"books\" [2 items]}"
+     ""
+     ";; 日付別にグループ化"
+     "(def by-date (table/group-by sales-data :date))"
+     ";=> {\"2024-01-01\" [2 items], \"2024-01-02\" [2 items], ...}"
+     ""
+     ";; 重複データの除去"
+     "(def unique-sales (table/distinct-table sales-data :category :date))"
+     ";=> :categoryと:dateの組み合わせで重複除去"
+     ""
+     ";; ========================================="
+     ";; パイプラインとの組み合わせ"
+     ";; ========================================="
+     ""
+     ";; カテゴリ別の集計（注: 現在のmapはMapをイテレートできないため要改善）"
+     "(def by-cat (table/group-by sales-data :category))"
+     ""
+     ";; 集計処理は別の方法で実装する必要があります"
+     ""
+     ";; ========================================="
+     ";; こんな時に使う"
+     ";; ========================================="
+     ""
+     ";; 1. CSVやJSONからロードしたデータの集計"
+     ";; 2. データベース結果の後処理"
+     ";; 3. ログファイルの分析（日付別、カテゴリ別など）"
+     ";; 4. 重複データのクリーニング"
+     ";; 5. awk/SQL的なデータ操作"
+   ]})
