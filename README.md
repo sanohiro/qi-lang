@@ -155,8 +155,8 @@ qi script.qi
 qi -e '(+ 1 2 3)'
 
 # パイプからの入力を処理（自動的にstdin変数に格納）
-cat data.csv | qi -e '(stdin |> split "\n" |> (map str/trim) |> (filter (fn [x] (> (len x) 0))))'
-ls -l | qi -e '(stdin |> split "\n" |> count)'
+cat data.csv | qi -e '(stdin |> (map str/trim) |> (filter (fn [x] (> (len x) 0))))'
+ls -l | qi -e '(count stdin)'
 
 # ヘルプ表示
 qi --help

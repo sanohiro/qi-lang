@@ -125,17 +125,17 @@ qi examples/example.qi
 
 **stdin自動バインド:**
 
-パイプから入力がある場合、自動的に`stdin`変数に全データが格納されます：
+パイプから入力がある場合、自動的に`stdin`変数に全データ（文字列のベクター）が格納されます：
 
 ```bash
 # 行数をカウント
-cat data.txt | qi -e '(stdin |> split "\n" |> count)'
+cat data.txt | qi -e '(count stdin)'
 
-# CSVデータを処理
-cat users.csv | qi -e '(stdin |> split "\n" |> (filter (fn [x] (> (len x) 0))))'
+# CSVデータを処理（空行を除外）
+cat users.csv | qi -e '(stdin |> (filter (fn [x] (> (len x) 0))))'
 
-# 空行を除外して変換
-echo -e "hello\n\nworld" | qi -e '(stdin |> split "\n" |> (filter (fn [x] (> (len x) 0))) |> (map str/upper))'
+# 空行を除外して大文字変換
+echo -e "hello\n\nworld" | qi -e '(stdin |> (filter (fn [x] (> (len x) 0))) |> (map str/upper))'
 ```
 
 **例:**
