@@ -141,8 +141,37 @@ qi script.qi
 # ワンライナー実行
 qi -e '(+ 1 2 3)'
 
+# パイプからの入力を処理（自動的にstdin変数に格納）
+cat data.csv | qi -e '(stdin |> split "\n" |> (map str/trim) |> (filter (fn [x] (> (len x) 0))))'
+ls -l | qi -e '(stdin |> split "\n" |> count)'
+
 # ヘルプ表示
 qi --help
+```
+
+### 初期化ファイル（.qi/init.qi）
+
+REPLおよびワンライナー実行時に、以下の順序で初期化ファイルが自動ロードされます：
+
+```bash
+# 1. ユーザーグローバル設定（優先）
+~/.qi/init.qi
+
+# 2. プロジェクトローカル設定
+./.qi/init.qi
+```
+
+初期化ファイルでよく使うライブラリをプリロードしたり、便利な関数を定義できます：
+
+```lisp
+;; ~/.qi/init.qi の例
+;; テーブル処理ライブラリをプリロード
+(use "std/lib/table" :as table)
+
+;; デバッグ用関数
+(defn dbg [x]
+  (do (println (str "DEBUG: " x))
+      x))
 ```
 
 ## テスト

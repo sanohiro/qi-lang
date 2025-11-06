@@ -123,6 +123,21 @@ qi examples/example.qi
 **オプション:**
 - `-e, -c <code>` - 実行するQiコード
 
+**stdin自動バインド:**
+
+パイプから入力がある場合、自動的に`stdin`変数に全データが格納されます：
+
+```bash
+# 行数をカウント
+cat data.txt | qi -e '(stdin |> split "\n" |> count)'
+
+# CSVデータを処理
+cat users.csv | qi -e '(stdin |> split "\n" |> (filter (fn [x] (> (len x) 0))))'
+
+# 空行を除外して変換
+echo -e "hello\n\nworld" | qi -e '(stdin |> split "\n" |> (filter (fn [x] (> (len x) 0))) |> (map str/upper))'
+```
+
 **例:**
 ```bash
 qi -e '(+ 1 2 3)'
