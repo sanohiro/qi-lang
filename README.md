@@ -4,7 +4,7 @@
   <img src="./assets/logo/qi-logo-full-512.png" alt="Qi Logo" width="400">
 </p>
 
-**データの流れを設計するLisp系言語。パイプライン、パターンマッチング、並行処理に強い。**
+**データの流れを設計するシンプルなLisp系のプログラミング言語。パイプライン、パターンマッチング、並行処理に強いです。**
 
 ## ⚠️ 開発状況
 
@@ -13,7 +13,7 @@
 - 破壊的変更が頻繁に発生します
 - APIやインターフェースは予告なく変更される可能性があります
 - 本番環境での使用は推奨しません
-- フィードバックや貢献は歓迎しますが、安定性は保証できません
+- 未テストのコードも多くあります
 
 現在の開発段階: **Alpha / Experimental**
 
@@ -28,13 +28,14 @@
 - **認証・認可**: JWT認証、Argon2パスワードハッシュ、認証ミドルウェア
 - **データベース**: PostgreSQL/MySQL/SQLite対応（統一インターフェース）
 - **KVS**: Redis対応（統一インターフェース、将来Memcached/InMemory対応予定）
+- **デバッグ**: トレース、ブレークポイント、スタックトレース機能（VSCodeデバッガ対応）
 - **f-string**: 文字列補間と複数行文字列（`"""..."""`）
 - **多言語対応**: 英語・日本語のエラーメッセージ（`QI_LANG=ja`）
 
 
 ## Hello World
 
-```lisp
+```qi
 (defn greet [name]
   f"Hello, {name}!")
 
@@ -45,7 +46,7 @@
 ## パイプライン例
 
 ### 基本パイプライン
-```lisp
+```qi
 ;; 数値のフィルタリングと変換
 ([1 2 3 4 5 6 7 8 9 10]
  |> (filter (fn [x] (> x 5)))
@@ -61,7 +62,7 @@
 ```
 
 ### Railway Pipeline - エラーハンドリング
-```lisp
+```qi
 ;; {:error}以外は全て成功扱い（:okラップなし！）
 (defn validate-positive [x]
   (if (> x 0)
@@ -90,7 +91,7 @@
 ```
 
 ### 並列パイプライン
-```lisp
+```qi
 ;; ||> で複数の処理を並列実行
 ([1 2 3 4 5]
  ||> (fn [x] (* x 2))
@@ -176,7 +177,7 @@ REPLおよびワンライナー実行時に、以下の順序で初期化ファ�
 
 初期化ファイルでよく使うライブラリをプリロードしたり、便利な関数を定義できます：
 
-```lisp
+```qi
 ;; ~/.qi/init.qi の例
 ;; テーブル処理ライブラリをプリロード
 (use "std/lib/table" :as table)
@@ -186,6 +187,20 @@ REPLおよびワンライナー実行時に、以下の順序で初期化ファ�
   (do (println (str "DEBUG: " x))
       x))
 ```
+
+## エディタ拡張
+
+### Visual Studio Code
+
+公式のVSCode拡張機能を提供しています：
+
+- **リポジトリ**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
+- **機能**:
+  - シンタックスハイライト
+  - コードスニペット
+  - ブラケットマッチング
+
+インストール方法や詳細は[qi-vscode リポジトリ](https://github.com/sanohiro/qi-vscode)を参照してください。
 
 ## テスト
 
@@ -220,6 +235,11 @@ cargo test --features integration-tests --test integration_redis
 - テスト開始時にDockerコンテナが自動起動（ポート自動割り当て）
 - テスト終了時にコンテナが自動削除
 - イメージは残るため、次回のテスト実行が高速
+
+## リンク
+
+- **GitHub リポジトリ**: [qi-lang](https://github.com/sanohiro/qi-lang)
+- **VSCode拡張**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
 
 ## ドキュメント
 

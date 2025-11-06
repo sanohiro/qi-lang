@@ -1,2 +1,2 @@
-# Qi language files - treat as Lisp for syntax highlighting
-*.qi linguist-language=Lisp
+# Qi language files - treat as Clojure for syntax highlighting
+*.qi linguist-language=Clojure

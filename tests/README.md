@@ -192,7 +192,7 @@
 
 **制限事項**:
 - マクロ内で`def`の第一引数にunquoteを使用することはサポートされていません
-  ```lisp
+  ```qi
   ;; これは動作しません
   (mac defn [name params & body]
     `(def ,name (fn ,params ,@body)))
