@@ -341,7 +341,13 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
                 std::collections::HashMap::with_capacity(estimated_groups);
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
-                let key_str = format!("{:?}", key);
+                // Valueから純粋な文字列を抽出（Displayの引用符を避けるため）
+                let key_str = match &key {
+                    Value::String(s) => s.clone(),
+                    Value::Keyword(k) => format!(":{}", k),
+                    Value::Symbol(s) => s.clone(),
+                    _ => format!("{}", key),
+                };
                 groups.entry(key_str).or_default().push_back(item.clone());
             }
 

@@ -139,7 +139,7 @@ impl SqliteConnection {
 
             let key = Value::String(column_name)
                 .to_map_key()
-                .map_err(|e| DbError::new(e))?;
+                .map_err(DbError::new)?;
             map.insert(key, value);
         }
 

@@ -18,26 +18,17 @@ use std::sync::{
 };
 use tokio::sync::Mutex;
 
+/// ネイティブ関数の型エイリアス
+type NativeFn = fn(&[Value]) -> Result<Value, String>;
+
 /// @qi-doc:category net/websocket
 /// @qi-doc:functions ws/connect, ws/send, ws/receive, ws/close
 /// @qi-doc:note WebSocket通信（クライアント）
-pub const FUNCTIONS: &[(&str, fn(&[Value]) -> Result<Value, String>)] = &[
-    (
-        "ws/connect",
-        native_ws_connect as fn(&[Value]) -> Result<Value, String>,
-    ),
-    (
-        "ws/send",
-        native_ws_send as fn(&[Value]) -> Result<Value, String>,
-    ),
-    (
-        "ws/receive",
-        native_ws_receive as fn(&[Value]) -> Result<Value, String>,
-    ),
-    (
-        "ws/close",
-        native_ws_close as fn(&[Value]) -> Result<Value, String>,
-    ),
+pub const FUNCTIONS: &[(&str, NativeFn)] = &[
+    ("ws/connect", native_ws_connect as NativeFn),
+    ("ws/send", native_ws_send as NativeFn),
+    ("ws/receive", native_ws_receive as NativeFn),
+    ("ws/close", native_ws_close as NativeFn),
 ];
 
 #[cfg(feature = "websocket")]

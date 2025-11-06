@@ -380,8 +380,53 @@ fn run_tests(args: &[String]) {
     }
 }
 
+/// .qi/init.qi を読み込む（あれば）
+fn load_init_file(evaluator: &Evaluator) {
+    // ~/.qi/init.qi の優先度が最高
+    if let Some(home_dir) = dirs::home_dir() {
+        let user_init = home_dir.join(".qi/init.qi");
+        if user_init.exists() {
+            if let Ok(content) = std::fs::read_to_string(&user_init) {
+                eval_repl_code(evaluator, &content, Some(&user_init.display().to_string()));
+            }
+        }
+    }
+
+    // ./.qi/init.qi（プロジェクトローカル）
+    let local_init = PathBuf::from(".qi/init.qi");
+    if local_init.exists() {
+        if let Ok(content) = std::fs::read_to_string(&local_init) {
+            eval_repl_code(evaluator, &content, Some(&local_init.display().to_string()));
+        }
+    }
+}
+
 fn run_code(code: &str) {
     let mut evaluator = Evaluator::new();
+
+    // .qi/init.qi を読み込む
+    load_init_file(&evaluator);
+
+    // パイプから入力がある場合、stdinを自動バインド
+    use std::io::IsTerminal;
+    if !std::io::stdin().is_terminal() {
+        // 標準入力から全行読み込み
+        match qi_lang::builtins::io::native_stdin_read_lines(&[]) {
+            Ok(lines) => {
+                // グローバル変数'stdin'として環境にバインド
+                if let Some(env) = evaluator.get_env() {
+                    env.write().set("stdin".to_string(), lines);
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "{}",
+                    fmt_msg(MsgKey::IoReadLinesFailedToRead, &["stdin", &e])
+                );
+            }
+        }
+    }
+
     eval_code(&mut evaluator, code, true, None);
 }
 
@@ -443,13 +488,23 @@ fn repl(preload: Option<&str>, quiet: bool) {
     }
 
     let mut evaluator = Evaluator::new();
+
+    // .qi/init.qi を読み込む
+    load_init_file(&evaluator);
+
     let mut helper = QiHelper::new();
     let mut rl = Editor::new().unwrap();
     rl.set_helper(Some(helper));
 
+    // .qi/history ファイルのパス
     let history_file = dirs::home_dir()
-        .map(|p| p.join(".qi_history"))
-        .unwrap_or_else(|| std::path::PathBuf::from(".qi_history"));
+        .map(|p| {
+            let qi_dir = p.join(".qi");
+            // .qiディレクトリがなければ作成
+            let _ = std::fs::create_dir_all(&qi_dir);
+            qi_dir.join("history")
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from(".qi/history"));
 
     let _ = rl.load_history(&history_file);
 
