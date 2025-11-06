@@ -1,4 +1,3 @@
-use crate::error::{QiError, SourceLocation};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::lexer::{Lexer, LocatedToken, Token};
 use crate::value::{Expr, MatchArm, Pattern, UseMode};
@@ -86,43 +85,22 @@ impl Parser {
         }
     }
 
-    /// 行番号付きエラーメッセージを生成（QiError版）
+    /// 行番号付きエラーメッセージを生成
     fn error_with_line(&self, key: MsgKey, args: &[&str]) -> String {
         let base_msg = fmt_msg(key, args);
-        let error_code = QiError::error_code_from_parser_msg(&key);
-        let mut err = QiError::new(error_code, base_msg);
 
         // 位置情報を追加
         if let Some(span) = self.current_span() {
-            // span.line, span.column が 0, 0 の場合は位置情報なし
             if span.line != 0 || span.column != 0 {
                 let file_name = self
                     .source_name
                     .clone()
                     .unwrap_or_else(|| "<input>".to_string());
-
-                // 該当するソース行を取得
-                let lines: Vec<&str> = self.source.lines().collect();
-                let source_line = if span.line > 0 && span.line <= lines.len() {
-                    Some(lines[span.line - 1].to_string())
-                } else {
-                    None
-                };
-
-                let location = SourceLocation {
-                    file: file_name,
-                    line: span.line,
-                    column: span.column,
-                    length: self.tokens[self.pos].token.source_length(),
-                    source_line,
-                };
-
-                err = err.with_location(location);
+                return format!("{}:{}:{}: {}", file_name, span.line, span.column, base_msg);
             }
         }
 
-        // QiError -> String（Display traitで自動変換）
-        err.into()
+        base_msg
     }
 
     fn advance(&mut self) {

@@ -1,4 +1,3 @@
-use crate::error::{QiError, SourceLocation};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::FStringPart;
 
@@ -206,36 +205,16 @@ impl Lexer {
         Span::new(self.line, self.column, self.pos)
     }
 
-    /// 位置情報付きエラーメッセージを生成（QiError版）
+    /// 位置情報付きエラーメッセージを生成
     fn error(&self, key: MsgKey, args: &[&str]) -> String {
         let base_msg = fmt_msg(key, args);
-        let error_code = QiError::error_code_from_lexer_msg(&key);
-        let mut err = QiError::new(error_code, base_msg);
 
         // 位置情報を追加
         if self.line != 0 || self.column != 0 {
-            // ソースコードの該当行を取得
-            let input_str: String = self.input.iter().collect();
-            let lines: Vec<&str> = input_str.lines().collect();
-            let source_line = if self.line > 0 && self.line <= lines.len() {
-                Some(lines[self.line - 1].to_string())
-            } else {
-                None
-            };
-
-            let location = SourceLocation {
-                file: "<input>".to_string(),
-                line: self.line,
-                column: self.column,
-                length: 1,
-                source_line,
-            };
-
-            err = err.with_location(location);
+            format!("{}:{}:{}: {}", "<input>", self.line, self.column, base_msg)
+        } else {
+            base_msg
         }
-
-        // QiError -> String（Display traitで自動変換）
-        err.into()
     }
 
     fn current(&self) -> Option<char> {

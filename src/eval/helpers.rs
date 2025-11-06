@@ -7,7 +7,6 @@
 //! - ビルトイン関数の引数評価
 //! - パターンからValueへの変換
 
-use crate::error::QiError;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Env, Expr, Pattern, Value};
 use parking_lot::RwLock;
@@ -20,10 +19,10 @@ use super::Evaluator;
 // エラーヘルパー関数
 // ========================================
 
-/// QiErrorを使ってエラーメッセージを生成
+/// エラーメッセージを生成
 ///
 /// eval.rs内で統一的なエラーメッセージを生成するためのヘルパー。
-/// エラーコードを自動的に付与し、i18n化されたメッセージを返す。
+/// i18n化されたメッセージを返す。
 ///
 /// # 引数
 /// * `key` - メッセージキー
@@ -33,9 +32,7 @@ use super::Evaluator;
 /// フォーマット済みエラーメッセージ文字列
 #[inline]
 pub(super) fn qerr(key: MsgKey, args: &[&str]) -> String {
-    let base_msg = fmt_msg(key, args);
-    let error_code = QiError::error_code_from_eval_msg(&key);
-    QiError::new(error_code, base_msg).into()
+    fmt_msg(key, args)
 }
 
 // ========================================
