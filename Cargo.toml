@@ -26,8 +26,8 @@ path = "src/main.rs"
 default = [
     # データベース（Pure Rust）
     "db-sqlite",
-    # "db-postgres",  # TODO: Phase 4で実装
-    # "db-mysql",     # TODO: Phase 4で実装
+    "db-postgres",  # 実装済み（統合テスト付き）
+    "db-mysql",     # 実装済み（統合テスト付き）
 
     # KVS（Key-Value Store）
     "kvs-redis",
