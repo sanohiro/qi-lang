@@ -18,9 +18,6 @@ REST APIのためのOpenAPI 3.0仕様生成ライブラリ。
 ;; シンプルなインポート（推奨）
 (use "openapi" :as openapi)
 
-;; または、フルパス指定
-(use "std/lib/openapi" :as openapi)
-
 ;; APIエンドポイントを定義
 (openapi/defapi :post "/api/users"
   {:summary "ユーザー登録"

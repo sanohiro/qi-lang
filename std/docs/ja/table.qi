@@ -1,10 +1,10 @@
-;; std/lib/table - テーブル処理ライブラリ (Phase 1)
+;; table - テーブル処理ライブラリ (Phase 1)
 
 (def __module__
-  {:name "std/lib/table"
+  {:name "table"
    :desc "テーブル処理ユーティリティ - SQL/awkライクなテーブル操作を提供"
    :category "data"
-   :usage "(use \"std/lib/table\" :as table)"})
+   :usage "(use \"table\" :as table)"})
 
 ;; ========================================
 ;; グループ化
@@ -16,7 +16,7 @@
             {:name "key-selector" :type "keyword/function" :desc "キーワード (:category) または関数"}]
    :returns {:type "map" :desc "{group-key: [rows...], ...}"}
    :examples [
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def products ["
      "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
@@ -44,7 +44,7 @@
             {:name "keys" :type "keyword..." :desc "比較するキー (可変長引数、省略時は全カラム)"}]
    :returns {:type "list/vector" :desc "重複除去されたテーブル"}
    :examples [
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def products ["
      "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
@@ -73,7 +73,7 @@
      ";; 基本的な使い方"
      ";; ========================================="
      ""
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def sales-data ["
      "  {:date \"2024-01-01\" :category \"electronics\" :amount 1000}"

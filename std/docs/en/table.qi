@@ -1,10 +1,10 @@
-;; std/lib/table - Table Processing Library (Phase 1)
+;; table - Table Processing Library (Phase 1)
 
 (def __module__
-  {:name "std/lib/table"
+  {:name "table"
    :desc "Table processing utilities - Provides SQL/awk-like table operations"
    :category "data"
-   :usage "(use \"std/lib/table\" :as table)"})
+   :usage "(use \"table\" :as table)"})
 
 ;; ========================================
 ;; Grouping
@@ -16,7 +16,7 @@
             {:name "key-selector" :type "keyword/function" :desc "Keyword (:category) or function"}]
    :returns {:type "map" :desc "{group-key: [rows...], ...}"}
    :examples [
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def products ["
      "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
@@ -44,7 +44,7 @@
             {:name "keys" :type "keyword..." :desc "Keys to compare (variadic, all columns if omitted)"}]
    :returns {:type "list/vector" :desc "Deduplicated table"}
    :examples [
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def products ["
      "  {:id 1 :name \"Laptop\" :category \"electronics\" :price 1000}"
@@ -73,7 +73,7 @@
      ";; Basic Usage"
      ";; ========================================="
      ""
-     "(use \"std/lib/table\" :as table)"
+     "(use \"table\" :as table)"
      ""
      "(def sales-data ["
      "  {:date \"2024-01-01\" :category \"electronics\" :amount 1000}"

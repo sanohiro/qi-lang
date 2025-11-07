@@ -1,11 +1,11 @@
 ;; テーブル処理ライブラリの使用例
 ;;
-;; std/lib/tableは、CSV、JSON、データベース結果などの
+;; tableライブラリは、CSV、JSON、データベース結果などの
 ;; 表形式データを扱うための便利な関数を提供します。
 
-(use "std/lib/table" :as table)
+(use "table" :as table)
 
-(println "=== テーブル処理ライブラリ(std/lib/table)のデモ ===")
+(println "=== テーブル処理ライブラリ(table)のデモ ===")
 (println "")
 
 ;; ========================================

@@ -19,7 +19,7 @@ REST APIのためのOpenAPI 3.0仕様生成ライブラリ。
 (use "openapi" :as openapi)
 
 ;; または、フルパス指定
-(use "std/lib/openapi" :as openapi)
+(use "openapi" :as openapi)
 ```
 
 ### 2. APIエンドポイントの定義

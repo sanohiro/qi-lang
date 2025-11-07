@@ -213,7 +213,7 @@
 
   - select, order-by, take, drop, where
 
-### table (std/lib/table)
+### table
 
   - group-by, distinct-table
 

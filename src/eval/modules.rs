@@ -112,10 +112,11 @@ impl Evaluator {
     ///
     /// # 検索順序
     /// 1. 絶対パス・相対パスの場合は現在のソースファイルのディレクトリを基準に解決
-    /// 2. 標準ライブラリ（カレントディレクトリ基準）: `./std/{name}.qi`（サブディレクトリ対応）
-    /// 3. 標準ライブラリ（Qi実行ファイル基準）: `{qi_exe_dir}/std/{name}.qi`（サブディレクトリ対応）
-    /// 4. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
-    /// 5. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
+    /// 2. 明示的な`std/`プレフィックス: `./std/{path}.qi`（サブディレクトリ対応）
+    /// 3. 標準ライブラリ拡張（カレントディレクトリ基準）: `./std/lib/{name}.qi`
+    /// 4. 標準ライブラリ拡張（Qi実行ファイル基準）: `{qi_exe_dir}/std/lib/{name}.qi`
+    /// 5. プロジェクトローカル: `./qi_packages/{name}/mod.qi`
+    /// 6. グローバルキャッシュ: `~/.qi/packages/{name}/{version}/mod.qi`（repl featureが有効な場合）
     pub(super) fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
         let mut paths = Vec::new();
 
@@ -161,20 +162,21 @@ impl Evaluator {
                 }
             }
         } else {
-            // stdで始まらない場合は従来の検索パスを使用
+            // stdで始まらない場合は標準ライブラリ拡張(std/lib/)とパッケージを検索
 
-            // 1. 標準ライブラリトップレベル: ./std/{name}.qi
-            paths.push(format!("./std/{}.qi", name));
+            // 1. 標準ライブラリ拡張: ./std/lib/{name}.qi
+            paths.push(format!("./std/lib/{}.qi", name));
 
-            // 2. 標準ライブラリトップレベル（Qi実行ファイル基準）
+            // 2. 標準ライブラリ拡張（Qi実行ファイル基準）
             if let Ok(exe_path) = std::env::current_exe() {
                 if let Some(exe_dir) = exe_path.parent() {
-                    let std_path = exe_dir
+                    let std_lib_path = exe_dir
                         .join("std")
+                        .join("lib")
                         .join(format!("{}.qi", name))
                         .to_string_lossy()
                         .to_string();
-                    paths.push(std_path);
+                    paths.push(std_lib_path);
                 }
             }
 

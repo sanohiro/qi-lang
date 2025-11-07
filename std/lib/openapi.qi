@@ -1,7 +1,7 @@
 ;; OpenAPI 3.0 Specification Generator for Qi REST APIs
 ;;
 ;; Usage:
-;;   (use "std/lib/openapi" :as openapi)
+;;   (use "openapi" :as openapi)
 ;;   (openapi/register-api :post "/api/users" {...spec...} handler-fn)
 ;;   (server/serve router {:port 3000})
 
