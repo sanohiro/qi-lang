@@ -193,7 +193,7 @@ libc = "0.2"
 
 # Windows用の依存関係（DAP stdoutリダイレクト用）
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_Pipes", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_Pipes", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 
 [dev-dependencies]
 testcontainers = "0.15"
