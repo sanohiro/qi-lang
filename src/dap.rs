@@ -1579,9 +1579,7 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     use windows_sys::Win32::Foundation::*;
     use windows_sys::Win32::System::Console::*;
     use windows_sys::Win32::System::Pipes::CreatePipe;
-    use windows_sys::Win32::System::Threading::{
-        DuplicateHandle, GetCurrentProcess, DUPLICATE_SAME_ACCESS,
-    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
     // 1. 元の stdin ハンドルを取得
     let original_stdin = GetStdHandle(STD_INPUT_HANDLE);

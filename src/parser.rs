@@ -44,6 +44,7 @@ static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 pub struct Parser {
     tokens: Vec<LocatedToken>,
     pos: usize,
+    #[allow(dead_code)]
     source: String,
     source_name: Option<String>,
 }
