@@ -119,8 +119,9 @@ impl Evaluator {
     pub(super) fn resolve_module_path(&self, name: &str) -> Result<Vec<String>, String> {
         let mut paths = Vec::new();
 
-        // 絶対パスまたは相対パスの場合
-        if name.starts_with("./") || name.starts_with("../") || name.starts_with("/") {
+        // 絶対パスまたは相対パスの場合（Windows/Mac/Linux対応）
+        let path_obj = std::path::Path::new(name);
+        if path_obj.is_absolute() || name.starts_with("./") || name.starts_with("../") {
             // 現在のソースファイルのディレクトリを基準に相対パスを解決
             let base_dir = if let Some(source_name) = self.source_name.read().as_ref() {
                 std::path::Path::new(source_name)

@@ -1704,34 +1704,34 @@ mod tests {
         )
         .unwrap();
 
-        // テストファイルを作成
+        // テストファイルを作成（絶対パスで指定）
         fs::write(
             test_path,
             r#"
-(use test_alias_module :as tm)
+(use /tmp/test_alias_module :as tm)
 (+ (tm/double 5) (tm/triple 3))
 "#,
         )
         .unwrap();
 
         // 評価
-        let content = fs::read_to_string(test_path).unwrap();
-        let result = std::panic::catch_unwind(|| {
+        let content = fs::read_to_string(&test_path).unwrap();
+        let test_path_str = test_path.to_string();
+
+        let result = std::panic::catch_unwind(move || {
             let evaluator = Evaluator::new();
+            // source_nameを設定してモジュール解決パスを正しく認識させる
             let mut parser = crate::parser::Parser::new(&content).unwrap();
+            parser.set_source_name(test_path_str.clone());
+            evaluator.set_source(test_path_str.clone(), content.clone());
+
             let exprs = parser.parse_all().unwrap();
             let mut last = Value::Nil;
-
-            // /tmp ディレクトリに移動（モジュールロードのため）
-            let original_dir = std::env::current_dir().unwrap();
-            std::env::set_current_dir("/tmp").unwrap();
 
             for expr in exprs {
                 last = evaluator.eval(&expr).unwrap();
             }
 
-            // 元のディレクトリに戻る
-            std::env::set_current_dir(original_dir).unwrap();
             last
         });
 

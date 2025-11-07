@@ -137,10 +137,7 @@ impl SqliteConnection {
                 }
             };
 
-            let key = Value::String(column_name)
-                .to_map_key()
-                .map_err(DbError::new)?;
-            map.insert(key, value);
+            map.insert(column_name, value);
         }
 
         Ok(map)
@@ -604,7 +601,7 @@ mod tests {
     fn test_sqlite_connection() {
         let driver = SqliteDriver::new();
         let opts = ConnectionOptions::default();
-        let conn = driver.connect("sqlite::memory:", &opts).unwrap();
+        let conn = driver.connect("sqlite:///:memory:", &opts).unwrap();
 
         // テーブル作成
         let query_opts = QueryOptions::default();
@@ -636,7 +633,7 @@ mod tests {
     fn test_sanitize() {
         let driver = SqliteDriver::new();
         let opts = ConnectionOptions::default();
-        let conn = driver.connect("sqlite::memory:", &opts).unwrap();
+        let conn = driver.connect("sqlite:///:memory:", &opts).unwrap();
 
         assert_eq!(conn.sanitize("O'Reilly"), "O''Reilly");
         assert_eq!(conn.sanitize_identifier("table\"name"), "\"table\"\"name\"");
