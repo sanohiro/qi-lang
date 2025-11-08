@@ -1721,6 +1721,9 @@ mod tests {
 
         fs::write(&test_path, use_statement).unwrap();
 
+        // test_pathもWindows短縮形パスを展開
+        let test_path = fs::canonicalize(&test_path).unwrap();
+
         // 評価
         let content = fs::read_to_string(&test_path).unwrap();
         let test_path_str = test_path.to_string_lossy().to_string();
