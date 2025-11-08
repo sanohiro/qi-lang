@@ -257,8 +257,8 @@ impl Evaluator {
         for path in &paths {
             if let Ok(c) = std::fs::read_to_string(path) {
                 content = Some(c);
-                // Windows短縮形パス（~1など）を展開するためcanonicalizeを使用
-                found_path = std::fs::canonicalize(path)
+                // Windows短縮形パス（~1など）およびverbatim prefix（\\?\）を正規化
+                found_path = dunce::canonicalize(path)
                     .ok()
                     .map(|p| p.to_string_lossy().to_string());
                 break;

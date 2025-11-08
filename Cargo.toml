@@ -144,6 +144,7 @@ im = "15.1"  # Persistent data structures（構造共有でclone()を高速化�
 smallvec = "1.13"  # スタック最適化ベクタ（少数要素時にヒープ確保回避）
 serde = { version = "1.0", features = ["derive"] }  # プロジェクトメタデータのシリアライズ用
 toml = "0.8"  # qi.tomlの読み書き用
+dunce = "1.0"  # Windows verbatim path prefix (\\?\) を取り除く（パス正規化用）
 
 # Optional（feature-gated）
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }

@@ -1705,8 +1705,8 @@ mod tests {
         )
         .unwrap();
 
-        // Windowsの短縮形パス（~1など）を展開するためcanonicalizeを使用
-        let module_path = fs::canonicalize(&module_path).unwrap();
+        // Windows短縮形パス（~1など）およびverbatim prefix（\\?\）を正規化
+        let module_path = dunce::canonicalize(&module_path).unwrap();
         let test_path = temp_dir.join("test_alias.qi");
 
         // テストファイルを作成（絶対パスで指定）
@@ -1721,8 +1721,8 @@ mod tests {
 
         fs::write(&test_path, use_statement).unwrap();
 
-        // test_pathもWindows短縮形パスを展開
-        let test_path = fs::canonicalize(&test_path).unwrap();
+        // test_pathもWindows短縮形パス・verbatim prefixを正規化
+        let test_path = dunce::canonicalize(&test_path).unwrap();
 
         // 評価
         let content = fs::read_to_string(&test_path).unwrap();
