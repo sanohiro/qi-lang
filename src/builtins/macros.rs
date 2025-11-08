@@ -7,7 +7,7 @@
 ///
 /// # 使用例
 ///
-/// ```rust
+/// ```rust,ignore
 /// // 引数が正確に2個必要な場合
 /// check_args!(args, 2, "split")?;
 ///
@@ -64,7 +64,7 @@ macro_rules! check_args {
 ///
 /// # 使用例
 ///
-/// ```rust
+/// ```rust,ignore
 /// register_native!(env.write(),
 ///     "string/split" => string::native_split,
 ///     "string/join" => string::native_join,

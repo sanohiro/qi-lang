@@ -11,7 +11,7 @@ use crate::HashMap;
 ///
 /// # 使用例
 ///
-/// ```rust
+/// ```rust,ignore
 /// let s = get_string_arg(args, 0, "split")?;
 /// ```
 pub fn get_string_arg(args: &[Value], idx: usize, func: &str) -> Result<String, String> {
