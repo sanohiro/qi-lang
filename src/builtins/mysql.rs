@@ -7,8 +7,6 @@
 //!
 //! このモジュールは `db-mysql` feature でコンパイルされます。
 
-#![cfg(feature = "db-mysql")]
-
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -424,7 +422,7 @@ impl DbConnection for MysqlConnection {
         // CALLを実行して結果を取得
         let rows: Vec<MyRow> = runtime
             .block_on(async { conn.exec(&call_sql, mysql_params).await })
-            .map_err(|e| DbError::new(&format!("Failed to call procedure: {}", e)))?;
+            .map_err(|e| DbError::new(format!("Failed to call procedure: {}", e)))?;
 
         // 結果をRow形式に変換
         let mut results = Vec::new();
@@ -481,7 +479,7 @@ impl DbConnection for MysqlConnection {
         let prepare_sql = format!("PREPARE {} FROM '{}'", stmt_name, sql.replace("'", "''"));
         runtime
             .block_on(async { conn.query_drop(&prepare_sql).await })
-            .map_err(|e| DbError::new(&format!("Failed to prepare query: {}", e)))?;
+            .map_err(|e| DbError::new(format!("Failed to prepare query: {}", e)))?;
 
         // PREPARE文をクリーンアップ
         let deallocate_sql = format!("DEALLOCATE PREPARE {}", stmt_name);

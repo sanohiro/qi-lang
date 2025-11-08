@@ -7,8 +7,6 @@
 //!
 //! このモジュールは `db-postgres` feature でコンパイルされます。
 
-#![cfg(feature = "db-postgres")]
-
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -465,7 +463,7 @@ impl DbConnection for PostgresConnection {
         let prepare_sql = format!("PREPARE {} AS {}", stmt_name, sql);
         runtime
             .block_on(client.execute(&prepare_sql, &[]))
-            .map_err(|e| DbError::new(&format!("Failed to prepare query: {}", e)))?;
+            .map_err(|e| DbError::new(format!("Failed to prepare query: {}", e)))?;
 
         // PREPARE文をクリーンアップ
         let deallocate_sql = format!("DEALLOCATE {}", stmt_name);
