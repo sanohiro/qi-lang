@@ -1578,6 +1578,7 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     use std::os::windows::io::FromRawHandle;
     use windows_sys::Win32::Foundation::*;
     use windows_sys::Win32::System::Console::*;
+    use windows_sys::Win32::System::Pipes::CreatePipe;
     use windows_sys::Win32::System::Threading::*;
 
     // 1. 元の stdin ハンドルを取得
