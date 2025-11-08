@@ -257,7 +257,10 @@ impl Evaluator {
         for path in &paths {
             if let Ok(c) = std::fs::read_to_string(path) {
                 content = Some(c);
-                found_path = Some(path.clone());
+                // Windows短縮形パス（~1など）を展開するためcanonicalizeを使用
+                found_path = std::fs::canonicalize(path)
+                    .ok()
+                    .map(|p| p.to_string_lossy().to_string());
                 break;
             }
         }
