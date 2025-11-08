@@ -1578,7 +1578,6 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     use std::os::windows::io::FromRawHandle;
     use windows_sys::Win32::Foundation::*;
     use windows_sys::Win32::System::Console::*;
-    use windows_sys::Win32::System::Pipes::*;
     use windows_sys::Win32::System::Threading::*;
 
     // 1. 元の stdin ハンドルを取得
@@ -1588,7 +1587,7 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     }
 
     // 2. stdin ハンドルを複製して保存
-    let mut duplicated_stdin: HANDLE = 0;
+    let mut duplicated_stdin: HANDLE = std::ptr::null_mut();
     if DuplicateHandle(
         GetCurrentProcess(),
         original_stdin,
@@ -1917,11 +1916,21 @@ mod stdio_redirect {
     type NativeHandle = windows_sys::Win32::Foundation::HANDLE;
 
     // 統一された構造体定義
+    #[cfg(unix)]
     pub struct StdioRedirect {
         original_stdout: NativeHandle,
         original_stderr: NativeHandle,
         stdout_read: NativeHandle,
         stderr_read: NativeHandle,
+    }
+
+    // Windows版はSendHandle使用
+    #[cfg(windows)]
+    pub struct StdioRedirect {
+        original_stdout: platform::SendHandle,
+        original_stderr: platform::SendHandle,
+        stdout_read: platform::SendHandle,
+        stderr_read: platform::SendHandle,
     }
 
     // プラットフォーム固有のヘルパー関数
@@ -1986,7 +1995,6 @@ mod stdio_redirect {
         use std::io;
         use windows_sys::Win32::Foundation::*;
         use windows_sys::Win32::System::Console::*;
-        use windows_sys::Win32::System::Pipes::*;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
         /// Windows HANDLEをSend-safeにするラッパー
@@ -1999,31 +2007,31 @@ mod stdio_redirect {
         pub const STDOUT_NO: u32 = STD_OUTPUT_HANDLE;
         pub const STDERR_NO: u32 = STD_ERROR_HANDLE;
 
-        pub unsafe fn get_std_handle(handle_id: u32) -> io::Result<NativeHandle> {
+        pub unsafe fn get_std_handle(handle_id: u32) -> io::Result<SendHandle> {
             let handle = GetStdHandle(handle_id);
             if handle == INVALID_HANDLE_VALUE {
                 Err(io::Error::last_os_error())
             } else {
-                Ok(handle)
+                Ok(SendHandle(handle))
             }
         }
 
-        pub unsafe fn close(handle: NativeHandle) {
-            CloseHandle(handle);
+        pub unsafe fn close(handle: SendHandle) {
+            CloseHandle(handle.0);
         }
 
-        pub unsafe fn create_pipe() -> io::Result<(NativeHandle, NativeHandle)> {
-            let mut read_handle: HANDLE = 0;
-            let mut write_handle: HANDLE = 0;
+        pub unsafe fn create_pipe() -> io::Result<(SendHandle, SendHandle)> {
+            let mut read_handle: HANDLE = std::ptr::null_mut();
+            let mut write_handle: HANDLE = std::ptr::null_mut();
             if CreatePipe(&mut read_handle, &mut write_handle, std::ptr::null(), 0) == 0 {
                 Err(io::Error::last_os_error())
             } else {
-                Ok((read_handle, write_handle))
+                Ok((SendHandle(read_handle), SendHandle(write_handle)))
             }
         }
 
-        pub unsafe fn redirect(new_handle: NativeHandle, std_handle_id: u32) -> io::Result<()> {
-            if SetStdHandle(std_handle_id, new_handle) == 0 {
+        pub unsafe fn redirect(new_handle: SendHandle, std_handle_id: u32) -> io::Result<()> {
+            if SetStdHandle(std_handle_id, new_handle.0) == 0 {
                 Err(io::Error::last_os_error())
             } else {
                 Ok(())
@@ -2031,11 +2039,11 @@ mod stdio_redirect {
         }
 
         /// ハンドルを複製（リーダー用）
-        pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<SendHandle> {
-            let mut dup_handle: HANDLE = 0;
+        pub unsafe fn dup_for_reader(handle: SendHandle) -> Option<SendHandle> {
+            let mut dup_handle: HANDLE = std::ptr::null_mut();
             if DuplicateHandle(
                 GetCurrentProcess(),
-                handle,
+                handle.0,
                 GetCurrentProcess(),
                 &mut dup_handle,
                 0,
@@ -2119,7 +2127,6 @@ mod stdio_redirect {
         #[cfg(windows)]
         pub fn new() -> io::Result<Self> {
             use platform::*;
-            use windows_sys::Win32::Storage::FileSystem::*;
 
             unsafe {
                 // 元のstdout/stderrを保存
