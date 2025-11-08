@@ -1471,23 +1471,13 @@ pub async fn write_message_async<W: tokio::io::AsyncWrite + Unpin>(
 use parking_lot::Mutex;
 use std::sync::LazyLock;
 
-/// Windows HANDLEをSend-safeにするラッパー
-#[cfg(windows)]
-#[derive(Clone, Copy)]
-struct SendHandle(windows_sys::Win32::Foundation::HANDLE);
-
-#[cfg(windows)]
-unsafe impl Send for SendHandle {}
-
-#[cfg(windows)]
-unsafe impl Sync for SendHandle {}
-
 /// 元のstderr（プログラム実行時のリダイレクトの影響を受けない）
 #[cfg(unix)]
 static ORIGINAL_STDERR: LazyLock<Mutex<Option<i32>>> = LazyLock::new(|| Mutex::new(None));
 
 #[cfg(windows)]
-static ORIGINAL_STDERR: LazyLock<Mutex<Option<SendHandle>>> = LazyLock::new(|| Mutex::new(None));
+static ORIGINAL_STDERR: LazyLock<Mutex<Option<stdio_redirect::platform::SendHandle>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 /// DAPサーバーのログを元のstderrに出力
 fn dap_log(message: &str) {
@@ -1705,7 +1695,7 @@ fn backup_stderr_for_logging() {
     unsafe {
         use windows_sys::Win32::System::Console::*;
         let handle = GetStdHandle(STD_ERROR_HANDLE);
-        *ORIGINAL_STDERR.lock() = Some(SendHandle(handle));
+        *ORIGINAL_STDERR.lock() = Some(stdio_redirect::platform::SendHandle(handle));
     }
 }
 
@@ -1998,6 +1988,13 @@ mod stdio_redirect {
         use windows_sys::Win32::System::Console::*;
         use windows_sys::Win32::System::Pipes::*;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+        /// Windows HANDLEをSend-safeにするラッパー
+        #[derive(Clone, Copy)]
+        pub struct SendHandle(pub HANDLE);
+
+        unsafe impl Send for SendHandle {}
+        unsafe impl Sync for SendHandle {}
 
         pub const STDOUT_NO: u32 = STD_OUTPUT_HANDLE;
         pub const STDERR_NO: u32 = STD_ERROR_HANDLE;
