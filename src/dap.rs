@@ -2021,6 +2021,7 @@ mod stdio_redirect {
         }
 
         pub unsafe fn create_pipe() -> io::Result<(SendHandle, SendHandle)> {
+            use windows_sys::Win32::System::Pipes::CreatePipe;
             let mut read_handle: HANDLE = std::ptr::null_mut();
             let mut write_handle: HANDLE = std::ptr::null_mut();
             if CreatePipe(&mut read_handle, &mut write_handle, std::ptr::null(), 0) == 0 {
