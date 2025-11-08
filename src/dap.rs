@@ -1471,13 +1471,23 @@ pub async fn write_message_async<W: tokio::io::AsyncWrite + Unpin>(
 use parking_lot::Mutex;
 use std::sync::LazyLock;
 
+/// Windows HANDLEをSend-safeにするラッパー
+#[cfg(windows)]
+#[derive(Clone, Copy)]
+struct SendHandle(windows_sys::Win32::Foundation::HANDLE);
+
+#[cfg(windows)]
+unsafe impl Send for SendHandle {}
+
+#[cfg(windows)]
+unsafe impl Sync for SendHandle {}
+
 /// 元のstderr（プログラム実行時のリダイレクトの影響を受けない）
 #[cfg(unix)]
 static ORIGINAL_STDERR: LazyLock<Mutex<Option<i32>>> = LazyLock::new(|| Mutex::new(None));
 
 #[cfg(windows)]
-static ORIGINAL_STDERR: LazyLock<Mutex<Option<windows_sys::Win32::Foundation::HANDLE>>> =
-    LazyLock::new(|| Mutex::new(None));
+static ORIGINAL_STDERR: LazyLock<Mutex<Option<SendHandle>>> = LazyLock::new(|| Mutex::new(None));
 
 /// DAPサーバーのログを元のstderrに出力
 fn dap_log(message: &str) {
@@ -1494,7 +1504,7 @@ fn dap_log(message: &str) {
             use windows_sys::Win32::Storage::FileSystem::*;
             let mut written: u32 = 0;
             WriteFile(
-                fd,
+                fd.0,
                 msg.as_ptr() as *const _,
                 msg.len() as u32,
                 &mut written,
@@ -1695,7 +1705,7 @@ fn backup_stderr_for_logging() {
     unsafe {
         use windows_sys::Win32::System::Console::*;
         let handle = GetStdHandle(STD_ERROR_HANDLE);
-        *ORIGINAL_STDERR.lock() = Some(handle);
+        *ORIGINAL_STDERR.lock() = Some(SendHandle(handle));
     }
 }
 
@@ -2024,7 +2034,7 @@ mod stdio_redirect {
         }
 
         /// ハンドルを複製（リーダー用）
-        pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<NativeHandle> {
+        pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<SendHandle> {
             let mut dup_handle: HANDLE = 0;
             if DuplicateHandle(
                 GetCurrentProcess(),
@@ -2038,14 +2048,14 @@ mod stdio_redirect {
             {
                 None
             } else {
-                Some(dup_handle)
+                Some(SendHandle(dup_handle))
             }
         }
 
         /// ハンドルからFileリーダーを作成
-        pub unsafe fn create_reader(handle: NativeHandle) -> std::fs::File {
+        pub unsafe fn create_reader(handle: SendHandle) -> std::fs::File {
             use std::os::windows::io::FromRawHandle;
-            std::fs::File::from_raw_handle(handle as _)
+            std::fs::File::from_raw_handle(handle.0 as _)
         }
     }
 
