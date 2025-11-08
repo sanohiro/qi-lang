@@ -1905,6 +1905,7 @@ async fn run_qi_program_async(
 // ========================================
 
 mod stdio_redirect {
+    use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
     use std::io;
 
     // プラットフォーム固有の型定義
@@ -1993,6 +1994,7 @@ mod stdio_redirect {
         use std::io;
         use windows_sys::Win32::Foundation::*;
         use windows_sys::Win32::System::Console::*;
+        use windows_sys::Win32::System::Pipes::CreatePipe;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
         /// Windows HANDLEをSend-safeにするラッパー
