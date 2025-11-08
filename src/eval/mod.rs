@@ -1687,14 +1687,16 @@ mod tests {
     #[test]
     fn test_use_as_alias() {
         // 一時的なモジュールファイルを作成
+        use std::env;
         use std::fs;
 
-        let module_path = "/tmp/test_alias_module.qi";
-        let test_path = "/tmp/test_alias.qi";
+        let temp_dir = env::temp_dir();
+        let module_path = temp_dir.join("test_alias_module.qi");
+        let test_path = temp_dir.join("test_alias.qi");
 
         // モジュールファイルを作成
         fs::write(
-            module_path,
+            &module_path,
             r#"
 (module test_alias_module)
 (def double (fn [x] (* x 2)))
@@ -1705,18 +1707,20 @@ mod tests {
         .unwrap();
 
         // テストファイルを作成（絶対パスで指定）
-        fs::write(
-            test_path,
+        let module_path_for_use = module_path.to_string_lossy().replace('\\', "/");
+        let use_statement = format!(
             r#"
-(use /tmp/test_alias_module :as tm)
+(use {} :as tm)
 (+ (tm/double 5) (tm/triple 3))
 "#,
-        )
-        .unwrap();
+            module_path_for_use.trim_end_matches(".qi")
+        );
+
+        fs::write(&test_path, use_statement).unwrap();
 
         // 評価
         let content = fs::read_to_string(&test_path).unwrap();
-        let test_path_str = test_path.to_string();
+        let test_path_str = test_path.to_string_lossy().to_string();
 
         let result = std::panic::catch_unwind(move || {
             let evaluator = Evaluator::new();
