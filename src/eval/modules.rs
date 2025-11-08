@@ -164,6 +164,20 @@ impl Evaluator {
         } else {
             // stdで始まらない場合は標準ライブラリ拡張(std/lib/)とパッケージを検索
 
+            // 0. 現在のソースファイルと同じディレクトリ: {source_dir}/{name}.qi
+            if let Some(source_name) = self.source_name.read().as_ref() {
+                if std::env::var("QI_DEBUG").is_ok() {
+                    eprintln!("[DEBUG] source_name: {}", source_name);
+                }
+                if let Some(parent) = std::path::Path::new(source_name).parent() {
+                    let same_dir_path = parent.join(format!("{}.qi", name));
+                    if std::env::var("QI_DEBUG").is_ok() {
+                        eprintln!("[DEBUG] same_dir_path: {}", same_dir_path.display());
+                    }
+                    paths.push(same_dir_path.to_string_lossy().to_string());
+                }
+            }
+
             // 1. 標準ライブラリ拡張: ./std/lib/{name}.qi
             paths.push(format!("./std/lib/{}.qi", name));
 

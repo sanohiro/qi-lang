@@ -1691,13 +1691,13 @@ mod tests {
         use std::fs;
 
         let temp_dir = env::temp_dir();
-        let module_path = temp_dir.join("test_alias_module.qi");
+        let module_path = temp_dir.join("module_alias.qi");
 
         // モジュールファイルを作成
         fs::write(
             &module_path,
             r#"
-(module test_alias_module)
+(module module_alias)
 (def double (fn [x] (* x 2)))
 (def triple (fn [x] (* x 3)))
 (export double triple)
@@ -1709,15 +1709,11 @@ mod tests {
         let module_path = dunce::canonicalize(&module_path).unwrap();
         let test_path = temp_dir.join("test_alias.qi");
 
-        // テストファイルを作成（絶対パスで指定）
-        let module_path_for_use = module_path.to_string_lossy().replace('\\', "/");
-        let use_statement = format!(
-            r#"
-(use {} :as tm)
+        // テストファイルを作成（モジュール名のみ指定、クロスプラットフォーム対応）
+        let use_statement = r#"
+(use module_alias :as tm)
 (+ (tm/double 5) (tm/triple 3))
-"#,
-            module_path_for_use.trim_end_matches(".qi")
-        );
+"#;
 
         fs::write(&test_path, use_statement).unwrap();
 
