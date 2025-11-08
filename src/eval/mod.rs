@@ -1692,7 +1692,6 @@ mod tests {
 
         let temp_dir = env::temp_dir();
         let module_path = temp_dir.join("test_alias_module.qi");
-        let test_path = temp_dir.join("test_alias.qi");
 
         // モジュールファイルを作成
         fs::write(
@@ -1705,6 +1704,10 @@ mod tests {
 "#,
         )
         .unwrap();
+
+        // Windowsの短縮形パス（~1など）を展開するためcanonicalizeを使用
+        let module_path = fs::canonicalize(&module_path).unwrap();
+        let test_path = temp_dir.join("test_alias.qi");
 
         // テストファイルを作成（絶対パスで指定）
         let module_path_for_use = module_path.to_string_lossy().replace('\\', "/");
