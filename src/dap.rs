@@ -1906,7 +1906,8 @@ async fn run_qi_program_async(
 // ========================================
 
 mod stdio_redirect {
-
+    #[cfg(windows)]
+    use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
     use std::io;
 
     // プラットフォーム固有の型定義
