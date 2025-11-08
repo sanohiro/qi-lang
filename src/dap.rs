@@ -1981,7 +1981,7 @@ mod stdio_redirect {
     }
 
     #[cfg(windows)]
-    mod platform {
+    pub(super) mod platform {
         use super::NativeHandle;
         use std::io;
         use windows_sys::Win32::Foundation::*;
