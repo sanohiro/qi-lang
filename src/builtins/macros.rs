@@ -7,15 +7,21 @@
 ///
 /// # 使用例
 ///
-/// ```rust,ignore
-/// // 引数が正確に2個必要な場合
-/// check_args!(args, 2, "split")?;
+/// ```
+/// use qi_lang::value::Value;
+/// use qi_lang::check_args;
 ///
-/// // 引数が1個必要な場合
-/// check_args!(args, 1, "sqrt")?;
+/// fn example_func(args: &[Value]) -> Result<(), String> {
+///     // 引数が正確に2個必要な場合
+///     check_args!(args, 2, "example");
+///     Ok(())
+/// }
 ///
-/// // 引数が最低1個必要な場合
-/// check_args!(args, 1.., "print")?;
+/// let args = vec![Value::Integer(1), Value::Integer(2)];
+/// assert!(example_func(&args).is_ok());
+///
+/// let args = vec![Value::Integer(1)];
+/// assert!(example_func(&args).is_err());
 /// ```
 #[macro_export]
 macro_rules! check_args {
@@ -64,11 +70,20 @@ macro_rules! check_args {
 ///
 /// # 使用例
 ///
-/// ```rust,ignore
-/// register_native!(env.write(),
-///     "string/split" => string::native_split,
-///     "string/join" => string::native_join,
-/// );
+/// ```
+/// // このマクロは主にビルトイン関数の登録に使用されます。
+/// // Envモジュールは内部APIのため、ここでは簡略化した例を示します。
+/// use qi_lang::value::Value;
+///
+/// fn example_func(_args: &[Value]) -> Result<Value, String> {
+///     Ok(Value::Integer(42))
+/// }
+///
+/// // 実際の使用例（内部のみ）:
+/// // register_native!(env.write(),
+/// //     "string/split" => string::native_split,
+/// //     "string/join" => string::native_join,
+/// // );
 /// ```
 #[macro_export]
 macro_rules! register_native {

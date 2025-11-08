@@ -11,8 +11,13 @@ use crate::HashMap;
 ///
 /// # 使用例
 ///
-/// ```rust,ignore
-/// let s = get_string_arg(args, 0, "split")?;
+/// ```
+/// use qi_lang::value::Value;
+/// use qi_lang::builtins::value_helpers::get_string_arg;
+///
+/// let args = vec![Value::String("hello".to_string())];
+/// let s = get_string_arg(&args, 0, "split").unwrap();
+/// assert_eq!(s, "hello");
 /// ```
 pub fn get_string_arg(args: &[Value], idx: usize, func: &str) -> Result<String, String> {
     args.get(idx)
