@@ -1995,7 +1995,6 @@ mod stdio_redirect {
         use std::io;
         use windows_sys::Win32::Foundation::*;
         use windows_sys::Win32::System::Console::*;
-        use windows_sys::Win32::System::Pipes::CreatePipe;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
         /// Windows HANDLEをSend-safeにするラッパー
