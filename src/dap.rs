@@ -1602,8 +1602,8 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     }
 
     // 3. Qiプログラム用のパイプを作成
-    let mut pipe_read: HANDLE = 0;
-    let mut pipe_write: HANDLE = 0;
+    let mut pipe_read: HANDLE = std::ptr::null_mut();
+    let mut pipe_write: HANDLE = std::ptr::null_mut();
     if CreatePipe(&mut pipe_read, &mut pipe_write, std::ptr::null(), 0) == 0 {
         CloseHandle(duplicated_stdin);
         return Err(io::Error::last_os_error());
@@ -1905,7 +1905,6 @@ async fn run_qi_program_async(
 // ========================================
 
 mod stdio_redirect {
-    use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
     use std::io;
 
     // プラットフォーム固有の型定義
@@ -1991,7 +1990,6 @@ mod stdio_redirect {
 
     #[cfg(windows)]
     pub(super) mod platform {
-        use super::NativeHandle;
         use std::io;
         use windows_sys::Win32::Foundation::*;
         use windows_sys::Win32::System::Console::*;
@@ -2190,12 +2188,62 @@ mod stdio_redirect {
         }
 
         /// パイプから読み取ってDAPイベントを送信する共通実装
+        #[cfg(unix)]
         fn spawn_reader_impl(
             &self,
             event_tx: tokio::sync::mpsc::Sender<String>,
             seq_base: i64,
             category: &'static str,
             read_handle: NativeHandle,
+        ) -> tokio::task::JoinHandle<()> {
+            // ハンドルを複製
+            let read_dup = unsafe { platform::dup_for_reader(read_handle) };
+
+            tokio::spawn(async move {
+                use tokio::io::AsyncBufReadExt;
+
+                // 複製に失敗した場合は早期リターン
+                let Some(handle) = read_dup else {
+                    return;
+                };
+
+                // リーダーを作成
+                let file = unsafe { platform::create_reader(handle) };
+                let async_file = tokio::fs::File::from_std(file);
+                let reader = tokio::io::BufReader::new(async_file);
+                let mut lines = reader.lines();
+
+                // 行ごとに読み取ってDAPイベントを送信
+                let mut seq = seq_base;
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let event = format!(
+                        r#"{{"seq":{},"type":"event","event":"output","body":{{"category":"{}","output":"{}"}}}}"#,
+                        seq,
+                        category,
+                        line.replace('\\', "\\\\")
+                            .replace('"', "\\\"")
+                            .replace('\n', "\\n")
+                            .replace('\r', "\\r")
+                    );
+                    if event_tx.send(event).await.is_err() {
+                        break;
+                    }
+                    seq += 1;
+                }
+
+                // パイプを閉じる
+                unsafe { platform::close(handle) };
+            })
+        }
+
+        /// パイプから読み取ってDAPイベントを送信する共通実装（Windows版）
+        #[cfg(windows)]
+        fn spawn_reader_impl(
+            &self,
+            event_tx: tokio::sync::mpsc::Sender<String>,
+            seq_base: i64,
+            category: &'static str,
+            read_handle: platform::SendHandle,
         ) -> tokio::task::JoinHandle<()> {
             // ハンドルを複製
             let read_dup = unsafe { platform::dup_for_reader(read_handle) };
