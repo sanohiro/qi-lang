@@ -1914,9 +1914,6 @@ mod stdio_redirect {
     #[cfg(unix)]
     type NativeHandle = i32;
 
-    #[cfg(windows)]
-    type NativeHandle = windows_sys::Win32::Foundation::HANDLE;
-
     // 統一された構造体定義
     #[cfg(unix)]
     pub struct StdioRedirect {

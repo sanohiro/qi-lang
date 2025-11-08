@@ -477,7 +477,7 @@ pub fn native_vals(args: &[Value]) -> Result<Value, String> {
 
 /// assoc - マップに新しいキー・値のペアを追加
 pub fn native_assoc(args: &[Value]) -> Result<Value, String> {
-    if args.len() < 3 || (args.len() - 1) % 2 != 0 {
+    if args.len() < 3 || !(args.len() - 1).is_multiple_of(2) {
         return Err(msg(MsgKey::AssocMapAndKeyValues).to_string());
     }
     match &args[0] {

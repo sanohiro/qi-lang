@@ -107,7 +107,7 @@ fn format_unix_timestamp(secs: u64, millis: u32) -> String {
 
 /// うるう年判定
 fn is_leap_year(year: u64) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 /// ログ出力の内部実装
