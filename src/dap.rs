@@ -1993,8 +1993,8 @@ mod stdio_redirect {
     pub(super) mod platform {
         use std::io;
         use windows_sys::Win32::Foundation::*;
+        use windows_sys::Win32::Storage::FileSystem::CreatePipe;
         use windows_sys::Win32::System::Console::*;
-        use windows_sys::Win32::System::Pipes::CreatePipe;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
         /// Windows HANDLEをSend-safeにするラッパー
