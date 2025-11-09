@@ -212,10 +212,9 @@ criterion = { version = "0.5", features = ["html_reports"] }
 name = "eval_bench"
 harness = false
 
-# プロファイリング用にrelease buildでもデバッグシンボルを有効化
-# コンパイラ最適化（Phase 18）
+# コンパイラ最適化
 [profile.release]
-debug = true
+strip = true         # デバッグシンボルを削除してバイナリサイズを削減
 lto = true           # リンク時最適化（クレート間の最適化）
 codegen-units = 1    # 最大限の最適化（コンパイル時間は増加）
 opt-level = 3        # 最高レベルの最適化
