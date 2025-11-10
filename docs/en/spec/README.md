@@ -69,27 +69,39 @@ This directory contains the specification for implemented features only of the Q
   - Parse, stringify, Result type integration
 - **[13-stdlib-io.md](13-stdlib-io.md)** - File I/O (encoding support)
   - File read/write, multilingual encoding (Shift_JIS, GBK, Big5, etc.)
-- **[14-stdlib-test.md](14-stdlib-test.md)** - Testing Framework ⭐ NEW
+- **[14-stdlib-test.md](14-stdlib-test.md)** - Testing Framework ⭐
   - test/run, assertions (assert-eq, assert, assert-not, assert-throws)
   - qi test command (auto-detection, simple output)
 - **[15-stdlib-math.md](15-stdlib-math.md)** - Math Functions
   - Power & root (pow, sqrt), rounding (round, floor, ceil), clamping (clamp)
   - Random generation (rand, rand-int, random-range, shuffle)
-- **[16-stdlib-auth.md](16-stdlib-auth.md)** - Authentication & Authorization ⭐ NEW
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - Authentication & Authorization ⭐
   - JWT (JSON Web Token) generation, verification, decoding
   - Password hashing (Argon2)
-- **[17-stdlib-database.md](17-stdlib-database.md)** - Database ⭐ NEW
+- **[17-stdlib-database.md](17-stdlib-database.md)** - Database ⭐
   - PostgreSQL connection (query execution, command execution)
   - Parameterized queries, Result type integration
-- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket Communication ⭐ NEW
+- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket Communication ⭐
   - WebSocket client (connect, send, receive, close)
   - TLS/SSL support (wss://), message types (text, binary, close, error)
-- **[19-stdlib-validation.md](19-stdlib-validation.md)** - Data Validation ⭐ NEW
+- **[19-stdlib-validation.md](19-stdlib-validation.md)** - Data Validation ⭐
   - Schema-based validation (type checking, required fields, string length, numeric range, pattern matching)
   - Nested map validation, Result type integration
-- **[20-stdlib-debug.md](20-stdlib-debug.md)** - Debug Features ⭐ NEW
+- **[20-stdlib-debug.md](20-stdlib-debug.md)** - Debug Features ⭐
   - Tracing (debug/trace), breakpoints (debug/break)
   - Stack trace retrieval (debug/stack), debugger info (debug/info)
+- **[23-stdlib-env.md](23-stdlib-env.md)** - Environment Variables
+  - Get/set environment variables (env/get, env/set)
+  - Get all environment variables (env/all)
+  - Load .env files (env/load-dotenv)
+- **[28-stdlib-stats.md](28-stdlib-stats.md)** - Statistical Functions ⭐
+  - Measures of central tendency (mean, median, mode)
+  - Measures of dispersion (variance, stddev)
+  - Measures of position (percentile)
+- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP Compression/Decompression ⭐
+  - ZIP creation (zip/create), extraction (zip/extract), listing (zip/list)
+  - gzip compression (zip/gzip), decompression (zip/gunzip)
+  - Backup, log rotation, distribution archives
 
 ---
 
@@ -228,6 +240,7 @@ This directory contains the specification for implemented features only of the Q
 - **WebSocket**: `ws/connect`, `ws/send`, `ws/receive`, `ws/close` → [18-stdlib-websocket.md](18-stdlib-websocket.md)
 - **JSON/YAML**: `json/parse`, `json/stringify`, `yaml/parse` → [12-stdlib-json.md](12-stdlib-json.md)
 - **Math**: `math/pow`, `math/sqrt`, `math/round`, `math/rand` → [15-stdlib-math.md](15-stdlib-math.md)
+- **Stats**: `stats/mean`, `stats/median`, `stats/stddev`, `stats/percentile` → [28-stdlib-stats.md](28-stdlib-stats.md)
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, plus 60+ → [10-stdlib-string.md](10-stdlib-string.md)
 - **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)

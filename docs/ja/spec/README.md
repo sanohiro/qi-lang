@@ -69,27 +69,39 @@
   - パース、stringify、Result型統合
 - **[13-stdlib-io.md](13-stdlib-io.md)** - ファイルI/O（エンコーディング対応）
   - ファイル読み書き、多言語エンコーディング（Shift_JIS、GBK、Big5等）
-- **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐ NEW
+- **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐
   - test/run、アサーション（assert-eq、assert、assert-not、assert-throws）
   - qi testコマンド（自動検出、シンプルな出力）
 - **[15-stdlib-math.md](15-stdlib-math.md)** - 数学関数
   - べき乗・平方根（pow、sqrt）、丸め（round、floor、ceil）、範囲制限（clamp）
   - 乱数生成（rand、rand-int、random-range、shuffle）
-- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証・認可 ⭐ NEW
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証・認可 ⭐
   - JWT（json web token）生成・検証・デコード
   - パスワードハッシュ（Argon2）
-- **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐ NEW
+- **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐
   - PostgreSQL接続（クエリ実行、コマンド実行）
   - パラメータ化クエリ、Result型統合
-- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket通信 ⭐ NEW
+- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket通信 ⭐
   - WebSocketクライアント（接続、送信、受信、クローズ）
   - TLS/SSL対応（wss://）、メッセージタイプ（テキスト、バイナリ、クローズ、エラー）
-- **[19-stdlib-validation.md](19-stdlib-validation.md)** - データ検証 ⭐ NEW
+- **[19-stdlib-validation.md](19-stdlib-validation.md)** - データ検証 ⭐
   - スキーマベースのバリデーション（型チェック、必須フィールド、文字列長、数値範囲、パターンマッチング）
   - ネストしたマップの検証、Result型統合
-- **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能 ⭐ NEW
+- **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能 ⭐
   - トレース機能（debug/trace）、ブレークポイント（debug/break）
   - スタックトレース取得（debug/stack）、デバッガ情報（debug/info）
+- **[23-stdlib-env.md](23-stdlib-env.md)** - 環境変数
+  - 環境変数の取得・設定（env/get、env/set）
+  - 全環境変数の取得（env/all）
+  - .envファイルの読み込み（env/load-dotenv）
+- **[28-stdlib-stats.md](28-stdlib-stats.md)** - 統計関数 ⭐
+  - 中心傾向の測度（mean、median、mode）
+  - 散布度の測度（variance、stddev）
+  - 位置の測度（percentile）
+- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP圧縮・解凍 ⭐
+  - ZIP作成（zip/create）、解凍（zip/extract）、内容一覧（zip/list）
+  - gzip圧縮（zip/gzip）、解凍（zip/gunzip）
+  - バックアップ、ログローテーション、配布用アーカイブ
 
 ---
 
@@ -228,6 +240,7 @@
 - **WebSocket**: `ws/connect`, `ws/send`, `ws/receive`, `ws/close` → [18-stdlib-websocket.md](18-stdlib-websocket.md)
 - **JSON/YAML**: `json/parse`, `json/stringify`, `yaml/parse` → [12-stdlib-json.md](12-stdlib-json.md)
 - **Math**: `math/pow`, `math/sqrt`, `math/round`, `math/rand` → [15-stdlib-math.md](15-stdlib-math.md)
+- **Stats**: `stats/mean`, `stats/median`, `stats/stddev`, `stats/percentile` → [28-stdlib-stats.md](28-stdlib-stats.md)
 - **Test**: `test/assert-eq`, `test/run` → [14-stdlib-test.md](14-stdlib-test.md)
 - **String**: `string/upper`, `string/lower`, `string/trim`, 他60+ → [10-stdlib-string.md](10-stdlib-string.md)
 - **Auth**: `jwt/sign`, `jwt/verify`, `password/hash`, `password/verify` → [16-stdlib-auth.md](16-stdlib-auth.md)

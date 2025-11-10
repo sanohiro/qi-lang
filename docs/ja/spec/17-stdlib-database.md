@@ -1,36 +1,29 @@
-# データベース & KVS
+# データベース
 
-**データベース（PostgreSQL/MySQL/SQLite）とKVS（Redis）の統一インターフェース**
+**データベース（PostgreSQL/MySQL/SQLite）の統一インターフェース**
 
-Qiは、リレーショナルデータベースとキーバリューストアへの統一的なアクセスを提供します。
+Qiは、リレーショナルデータベースへの統一的なアクセスを提供します。
 
 ---
 
 ## 目次
 
 - [概要](#概要)
-- [KVS（Key-Value Store）](#kvskey-value-store)
-  - [kvs/connect - 接続](#kvsconnect---接続)
-  - [基本操作](#基本操作)
-  - [実用例](#kvs実用例)
 - [データベース統一インターフェース](#データベース統一インターフェース)
   - [db/connect - 接続](#dbconnect---接続)
   - [db/query - クエリ実行](#dbquery---クエリ実行)
   - [db/exec - コマンド実行](#dbexec---コマンド実行)
 - [実用例](#実用例)
 - [エラー処理](#エラー処理)
+- [パフォーマンス](#パフォーマンス)
+- [接続文字列の形式](#接続文字列の形式)
+- [実装の詳細](#実装の詳細)
 
 ---
 
 ## 概要
 
 ### 提供機能
-
-**KVS（Key-Value Store）**:
-- **Redis**: キャッシュ、セッション管理、キュー
-  - 統一インターフェース（`kvs/*`）
-  - 基本操作、数値操作、リスト、ハッシュ、セット
-  - バックエンド自動判別（URL解析）
 
 **データベース**:
 - **統一インターフェース（db/*）**: PostgreSQL/MySQL/SQLite対応
@@ -45,16 +38,12 @@ Qiは、リレーショナルデータベースとキーバリューストアへ
 
 ```toml
 # Cargo.toml
-features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
+features = ["db-sqlite", "db-postgres", "db-mysql"]
 ```
 
 デフォルトで有効です。
 
 ### 依存クレート
-
-**KVS**:
-- **redis** (v0.27) - Pure Rust Redisクライアント
-- **tokio** - 非同期ランタイム
 
 **データベース**:
 - **rusqlite** (v0.32) - Pure Rust SQLiteクライアント
@@ -64,425 +53,152 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 
 ---
 
-## KVS（Key-Value Store）
+## データベース統一インターフェース
 
 ### 統一インターフェース設計
 
-データベースの`db/connect`と同じパターンで、KVSバックエンドを透過的に扱えます。
+データベースは**統一インターフェース**パターンで設計されています。これはGoの`database/sql`パッケージと同じアプローチで、バックエンド（ドライバー）を透過的に扱えます。
 
 ```qi
-;; バックエンドはURLから自動判別
-(def kvs (kvs/connect "redis://localhost:6379"))
+;; 統一インターフェース（バックエンド自動判別）
+(def conn (db/connect "postgresql://localhost/mydb"))
+(def conn (db/connect "mysql://root:pass@localhost/mydb"))
+(def conn (db/connect "sqlite:path/to/db.db"))
 
 ;; 以降のコードはバックエンド非依存
-(kvs/set kvs "key" "value")
-(kvs/get kvs "key")
+(db/query conn "SELECT * FROM users" [])
+(db/exec conn "INSERT INTO users (name) VALUES (?)" ["Alice"])
 
-;; バックエンドを変更する場合も、接続URLだけ変えればOK
-;; (def kvs (kvs/connect "memcached://localhost:11211"))  ;; 将来対応
+;; トランザクション
+(def tx (db/begin conn))
+(db/exec tx "UPDATE accounts SET balance = balance - 100 WHERE id = 1" [])
+(db/exec tx "UPDATE accounts SET balance = balance + 100 WHERE id = 2" [])
+(db/commit tx)
 ```
+
+**バックエンド切り替え**: 接続URLを変更するだけでPostgreSQL↔MySQL↔SQLite間を移行できます。
+
+**専用関数は公開しない**: `db/pg-*`, `db/my-*`のような専用関数は内部実装用のみです。
+統一インターフェースで表現できない機能（PostgreSQLのCOPY、MySQLのLOAD DATA等）が必要になった場合のみ追加します。
 
 ---
 
-### kvs/connect - 接続
+### db/connect - 接続
 
-**KVSに接続し、接続オブジェクトを返します。**
+**データベースに接続し、接続IDを返します。**
 
 ```qi
-(kvs/connect url)
+(db/connect url)
 ```
 
 #### 引数
 
 - `url`: 文字列（接続URL）
-  - Redis: `"redis://localhost:6379"`
-  - Memcached: `"memcached://localhost:11211"` （将来対応）
+  - PostgreSQL: `"postgresql://user:password@host:port/dbname"`
+  - MySQL: `"mysql://user:password@host:port/dbname"`
+  - SQLite: `"sqlite:path/to/db.db"`
 
 #### 戻り値
 
 - 接続ID（文字列）
+- エラーの場合: `{:error "message"}`
 
 #### 使用例
 
 ```qi
-;; Redis接続
-(def kvs (kvs/connect "redis://localhost:6379"))
+;; PostgreSQL接続
+(def db-conn (db/connect "postgresql://admin:secret@localhost:5432/myapp"))
 
-;; 認証付きRedis
-(def kvs (kvs/connect "redis://:password@localhost:6379"))
+;; MySQL接続
+(def db-conn (db/connect "mysql://root:pass@localhost:3306/mydb"))
+
+;; SQLite接続
+(def db-conn (db/connect "sqlite:/path/to/database.db"))
+
+;; 接続エラー
+(def conn (db/connect "invalid-url"))
+;; => {:error "Unsupported database URL: invalid-url"}
 ```
 
 ---
 
-### 基本操作
+### db/query - クエリ実行
 
-#### kvs/set - 値の設定
+**SELECTクエリを実行し、結果行を返します。**
 
 ```qi
-(kvs/set conn key value)
+(db/query conn sql params)
 ```
 
-**例**:
-```qi
-(kvs/set kvs "user:1" "Alice")
-;; => "OK"
+#### 引数
 
-(kvs/set kvs "counter" 42)
-;; => "OK"
-```
+- `conn`: 接続ID（`db/connect`の戻り値）
+- `sql`: SQL文字列
+- `params`: パラメータのベクタ
 
-#### kvs/get - 値の取得
+#### 戻り値
 
-```qi
-(kvs/get conn key)
-```
+- 結果行のベクタ（各行はマップ）
+- エラーの場合: `{:error "message"}`
 
-**例**:
-```qi
-(kvs/get kvs "user:1")
-;; => "Alice"
-
-(kvs/get kvs "nonexistent")
-;; => nil
-```
-
-#### kvs/delete - キーの削除
+#### 使用例
 
 ```qi
-(kvs/delete conn key)
-```
+;; 全ユーザー取得
+(db/query db-conn "SELECT * FROM users" [])
+;; => [{:id 1 :name "Alice" :email "alice@example.com"}
+;;     {:id 2 :name "Bob" :email "bob@example.com"}]
 
-**例**:
-```qi
-(kvs/delete kvs "user:1")
-;; => 1  ;; 削除されたキー数
-```
+;; パラメータ化クエリ
+(db/query db-conn "SELECT * FROM users WHERE id = $1" [1])
+;; => [{:id 1 :name "Alice" :email "alice@example.com"}]
 
-#### kvs/exists? - 存在確認
+;; WHERE IN句
+(db/query db-conn "SELECT * FROM users WHERE id IN ($1, $2, $3)" [1 2 3])
 
-```qi
-(kvs/exists? conn key)
-```
-
-**例**:
-```qi
-(kvs/exists? kvs "user:1")
-;; => true
-```
-
-#### kvs/keys - パターンマッチ
-
-```qi
-(kvs/keys conn pattern)
-```
-
-**例**:
-```qi
-(kvs/keys kvs "user:*")
-;; => ["user:1" "user:2" "user:3"]
-```
-
-#### kvs/expire - 有効期限設定
-
-```qi
-(kvs/expire conn key seconds)
-```
-
-**例**:
-```qi
-(kvs/expire kvs "session:abc" 3600)  ;; 1時間
-;; => true
-```
-
-#### kvs/ttl - 残り時間取得
-
-```qi
-(kvs/ttl conn key)
-```
-
-**例**:
-```qi
-(kvs/ttl kvs "session:abc")
-;; => 3599  ;; -1: 期限なし、-2: 存在しない
+;; LIMIT/OFFSET（ページング）
+(db/query db-conn "SELECT * FROM users LIMIT $1 OFFSET $2" [10 20])
 ```
 
 ---
 
-### 数値操作
+### db/exec - コマンド実行
 
-#### kvs/incr - インクリメント
+**INSERT/UPDATE/DELETEを実行し、影響を受けた行数を返します。**
 
 ```qi
-(kvs/incr conn key)
+(db/exec conn sql params)
 ```
 
-**例**:
-```qi
-(kvs/set kvs "page-views" 0)
-(kvs/incr kvs "page-views")  ;; => 1
-(kvs/incr kvs "page-views")  ;; => 2
-```
+#### 引数
 
-#### kvs/decr - デクリメント
+- `conn`: 接続ID
+- `sql`: SQL文字列
+- `params`: パラメータのベクタ
 
-```qi
-(kvs/decr conn key)
-```
+#### 戻り値
 
----
+- 影響を受けた行数（整数）
+- エラーの場合: `{:error "message"}`
 
-### リスト操作
-
-#### kvs/lpush / kvs/rpush - 要素追加
+#### 使用例
 
 ```qi
-(kvs/lpush conn key value)  ;; 左端（先頭）に追加
-(kvs/rpush conn key value)  ;; 右端（末尾）に追加
-```
+;; INSERT
+(db/exec db-conn "INSERT INTO users (name, email) VALUES ($1, $2)" ["Alice" "alice@example.com"])
+;; => 1
 
-**例（キュー - FIFO）**:
-```qi
-(kvs/rpush kvs "tasks" "task1")
-(kvs/rpush kvs "tasks" "task2")
-(kvs/lpop kvs "tasks")  ;; => "task1"
-(kvs/lpop kvs "tasks")  ;; => "task2"
-```
+;; UPDATE
+(db/exec db-conn "UPDATE users SET name = $1 WHERE id = $2" ["Bob" 1])
+;; => 1
 
-**例（スタック - LIFO）**:
-```qi
-(kvs/lpush kvs "stack" "item1")
-(kvs/lpush kvs "stack" "item2")
-(kvs/lpop kvs "stack")  ;; => "item2"
-```
+;; DELETE
+(db/exec db-conn "DELETE FROM users WHERE id = $1" [1])
+;; => 1
 
-#### kvs/lpop / kvs/rpop - 要素取得・削除
-
-```qi
-(kvs/lpop conn key)  ;; 左端から取得
-(kvs/rpop conn key)  ;; 右端から取得
-```
-
-#### kvs/lrange - 範囲取得
-
-```qi
-(kvs/lrange conn key start stop)
-```
-
-**引数**:
-- `start`: 開始インデックス（0始まり）
-- `stop`: 終了インデックス（-1で末尾まで）
-
-**例**:
-```qi
-(kvs/rpush kvs "mylist" "a")
-(kvs/rpush kvs "mylist" "b")
-(kvs/rpush kvs "mylist" "c")
-
-(kvs/lrange kvs "mylist" 0 -1)  ;; => ["a" "b" "c"] ;; 全要素
-(kvs/lrange kvs "mylist" 0 1)   ;; => ["a" "b"]    ;; 最初の2要素
-(kvs/lrange kvs "tasks" 0 9)    ;; => [...]        ;; 最初の10要素
-```
-
----
-
-### ハッシュ操作
-
-#### kvs/hset - フィールド設定
-
-```qi
-(kvs/hset conn key field value)
-```
-
-**例**:
-```qi
-(kvs/hset kvs "user:1" "name" "Alice")
-(kvs/hset kvs "user:1" "email" "alice@example.com")
-```
-
-#### kvs/hget - フィールド取得
-
-```qi
-(kvs/hget conn key field)
-```
-
-**例**:
-```qi
-(kvs/hget kvs "user:1" "name")
-;; => "Alice"
-```
-
-#### kvs/hgetall - ハッシュ全体取得
-
-```qi
-(kvs/hgetall conn key)
-```
-
-**例**:
-```qi
-(kvs/hgetall kvs "user:1")
-;; => {:name "Alice" :email "alice@example.com"}
-```
-
----
-
-### セット操作
-
-#### kvs/sadd - メンバー追加
-
-```qi
-(kvs/sadd conn key member)
-```
-
-**例**:
-```qi
-(kvs/sadd kvs "tags" "redis")
-(kvs/sadd kvs "tags" "cache")
-```
-
-#### kvs/smembers - 全メンバー取得
-
-```qi
-(kvs/smembers conn key)
-```
-
-**例**:
-```qi
-(kvs/smembers kvs "tags")
-;; => ["redis" "cache" "nosql"]
-```
-
----
-
-### 複数操作（バッチ操作）
-
-#### kvs/mget - 複数キー一括取得
-
-```qi
-(kvs/mget conn keys)
-```
-
-**引数**:
-- `keys`: キー名のベクタ
-
-**戻り値**:
-- 値のベクタ（存在しないキーはnil）
-
-**例**:
-```qi
-(kvs/set kvs "key1" "value1")
-(kvs/set kvs "key2" "value2")
-(kvs/set kvs "key3" "value3")
-
-(kvs/mget kvs ["key1" "key2" "key3"])
-;; => ["value1" "value2" "value3"]
-
-(kvs/mget kvs ["key1" "nonexistent" "key3"])
-;; => ["value1" nil "value3"]
-```
-
-#### kvs/mset - 複数キー一括設定
-
-```qi
-(kvs/mset conn pairs)
-```
-
-**引数**:
-- `pairs`: キーと値のマップ
-
-**戻り値**:
-- `"OK"` (成功時)
-
-**例**:
-```qi
-(kvs/mset kvs {"key1" "value1" "key2" "value2" "key3" "value3"})
-;; => "OK"
-
-;; 大量のキーを一度に設定
-(kvs/mset kvs {
-  "user:1" "Alice"
-  "user:2" "Bob"
-  "user:3" "Charlie"
-  "cache:1" "data1"
-  "cache:2" "data2"
-})
-```
-
-**パフォーマンスメリット**:
-- 複数のキーを1回のネットワーク往復で処理
-- ループ処理より高速
-- アトミックに実行される
-
-```qi
-;; ❌ 非効率（3回のネットワーク往復）
-(kvs/set kvs "key1" "value1")
-(kvs/set kvs "key2" "value2")
-(kvs/set kvs "key3" "value3")
-
-;; ✅ 効率的（1回のネットワーク往復）
-(kvs/mset kvs {"key1" "value1" "key2" "value2" "key3" "value3"})
-```
-
----
-
-### KVS実用例
-
-#### セッションキャッシュ
-
-```qi
-(def kvs (kvs/connect "redis://localhost:6379"))
-
-(defn create-session [user-id]
-  (def session-id (str "session:" user-id))
-  (def session-data (json/stringify {:user_id user-id :created_at (now)}))
-  (kvs/set kvs session-id session-data)
-  (kvs/expire kvs session-id 1800)  ;; 30分
-  session-id)
-
-(defn get-session [session-id]
-  (kvs/get kvs session-id)
-  |> (fn [data]
-       (if (nil? data)
-         {:error "Session not found"}
-         (json/parse data))))
-
-;; 使用例
-(def sid (create-session 42))
-(get-session sid)
-;; => {:user_id 42 :created_at "2025-01-22T..."}
-```
-
-#### カウンター（ページビュー）
-
-```qi
-(defn track-page-view [page-url]
-  (kvs/incr kvs (str "page-views:" page-url)))
-
-(defn get-page-views [page-url]
-  (kvs/get kvs (str "page-views:" page-url)))
-
-;; 使用例
-(track-page-view "/home")  ;; => 1
-(track-page-view "/home")  ;; => 2
-(get-page-views "/home")   ;; => "2"
-```
-
-#### タスクキュー
-
-```qi
-(defn enqueue-task [task-data]
-  (kvs/rpush kvs "task-queue" (json/stringify task-data)))
-
-(defn dequeue-task []
-  (kvs/lpop kvs "task-queue")
-  |> (fn [data]
-       (if (nil? data)
-         nil
-         (json/parse data))))
-
-;; 使用例
-(enqueue-task {:type "send-email" :to "user@example.com"})
-(dequeue-task)
-;; => 2 (成功した挿入の数)
+;; 複数行INSERT
+(db/exec db-conn "INSERT INTO users (name, email) VALUES ($1, $2), ($3, $4)" ["Alice" "alice@example.com" "Bob" "bob@example.com"])
+;; => 2
 ```
 
 ---
@@ -529,6 +245,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 ;; => [{:id 1 :name "Alice" :email "alice@example.com" :created_at "..."}]
 ```
 
+---
+
 ### ページネーション
 
 ```qi
@@ -548,6 +266,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 (get-users-page 2 10)  ;; 2ページ目、10件
 ;; => [{:id 90 :name "Yuki" ...} ...]
 ```
+
+---
 
 ### トランザクション（手動）
 
@@ -579,6 +299,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
              (db/exec conn "ROLLBACK" [])
              {:error "Transfer failed"}))))
 ```
+
+---
 
 ### 集計クエリ
 
@@ -634,6 +356,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
   rows -> (println "Found" (count rows) "users"))
 ```
 
+---
+
 ### 接続エラー
 
 ```qi
@@ -645,6 +369,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
 (def conn (db/connect "postgresql://localhost:9999/db"))
 ;; => {:error "Connection failed: connection refused"}
 ```
+
+---
 
 ### クエリエラー
 
@@ -675,6 +401,8 @@ features = ["kvs-redis", "db-sqlite", "db-postgres", "db-mysql"]
   (db/query conn "SELECT * FROM users" [])))
 ```
 
+---
+
 ### パラメータ化クエリ
 
 SQLインジェクション攻撃を防ぐため、常にパラメータ化クエリを使用してください：
@@ -692,14 +420,13 @@ SQLインジェクション攻撃を防ぐため、常にパラメータ化ク�
 
 ## 接続文字列の形式
 
-PostgreSQL接続文字列の形式：
+### PostgreSQL
 
 ```
 postgresql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
 ```
 
-### 例
-
+**例**:
 ```qi
 ;; 基本
 "postgresql://localhost/mydb"
@@ -714,21 +441,54 @@ postgresql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
 "postgresql://admin:secret@localhost/mydb?sslmode=require"
 ```
 
-### 環境変数からの読み込み
+---
 
+### MySQL
+
+```
+mysql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
+```
+
+**例**:
 ```qi
-;; 環境変数から接続文字列を取得（将来の計画）
-(def db-conn (env/get "DATABASE_URL"))
+;; 基本
+"mysql://root@localhost/mydb"
+
+;; ユーザー名とパスワード
+"mysql://root:pass@localhost/mydb"
+
+;; ポート指定
+"mysql://root:pass@localhost:3307/mydb"
 ```
 
 ---
 
-## 関連ドキュメント
+### SQLite
 
-- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証機能との統合
-- **[08-error-handling.md](08-error-handling.md)** - Result型パターン
-- **[11-stdlib-http.md](11-stdlib-http.md)** - WebアプリケーションでのDB使用
-- **[12-stdlib-json.md](12-stdlib-json.md)** - JSONデータの保存・読み込み
+```
+sqlite:path/to/database.db
+```
+
+**例**:
+```qi
+;; 相対パス
+"sqlite:mydb.db"
+
+;; 絶対パス
+"sqlite:/var/lib/myapp/data.db"
+
+;; インメモリ（将来対応）
+"sqlite::memory:"
+```
+
+---
+
+### 環境変数からの読み込み
+
+```qi
+;; 環境変数から接続文字列を取得（将来の計画）
+(def db-conn (db/connect (env/get "DATABASE_URL")))
+```
 
 ---
 
@@ -736,91 +496,18 @@ postgresql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
 
 ### 統一インターフェース設計
 
-#### 設計方針
-
-データベース（RDBMS）とKVS（Key-Value Store）は、**統一インターフェース**パターンで設計されています。
+データベース（RDBMS）は、**統一インターフェース**パターンで設計されています。
 これはGoの`database/sql`パッケージと同じアプローチで、バックエンド（ドライバー）を透過的に扱えます。
 
 ```
 統一インターフェース（ユーザーが使う）:
 - db/connect, db/query, db/exec      ... RDBMS統一インターフェース
-- kvs/connect, kvs/get, kvs/set      ... KVS統一インターフェース
 
 内部ドライバー（公開しない）:
 - SqliteDriver, PostgresDriver, MysqlDriver
-- RedisDriver, MemcachedDriver（将来）
 ```
 
-#### RDBMSの設計
-
-```qi
-;; 統一インターフェース（バックエンド自動判別）
-(def conn (db/connect "postgresql://localhost/mydb"))
-(def conn (db/connect "mysql://root:pass@localhost/mydb"))
-(def conn (db/connect "sqlite:path/to/db.db"))
-
-;; 以降のコードはバックエンド非依存
-(db/query conn "SELECT * FROM users" [])
-(db/exec conn "INSERT INTO users (name) VALUES (?)" ["Alice"])
-
-;; トランザクション
-(def tx (db/begin conn))
-(db/exec tx "UPDATE accounts SET balance = balance - 100 WHERE id = 1" [])
-(db/exec tx "UPDATE accounts SET balance = balance + 100 WHERE id = 2" [])
-(db/commit tx)
-```
-
-**バックエンド切り替え**: 接続URLを変更するだけでPostgreSQL↔MySQL↔SQLite間を移行できます。
-
-**専用関数は公開しない**: `db/pg-*`, `db/my-*`のような専用関数は内部実装用のみです。
-統一インターフェースで表現できない機能（PostgreSQLのCOPY、MySQLのLOAD DATA等）が必要になった場合のみ追加します。
-
-#### KVSの設計
-
-```qi
-;; 統一インターフェース（バックエンド自動判別）
-(def kvs (kvs/connect "redis://localhost:6379"))
-
-;; 以降のコードはバックエンド非依存
-(kvs/set kvs "key" "value")
-(kvs/get kvs "key")
-(kvs/delete kvs "key")
-
-;; データ構造操作
-(kvs/hset kvs "user:1" "name" "Alice")  ;; ハッシュ
-(kvs/lpush kvs "queue" "task1")         ;; リスト
-(kvs/sadd kvs "tags" "redis")           ;; セット
-```
-
-**バックエンド切り替え**: 接続URLを変更するだけでRedis↔Memcached等を切り替え可能（将来）。
-
-**専用関数は公開しない**: `kvs/redis-*`のような専用関数は内部実装用のみです。
-統一インターフェースで表現できない機能（Redis Pub/Sub、Lua scripting等）が必要になった場合のみ追加します。
-
-### 使用クレート
-
-**RDBMS**:
-- **rusqlite** (v0.32) - Pure Rust SQLiteクライアント
-- **tokio-postgres** (v0.7) - Pure Rust PostgreSQLクライアント
-- **mysql_async** (v0.34) - Pure Rust MySQLクライアント
-- **tokio** - 非同期ランタイム
-
-**KVS**:
-- **redis** (v0.27) - Pure Rust Redisクライアント
-- **tokio** - 非同期ランタイム
-
-### 非同期処理
-
-内部的には非同期APIを使用していますが、Qiのユーザーには同期的なAPIとして公開されています。
-
-```rust
-// Rustでの実装（参考）
-let rt = tokio::runtime::Runtime::new()?;
-rt.block_on(async {
-    let (client, connection) = tokio_postgres::connect(conn_str, NoTls).await?;
-    client.query(query, &params).await
-})
-```
+---
 
 ### ドライバーパターン
 
@@ -853,12 +540,26 @@ impl DbConnection for SqliteConnection { /* ... */ }
 
 ---
 
+### 非同期処理
+
+内部的には非同期APIを使用していますが、Qiのユーザーには同期的なAPIとして公開されています。
+
+```rust
+// Rustでの実装（参考）
+let rt = tokio::runtime::Runtime::new()?;
+rt.block_on(async {
+    let (client, connection) = tokio_postgres::connect(conn_str, NoTls).await?;
+    client.query(query, &params).await
+})
+```
+
+---
+
 ## ロードマップ
 
-### RDBMS
+### 将来的に実装予定の機能
 
-将来的に実装予定の機能：
-
+**RDBMS**:
 - **コネクションプール**: 接続の再利用で高速化
 - **ストリーミングクエリ**: 大量データの効率的な処理
 - **専用関数の追加**: 統一IFで表現できない場合のみ
@@ -866,20 +567,11 @@ impl DbConnection for SqliteConnection { /* ... */ }
   - MySQL: `LOAD DATA`
   - SQLite: カスタム関数、仮想テーブル
 
-### KVS
-
-将来的に実装予定の機能：
-
-- **Memcached対応**: `kvs/connect "memcached://..."`
-- **インメモリKVS**: `kvs/connect ":memory:"` （Pure Rust、依存なし）
-- **専用関数の追加**: 統一IFで表現できない場合のみ
-  - Redis: Pub/Sub、Lua scripting、Sorted Sets、Streams
-
 ---
 
 ## まとめ
 
-Qiのデータベース＆KVSライブラリは、統一インターフェースでシンプルかつ安全なアクセスを提供します。
+Qiのデータベースライブラリは、統一インターフェースでシンプルかつ安全なアクセスを提供します。
 
 ### RDBMS（db/*）
 
@@ -890,13 +582,14 @@ Qiのデータベース＆KVSライブラリは、統一インターフェース
 - **パラメータ化クエリ**: SQLインジェクション対策
 - **バックエンド透過的切り替え**: 接続URLのみ変更
 
-### KVS（kvs/*）
+これらの機能を組み合わせることで、データベース駆動のアプリケーションを簡単に構築できます。
 
-- **kvs/connect**: Redis対応（将来Memcached等も）
-- **kvs/get/set/delete**: 基本操作
-- **kvs/hget/hset**: ハッシュ操作
-- **kvs/lpush/rpush**: リスト操作
-- **kvs/sadd/smembers**: セット操作
-- **バックエンド透過的切り替え**: 接続URLのみ変更
+---
 
-これらの機能を組み合わせることで、データベース・キャッシュ駆動のアプリケーションを簡単に構築できます。
+## 関連ドキュメント
+
+- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store統一インターフェース（Redis）
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証機能との統合
+- **[08-error-handling.md](08-error-handling.md)** - Result型パターン
+- **[11-stdlib-http.md](11-stdlib-http.md)** - WebアプリケーションでのDB使用
+- **[12-stdlib-json.md](12-stdlib-json.md)** - JSONデータの保存・読み込み
