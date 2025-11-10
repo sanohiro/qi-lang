@@ -234,7 +234,7 @@
 - **Database**: `db/connect`, `db/query`, `db/exec` (PostgreSQL/MySQL/SQLite) → [17-stdlib-database.md](17-stdlib-database.md)
 - **Debug**: `debug/trace`, `debug/break`, `debug/stack`, `debug/info` → [20-stdlib-debug.md](20-stdlib-debug.md)
 
-**📑 完全な関数索引**: [FUNCTION-INDEX.md](FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
+**📑 完全な関数索引**: [FUNCTION-INDEX.md](../../spec/FUNCTION-INDEX.md) - 全関数の詳細リファレンス（`./scripts/list_qi_functions.sh`で生成）
 
 ---
 

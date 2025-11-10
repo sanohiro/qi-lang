@@ -182,9 +182,9 @@ Keys in returned map:
 (process-batch [10 50 1200 5])
 ```
 
-## VSCode Debug Support (Planned)
+## VSCode Debug Support
 
-In the future, we plan to support VSCode integrated debugger:
+Qi supports VS Code integrated debugger:
 
 - GUI-based breakpoint setting
 - Step execution (Step In, Step Over, Step Out)
@@ -194,12 +194,14 @@ In the future, we plan to support VSCode integrated debugger:
 
 ## Enabling the Debugger
 
-In the current version, the debugger is always available, but most features are disabled by default. In the future, the debugger will be enabled via startup options:
+The debugger can be enabled via startup options:
 
 ```bash
-# Future plan
+# Launch with debug mode
 qi --debug script.qi
-qi --debug-port 5678 script.qi  # Attachable via DAP
+
+# Attachable via DAP (listen on specified port)
+qi --debug-port 5678 script.qi
 ```
 
 ## Performance

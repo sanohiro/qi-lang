@@ -1,32 +1,32 @@
-# 第6章: WebアプリケーションとAPI
+# Chapter 6: Web Applications and APIs
 
-**所要時間**: 40分
+**Time Required**: 40 minutes
 
-QiでHTTPサーバーとJSON APIを構築する方法を学びます。シンプルで読みやすいコードで、**本格的なWebアプリケーション**が作れます。
+Learn how to build HTTP servers and JSON APIs with Qi. You can create **production-ready web applications** with simple, readable code.
 
 ---
 
-## 最小のHTTPサーバー
+## Minimal HTTP Server
 
-まずは、最もシンプルなHTTPサーバーを作ってみましょう。
+Let's start by creating the simplest HTTP server.
 
 ```qi
 (defn handler [req]
   (server/text "Hello, World!"))
 
 (server/serve handler {:port 3000})
-; => サーバーが起動: http://localhost:3000
+; => Server started: http://localhost:3000
 ```
 
-ブラウザで`http://localhost:3000`にアクセスすると、`Hello, World!`が表示されます。
+Access `http://localhost:3000` in your browser to see `Hello, World!`.
 
 ---
 
-## リクエストとレスポンス
+## Requests and Responses
 
-### リクエストの構造
+### Request Structure
 
-ハンドラーには、以下のようなリクエストマップが渡されます：
+The handler receives a request map like this:
 
 ```qi
 {:method :get
@@ -35,33 +35,33 @@ QiでHTTPサーバーとJSON APIを構築する方法を学びます。シンプ
  :body "..."}
 ```
 
-### レスポンスの種類
+### Response Types
 
-Qiは、便利なレスポンスヘルパーを提供しています。
+Qi provides convenient response helpers.
 
 ```qi
-; テキストレスポンス
+; Text response
 (server/text "Hello")
 ; => {:status 200 :headers {"Content-Type" "text/plain"} :body "Hello"}
 
-; JSONレスポンス
+; JSON response
 (server/json {"message" "Success" "data" [1 2 3]})
 ; => {:status 200 :headers {"Content-Type" "application/json"} :body "..."}
 
-; HTMLレスポンス
+; HTML response
 (server/html "<h1>Welcome</h1>")
 ; => {:status 200 :headers {"Content-Type" "text/html"} :body "..."}
 
-; カスタムステータス
+; Custom status
 (server/response 201 {"message" "Created"})
 ; => {:status 201 ...}
 ```
 
 ---
 
-## ルーティング
+## Routing
 
-パスに応じて処理を分岐します。
+Branch processing based on the path.
 
 ```qi
 (defn handler [req]
@@ -74,7 +74,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
 (server/serve handler {:port 3000})
 ```
 
-### メソッドとパスの組み合わせ
+### Combining Method and Path
 
 ```qi
 (defn handler [req]
@@ -92,7 +92,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
 
 ## JSON API
 
-### GET: データ取得
+### GET: Retrieve Data
 
 ```qi
 (def users
@@ -121,7 +121,7 @@ Qiは、便利なレスポンスヘルパーを提供しています。
 (server/serve handler {:port 3000})
 ```
 
-**テスト**:
+**Testing**:
 ```bash
 curl http://localhost:3000/api/users
 # => {"users":[{"id":1,"name":"Alice","age":25},...]}
@@ -133,7 +133,7 @@ curl http://localhost:3000/api/users/999
 # => {"error":"User not found"}
 ```
 
-### POST: データ作成
+### POST: Create Data
 
 ```qi
 (def users (atom []))
@@ -156,7 +156,7 @@ curl http://localhost:3000/api/users/999
 (server/serve handler {:port 3000})
 ```
 
-**テスト**:
+**Testing**:
 ```bash
 curl -X POST http://localhost:3000/api/users \
   -H "Content-Type: application/json" \
@@ -166,9 +166,9 @@ curl -X POST http://localhost:3000/api/users \
 
 ---
 
-## エラーハンドリング
+## Error Handling
 
-Railway Pipelineを使って、エラーを優雅に処理します。
+Use Railway Pipeline to handle errors gracefully.
 
 ```qi
 (defn parse-body [req]
@@ -203,9 +203,9 @@ Railway Pipelineを使って、エラーを優雅に処理します。
 
 ---
 
-## 実用例: CRUD API
+## Practical Example: CRUD API
 
-完全なCRUD（Create, Read, Update, Delete）APIを作成します。
+Create a complete CRUD (Create, Read, Update, Delete) API.
 
 ```qi
 (def users (atom {}))
@@ -266,7 +266,7 @@ Railway Pipelineを使って、エラーを優雅に処理します。
         (swap! users dissoc id)
         (server/response 204 nil)))))
 
-; ルーティング
+; Routing
 (defn handler [req]
   (match [(get req :method) (get req :path)]
     ["GET" "/api/users"] -> (list-users req)
@@ -285,7 +285,7 @@ Railway Pipelineを使って、エラーを優雅に処理します。
 (server/serve handler {:port 3000})
 ```
 
-**テスト**:
+**Testing**:
 ```bash
 # Create
 curl -X POST http://localhost:3000/api/users \
@@ -309,11 +309,11 @@ curl -X DELETE http://localhost:3000/api/users/1
 
 ---
 
-## ミドルウェア
+## Middleware
 
-リクエストの前処理・後処理を行う関数です。
+Functions that perform pre-processing and post-processing of requests.
 
-### ログミドルウェア
+### Logger Middleware
 
 ```qi
 (defn logger [handler]
@@ -333,7 +333,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 (server/serve app {:port 3000})
 ```
 
-### CORSミドルウェア
+### CORS Middleware
 
 ```qi
 (defn cors [handler]
@@ -349,7 +349,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 (server/serve app {:port 3000})
 ```
 
-### ミドルウェアの合成
+### Middleware Composition
 
 ```qi
 (def app
@@ -360,12 +360,12 @@ curl -X DELETE http://localhost:3000/api/users/1
 (server/serve app {:port 3000})
 ```
 
-### 認証ミドルウェア（JWT）
+### Authentication Middleware (JWT)
 
-JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
+Example implementation of JWT (JSON Web Token) authentication middleware.
 
 ```qi
-;; Authorizationヘッダーからトークンを抽出
+;; Extract token from Authorization header
 (defn extract-auth-token [request]
   (let [auth-header (get-in request [:headers :authorization])]
     (if (nil? auth-header)
@@ -374,7 +374,7 @@ JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
         (string/replace-first auth-header "Bearer " "")
         nil))))
 
-;; 認証が必要なエンドポイント用ミドルウェア
+;; Middleware for protected endpoints
 (defn require-auth [handler]
   (fn [request]
     (let [token (extract-auth-token request)]
@@ -388,12 +388,12 @@ JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
                         :body (json/stringify {:error "Invalid token"})}
           payload -> (handler (assoc request :user payload)))))))
 
-;; 保護されたエンドポイント
+;; Protected endpoint
 (defn handle-profile [request]
   (let [user (get request :user)]
     (server/json {:user user :message "This is a protected resource"})))
 
-;; ルーティング
+;; Routing
 (defn handler [req]
   (match [(get req :method) (get req :path)]
     ["POST" "/api/login"] -> (handle-login req)
@@ -403,29 +403,29 @@ JWT（JSON Web Token）を使った認証ミドルウェアの実装例です。
 (server/serve handler {:port 3000})
 ```
 
-**認証フローの例**:
+**Authentication flow example**:
 ```bash
-# 1. ログインしてトークンを取得
+# 1. Login and get token
 curl -X POST http://localhost:3000/api/login \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","password":"secret123"}'
 # => {"token":"eyJ0eXAi..."}
 
-# 2. トークンを使って保護されたリソースにアクセス
+# 2. Access protected resource with token
 curl http://localhost:3000/api/profile \
   -H "Authorization: Bearer eyJ0eXAi..."
 # => {"user":{"user_id":1,"username":"alice"},"message":"This is a protected resource"}
 
-# 3. トークンなしでアクセス（401エラー）
+# 3. Access without token (401 error)
 curl http://localhost:3000/api/profile
 # => {"error":"Missing authorization token"}
 ```
 
-**詳細な実装例**: `examples/17-jwt-auth.qi` および `examples/19-auth-api.qi` を参照してください。
+**Detailed implementation examples**: See `examples/17-jwt-auth.qi` and `examples/19-auth-api.qi`.
 
 ---
 
-## 実用例: シンプルなブログAPI
+## Practical Example: Simple Blog API
 
 ```qi
 (def posts (atom {}))
@@ -470,20 +470,20 @@ curl http://localhost:3000/api/profile
 
 ---
 
-## 練習問題
+## Practice Problems
 
-### 問題1: シンプルなカウンターAPI
+### Problem 1: Simple Counter API
 
-アクセスカウンターAPIを作ってください。
+Create an access counter API.
 
 ```qi
-; GET /api/count - 現在のカウントを返す
-; POST /api/count/increment - カウントを1増やす
-; POST /api/count/reset - カウントを0にリセット
+; GET /api/count - Return current count
+; POST /api/count/increment - Increment count by 1
+; POST /api/count/reset - Reset count to 0
 ```
 
 <details>
-<summary>解答例</summary>
+<summary>Solution</summary>
 
 ```qi
 (def count (atom 0))
@@ -506,18 +506,18 @@ curl http://localhost:3000/api/profile
 
 </details>
 
-### 問題2: ToDo API
+### Problem 2: ToDo API
 
-シンプルなToDo APIを作ってください。
+Create a simple ToDo API.
 
 ```qi
-; GET /api/todos - 全てのToDoを取得
-; POST /api/todos - 新しいToDoを作成
-; PUT /api/todos/:id/complete - ToDoを完了にする
+; GET /api/todos - Get all ToDos
+; POST /api/todos - Create new ToDo
+; PUT /api/todos/:id/complete - Mark ToDo as complete
 ```
 
 <details>
-<summary>解答例</summary>
+<summary>Solution</summary>
 
 ```qi
 (def todos (atom {}))
@@ -558,48 +558,48 @@ curl http://localhost:3000/api/profile
 
 ---
 
-## まとめ
+## Summary
 
-この章で学んだこと：
+What you learned in this chapter:
 
-- ✅ HTTPサーバーの基本
-- ✅ ルーティングとリクエスト処理
-- ✅ JSON APIの構築
-- ✅ CRUDエンドポイントの実装
-- ✅ ミドルウェアパターン
-- ✅ JWT認証ミドルウェア
-- ✅ エラーハンドリング
+- ✅ HTTP server basics
+- ✅ Routing and request handling
+- ✅ JSON API construction
+- ✅ CRUD endpoint implementation
+- ✅ Middleware patterns
+- ✅ JWT authentication middleware
+- ✅ Error handling
 
 ---
 
-## 🎉 チュートリアル完了！
+## 🎉 Tutorial Complete!
 
-お疲れさまでした！これでQiの主要機能を全て学びました。
+Congratulations! You've now learned all the main features of Qi.
 
-### 学んだこと
-1. ✅ 基本構文とデータ型
-2. ✅ パイプライン演算子
-3. ✅ パターンマッチング
-4. ✅ エラー処理（Railway Pipeline）
-5. ✅ 並行・並列処理
-6. ✅ WebアプリケーションとAPI
+### What You've Learned
+1. ✅ Basic syntax and data types
+2. ✅ Pipeline operators
+3. ✅ Pattern matching
+4. ✅ Error handling (Railway Pipeline)
+5. ✅ Concurrency and parallelism
+6. ✅ Web applications and APIs
 
-### 次のステップ
+### Next Steps
 
-1. **自分のプロジェクトを始める**
-   - 小さなCLIツール
+1. **Start Your Own Project**
+   - Small CLI tool
    - Web API
-   - データ処理スクリプト
+   - Data processing script
 
-2. **examples/ディレクトリを見る**
-   - 実践的なコード例
-   - ベストプラクティス
+2. **Explore the examples/ Directory**
+   - Practical code examples
+   - Best practices
 
-3. **ドキュメントを深く学ぶ**
-   - [完全な言語仕様](../spec/)
-   - [関数索引](../../spec/FUNCTION-INDEX.md)
+3. **Deep Dive into Documentation**
+   - [Complete Language Specification](../spec/)
+   - [Function Index](../../spec/FUNCTION-INDEX.md)
 
-4. **コミュニティに参加する**
+4. **Join the Community**
    - GitHub Issues
    - Discussions
 
