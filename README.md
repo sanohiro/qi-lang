@@ -246,18 +246,18 @@ cargo test --features integration-tests --test integration_redis
 ## Documentation
 
 ### Getting Started
-- **[Lisp Basics](docs/ja/tutorial/00-lisp-basics.md)** 📚 For Lisp beginners - How to read parentheses (5 min) (Japanese)
-- **[Tutorial](docs/ja/tutorial/01-getting-started.md)** ⭐ For beginners - Getting started with Qi (Japanese)
-- **[CLI Reference](docs/ja/cli.md)** - How to use the `qi` command (Japanese)
-- **[Project Management](docs/ja/project.md)** - qi.toml, templates, customization (Japanese)
+- **[Lisp Basics](docs/en/tutorial/00-lisp-basics.md)** 📚 For Lisp beginners - How to read parentheses (5 min)
+- **[Tutorial](docs/en/tutorial/01-getting-started.md)** ⭐ For beginners - Getting started with Qi
+- **[CLI Reference](docs/en/cli.md)** - How to use the `qi` command
+- **[Project Management](docs/en/project.md)** - qi.toml, templates, customization
 
 ### Language Reference
-- **[Language Specification](docs/ja/spec/)** - Complete Qi specification and reference (Japanese)
-  - [Pipeline Operators](docs/ja/spec/02-flow-pipes.md) - `|>`, `|>?`, `||>`, `~>` (Japanese)
-  - [Concurrency & Parallelism](docs/ja/spec/03-concurrency.md) - `go`, `chan` (Japanese)
-  - [Pattern Matching](docs/ja/spec/04-match.md) - `match` expressions (Japanese)
-  - [Error Handling](docs/ja/spec/08-error-handling.md) - `try`, `defer` (Japanese)
-- **[Standard Library](docs/ja/spec/10-stdlib-string.md)** - 60+ built-in functions (Japanese)
+- **[Language Specification](docs/en/spec/)** - Complete Qi specification and reference
+  - [Pipeline Operators](docs/en/spec/02-flow-pipes.md) - `|>`, `|>?`, `||>`, `~>`
+  - [Concurrency & Parallelism](docs/en/spec/03-concurrency.md) - `go`, `chan`
+  - [Pattern Matching](docs/en/spec/04-match.md) - `match` expressions
+  - [Error Handling](docs/en/spec/08-error-handling.md) - `try`, `defer`
+- **[Standard Library](docs/en/spec/10-stdlib-string.md)** - 60+ built-in functions
 
 ## License
 
