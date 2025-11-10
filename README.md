@@ -1,36 +1,38 @@
 # Qi - A Lisp that flows
 
+**[日本語](README.ja.md)** | English
+
 <p align="center">
   <img src="./assets/logo/qi-logo-full-512.png" alt="Qi Logo" width="400">
 </p>
 
-**データの流れを設計するシンプルなLisp系のプログラミング言語。パイプライン、パターンマッチング、並行処理に強いです。**
+**A simple Lisp-based programming language for designing data flow. Strong support for pipelines, pattern matching, and concurrency.**
 
-## ⚠️ 開発状況
+## ⚠️ Development Status
 
-**このプロジェクトは現在アクティブな開発中です（Pre-1.0）**
+**This project is under active development (Pre-1.0)**
 
-- 破壊的変更が頻繁に発生します
-- APIやインターフェースは予告なく変更される可能性があります
-- 本番環境での使用は推奨しません
-- 未テストのコードも多くあります
+- Breaking changes occur frequently
+- APIs and interfaces may change without notice
+- Not recommended for production use
+- Many features remain untested
 
-現在の開発段階: **Alpha / Experimental**
+Current development stage: **Alpha / Experimental**
 
 ---
 
-## 特徴
+## Features
 
-- **パイプライン**: `|>` `|>?` `||>` `~>` でデータフローを直感的に記述
-- **パターンマッチング**: 強力な `match` 式で分岐と変換を統合
-- **並行・並列**: goroutine風の並行処理とチャネル、並列パイプライン
-- **Web開発**: JSON/HTTP対応、Railway Pipelineでエラーハンドリング
-- **認証・認可**: JWT認証、Argon2パスワードハッシュ、認証ミドルウェア
-- **データベース**: PostgreSQL/MySQL/SQLite対応（統一インターフェース）
-- **KVS**: Redis対応（統一インターフェース、将来Memcached/InMemory対応予定）
-- **デバッグ**: トレース、ブレークポイント、スタックトレース機能（VSCodeデバッガ対応）
-- **f-string**: 文字列補間と複数行文字列（`"""..."""`）
-- **多言語対応**: 英語・日本語のエラーメッセージ（`QI_LANG=ja`）
+- **Pipelines**: Express data flow intuitively with `|>` `|>?` `||>` `~>`
+- **Pattern Matching**: Unified branching and transformation with powerful `match` expressions
+- **Concurrency & Parallelism**: Goroutine-style concurrency with channels and parallel pipelines
+- **Web Development**: JSON/HTTP support with Railway Pipeline for error handling
+- **Authentication & Authorization**: JWT authentication, Argon2 password hashing, auth middleware
+- **Databases**: PostgreSQL/MySQL/SQLite support (unified interface)
+- **KVS**: Redis support (unified interface, Memcached/InMemory support planned)
+- **Debugging**: Trace, breakpoints, stack traces (VSCode debugger support)
+- **F-strings**: String interpolation and multi-line strings (`"""..."""`)
+- **i18n**: English/Japanese error messages (`QI_LANG=ja`)
 
 
 ## Hello World
@@ -43,56 +45,56 @@
 ;; => Hello, World!
 ```
 
-## パイプライン例
+## Pipeline Examples
 
-### 基本パイプライン
+### Basic Pipeline
 ```qi
-;; 数値のフィルタリングと変換
+;; Filter and transform numbers
 ([1 2 3 4 5 6 7 8 9 10]
  |> (filter (fn [x] (> x 5)))
  |> (map (fn [x] (* x 2)))
  |> (reduce + 0))
 ;; => 90
 
-;; 文字列処理
+;; String processing
 ("hello world"
  |> str/upper
  |> str/reverse)
 ;; => "DLROW OLLEH"
 ```
 
-### Railway Pipeline - エラーハンドリング
+### Railway Pipeline - Error Handling
 ```qi
-;; {:error}以外は全て成功扱い（:okラップなし！）
+;; Everything except {:error} is treated as success (no :ok wrapping!)
 (defn validate-positive [x]
   (if (> x 0)
-    x                          ;; 普通の値 → 成功
+    x                          ;; Plain value → success
     {:error "Must be positive"}))
 
 (defn double [x]
-  (* x 2))                     ;; 普通の値 → 成功
+  (* x 2))                     ;; Plain value → success
 
 (defn format-result [x]
-  f"Result: {x}")              ;; 普通の値 → 成功
+  f"Result: {x}")              ;; Plain value → success
 
-;; 成功ケース - 値がそのまま流れる
+;; Success case - values flow through
 (10
  |>? validate-positive
  |>? double
  |>? format-result)
 ;; => "Result: 20"
 
-;; エラーケース - エラーは自動的に伝播
+;; Error case - errors propagate automatically
 (-5
  |>? validate-positive
- |>? double                    ;; 実行されない（ショートサーキット）
- |>? format-result)            ;; 実行されない
+ |>? double                    ;; Not executed (short-circuit)
+ |>? format-result)            ;; Not executed
 ;; => {:error "Must be positive"}
 ```
 
-### 並列パイプライン
+### Parallel Pipeline
 ```qi
-;; ||> で複数の処理を並列実行
+;; ||> executes multiple operations in parallel
 ([1 2 3 4 5]
  ||> (fn [x] (* x 2))
  ||> (fn [x] (+ x 10))
@@ -102,43 +104,43 @@
 
 ## Quick Start
 
-### インストール
+### Installation
 
 ```bash
-# Rustがインストールされている場合
+# If Rust is installed
 cargo install --path .
 
-# または
+# Or
 cargo build --release
 ```
 
-### プロジェクトを作成
+### Create a Project
 
 ```bash
-# 基本的なプロジェクト
+# Basic project
 qi new my-project
 cd my-project
 qi main.qi
 
-# HTTPサーバープロジェクト
+# HTTP server project
 qi new myapi --template http-server
 cd myapi
 qi main.qi
 ```
 
-### 利用可能なテンプレート
+### Available Templates
 
 ```bash
 qi template list
 qi template info http-server
 ```
 
-### REPL（対話型実行環境）
+### REPL (Interactive Environment)
 
 ```bash
 qi
 
-# REPL内で
+# Inside REPL
 qi:1> (+ 1 2 3)
 6
 
@@ -146,122 +148,122 @@ qi:2> ([1 2 3 4 5] |> (map (fn [x] (* x 2))))
 Vector([Integer(2), Integer(4), Integer(6), Integer(8), Integer(10)])
 ```
 
-### その他のコマンド
+### Other Commands
 
 ```bash
-# スクリプトファイル実行
+# Execute script file
 qi script.qi
 
-# ワンライナー実行
+# One-liner execution
 qi -e '(+ 1 2 3)'
 
-# パイプからの入力を処理（自動的にstdin変数に格納）
+# Process piped input (automatically stored in stdin variable)
 cat data.csv | qi -e '(stdin |> (map str/trim) |> (filter (fn [x] (> (len x) 0))))'
 ls -l | qi -e '(count stdin)'
 
-# ヘルプ表示
+# Show help
 qi --help
 ```
 
-### 初期化ファイル（.qi/init.qi）
+### Initialization File (.qi/init.qi)
 
-REPLおよびワンライナー実行時に、以下の順序で初期化ファイルが自動ロードされます：
+During REPL and one-liner execution, initialization files are automatically loaded in the following order:
 
 ```bash
-# 1. ユーザーグローバル設定（優先）
+# 1. User global settings (priority)
 ~/.qi/init.qi
 
-# 2. プロジェクトローカル設定
+# 2. Project local settings
 ./.qi/init.qi
 ```
 
-初期化ファイルでよく使うライブラリをプリロードしたり、便利な関数を定義できます：
+You can preload commonly used libraries or define convenience functions in initialization files:
 
 ```qi
-;; ~/.qi/init.qi の例
-;; テーブル処理ライブラリをプリロード
+;; Example ~/.qi/init.qi
+;; Preload table processing library
 (use "std/lib/table" :as table)
 
-;; デバッグ用関数
+;; Debug function
 (defn dbg [x]
   (do (println (str "DEBUG: " x))
       x))
 ```
 
-## エディタ拡張
+## Editor Extensions
 
 ### Visual Studio Code
 
-公式のVSCode拡張機能を提供しています：
+Official VSCode extension is available:
 
-- **リポジトリ**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
-- **機能**:
-  - シンタックスハイライト
-  - コードスニペット
-  - ブラケットマッチング
+- **Repository**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
+- **Features**:
+  - Syntax highlighting
+  - Code snippets
+  - Bracket matching
 
-インストール方法や詳細は[qi-vscode リポジトリ](https://github.com/sanohiro/qi-vscode)を参照してください。
+See the [qi-vscode repository](https://github.com/sanohiro/qi-vscode) for installation instructions and details.
 
-## テスト
+## Testing
 
-### ユニットテスト（高速）
+### Unit Tests (Fast)
 
 ```bash
-# 通常のテスト（Dockerなし）
+# Normal tests (without Docker)
 cargo test
 
-# 特定のモジュールをテスト
+# Test specific modules
 cargo test parser
 cargo test eval
 ```
 
-### 統合テスト（Docker自動起動）
+### Integration Tests (Auto Docker)
 
-PostgreSQL、MySQL、Redisの統合テストは、testcontainersを使用してDockerコンテナを自動起動・削除します。
+Integration tests for PostgreSQL, MySQL, and Redis automatically start and clean up Docker containers using testcontainers.
 
-**前提条件**: Dockerがインストールされている必要があります。
+**Prerequisites**: Docker must be installed.
 
 ```bash
-# 統合テスト実行（PostgreSQL + MySQL + Redis）
+# Run integration tests (PostgreSQL + MySQL + Redis)
 cargo test --features integration-tests
 
-# 個別実行
+# Individual execution
 cargo test --features integration-tests --test integration_postgres
 cargo test --features integration-tests --test integration_mysql
 cargo test --features integration-tests --test integration_redis
 ```
 
-**動作**:
-- テスト開始時にDockerコンテナが自動起動（ポート自動割り当て）
-- テスト終了時にコンテナが自動削除
-- イメージは残るため、次回のテスト実行が高速
+**Behavior**:
+- Containers automatically start at test startup (ports auto-assigned)
+- Containers automatically removed after tests
+- Images remain for faster subsequent test runs
 
-## リンク
+## Links
 
-- **GitHub リポジトリ**: [qi-lang](https://github.com/sanohiro/qi-lang)
-- **VSCode拡張**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
+- **GitHub Repository**: [qi-lang](https://github.com/sanohiro/qi-lang)
+- **VSCode Extension**: [qi-vscode](https://github.com/sanohiro/qi-vscode)
 
-## ドキュメント
+## Documentation
 
-### はじめに
-- **[Lisp系言語の基礎](docs/tutorial/00-lisp-basics.md)** 📚 Lisp初心者向け - 括弧の読み方（5分）
-- **[チュートリアル](docs/tutorial/01-getting-started.md)** ⭐ 初心者向け - Qiをはじめよう
-- **[CLIリファレンス](docs/cli.md)** - `qi`コマンドの使い方
-- **[プロジェクト管理](docs/project.md)** - qi.toml、テンプレート、カスタマイズ
+### Getting Started
+- **[Lisp Basics](docs/ja/tutorial/00-lisp-basics.md)** 📚 For Lisp beginners - How to read parentheses (5 min) (Japanese)
+- **[Tutorial](docs/ja/tutorial/01-getting-started.md)** ⭐ For beginners - Getting started with Qi (Japanese)
+- **[CLI Reference](docs/ja/cli.md)** - How to use the `qi` command (Japanese)
+- **[Project Management](docs/ja/project.md)** - qi.toml, templates, customization (Japanese)
 
-### 言語リファレンス
-- **[言語仕様書](docs/spec/)** - Qiの完全な仕様とリファレンス
-  - [パイプライン演算子](docs/spec/02-flow-pipes.md) - `|>`, `|>?`, `||>`, `~>`
-  - [並行・並列処理](docs/spec/03-concurrency.md) - `go`, `chan`
-  - [パターンマッチング](docs/spec/04-match.md) - `match`式
-  - [エラー処理](docs/spec/08-error-handling.md) - `try`, `defer`
-- **[標準ライブラリ](docs/spec/10-stdlib-string.md)** - 60以上の組み込み関数
+### Language Reference
+- **[Language Specification](docs/ja/spec/)** - Complete Qi specification and reference (Japanese)
+  - [Pipeline Operators](docs/ja/spec/02-flow-pipes.md) - `|>`, `|>?`, `||>`, `~>` (Japanese)
+  - [Concurrency & Parallelism](docs/ja/spec/03-concurrency.md) - `go`, `chan` (Japanese)
+  - [Pattern Matching](docs/ja/spec/04-match.md) - `match` expressions (Japanese)
+  - [Error Handling](docs/ja/spec/08-error-handling.md) - `try`, `defer` (Japanese)
+- **[Standard Library](docs/ja/spec/10-stdlib-string.md)** - 60+ built-in functions (Japanese)
 
-## ライセンス
+## License
 
-MIT OR Apache-2.0 のデュアルライセンスです。お好きな方を選択してください。
+Dual-licensed under MIT OR Apache-2.0. Choose whichever you prefer.
 
-- [LICENSE-MIT](LICENSE-MIT) - MITライセンス
+- [LICENSE-MIT](LICENSE-MIT) - MIT License
 - [LICENSE-APACHE](LICENSE-APACHE) - Apache License 2.0
 
-詳細は各ライセンスファイルを参照してください。
+See each license file for details.
