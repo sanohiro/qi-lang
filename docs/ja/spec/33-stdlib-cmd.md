@@ -12,7 +12,6 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 
 **主な機能**:
 - コマンド実行と終了コード取得
-- シェルスクリプト実行（sh/cmd.exe経由）
 - 標準入出力制御
 - パイプライン統合（Qi → コマンド → Qi）
 - ストリーム処理（行単位・バイト単位）
@@ -54,48 +53,28 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 - **文字列**: シェル経由（パイプ、リダイレクト、環境変数展開が可能）
 - **ベクタ**: 直接実行（シェルインジェクション対策、高速）
 
----
+### cmd/exec! - コマンド実行（詳細版）
 
-## シェル実行
-
-### cmd/sh - シェルコマンド実行（簡易版）
-
-**引数**: コマンド文字列
-**戻り値**: 終了コード（整数）
-
-```qi
-;; Unix/Linux/macOS: /bin/sh 経由
-(cmd/sh "ls -la | grep .qi")           ;; => 0
-
-;; Windows: cmd.exe /C 経由
-(cmd/sh "dir *.qi")                    ;; => 0
-
-;; パイプライン、リダイレクトが使える
-(cmd/sh "cat *.txt | sort | uniq > result.txt")  ;; => 0
-(cmd/sh "curl -s https://example.com | grep title")  ;; => 0
-
-;; 複数コマンド実行
-(cmd/sh "cd build && make clean && make")  ;; => 0
-```
-
-### cmd/sh! - シェルコマンド実行（詳細版）
-
-**引数**: コマンド文字列
+**引数**: コマンド（文字列 or ベクタ）
 **戻り値**: `{:stdout "..." :stderr "..." :exit 0}` マップ
 
 ```qi
-;; 標準出力・標準エラー・終了コードを全て取得
-(cmd/sh! "cat *.txt | grep pattern | wc -l")
+;; シェル経由で標準出力・標準エラー・終了コードを全て取得
+(cmd/exec! "cat *.txt | grep pattern | wc -l")
 ;; => {:stdout "      42\n" :stderr "" :exit 0}
 
+;; 直接実行でも同様
+(cmd/exec! ["ls" "-la"])
+;; => {:stdout "total 48\ndrwxr-xr-x ...\n" :stderr "" :exit 0}
+
 ;; エラー時の詳細情報
-(cmd/sh! "ls non-existent-file")
+(cmd/exec! "ls non-existent-file")
 ;; => {:stdout ""
 ;;     :stderr "ls: non-existent-file: No such file or directory\n"
 ;;     :exit 1}
 
 ;; 結果を分解して使用
-(let [result (cmd/sh! "git status --porcelain")
+(let [result (cmd/exec! "git status --porcelain")
       stdout (get result "stdout")
       exit (get result "exit")]
   (if (= exit 0)
@@ -104,6 +83,10 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
       (println f"変更あり:\n{stdout}"))
     (println "gitリポジトリではありません")))
 ```
+
+**いつ使うか**:
+- `cmd/exec` - 終了コードだけが必要な場合（シンプル）
+- `cmd/exec!` - 標準出力や標準エラーの内容も必要な場合
 
 ---
 
@@ -391,7 +374,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 ```qi
 ;; Gitステータス確認
 (defn git-status []
-  (let [result (cmd/sh! "git status --porcelain")]
+  (let [result (cmd/exec! "git status --porcelain")]
     (if (= (get result "exit") 0)
       (let [stdout (get result "stdout")]
         (if (str/blank? stdout)
@@ -405,7 +388,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 ;; Git変更をコミット
 (defn git-commit [message]
   (do
-    (cmd/sh "git add .")
+    (cmd/exec "git add .")
     (let [code (cmd/exec f"git commit -m '{message}'")]
       (if (= code 0)
         (println "コミット成功!")
@@ -421,7 +404,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 (defn process-csv-with-sqlite [csv-file query]
   (let [db "/tmp/temp.db"]
     ;; CSVをインポート
-    (cmd/sh f"sqlite3 {db} '.mode csv' '.import {csv-file} data'")
+    (cmd/exec f"sqlite3 {db} '.mode csv' '.import {csv-file} data'")
 
     ;; SQLクエリ実行
     (cmd/pipe f"sqlite3 -csv {db} \"{query}\"")
@@ -518,8 +501,8 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
     (println "ファイルが存在します")
     (println "ファイルが存在しません")))
 
-;; sh!でエラーメッセージを取得
-(let [result (cmd/sh! "ls non-existent")]
+;; exec!でエラーメッセージを取得
+(let [result (cmd/exec! "ls non-existent")]
   (if (= (get result "exit") 0)
     (get result "stdout")
     (do
@@ -535,7 +518,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
   (let [timeout-cmd (if (= (os/platform) "windows")
                        f"timeout /t {timeout-sec} && {cmd}"
                        f"timeout {timeout-sec} {cmd}")]
-    (cmd/sh! timeout-cmd)))
+    (cmd/exec! timeout-cmd)))
 
 (exec-with-timeout "sleep 10" 5)
 ;; => {:stdout "" :stderr "timeout: killed" :exit 124}
@@ -597,10 +580,10 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 ;; ✅ 最小権限で実行
 (defn run-sandboxed [cmd]
   ;; ユーザー権限で実行（sudoを使わない）
-  (cmd/sh cmd))
+  (cmd/exec cmd))
 
 ;; ❌ 危険: sudo/管理者権限での実行は避ける
-;; (cmd/sh "sudo rm -rf /")  ;; 絶対にやらない!
+;; (cmd/exec "sudo rm -rf /")  ;; 絶対にやらない!
 ```
 
 ---
@@ -609,8 +592,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 
 ### 基本実行
 - `cmd/exec` - コマンド実行（終了コードを返す）
-- `cmd/sh` - シェルコマンド実行（簡易版）
-- `cmd/sh!` - シェルコマンド実行（詳細版、stdout/stderr/exit）
+- `cmd/exec!` - コマンド実行（詳細版、stdout/stderr/exit）
 
 ### パイプライン統合
 - `cmd/pipe` - コマンドに標準入力を渡す（stdoutを返す）
@@ -635,7 +617,7 @@ cmdモジュールは、Qi言語から外部コマンドやシェルスクリプ
 
 ```qi
 ;; ❌ 遅い: シェル経由で毎回実行
-(files |> (map (fn [f] (cmd/sh f"wc -l {f}"))))
+(files |> (map (fn [f] (cmd/exec f"wc -l {f}"))))
 
 ;; ✅ 速い: 1つのコマンドにまとめる
 (files |> (fn [fs] (join fs " ")) |> (cmd/pipe "wc -l"))

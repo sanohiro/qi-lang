@@ -131,7 +131,7 @@ This directory contains the specification for implemented features only of the Q
   - gzip compression (zip/gzip), decompression (zip/gunzip)
   - Backup, log rotation, distribution archives
 - **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - External Command Execution ⭐
-  - Command execution (cmd/exec, cmd/sh)
+  - Command execution (cmd/exec, cmd/exec!)
   - Pipelines (cmd/pipe), stream processing (cmd/stream-lines)
   - Security considerations (command injection prevention)
 - **[34-stdlib-list.md](34-stdlib-list.md)** - List Extensions

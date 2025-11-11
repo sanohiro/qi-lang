@@ -1,6 +1,6 @@
 # Standard Library - Command Execution (cmd/)
 
-**External Command and Shell Script Execution**
+**Execute external commands and shell scripts**
 
 All functions belong to the `cmd/` module.
 
@@ -8,19 +8,18 @@ All functions belong to the `cmd/` module.
 
 ## Overview
 
-The cmd module provides functions for executing external commands and shell scripts from Qi language. It integrates seamlessly with the pipeline operator (`|>`), allowing you to treat command execution as data flow.
+The cmd module provides functions for executing external commands and shell scripts from Qi. Integrated with pipeline operators (`|>`), you can treat command execution as data flow.
 
 **Key Features**:
 - Command execution with exit code retrieval
-- Shell script execution (via sh/cmd.exe)
-- Standard I/O control
+- Standard input/output control
 - Pipeline integration (Qi → Command → Qi)
-- Stream processing (line-by-line, byte-by-byte)
+- Stream processing (line-based & byte-based)
 - Bidirectional interactive processes
 
 **Cross-platform Support**:
-- **Unix/Linux/macOS**: Shell command execution via `/bin/sh`
-- **Windows**: Command execution via `cmd.exe`
+- **Unix/Linux/macOS**: Execute shell commands via `/bin/sh`
+- **Windows**: Execute commands via `cmd.exe`
 
 **Note**: This module is compiled with the `cmd-exec` feature.
 
@@ -28,14 +27,14 @@ The cmd module provides functions for executing external commands and shell scri
 
 ## Basic Execution
 
-### cmd/exec - Execute command (returns exit code)
+### cmd/exec - Execute Command (Returns Exit Code)
 
 **Arguments**: Command (string or vector)
 **Returns**: Exit code (integer)
 **Error**: When command is not found
 
 ```qi
-;; Shell execution (string)
+;; Via shell (string)
 (cmd/exec "ls -la")                    ;; => 0
 (cmd/exec "false")                     ;; => 1
 
@@ -43,7 +42,7 @@ The cmd module provides functions for executing external commands and shell scri
 (cmd/exec ["ls" "-la"])                ;; => 0
 (cmd/exec ["git" "status"])            ;; => 0
 
-;; Error handling with exit code
+;; Error checking with exit code
 (let [code (cmd/exec "test -f data.txt")]
   (if (= code 0)
     (println "File exists")
@@ -51,65 +50,49 @@ The cmd module provides functions for executing external commands and shell scri
 ```
 
 **Shell vs Direct Execution**:
-- **String**: Via shell (pipes, redirects, environment variable expansion)
-- **Vector**: Direct execution (shell injection protection, faster)
+- **String**: Via shell (pipes, redirects, environment variable expansion available)
+- **Vector**: Direct execution (prevents shell injection, faster)
 
----
+### cmd/exec! - Execute Command (Detailed Version)
 
-## Shell Execution
-
-### cmd/sh - Execute shell command (simple version)
-
-**Arguments**: Command string
-**Returns**: Exit code (integer)
-
-```qi
-;; Unix/Linux/macOS: via /bin/sh
-(cmd/sh "ls -la | grep .qi")           ;; => 0
-
-;; Windows: via cmd.exe /C
-(cmd/sh "dir *.qi")                    ;; => 0
-
-;; Pipes and redirects are available
-(cmd/sh "cat *.txt | sort | uniq > result.txt")  ;; => 0
-(cmd/sh "curl -s https://example.com | grep title")  ;; => 0
-
-;; Multiple commands
-(cmd/sh "cd build && make clean && make")  ;; => 0
-```
-
-### cmd/sh! - Execute shell command (detailed version)
-
-**Arguments**: Command string
+**Arguments**: Command (string or vector)
 **Returns**: `{:stdout "..." :stderr "..." :exit 0}` map
 
 ```qi
-;; Get stdout, stderr, and exit code
-(cmd/sh! "cat *.txt | grep pattern | wc -l")
+;; Get stdout, stderr, and exit code via shell
+(cmd/exec! "cat *.txt | grep pattern | wc -l")
 ;; => {:stdout "      42\n" :stderr "" :exit 0}
 
-;; Error details
-(cmd/sh! "ls non-existent-file")
+;; Same with direct execution
+(cmd/exec! ["ls" "-la"])
+;; => {:stdout "total 48\ndrwxr-xr-x ...\n" :stderr "" :exit 0}
+
+;; Detailed error information
+(cmd/exec! "ls non-existent-file")
 ;; => {:stdout ""
 ;;     :stderr "ls: non-existent-file: No such file or directory\n"
 ;;     :exit 1}
 
-;; Destructure result
-(let [result (cmd/sh! "git status --porcelain")
+;; Use results destructured
+(let [result (cmd/exec! "git status --porcelain")
       stdout (get result "stdout")
       exit (get result "exit")]
   (if (= exit 0)
     (if (str/blank? stdout)
       (println "Working directory is clean")
-      (println f"Changes:\n{stdout}"))
+      (println f"Changes detected:\n{stdout}"))
     (println "Not a git repository")))
 ```
+
+**When to Use**:
+- `cmd/exec` - When you only need the exit code (simple)
+- `cmd/exec!` - When you need stdout or stderr content
 
 ---
 
 ## Pipeline Integration
 
-### cmd/pipe - Pass input to command
+### cmd/pipe - Pass Input to Command
 
 **Arguments**: Command, [input data (string or list)]
 **Returns**: Standard output (string)
@@ -135,34 +118,15 @@ The cmd module provides functions for executing external commands and shell scri
   |> str/lines
   |> (map str/trim)
 ;; => ["Alice" "Bob" "Charlie"]
-
-;; Practical example: Data formatting pipeline
-(io/read-lines "data.csv")
-  |> (map (fn [line] (str/split line ",")))
-  |> (filter (fn [row] (> (len row) 2)))
-  |> (map (fn [row] (join row "\t")))
-  |> (fn [lines] (join lines "\n"))
-  |> (cmd/pipe "sort -t $'\t' -k2,2")
-  |> println
 ```
 
-**Failure Behavior**:
-```qi
-;; Command failure throws an error
-(try
-  (cmd/pipe "grep pattern" "no match here")
-  (catch e
-    (println f"Command failed: {e}")))
-;; => "Command failed: Command failed with exit code 1: ..."
-```
-
-### cmd/pipe! - Execute command (detailed version)
+### cmd/pipe! - Execute Command (Detailed Version)
 
 **Arguments**: Command, [input data]
 **Returns**: `[stdout stderr exitcode]` vector
 
 ```qi
-;; Get stdout, stderr, and exit code
+;; Get all: stdout, stderr, exit code
 (cmd/pipe! "cat test.txt")
 ;; => ["file content\n" "" 0]
 
@@ -171,23 +135,9 @@ The cmd module provides functions for executing external commands and shell scri
   (if (= code 0)
     (println out)
     (println f"Error: {err}")))
-
-;; Pass input via pipeline
-(["test"] |> (cmd/pipe! ["wc" "-l"]))
-;; => ["       1\n" "" 0]
-
-;; Practical example: Build tool execution
-(defn build [target]
-  (let [[out err code] (cmd/pipe! f"cargo build --release --bin {target}")]
-    (if (= code 0)
-      {:status :ok :output out}
-      {:status :error :message err})))
-
-(build "qi-lang")
-;; => {:status :ok :output "   Compiling qi-lang v0.1.0\n..."}
 ```
 
-### cmd/lines - Split text into list of lines (helper)
+### cmd/lines - Split Text into Lines (Helper)
 
 **Arguments**: Text
 **Returns**: List of lines
@@ -209,7 +159,7 @@ The cmd module provides functions for executing external commands and shell scri
 
 ## Stream Processing
 
-### cmd/stream-lines - Line-by-line stream
+### cmd/stream-lines - Line-based Stream
 
 **Arguments**: Command (string or vector)
 **Returns**: Stream (each element is a line string)
@@ -227,20 +177,9 @@ The cmd module provides functions for executing external commands and shell scri
   |> (stream/take 100)
   |> realize
   |> (map println)
-
-;; Practical example: Real-time log monitoring
-(defn watch-errors [logfile]
-  (cmd/stream-lines f"tail -f {logfile}")
-    |> (stream/filter (fn [line] (str/contains? line "ERROR")))
-    |> (stream/map (fn [line]
-         (let [timestamp (time/now)]
-           {:time timestamp :message line})))
-    |> (stream/each send-alert))
-
-(watch-errors "/var/log/app.log")
 ```
 
-### cmd/stream-bytes - Byte-by-byte stream
+### cmd/stream-bytes - Byte-based Stream
 
 **Arguments**: Command, [chunk size (default 4096)]
 **Returns**: Stream (each element is Base64-encoded bytes)
@@ -254,26 +193,13 @@ The cmd module provides functions for executing external commands and shell scri
 ;; Custom chunk size (8KB)
 (cmd/stream-bytes "curl -L https://example.com/video.mp4" 8192)
   |> (stream/each process-chunk)
-
-;; Practical example: Download with progress
-(defn download-with-progress [url output]
-  (let [total (atom 0)]
-    (cmd/stream-bytes f"curl -L {url}" 4096)
-      |> (stream/each (fn [chunk]
-           (let [size (len chunk)]
-             (swap! total (fn [t] (+ t size)))
-             (println f"Downloaded: {@total} bytes"))))
-      |> (stream/reduce str/concat "")
-      |> (fn [data] (io/write-file data output))))
-
-(download-with-progress "https://example.com/file.zip" "/tmp/download.zip")
 ```
 
 ---
 
 ## Interactive Processes
 
-### cmd/interactive - Launch bidirectional process
+### cmd/interactive - Launch Bidirectional Process
 
 **Arguments**: Command (string or vector)
 **Returns**: Process handle (Map format)
@@ -293,7 +219,7 @@ The cmd module provides functions for executing external commands and shell scri
 (cmd/wait py)       ;; => {:exit 0 :stderr ""}
 ```
 
-### cmd/write - Write to process
+### cmd/write - Write to Process
 
 **Arguments**: Process handle, data (string)
 **Returns**: nil
@@ -306,10 +232,10 @@ The cmd module provides functions for executing external commands and shell scri
 (cmd/write py "print(greet('Qi'))\n")
 ```
 
-### cmd/read-line - Read line from process
+### cmd/read-line - Read Line from Process
 
 **Arguments**: Process handle
-**Returns**: Read line (string), `nil` on EOF
+**Returns**: Read line (string), or `nil` on EOF
 
 ```qi
 ;; Read result
@@ -326,7 +252,7 @@ The cmd module provides functions for executing external commands and shell scri
 (read-all py)  ;; => ["line1" "line2" "line3"]
 ```
 
-### cmd/wait - Wait for process to terminate
+### cmd/wait - Wait for Process Termination
 
 **Arguments**: Process handle
 **Returns**: `{:exit exit_code :stderr "..."}`
@@ -336,31 +262,6 @@ The cmd module provides functions for executing external commands and shell scri
 (cmd/write py "exit()\n")
 (cmd/wait py)
 ;; => {:exit 0 :stderr ""}
-```
-
-### Practical Example: Interactive Shell
-
-```qi
-(defn run-script [script-lines]
-  (let [proc (cmd/interactive "python3 -i")]
-    ;; Execute script
-    (script-lines
-     |> (map (fn [line] (cmd/write proc (str line "\n"))))
-     |> realize)
-
-    ;; Collect results
-    (let [results (loop [acc []]
-                    (let [line (cmd/read-line proc)]
-                      (if (some? line)
-                        (recur (conj acc line))
-                        acc)))]
-      ;; Terminate process
-      (cmd/write proc "exit()\n")
-      (cmd/wait proc)
-      results)))
-
-(run-script ["print(1+1)" "print('hello')" "print(2*3)"])
-;; => ["2" "hello" "6"]
 ```
 
 ---
@@ -391,7 +292,7 @@ The cmd module provides functions for executing external commands and shell scri
 ```qi
 ;; Check git status
 (defn git-status []
-  (let [result (cmd/sh! "git status --porcelain")]
+  (let [result (cmd/exec! "git status --porcelain")]
     (if (= (get result "exit") 0)
       (let [stdout (get result "stdout")]
         (if (str/blank? stdout)
@@ -402,10 +303,10 @@ The cmd module provides functions for executing external commands and shell scri
 (git-status)
 ;; => {:clean false :files ["M src/main.rs" "?? new-file.txt"]}
 
-;; Commit git changes
+;; Commit changes
 (defn git-commit [message]
   (do
-    (cmd/sh "git add .")
+    (cmd/exec "git add .")
     (let [code (cmd/exec f"git commit -m '{message}'")]
       (if (= code 0)
         (println "Commit successful!")
@@ -414,95 +315,11 @@ The cmd module provides functions for executing external commands and shell scri
 (git-commit "feat: Add new feature")
 ```
 
-### Data Processing Pipeline
-
-```qi
-;; Process CSV with SQLite
-(defn process-csv-with-sqlite [csv-file query]
-  (let [db "/tmp/temp.db"]
-    ;; Import CSV
-    (cmd/sh f"sqlite3 {db} '.mode csv' '.import {csv-file} data'")
-
-    ;; Execute SQL query
-    (cmd/pipe f"sqlite3 -csv {db} \"{query}\"")
-      |> str/lines
-      |> (map (fn [line] (str/split line ",")))
-      |> (map (fn [row] (zipmap ["id" "name" "value"] row)))))
-
-(process-csv-with-sqlite "data.csv" "SELECT * FROM data WHERE value > 100")
-;; => [{:id "1" :name "Alice" :value "120"} ...]
-```
-
-### System Monitoring
-
-```qi
-;; Monitor disk usage
-(defn check-disk-usage []
-  (cmd/pipe "df -h /")
-    |> str/lines
-    |> (drop 1)  ;; Skip header
-    |> first
-    |> (str/split _ " ")
-    |> (filter (fn [s] (not (str/blank? s))))
-    |> (fn [cols] {:filesystem (nth cols 0)
-                   :size (nth cols 1)
-                   :used (nth cols 2)
-                   :avail (nth cols 3)
-                   :percent (nth cols 4)}))
-
-(check-disk-usage)
-;; => {:filesystem "/dev/disk1s1" :size "931Gi" :used "450Gi"
-;;     :avail "481Gi" :percent "49%"}
-
-;; Monitor CPU usage
-(defn watch-cpu []
-  (cmd/stream-lines "top -l 0 -s 1")
-    |> (stream/filter (fn [line] (str/contains? line "CPU usage")))
-    |> (stream/map (fn [line]
-         (let [parts (str/split line " ")]
-           {:user (nth parts 2) :sys (nth parts 4)})))
-    |> (stream/take 10)
-    |> realize)
-
-(watch-cpu)
-;; => [{:user "15.5%" :sys "8.2%"} {:user "12.3%" :sys "6.1%"} ...]
-```
-
-### Test Script Execution
-
-```qi
-;; Run tests and summarize results
-(defn run-tests []
-  (let [[out err code] (cmd/pipe! "cargo test -- --nocapture")]
-    {:passed (str/contains? out "test result: ok")
-     :output out
-     :errors err
-     :exit-code code}))
-
-(run-tests)
-;; => {:passed true :output "running 15 tests\n..." :errors "" :exit-code 0}
-```
-
-### Multi-platform Commands
-
-```qi
-;; Execute OS-specific commands
-(defn list-processes []
-  (if (= (os/platform) "windows")
-    (cmd/pipe "tasklist")
-    (cmd/pipe "ps aux"))
-  |> str/lines)
-
-(list-processes)
-;; Unix: => ["USER       PID %CPU %MEM ..." "root         1  0.0  0.1 ..." ...]
-;; Windows: => ["Image Name           PID Session Name ..." "System Idle Process   0 ..." ...]
-```
-
 ---
 
 ## Error Handling
 
-### Handling Command Failures
+### Handle Command Failures
 
 ```qi
 ;; Catch errors with try-catch
@@ -518,8 +335,8 @@ The cmd module provides functions for executing external commands and shell scri
     (println "File exists")
     (println "File does not exist")))
 
-;; Get error message with sh!
-(let [result (cmd/sh! "ls non-existent")]
+;; Get error message with exec!
+(let [result (cmd/exec! "ls non-existent")]
   (if (= (get result "exit") 0)
     (get result "stdout")
     (do
@@ -527,25 +344,11 @@ The cmd module provides functions for executing external commands and shell scri
       nil)))
 ```
 
-### Timeout Handling
-
-```qi
-;; Execute with timeout (using external command)
-(defn exec-with-timeout [cmd timeout-sec]
-  (let [timeout-cmd (if (= (os/platform) "windows")
-                       f"timeout /t {timeout-sec} && {cmd}"
-                       f"timeout {timeout-sec} {cmd}")]
-    (cmd/sh! timeout-cmd)))
-
-(exec-with-timeout "sleep 10" 5)
-;; => {:stdout "" :stderr "timeout: killed" :exit 124}
-```
-
 ---
 
 ## Security Considerations
 
-### Command Injection Protection
+### Prevent Command Injection
 
 ```qi
 ;; ❌ Dangerous: Pass user input directly to shell
@@ -560,7 +363,7 @@ The cmd module provides functions for executing external commands and shell scri
 
 (safe-search "test; rm -rf /" "data.txt")  ;; Safe (treated as literal string)
 
-;; ✅ Safe: Escape handling
+;; ✅ Safe: Escape processing
 (defn escape-shell-arg [s]
   (str "'" (str/replace s "'" "'\\''") "'"))
 
@@ -591,41 +394,28 @@ The cmd module provides functions for executing external commands and shell scri
 (safe-read-file "file.txt" "/var/data")  ;; OK
 ```
 
-### Permission Management
-
-```qi
-;; ✅ Run with minimal privileges
-(defn run-sandboxed [cmd]
-  ;; Run with user privileges (no sudo)
-  (cmd/sh cmd))
-
-;; ❌ Dangerous: Avoid sudo/admin privileges
-;; (cmd/sh "sudo rm -rf /")  ;; Never do this!
-```
-
 ---
 
-## Function List
+## Function Reference
 
 ### Basic Execution
 - `cmd/exec` - Execute command (returns exit code)
-- `cmd/sh` - Execute shell command (simple version)
-- `cmd/sh!` - Execute shell command (detailed version, stdout/stderr/exit)
+- `cmd/exec!` - Execute command (detailed version, returns stdout/stderr/exit)
 
 ### Pipeline Integration
-- `cmd/pipe` - Pass input to command (returns stdout)
+- `cmd/pipe` - Pass stdin to command (returns stdout)
 - `cmd/pipe!` - Execute command (returns [stdout stderr exit])
 - `cmd/lines` - Split text into list of lines
 
 ### Stream Processing
-- `cmd/stream-lines` - Stream command stdout line-by-line
-- `cmd/stream-bytes` - Stream command stdout byte-by-byte
+- `cmd/stream-lines` - Stream command stdout line by line
+- `cmd/stream-bytes` - Stream command stdout byte by byte
 
 ### Interactive Processes
 - `cmd/interactive` - Launch bidirectional process
 - `cmd/write` - Write to process stdin
-- `cmd/read-line` - Read line from process stdout
-- `cmd/wait` - Wait for process to terminate
+- `cmd/read-line` - Read one line from process stdout
+- `cmd/wait` - Wait for process termination
 
 ---
 
@@ -634,17 +424,17 @@ The cmd module provides functions for executing external commands and shell scri
 ### Executing Many Commands
 
 ```qi
-;; ❌ Slow: Execute via shell every time
-(files |> (map (fn [f] (cmd/sh f"wc -l {f}"))))
+;; ❌ Slow: Execute via shell each time
+(files |> (map (fn [f] (cmd/exec f"wc -l {f}"))))
 
-;; ✅ Fast: Combine into single command
+;; ✅ Fast: Combine into one command
 (files |> (fn [fs] (join fs " ")) |> (cmd/pipe "wc -l"))
 
 ;; ✅ Fast: Parallel execution
 (files |> (pmap (fn [f] (cmd/exec ["wc" "-l" f]))))
 ```
 
-### Memory Efficiency with Streams
+### Memory-Efficient Streaming
 
 ```qi
 ;; ❌ Memory inefficient: Load all data at once
@@ -657,28 +447,4 @@ The cmd module provides functions for executing external commands and shell scri
   |> (stream/map process-line)
   |> (stream/take 1000)
   |> realize
-```
-
----
-
-## Debugging
-
-```qi
-;; Trace command execution
-(defn trace-cmd [cmd]
-  (do
-    (println f"Executing: {cmd}")
-    (let [[out err code] (cmd/pipe! cmd)]
-      (println f"Exit code: {code}")
-      (println f"stdout: {out}")
-      (println f"stderr: {err}")
-      [out err code])))
-
-(trace-cmd "ls -la")
-
-;; Check environment variables
-(cmd/pipe "env")
-  |> str/lines
-  |> (filter (fn [line] (str/starts-with? line "PATH=")))
-  |> (map println)
 ```

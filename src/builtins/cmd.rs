@@ -106,57 +106,32 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// sh - シェル経由で実行（シンプル版）
-/// 引数: コマンド文字列
-/// 戻り値: 終了コード（整数）
-/// エラー時: Err(エラーメッセージ)
-/// 例: (cmd/sh "ls -la")  ;=> 0
-///     (cmd/sh "false")  ;=> 1
-pub fn native_sh(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/sh", "1"]));
-    }
-
-    let cmd = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/sh", "a string"])),
-    };
-
-    #[cfg(unix)]
-    let output = Command::new("sh").arg("-c").arg(cmd).output();
-
-    #[cfg(windows)]
-    let output = Command::new("cmd").arg("/C").arg(cmd).output();
-
-    match output {
-        Ok(output) => {
-            let exit_code = output.status.code().unwrap_or(-1);
-            Ok(Value::Integer(exit_code as i64))
-        }
-        Err(e) => Err(fmt_msg(MsgKey::CmdExecutionFailed, &[&e.to_string()])),
-    }
-}
-
-/// sh! - シェル経由で実行（詳細版）
-/// 引数: コマンド文字列
+/// exec! - コマンド実行（詳細版）
+/// 引数: コマンド（文字列 or [コマンド 引数...]）
 /// 戻り値: {:stdout "..." :stderr "..." :exit 0}
 /// エラー時: Err(エラーメッセージ)
-/// 例: (cmd/sh! "cat *.txt | grep pattern | wc -l")
-pub fn native_sh_bang(args: &[Value]) -> Result<Value, String> {
+/// 例: (cmd/exec! "ls -la")  ;=> {:stdout "..." :stderr "" :exit 0}
+///     (cmd/exec! ["ls" "-la"])  ;=> {:stdout "..." :stderr "" :exit 0}
+pub fn native_exec_bang(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/sh!", "1"]));
+        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/exec!", "1"]));
     }
 
-    let cmd = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["cmd/sh!", "a string"])),
+    let (cmd, cmd_args) = parse_command_args(&args[0])?;
+
+    let output = if cmd_args.is_empty() {
+        // シェル経由
+        #[cfg(unix)]
+        let result = Command::new("sh").arg("-c").arg(&cmd).output();
+
+        #[cfg(windows)]
+        let result = Command::new("cmd").arg("/C").arg(&cmd).output();
+
+        result
+    } else {
+        // 直接実行
+        Command::new(&cmd).args(&cmd_args).output()
     };
-
-    #[cfg(unix)]
-    let output = Command::new("sh").arg("-c").arg(cmd).output();
-
-    #[cfg(windows)]
-    let output = Command::new("cmd").arg("/C").arg(cmd).output();
 
     match output {
         Ok(output) => {
@@ -814,11 +789,10 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
 
 /// 登録すべき関数のリスト（Evaluator不要な関数のみ）
 /// @qi-doc:category cmd
-/// @qi-doc:functions exec, sh, sh!, pipe, pipe!, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
+/// @qi-doc:functions exec, exec!, pipe, pipe!, lines, stream-lines, stream-bytes, interactive, write, read-line, wait
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("cmd/exec", native_exec),
-    ("cmd/sh", native_sh),
-    ("cmd/sh!", native_sh_bang),
+    ("cmd/exec!", native_exec_bang),
     ("cmd/pipe", native_pipe),
     ("cmd/pipe!", native_pipe_bang),
     ("cmd/lines", native_lines),
