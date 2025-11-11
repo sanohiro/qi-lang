@@ -90,18 +90,59 @@
 - **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能 ⭐
   - トレース機能（debug/trace）、ブレークポイント（debug/break）
   - スタックトレース取得（debug/stack）、デバッガ情報（debug/info）
+- **[21-stdlib-table.md](21-stdlib-table.md)** - テーブル処理 ⭐
+  - SQL/awkライクな表形式データ操作
+  - グループ化（table/group-by）、重複除去（table/distinct-table）
+- **[22-stdlib-csv.md](22-stdlib-csv.md)** - CSV処理
+  - CSVパース・生成（csv/parse、csv/stringify）
+  - ファイル読み書き（csv/read-file、csv/write-file）、RFC 4180準拠
 - **[23-stdlib-env.md](23-stdlib-env.md)** - 環境変数
   - 環境変数の取得・設定（env/get、env/set）
   - 全環境変数の取得（env/all）
   - .envファイルの読み込み（env/load-dotenv）
+- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store ⭐
+  - 統一インターフェース（Redis/Memcached等）
+  - 基本操作、数値操作、リスト、ハッシュ、セット、バッチ処理（22関数）
+- **[25-stdlib-log.md](25-stdlib-log.md)** - ロギング
+  - ログレベル（DEBUG、INFO、WARN、ERROR）
+  - フォーマット（テキスト、JSON）、レベル設定（log/set-level）
+- **[26-stdlib-markdown.md](26-stdlib-markdown.md)** - Markdown処理
+  - Markdown生成（markdown/header、markdown/list、markdown/table等）
+  - Markdownパース（markdown/parse）、静的サイト生成
+- **[27-stdlib-path.md](27-stdlib-path.md)** - パス操作
+  - パス結合（path/join）、ファイル名取得（path/basename）
+  - クロスプラットフォーム対応（Windows/Unix）
 - **[28-stdlib-stats.md](28-stdlib-stats.md)** - 統計関数 ⭐
   - 中心傾向の測度（mean、median、mode）
   - 散布度の測度（variance、stddev）
   - 位置の測度（percentile）
+- **[29-stdlib-stream.md](29-stdlib-stream.md)** - ストリーム処理 ⭐
+  - 遅延評価（stream、stream/map、stream/filter）
+  - 無限シーケンス（stream/range、stream/iterate）
+  - メモリ効率的な大規模データ処理
+- **[30-stdlib-temp.md](30-stdlib-temp.md)** - 一時ファイル
+  - 一時ファイル作成（temp/temp-file）
+  - 一時ディレクトリ作成（temp/temp-dir）、自動クリーンアップ
+- **[31-stdlib-time.md](31-stdlib-time.md)** - 日時処理 ⭐
+  - ISO 8601形式（time/now-iso、time/format、time/parse）
+  - 日時演算（time/add-days、time/diff-days）、UTC/タイムゾーン
 - **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP圧縮・解凍 ⭐
   - ZIP作成（zip/create）、解凍（zip/extract）、内容一覧（zip/list）
   - gzip圧縮（zip/gzip）、解凍（zip/gunzip）
   - バックアップ、ログローテーション、配布用アーカイブ
+- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - 外部コマンド実行 ⭐
+  - コマンド実行（cmd/exec、cmd/sh）
+  - パイプライン（cmd/pipe）、ストリーム処理（cmd/stream-lines）
+  - セキュリティ考慮（コマンドインジェクション対策）
+- **[34-stdlib-list.md](34-stdlib-list.md)** - リスト拡張
+  - 高度なリスト操作（list/take-while、list/chunk、list/find）
+  - 頻度集計（list/frequencies）、回転（list/rotate）
+- **[35-stdlib-map.md](35-stdlib-map.md)** - マップ拡張
+  - ネストしたマップ操作（map/assoc-in、map/dissoc-in）
+  - キー/値変換（map/update-keys、map/update-vals）
+- **[36-stdlib-set.md](36-stdlib-set.md)** - セット操作
+  - 数学的集合演算（union、intersect、difference、symmetric-difference）
+  - 部分集合判定（subset?、superset?、disjoint?）
 
 ---
 

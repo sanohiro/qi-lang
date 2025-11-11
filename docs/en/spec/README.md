@@ -90,18 +90,59 @@ This directory contains the specification for implemented features only of the Q
 - **[20-stdlib-debug.md](20-stdlib-debug.md)** - Debug Features ⭐
   - Tracing (debug/trace), breakpoints (debug/break)
   - Stack trace retrieval (debug/stack), debugger info (debug/info)
+- **[21-stdlib-table.md](21-stdlib-table.md)** - Table Processing ⭐
+  - SQL/awk-like tabular data operations
+  - Grouping (table/group-by), deduplication (table/distinct-table)
+- **[22-stdlib-csv.md](22-stdlib-csv.md)** - CSV Processing
+  - CSV parsing/generation (csv/parse, csv/stringify)
+  - File I/O (csv/read-file, csv/write-file), RFC 4180 compliant
 - **[23-stdlib-env.md](23-stdlib-env.md)** - Environment Variables
   - Get/set environment variables (env/get, env/set)
   - Get all environment variables (env/all)
   - Load .env files (env/load-dotenv)
+- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store ⭐
+  - Unified interface (Redis/Memcached etc.)
+  - Basic ops, numeric ops, list, hash, set, batch operations (22 functions)
+- **[25-stdlib-log.md](25-stdlib-log.md)** - Logging
+  - Log levels (DEBUG, INFO, WARN, ERROR)
+  - Formats (text, JSON), level setting (log/set-level)
+- **[26-stdlib-markdown.md](26-stdlib-markdown.md)** - Markdown Processing
+  - Markdown generation (markdown/header, markdown/list, markdown/table, etc.)
+  - Markdown parsing (markdown/parse), static site generation
+- **[27-stdlib-path.md](27-stdlib-path.md)** - Path Operations
+  - Path joining (path/join), filename extraction (path/basename)
+  - Cross-platform support (Windows/Unix)
 - **[28-stdlib-stats.md](28-stdlib-stats.md)** - Statistical Functions ⭐
   - Measures of central tendency (mean, median, mode)
   - Measures of dispersion (variance, stddev)
   - Measures of position (percentile)
+- **[29-stdlib-stream.md](29-stdlib-stream.md)** - Stream Processing ⭐
+  - Lazy evaluation (stream, stream/map, stream/filter)
+  - Infinite sequences (stream/range, stream/iterate)
+  - Memory-efficient large data processing
+- **[30-stdlib-temp.md](30-stdlib-temp.md)** - Temporary Files
+  - Temporary file creation (temp/temp-file)
+  - Temporary directory creation (temp/temp-dir), automatic cleanup
+- **[31-stdlib-time.md](31-stdlib-time.md)** - Date/Time Processing ⭐
+  - ISO 8601 format (time/now-iso, time/format, time/parse)
+  - Date/time arithmetic (time/add-days, time/diff-days), UTC/timezone
 - **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP Compression/Decompression ⭐
   - ZIP creation (zip/create), extraction (zip/extract), listing (zip/list)
   - gzip compression (zip/gzip), decompression (zip/gunzip)
   - Backup, log rotation, distribution archives
+- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - External Command Execution ⭐
+  - Command execution (cmd/exec, cmd/sh)
+  - Pipelines (cmd/pipe), stream processing (cmd/stream-lines)
+  - Security considerations (command injection prevention)
+- **[34-stdlib-list.md](34-stdlib-list.md)** - List Extensions
+  - Advanced list operations (list/take-while, list/chunk, list/find)
+  - Frequency counting (list/frequencies), rotation (list/rotate)
+- **[35-stdlib-map.md](35-stdlib-map.md)** - Map Extensions
+  - Nested map operations (map/assoc-in, map/dissoc-in)
+  - Key/value transformation (map/update-keys, map/update-vals)
+- **[36-stdlib-set.md](36-stdlib-set.md)** - Set Operations
+  - Mathematical set operations (union, intersect, difference, symmetric-difference)
+  - Subset checking (subset?, superset?, disjoint?)
 
 ---
 
