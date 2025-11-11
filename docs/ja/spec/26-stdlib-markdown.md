@@ -725,4 +725,3 @@ This is my first blog post!")
 - [文字列操作](10-stdlib-string.md) - テキスト処理
 - [ファイルI/O](13-stdlib-io.md) - ファイルの読み書き
 - [CSV処理](22-stdlib-csv.md) - データ変換
-- [テンプレート](24-stdlib-template.md) - テンプレートエンジン

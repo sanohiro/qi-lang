@@ -198,7 +198,8 @@
 - **[docs/spec/](docs/spec/)** - 実装済み機能の完全仕様
 - **[README.md](README.md)** - プロジェクト概要
 - **[CLAUDE.md](CLAUDE.md)** - 開発者向けガイド
-- **[docs/style-guide.md](docs/style-guide.md)** - コーディングスタイルガイド
+- **[docs/ja/style-guide.md](docs/ja/style-guide.md)** - コーディングスタイルガイド（日本語）
+- **[docs/en/style-guide.md](docs/en/style-guide.md)** - Coding Style Guide (English)
 
 ---
 

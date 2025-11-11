@@ -474,7 +474,7 @@ Congratulations! You've now mastered the basics of using Qi.
 
 ### Community
 
-- [GitHub Repository](https://github.com/yourusername/qi-lang) - Issue reports and PRs welcome!
+- [GitHub Repository](https://github.com/sanohiro/qi-lang) - Issue reports and PRs welcome!
 - Documentation improvement suggestions are also very welcome
 
 ---

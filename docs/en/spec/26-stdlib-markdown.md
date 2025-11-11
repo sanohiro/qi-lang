@@ -725,4 +725,3 @@ This is my first blog post!")
 - [String Manipulation](10-stdlib-string.md) - Text processing
 - [File I/O](13-stdlib-io.md) - File reading and writing
 - [CSV Processing](22-stdlib-csv.md) - Data conversion
-- [Templates](24-stdlib-template.md) - Template engine

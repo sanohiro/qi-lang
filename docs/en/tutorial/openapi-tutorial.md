@@ -386,7 +386,7 @@ Open `http://localhost:3000/docs` in your browser to see Swagger UI.
 
 ## Next Steps
 
-- [OpenAPI Library Reference](../../std/lib/openapi.md)
+- [OpenAPI Library Reference](../../../std/lib/openapi.md)
 - [HTTP Server Documentation](../spec/11-stdlib-http.md)
 - [Database Integration](../spec/17-stdlib-database.md)
 

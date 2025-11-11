@@ -474,7 +474,7 @@ qi:14> (greet "REPL")
 
 ### コミュニティ
 
-- [GitHubリポジトリ](https://github.com/yourusername/qi-lang) - Issue報告、PR歓迎！
+- [GitHubリポジトリ](https://github.com/sanohiro/qi-lang) - Issue報告、PR歓迎！
 - ドキュメントの改善提案も大歓迎です
 
 ---

@@ -347,7 +347,6 @@ Error: Numeric operations require numbers only
 
 ## 🔗 関連ドキュメント
 
-- **[SPEC.md.archive](../../SPEC.md.archive)** - 元の統合仕様書（アーカイブ）
 - **[ROADMAP.md](../../ROADMAP.md)** - 未実装機能とロードマップ
 - **[style-guide.md](../style-guide.md)** - コーディングスタイルガイド
 - **[README.md](../../README.md)** - プロジェクト全体の説明

@@ -386,7 +386,7 @@ Swagger UIを使って、ブラウザでAPIドキュメントを表示します�
 
 ## 次のステップ
 
-- [OpenAPI Library Reference](../../std/lib/openapi.md)
+- [OpenAPI Library Reference](../../../std/lib/openapi.md)
 - [HTTP Server Documentation](../spec/11-stdlib-http.md)
 - [Database Integration](../spec/17-stdlib-database.md)
 

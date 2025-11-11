@@ -302,10 +302,10 @@ MySQLコンテナは起動に10秒程度かかります。`run-examples.sh`ス�
 
 ## 🔗 関連ドキュメント
 
-- **[チュートリアル](../docs/tutorial/)** - 初心者向け6章構成チュートリアル
-- **[言語仕様書](../docs/spec/)** - 完全な言語リファレンス
-- **[クイックリファレンス](../docs/spec/QUICK-REFERENCE.md)** - 1ページでQiの全体像
-- **[データベース & KVS仕様](../docs/spec/17-stdlib-database.md)** - PostgreSQL、MySQL、Redis統一API
+- **[チュートリアル](../docs/ja/tutorial/)** - 初心者向け6章構成チュートリアル
+- **[言語仕様書](../docs/ja/spec/)** - 完全な言語リファレンス
+- **[クイックリファレンス](../docs/ja/spec/QUICK-REFERENCE.md)** - 1ページでQiの全体像
+- **[データベース & KVS仕様](../docs/ja/spec/17-stdlib-database.md)** - PostgreSQL、MySQL、Redis統一API
 - **[README](../README.md)** - プロジェクト概要
 
 ---
@@ -314,15 +314,15 @@ MySQLコンテナは起動に10秒程度かかります。`run-examples.sh`ス�
 
 ### 特定の機能を深掘り
 
-- **パイプライン**: [docs/spec/02-flow-pipes.md](../docs/spec/02-flow-pipes.md)
-- **並行処理**: [docs/spec/03-concurrency.md](../docs/spec/03-concurrency.md)
-- **パターンマッチング**: [docs/spec/04-match.md](../docs/spec/04-match.md)
-- **HTTP**: [docs/spec/11-stdlib-http.md](../docs/spec/11-stdlib-http.md)
-- **文字列操作**: [docs/spec/10-stdlib-string.md](../docs/spec/10-stdlib-string.md)
+- **パイプライン**: [docs/ja/spec/02-flow-pipes.md](../docs/ja/spec/02-flow-pipes.md)
+- **並行処理**: [docs/ja/spec/03-concurrency.md](../docs/ja/spec/03-concurrency.md)
+- **パターンマッチング**: [docs/ja/spec/04-match.md](../docs/ja/spec/04-match.md)
+- **HTTP**: [docs/ja/spec/11-stdlib-http.md](../docs/ja/spec/11-stdlib-http.md)
+- **文字列操作**: [docs/ja/spec/10-stdlib-string.md](../docs/ja/spec/10-stdlib-string.md)
 
 ### コミュニティ
 
-- GitHub: [https://github.com/yourusername/qi-lang](https://github.com/yourusername/qi-lang)
+- GitHub: [https://github.com/sanohiro/qi-lang](https://github.com/sanohiro/qi-lang)
 - Issues: バグ報告・機能要望
 - Discussions: 質問・議論
 

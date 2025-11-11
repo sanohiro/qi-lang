@@ -347,7 +347,6 @@ Currently supported languages:
 
 ## 🔗 Related Documentation
 
-- **[SPEC.md.archive](../../SPEC.md.archive)** - Original unified specification (archive)
 - **[ROADMAP.md](../../ROADMAP.md)** - Unimplemented features and roadmap
 - **[style-guide.md](../style-guide.md)** - Coding style guide
 - **[README.md](../../README.md)** - Overall project description

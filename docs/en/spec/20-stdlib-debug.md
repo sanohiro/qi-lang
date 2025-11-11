@@ -215,5 +215,5 @@ Debug functionality affects performance, so do not use in production environment
 ## Related Topics
 
 - [Test Framework](14-stdlib-test.md) - Testing and Assertions
-- [Profiling](ROADMAP.md#profiling) - Performance Measurement
+- [Profiling](../../../ROADMAP.md#profiling) - Performance Measurement
 - [Logging](09-modules.md#log) - Structured Logging

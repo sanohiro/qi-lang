@@ -452,4 +452,5 @@ A: mapをネストして定義できます：
 
 - [OpenAPI 3.0 Specification](https://swagger.io/specification/)
 - [Swagger UI](https://swagger.io/tools/swagger-ui/)
-- [Qi HTTP Server Documentation](../../docs/spec/11-stdlib-http.md)
+- [Qi HTTP Server Documentation (Japanese)](../../docs/ja/spec/11-stdlib-http.md)
+- [Qi HTTP Server Documentation (English)](../../docs/en/spec/11-stdlib-http.md)
