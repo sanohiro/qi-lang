@@ -55,12 +55,31 @@ jobs:
           sed -i 's|docs/en/|en/|g' docs/index.md
           sed -i 's|docs/ja/|ja/|g' docs/index.md
 
+          # Fix spec directory links to README.md
+          sed -i 's|(en/spec/)|(en/spec/README.md)|g' docs/index.md
+          sed -i 's|(ja/spec/)|(ja/spec/README.md)|g' docs/index.md
+
+          # Fix LICENSE links in English README (point to GitHub)
+          sed -i 's|(LICENSE-MIT)|(https://github.com/sanohiro/qi-lang/blob/master/LICENSE-MIT)|g' docs/index.md
+          sed -i 's|(LICENSE-APACHE)|(https://github.com/sanohiro/qi-lang/blob/master/LICENSE-APACHE)|g' docs/index.md
+
           # Fix language switcher links in Japanese README
           sed -i 's|\*\*\[English\](README\.md)\*\*|\[English\](../)|g' docs/ja/index.md
+
+          # Fix logo path in Japanese README (add ../ prefix)
+          sed -i 's|src="./assets/logo/|src="../assets/logo/|g' docs/ja/index.md
 
           # Fix documentation links in Japanese README (remove docs/ prefix)
           sed -i 's|docs/ja/|ja/|g' docs/ja/index.md
           sed -i 's|docs/en/|en/|g' docs/ja/index.md
+
+          # Fix spec directory links to README.md
+          sed -i 's|(ja/spec/)|(ja/spec/README.md)|g' docs/ja/index.md
+          sed -i 's|(en/spec/)|(en/spec/README.md)|g' docs/ja/index.md
+
+          # Fix LICENSE links in Japanese README (point to GitHub)
+          sed -i 's|(LICENSE-MIT)|(https://github.com/sanohiro/qi-lang/blob/master/LICENSE-MIT)|g' docs/ja/index.md
+          sed -i 's|(LICENSE-APACHE)|(https://github.com/sanohiro/qi-lang/blob/master/LICENSE-APACHE)|g' docs/ja/index.md
 
       - name: Build and deploy
         run: mkdocs gh-deploy --force --clean --verbose
