@@ -69,28 +69,28 @@
   - パース、stringify、Result型統合
 - **[13-stdlib-io.md](13-stdlib-io.md)** - ファイルI/O（エンコーディング対応）
   - ファイル読み書き、多言語エンコーディング（Shift_JIS、GBK、Big5等）
-- **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク ⭐
+- **[14-stdlib-test.md](14-stdlib-test.md)** - テストフレームワーク
   - test/run、アサーション（assert-eq、assert、assert-not、assert-throws）
   - qi testコマンド（自動検出、シンプルな出力）
 - **[15-stdlib-math.md](15-stdlib-math.md)** - 数学関数
   - べき乗・平方根（pow、sqrt）、丸め（round、floor、ceil）、範囲制限（clamp）
   - 乱数生成（rand、rand-int、random-range、shuffle）
-- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証・認可 ⭐
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - 認証・認可
   - JWT（json web token）生成・検証・デコード
   - パスワードハッシュ（Argon2）
-- **[17-stdlib-database.md](17-stdlib-database.md)** - データベース ⭐
+- **[17-stdlib-database.md](17-stdlib-database.md)** - データベース
   - PostgreSQL接続（クエリ実行、コマンド実行）
   - パラメータ化クエリ、Result型統合
-- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket通信 ⭐
+- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket通信
   - WebSocketクライアント（接続、送信、受信、クローズ）
   - TLS/SSL対応（wss://）、メッセージタイプ（テキスト、バイナリ、クローズ、エラー）
-- **[19-stdlib-validation.md](19-stdlib-validation.md)** - データ検証 ⭐
+- **[19-stdlib-validation.md](19-stdlib-validation.md)** - データ検証
   - スキーマベースのバリデーション（型チェック、必須フィールド、文字列長、数値範囲、パターンマッチング）
   - ネストしたマップの検証、Result型統合
-- **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能 ⭐
+- **[20-stdlib-debug.md](20-stdlib-debug.md)** - デバッグ機能
   - トレース機能（debug/trace）、ブレークポイント（debug/break）
   - スタックトレース取得（debug/stack）、デバッガ情報（debug/info）
-- **[21-stdlib-table.md](21-stdlib-table.md)** - テーブル処理 ⭐
+- **[21-stdlib-table.md](21-stdlib-table.md)** - テーブル処理
   - SQL/awkライクな表形式データ操作
   - グループ化（table/group-by）、重複除去（table/distinct-table）
 - **[22-stdlib-csv.md](22-stdlib-csv.md)** - CSV処理
@@ -100,7 +100,7 @@
   - 環境変数の取得・設定（env/get、env/set）
   - 全環境変数の取得（env/all）
   - .envファイルの読み込み（env/load-dotenv）
-- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store ⭐
+- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store
   - 統一インターフェース（Redis/Memcached等）
   - 基本操作、数値操作、リスト、ハッシュ、セット、バッチ処理（22関数）
 - **[25-stdlib-log.md](25-stdlib-log.md)** - ロギング
@@ -112,25 +112,25 @@
 - **[27-stdlib-path.md](27-stdlib-path.md)** - パス操作
   - パス結合（path/join）、ファイル名取得（path/basename）
   - クロスプラットフォーム対応（Windows/Unix）
-- **[28-stdlib-stats.md](28-stdlib-stats.md)** - 統計関数 ⭐
+- **[28-stdlib-stats.md](28-stdlib-stats.md)** - 統計関数
   - 中心傾向の測度（mean、median、mode）
   - 散布度の測度（variance、stddev）
   - 位置の測度（percentile）
-- **[29-stdlib-stream.md](29-stdlib-stream.md)** - ストリーム処理 ⭐
+- **[29-stdlib-stream.md](29-stdlib-stream.md)** - ストリーム処理
   - 遅延評価（stream、stream/map、stream/filter）
   - 無限シーケンス（stream/range、stream/iterate）
   - メモリ効率的な大規模データ処理
 - **[30-stdlib-temp.md](30-stdlib-temp.md)** - 一時ファイル
   - 一時ファイル作成（temp/temp-file）
   - 一時ディレクトリ作成（temp/temp-dir）、自動クリーンアップ
-- **[31-stdlib-time.md](31-stdlib-time.md)** - 日時処理 ⭐
+- **[31-stdlib-time.md](31-stdlib-time.md)** - 日時処理
   - ISO 8601形式（time/now-iso、time/format、time/parse）
   - 日時演算（time/add-days、time/diff-days）、UTC/タイムゾーン
-- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP圧縮・解凍 ⭐
+- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP圧縮・解凍
   - ZIP作成（zip/create）、解凍（zip/extract）、内容一覧（zip/list）
   - gzip圧縮（zip/gzip）、解凍（zip/gunzip）
   - バックアップ、ログローテーション、配布用アーカイブ
-- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - 外部コマンド実行 ⭐
+- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - 外部コマンド実行
   - コマンド実行（cmd/exec、cmd/sh）
   - パイプライン（cmd/pipe）、ストリーム処理（cmd/stream-lines）
   - セキュリティ考慮（コマンドインジェクション対策）

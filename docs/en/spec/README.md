@@ -69,28 +69,28 @@ This directory contains the specification for implemented features only of the Q
   - Parse, stringify, Result type integration
 - **[13-stdlib-io.md](13-stdlib-io.md)** - File I/O (encoding support)
   - File read/write, multilingual encoding (Shift_JIS, GBK, Big5, etc.)
-- **[14-stdlib-test.md](14-stdlib-test.md)** - Testing Framework ⭐
+- **[14-stdlib-test.md](14-stdlib-test.md)** - Testing Framework
   - test/run, assertions (assert-eq, assert, assert-not, assert-throws)
   - qi test command (auto-detection, simple output)
 - **[15-stdlib-math.md](15-stdlib-math.md)** - Math Functions
   - Power & root (pow, sqrt), rounding (round, floor, ceil), clamping (clamp)
   - Random generation (rand, rand-int, random-range, shuffle)
-- **[16-stdlib-auth.md](16-stdlib-auth.md)** - Authentication & Authorization ⭐
+- **[16-stdlib-auth.md](16-stdlib-auth.md)** - Authentication & Authorization
   - JWT (JSON Web Token) generation, verification, decoding
   - Password hashing (Argon2)
-- **[17-stdlib-database.md](17-stdlib-database.md)** - Database ⭐
+- **[17-stdlib-database.md](17-stdlib-database.md)** - Database
   - PostgreSQL connection (query execution, command execution)
   - Parameterized queries, Result type integration
-- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket Communication ⭐
+- **[18-stdlib-websocket.md](18-stdlib-websocket.md)** - WebSocket Communication
   - WebSocket client (connect, send, receive, close)
   - TLS/SSL support (wss://), message types (text, binary, close, error)
-- **[19-stdlib-validation.md](19-stdlib-validation.md)** - Data Validation ⭐
+- **[19-stdlib-validation.md](19-stdlib-validation.md)** - Data Validation
   - Schema-based validation (type checking, required fields, string length, numeric range, pattern matching)
   - Nested map validation, Result type integration
-- **[20-stdlib-debug.md](20-stdlib-debug.md)** - Debug Features ⭐
+- **[20-stdlib-debug.md](20-stdlib-debug.md)** - Debug Features
   - Tracing (debug/trace), breakpoints (debug/break)
   - Stack trace retrieval (debug/stack), debugger info (debug/info)
-- **[21-stdlib-table.md](21-stdlib-table.md)** - Table Processing ⭐
+- **[21-stdlib-table.md](21-stdlib-table.md)** - Table Processing
   - SQL/awk-like tabular data operations
   - Grouping (table/group-by), deduplication (table/distinct-table)
 - **[22-stdlib-csv.md](22-stdlib-csv.md)** - CSV Processing
@@ -100,7 +100,7 @@ This directory contains the specification for implemented features only of the Q
   - Get/set environment variables (env/get, env/set)
   - Get all environment variables (env/all)
   - Load .env files (env/load-dotenv)
-- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store ⭐
+- **[24-stdlib-kvs.md](24-stdlib-kvs.md)** - Key-Value Store
   - Unified interface (Redis/Memcached etc.)
   - Basic ops, numeric ops, list, hash, set, batch operations (22 functions)
 - **[25-stdlib-log.md](25-stdlib-log.md)** - Logging
@@ -112,25 +112,25 @@ This directory contains the specification for implemented features only of the Q
 - **[27-stdlib-path.md](27-stdlib-path.md)** - Path Operations
   - Path joining (path/join), filename extraction (path/basename)
   - Cross-platform support (Windows/Unix)
-- **[28-stdlib-stats.md](28-stdlib-stats.md)** - Statistical Functions ⭐
+- **[28-stdlib-stats.md](28-stdlib-stats.md)** - Statistical Functions
   - Measures of central tendency (mean, median, mode)
   - Measures of dispersion (variance, stddev)
   - Measures of position (percentile)
-- **[29-stdlib-stream.md](29-stdlib-stream.md)** - Stream Processing ⭐
+- **[29-stdlib-stream.md](29-stdlib-stream.md)** - Stream Processing
   - Lazy evaluation (stream, stream/map, stream/filter)
   - Infinite sequences (stream/range, stream/iterate)
   - Memory-efficient large data processing
 - **[30-stdlib-temp.md](30-stdlib-temp.md)** - Temporary Files
   - Temporary file creation (temp/temp-file)
   - Temporary directory creation (temp/temp-dir), automatic cleanup
-- **[31-stdlib-time.md](31-stdlib-time.md)** - Date/Time Processing ⭐
+- **[31-stdlib-time.md](31-stdlib-time.md)** - Date/Time Processing
   - ISO 8601 format (time/now-iso, time/format, time/parse)
   - Date/time arithmetic (time/add-days, time/diff-days), UTC/timezone
-- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP Compression/Decompression ⭐
+- **[32-stdlib-zip.md](32-stdlib-zip.md)** - ZIP Compression/Decompression
   - ZIP creation (zip/create), extraction (zip/extract), listing (zip/list)
   - gzip compression (zip/gzip), decompression (zip/gunzip)
   - Backup, log rotation, distribution archives
-- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - External Command Execution ⭐
+- **[33-stdlib-cmd.md](33-stdlib-cmd.md)** - External Command Execution
   - Command execution (cmd/exec, cmd/exec!)
   - Pipelines (cmd/pipe), stream processing (cmd/stream-lines)
   - Security considerations (command injection prevention)
