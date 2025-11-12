@@ -96,6 +96,37 @@ When status codes or headers are needed, use the detailed version with an exclam
   (get-in res [:headers "content-type"]))
 ```
 
+### Optional Parameters
+
+Both simple and detailed versions support optional parameters:
+
+- **`:headers`** - Custom HTTP headers (Map)
+- **`:timeout`** - Timeout in milliseconds (Integer)
+- **`:basic-auth`** - Basic authentication (Vector in `[username password]` format)
+- **`:bearer-token`** - Bearer Token authentication (String)
+
+```qi
+;; Add custom headers to GET request
+(http/get "https://api.example.com/data"
+  {:headers {"X-API-Key" "your-api-key"}})
+
+;; POST request with authentication and timeout
+(http/post "https://api.example.com/users"
+  {"name" "Alice"}
+  {:bearer-token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   :timeout 10000})
+
+;; Use Basic authentication
+(http/get! "https://api.example.com/protected"
+  {:basic-auth ["username" "password"]})
+
+;; Combine multiple options
+(http/post! "https://api.example.com/data"
+  {"key" "value"}
+  {:headers {"X-Request-ID" "12345"}
+   :timeout 5000})
+```
+
 ### Advanced Settings
 
 ```qi

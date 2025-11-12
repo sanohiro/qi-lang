@@ -96,6 +96,37 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
   (get-in res [:headers "content-type"]))
 ```
 
+### オプション引数
+
+シンプル版・詳細版の両方で、オプション引数を渡すことができます：
+
+- **`:headers`** - カスタムHTTPヘッダー（Map）
+- **`:timeout`** - タイムアウト時間（ミリ秒）
+- **`:basic-auth`** - Basic認証（`[username password]`形式のVector）
+- **`:bearer-token`** - Bearer Token認証（文字列）
+
+```qi
+;; GETリクエストにカスタムヘッダーを追加
+(http/get "https://api.example.com/data"
+  {:headers {"X-API-Key" "your-api-key"}})
+
+;; POSTリクエストに認証とタイムアウトを設定
+(http/post "https://api.example.com/users"
+  {"name" "Alice"}
+  {:bearer-token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   :timeout 10000})
+
+;; Basic認証を使用
+(http/get! "https://api.example.com/protected"
+  {:basic-auth ["username" "password"]})
+
+;; 複数のオプションを組み合わせ
+(http/post! "https://api.example.com/data"
+  {"key" "value"}
+  {:headers {"X-Request-ID" "12345"}
+   :timeout 5000})
+```
+
 ### 詳細設定
 
 ```qi

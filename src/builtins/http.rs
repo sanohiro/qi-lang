@@ -27,11 +27,87 @@ fn compress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     encoder.finish()
 }
 
+/// オプションMapからヘッダーとタイムアウトを抽出する
+/// 引数: オプションMap（Option<&Value>）
+/// 戻り値: (ヘッダーMap, タイムアウトms)
+fn parse_http_options(
+    opts: Option<&Value>,
+) -> Result<(Option<crate::HashMap<String, Value>>, u64), String> {
+    let Some(Value::Map(opts_map)) = opts else {
+        // オプションがない場合はデフォルト値
+        return Ok((None, 30000));
+    };
+
+    // キーを準備
+    let headers_key = Value::Keyword("headers".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "headers".to_string());
+    let basic_auth_key = Value::Keyword("basic-auth".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "basic-auth".to_string());
+    let bearer_token_key = Value::Keyword("bearer-token".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "bearer-token".to_string());
+    let timeout_key = Value::Keyword("timeout".to_string())
+        .to_map_key()
+        .unwrap_or_else(|_| "timeout".to_string());
+
+    // ヘッダーを取得
+    let mut headers = opts_map
+        .get(&headers_key)
+        .and_then(|v| match v {
+            Value::Map(m) => Some(m.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    // Basic Auth処理
+    if let Some(Value::Vector(v)) = opts_map.get(&basic_auth_key) {
+        if v.len() == 2 {
+            if let (Value::String(user), Value::String(pass)) = (&v[0], &v[1]) {
+                use base64::{engine::general_purpose, Engine as _};
+                let credentials = format!("{}:{}", user, pass);
+                let encoded = general_purpose::STANDARD.encode(credentials);
+                headers.insert(
+                    "authorization".to_string(),
+                    Value::String(format!("Basic {}", encoded)),
+                );
+            }
+        }
+    }
+
+    // Bearer Token処理
+    if let Some(Value::String(token)) = opts_map.get(&bearer_token_key) {
+        headers.insert(
+            "authorization".to_string(),
+            Value::String(format!("Bearer {}", token)),
+        );
+    }
+
+    // タイムアウトを取得
+    let timeout = opts_map
+        .get(&timeout_key)
+        .and_then(|v| match v {
+            Value::Integer(i) if *i > 0 => Some(*i as u64),
+            _ => None,
+        })
+        .unwrap_or(30000);
+
+    let headers_opt = if headers.is_empty() {
+        None
+    } else {
+        Some(headers)
+    };
+
+    Ok((headers_opt, timeout))
+}
+
 /// HTTP GETリクエスト（シンプル版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/get "https://api.example.com")  ;=> "{"data": "..."}"
+/// 例: (http/get "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/get"]));
@@ -42,14 +118,18 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get", "URL"])),
     };
 
-    http_request("GET", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("GET", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP GETリクエスト（詳細版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/get! "https://api.example.com")  ;=> {:status 200 :body "..."}
+/// 例: (http/get! "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_get_bang(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/get!"]));
@@ -60,78 +140,106 @@ pub fn native_get_bang(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get!", "URL"])),
     };
 
-    http_request_detailed("GET", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("GET", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP POSTリクエスト（シンプル版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/post "https://api.example.com" {:key "value"})
+/// 例: (http/post "https://api.example.com" {:key "value"} {:headers {"Authorization" "Bearer token"}})
 pub fn native_post(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/post");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/post"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post", "URL"])),
     };
 
-    http_request("POST", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("POST", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP POSTリクエスト（詳細版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/post! "https://api.example.com" {:key "value"})
+/// 例: (http/post! "https://api.example.com" {:key "value"} {:headers {"Authorization" "Bearer token"}})
 pub fn native_post_bang(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/post!");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/post!"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post!", "URL"])),
     };
 
-    http_request_detailed("POST", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("POST", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP PUTリクエスト（シンプル版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/put "https://api.example.com/1" {:key "value"})
+/// 例: (http/put "https://api.example.com/1" {:key "value"} {:timeout 10000})
 pub fn native_put(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/put");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/put"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/put", "URL"])),
     };
 
-    http_request("PUT", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("PUT", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP PUTリクエスト（詳細版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/put! "https://api.example.com/1" {:key "value"})
+/// 例: (http/put! "https://api.example.com/1" {:key "value"} {:timeout 10000})
 pub fn native_put_bang(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/put!");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/put!"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/put!", "URL"])),
     };
 
-    http_request_detailed("PUT", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("PUT", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP DELETEリクエスト（シンプル版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/delete "https://api.example.com/1")
+/// 例: (http/delete "https://api.example.com/1" {:headers {"Authorization" "Bearer token"}})
 pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/delete"]));
@@ -142,14 +250,18 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/delete", "URL"])),
     };
 
-    http_request("DELETE", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("DELETE", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP DELETEリクエスト（詳細版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/delete! "https://api.example.com/1")
+/// 例: (http/delete! "https://api.example.com/1" {:headers {"Authorization" "Bearer token"}})
 pub fn native_delete_bang(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/delete!"]));
@@ -160,46 +272,62 @@ pub fn native_delete_bang(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/delete!", "URL"])),
     };
 
-    http_request_detailed("DELETE", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("DELETE", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP PATCHリクエスト（シンプル版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/patch "https://api.example.com/1" {:key "value"})
+/// 例: (http/patch "https://api.example.com/1" {:key "value"} {:timeout 10000})
 pub fn native_patch(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/patch");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/patch"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/patch", "URL"])),
     };
 
-    http_request("PATCH", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("PATCH", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP PATCHリクエスト（詳細版）
-/// 引数: URL文字列、ボディデータ
+/// 引数: URL文字列、ボディデータ、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/patch! "https://api.example.com/1" {:key "value"})
+/// 例: (http/patch! "https://api.example.com/1" {:key "value"} {:timeout 10000})
 pub fn native_patch_bang(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 2, "http/patch!");
+    if args.len() < 2 {
+        return Err(fmt_msg(MsgKey::Need2Args, &["http/patch!"]));
+    }
 
     let url = match &args[0] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/patch!", "URL"])),
     };
 
-    http_request_detailed("PATCH", url, Some(&args[1]), None, 30000)
+    let opts = args.get(2);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("PATCH", url, Some(&args[1]), headers.as_ref(), timeout)
 }
 
 /// HTTP HEADリクエスト（シンプル版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列、通常は空）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/head "https://api.example.com")
+/// 例: (http/head "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_head(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/head"]));
@@ -210,14 +338,18 @@ pub fn native_head(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/head", "URL"])),
     };
 
-    http_request("HEAD", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("HEAD", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP HEADリクエスト（詳細版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body ""}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/head! "https://api.example.com")
+/// 例: (http/head! "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_head_bang(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/head!"]));
@@ -228,14 +360,18 @@ pub fn native_head_bang(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/head!", "URL"])),
     };
 
-    http_request_detailed("HEAD", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("HEAD", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP OPTIONSリクエスト（シンプル版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: レスポンスボディ（文字列）
 /// エラー時: Err(エラーメッセージ)
 /// 例: (http/options "https://api.example.com")
+/// 例: (http/options "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_options(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/options"]));
@@ -246,14 +382,18 @@ pub fn native_options(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/options", "URL"])),
     };
 
-    http_request("OPTIONS", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request("OPTIONS", url, None, headers.as_ref(), timeout)
 }
 
 /// HTTP OPTIONSリクエスト（詳細版）
-/// 引数: URL文字列
+/// 引数: URL文字列、オプション（省略可）
 /// 戻り値: {:status 200 :headers {...} :body "..."}
 /// エラー時: {:error {:type "timeout" :message "..."}}
 /// 例: (http/options! "https://api.example.com")
+/// 例: (http/options! "https://api.example.com" {:headers {"Authorization" "Bearer token"}})
 pub fn native_options_bang(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["http/options!"]));
@@ -264,7 +404,10 @@ pub fn native_options_bang(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/options!", "URL"])),
     };
 
-    http_request_detailed("OPTIONS", url, None, None, 30000)
+    let opts = args.get(1);
+    let (headers, timeout) = parse_http_options(opts)?;
+
+    http_request_detailed("OPTIONS", url, None, headers.as_ref(), timeout)
 }
 
 /// 詳細なHTTPリクエスト
@@ -487,10 +630,7 @@ fn http_request(
                 };
 
                 if body_preview.is_empty() {
-                    Err(fmt_msg(
-                        MsgKey::HttpErrorStatus,
-                        &[&status.to_string()],
-                    ))
+                    Err(fmt_msg(MsgKey::HttpErrorStatus, &[&status.to_string()]))
                 } else {
                     Err(format!("HTTP error {}: {}", status, body_preview))
                 }
@@ -547,9 +687,12 @@ fn http_request_detailed(
 
     // ヘッダー追加
     if let Some(h) = headers {
-        for (k, v) in h {
+        for (k, v) in h.iter() {
             if let Value::String(val) = v {
-                request = request.header(k.as_str(), val.as_str());
+                // Qiパーサーがキーにダブルクォートを含める場合があるため除去
+                let key = k.trim_matches('"');
+                let value = val.trim_matches('"');
+                request = request.header(key, value);
             }
         }
     }
