@@ -1,0 +1,141 @@
+site_name: Qi Programming Language
+site_url: https://anthropics.github.io/qi-lang/
+site_description: A simple Lisp-based programming language for designing data flow
+site_author: Qi Language Team
+repo_url: https://github.com/anthropics/qi-lang
+repo_name: anthropics/qi-lang
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  language: en
+  logo: assets/logo/qi-logo-512.png
+  favicon: assets/logo/qi-logo-512.png
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search:
+      lang:
+        - en
+        - ja
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          name: English
+          build: true
+          default: true
+        - locale: ja
+          name: 日本語
+          build: true
+          nav_translations:
+            Home: ホーム
+            Specification: 仕様書
+            Tutorial: チュートリアル
+            Core Language: 言語コア
+            Standard Library: 標準ライブラリ
+            Getting Started: はじめの一歩
+            Pipelines: パイプライン
+            Data Structures: データ構造
+            Error Handling: エラーハンドリング
+            Concurrency: 並行処理
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/anthropics/qi-lang
+  version:
+    provider: mike
+
+nav:
+  - Home: index.md
+  - Specification:
+    - Overview: en/spec/README.md
+    - Core Language:
+      - Overview: en/spec/01-overview.md
+      - Pipeline Operators: en/spec/02-flow-pipes.md
+      - Concurrency: en/spec/03-concurrency.md
+      - Pattern Matching: en/spec/04-match.md
+      - Syntax Basics: en/spec/05-syntax-basics.md
+      - Data Structures: en/spec/06-data-structures.md
+      - Functions: en/spec/07-functions.md
+      - Error Handling: en/spec/08-error-handling.md
+      - Modules: en/spec/09-modules.md
+    - Standard Library:
+      - String: en/spec/10-stdlib-string.md
+      - HTTP: en/spec/11-stdlib-http.md
+      - JSON/YAML: en/spec/12-stdlib-json.md
+      - File I/O: en/spec/13-stdlib-io.md
+      - Testing: en/spec/14-stdlib-test.md
+      - Math: en/spec/15-stdlib-math.md
+      - CSV: en/spec/22-stdlib-csv.md
+      - Environment: en/spec/23-stdlib-env.md
+      - Logging: en/spec/25-stdlib-log.md
+      - Markdown: en/spec/26-stdlib-markdown.md
+      - Path: en/spec/27-stdlib-path.md
+      - Temp Files: en/spec/30-stdlib-temp.md
+      - ZIP: en/spec/32-stdlib-zip.md
+      - Commands: en/spec/33-stdlib-cmd.md
+      - List Extensions: en/spec/34-stdlib-list.md
+      - Map Extensions: en/spec/35-stdlib-map.md
+      - Vector Extensions: en/spec/36-stdlib-vector.md
+      - Set Operations: en/spec/37-stdlib-set.md
+      - OpenAPI: en/spec/38-stdlib-openapi.md
+      - Table Processing: en/spec/21-stdlib-table.md
+      - Stream Processing: en/spec/29-stdlib-stream.md
+    - Quick Reference: en/spec/QUICK-REFERENCE.md
+    - Function Index: en/spec/FUNCTION-INDEX.md
+  - Tutorial:
+    - Overview: en/tutorial/README.md
+    - Getting Started: en/tutorial/01-getting-started.md
+    - Thinking in Pipelines: en/tutorial/02-pipelines.md
+    - Data Structures: en/tutorial/03-data-structures.md
+    - Error Handling: en/tutorial/04-error-handling.md
+    - Concurrency: en/tutorial/05-concurrency.md

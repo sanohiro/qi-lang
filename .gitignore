@@ -34,3 +34,6 @@ qi_logo_pack/
 
 # Release archives
 release/
+
+# MkDocs
+site/
