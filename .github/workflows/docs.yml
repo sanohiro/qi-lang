@@ -42,10 +42,25 @@ jobs:
           pip install mkdocs-material
           pip install mkdocs-static-i18n
 
-      - name: Copy README to docs/index.md
+      - name: Copy and fix README links
         run: |
+          # Copy README files
           cp README.md docs/index.md
           cp README.ja.md docs/ja/index.md
+
+          # Fix language switcher links in English README
+          sed -i 's|\*\*\[日本語\](README\.ja\.md)\*\*|\[日本語\](ja/)|g' docs/index.md
+
+          # Fix documentation links in English README (remove docs/ prefix)
+          sed -i 's|docs/en/|en/|g' docs/index.md
+          sed -i 's|docs/ja/|ja/|g' docs/index.md
+
+          # Fix language switcher links in Japanese README
+          sed -i 's|\*\*\[English\](README\.md)\*\*|\[English\](../)|g' docs/ja/index.md
+
+          # Fix documentation links in Japanese README (remove docs/ prefix)
+          sed -i 's|docs/ja/|ja/|g' docs/ja/index.md
+          sed -i 's|docs/en/|en/|g' docs/ja/index.md
 
       - name: Build and deploy
         run: mkdocs gh-deploy --force --clean --verbose
