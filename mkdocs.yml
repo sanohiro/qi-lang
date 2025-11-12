@@ -50,6 +50,7 @@ plugins:
         - ja
   - i18n:
       docs_structure: folder
+      reconfigure_material: true
       languages:
         - locale: en
           name: English
@@ -90,7 +91,7 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/anthropics/qi-lang
+      link: https://github.com/sanohiro/qi-lang
   version:
     provider: mike
 

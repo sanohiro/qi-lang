@@ -40,7 +40,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install mkdocs-material
-          pip install mkdocs-i18n
+          pip install mkdocs-static-i18n
 
       - name: Copy README to docs/index.md
         run: |
