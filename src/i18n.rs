@@ -290,6 +290,7 @@ pub enum MsgKey {
     HttpRequestUrlRequired,    // http/request: :url is required
     HttpUnsupportedMethod,     // Unsupported HTTP method: {0}
     HttpStreamError,           // http stream: HTTP {0}
+    HttpErrorStatus,           // HTTP error {0}
 
     // I/Oエラー（詳細）
     IoFileError,               // {0}: {1}
@@ -913,6 +914,7 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpRequestUrlRequired, "http/request: :url is required"),
         (HttpUnsupportedMethod, "Unsupported HTTP method: {0}"),
         (HttpStreamError, "http stream: HTTP {0}"),
+        (HttpErrorStatus, "HTTP error {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
         (
@@ -1543,6 +1545,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpRequestUrlRequired, "http/request: :urlが必要です"),
         (HttpUnsupportedMethod, "サポートされていないHTTPメソッド: {0}"),
         (HttpStreamError, "http stream: HTTP {0}"),
+        (HttpErrorStatus, "HTTPエラー {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
         (IoFailedToDecodeUtf8, "{0}: UTF-8としてデコード失敗 (不正なバイト列)"),

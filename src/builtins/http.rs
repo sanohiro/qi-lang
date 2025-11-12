@@ -426,36 +426,74 @@ fn http_request(
     headers: Option<&crate::HashMap<String, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
-    // 詳細版を呼び出してbodyだけを取り出す
+    // 詳細版を呼び出す
     let result = http_request_detailed(method, url, body, headers, timeout_ms)?;
 
-    // 詳細版の戻り値からbodyを取り出す
+    // 詳細版の戻り値を処理
     match result {
         Value::Map(m) => {
+            // キーを準備
+            let status_key = Value::Keyword("status".to_string())
+                .to_map_key()
+                .expect("status keyword should be valid");
             let body_key = Value::Keyword("body".to_string())
                 .to_map_key()
                 .expect("body keyword should be valid");
+            let error_key = Value::Keyword("error".to_string())
+                .to_map_key()
+                .expect("error keyword should be valid");
 
-            // bodyキーがあればそれを返す
-            if let Some(body_val) = m.get(&body_key) {
+            // errorキーがある場合（ネットワークエラー等）
+            if let Some(Value::Map(err_map)) = m.get(&error_key) {
+                let message_key = Value::Keyword("message".to_string())
+                    .to_map_key()
+                    .expect("message keyword should be valid");
+
+                if let Some(Value::String(msg)) = err_map.get(&message_key) {
+                    return Err(msg.clone());
+                }
+                return Err("Unexpected error format".to_string());
+            }
+
+            // statusキーとbodyキーを取得
+            let status = m
+                .get(&status_key)
+                .and_then(|v| match v {
+                    Value::Integer(i) => Some(*i),
+                    _ => None,
+                })
+                .ok_or_else(|| "Missing status in response".to_string())?;
+
+            let body_val = m
+                .get(&body_key)
+                .ok_or_else(|| "Missing body in response".to_string())?;
+
+            // ステータスコードをチェック（2xx = 200-299）
+            if (200..300).contains(&status) {
+                // 成功：bodyを返す
                 Ok(body_val.clone())
             } else {
-                // errorキーがある場合はエラーメッセージを返す
-                let error_key = Value::Keyword("error".to_string())
-                    .to_map_key()
-                    .expect("error keyword should be valid");
-
-                if let Some(Value::Map(err_map)) = m.get(&error_key) {
-                    let message_key = Value::Keyword("message".to_string())
-                        .to_map_key()
-                        .expect("message keyword should be valid");
-
-                    if let Some(Value::String(msg)) = err_map.get(&message_key) {
-                        return Err(msg.clone());
+                // 失敗：エラーメッセージを生成
+                // bodyが文字列の場合は含める（長い場合は切り詰め）
+                let body_preview = match body_val {
+                    Value::String(s) => {
+                        if s.len() > 200 {
+                            format!("{}...", &s[..200])
+                        } else {
+                            s.clone()
+                        }
                     }
-                }
+                    _ => String::new(),
+                };
 
-                Err("Unexpected response format".to_string())
+                if body_preview.is_empty() {
+                    Err(fmt_msg(
+                        MsgKey::HttpErrorStatus,
+                        &[&status.to_string()],
+                    ))
+                } else {
+                    Err(format!("HTTP error {}: {}", status, body_preview))
+                }
             }
         }
         _ => Err("Unexpected response format".to_string()),

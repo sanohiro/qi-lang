@@ -8,12 +8,14 @@
 
 Qiでは2種類のHTTPクライアント関数を提供しています：
 
-- **シンプル版**（`http/get`, `http/post`等）: レスポンスボディのみを返す
-- **詳細版**（`http/get!`, `http/post!`等）: ステータスコード、ヘッダー、ボディを含む詳細情報を返す
+- **シンプル版**（`http/get`, `http/post`等）: レスポンスボディのみを返す。**2xx以外のステータスコードは例外を投げる**
+- **詳細版**（`http/get!`, `http/post!`等）: ステータスコード、ヘッダー、ボディを含む詳細情報を返す。**すべてのステータスコードでMapを返す**（例外を投げない）
 
 ### シンプル版 - レスポンスボディのみ取得
 
 多くの場合、レスポンスボディだけが必要です。シンプル版は**文字列**を返します。
+
+**エラーハンドリング**: 2xx以外のステータスコード（404, 500等）は例外を投げます。
 
 ```qi
 ;; http/get - HTTP GETリクエスト（ボディのみ）
@@ -41,11 +43,18 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 
 ;; シンプルな使い方 - ボディを直接JSONパース
 (def users (http/get "https://api.example.com/users" |> json/parse))
+
+;; エラーハンドリング - 404や500は例外を投げる
+(match (try (http/get "https://api.example.com/notfound"))
+  {:error e} -> (println "Error:" e)  ;; => "Error: HTTPエラー 404"
+  body -> (json/parse body))
 ```
 
 ### 詳細版 - ステータスコード・ヘッダー付き
 
 ステータスコードやヘッダーが必要な場合は、感嘆符（`!`）付きの詳細版を使用します。
+
+**エラーハンドリング**: すべてのステータスコード（2xx, 4xx, 5xx）でMapを返します。例外は投げません。
 
 ```qi
 ;; http/get! - HTTP GETリクエスト（詳細情報）
@@ -76,6 +85,11 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
   (if (= 200 (:status res))
     (json/parse (:body res))
     (error (str "HTTP error: " (:status res)))))
+
+;; 404エラーでも例外を投げず、Mapを返す
+(let [res (http/get! "https://api.example.com/notfound")]
+  (println "Status:" (:status res))  ;; => "Status: 404"
+  (println "Body:" (:body res)))     ;; エラーメッセージを取得可能
 
 ;; ヘッダーを取得
 (let [res (http/get! "https://api.example.com/data")]

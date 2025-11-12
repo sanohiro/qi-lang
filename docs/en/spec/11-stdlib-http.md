@@ -8,12 +8,14 @@
 
 Qi provides two types of HTTP client functions:
 
-- **Simple version** (`http/get`, `http/post`, etc.): Returns response body only
-- **Detailed version** (`http/get!`, `http/post!`, etc.): Returns detailed information including status code, headers, and body
+- **Simple version** (`http/get`, `http/post`, etc.): Returns response body only. **Throws exception for non-2xx status codes**
+- **Detailed version** (`http/get!`, `http/post!`, etc.): Returns detailed information including status code, headers, and body. **Returns Map for all status codes** (does not throw)
 
 ### Simple Version - Response Body Only
 
 In many cases, only the response body is needed. The simple version returns a **string**.
+
+**Error Handling**: Non-2xx status codes (404, 500, etc.) throw exceptions.
 
 ```qi
 ;; http/get - HTTP GET request (body only)
@@ -41,11 +43,18 @@ In many cases, only the response body is needed. The simple version returns a **
 
 ;; Simple usage - directly parse body as JSON
 (def users (http/get "https://api.example.com/users" |> json/parse))
+
+;; Error handling - 404 and 500 throw exceptions
+(match (try (http/get "https://api.example.com/notfound"))
+  {:error e} -> (println "Error:" e)  ;; => "Error: HTTP error 404"
+  body -> (json/parse body))
 ```
 
 ### Detailed Version - With Status Code and Headers
 
 When status codes or headers are needed, use the detailed version with an exclamation mark (`!`).
+
+**Error Handling**: Returns Map for all status codes (2xx, 4xx, 5xx). Does not throw exceptions.
 
 ```qi
 ;; http/get! - HTTP GET request (detailed info)
@@ -76,6 +85,11 @@ When status codes or headers are needed, use the detailed version with an exclam
   (if (= 200 (:status res))
     (json/parse (:body res))
     (error (str "HTTP error: " (:status res)))))
+
+;; 404 errors also return Map (no exception)
+(let [res (http/get! "https://api.example.com/notfound")]
+  (println "Status:" (:status res))  ;; => "Status: 404"
+  (println "Body:" (:body res)))     ;; Can retrieve error message
 
 ;; Get headers
 (let [res (http/get! "https://api.example.com/data")]
