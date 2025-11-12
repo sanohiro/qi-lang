@@ -1,9 +1,9 @@
 site_name: Qi Programming Language
-site_url: https://anthropics.github.io/qi-lang/
+site_url: https://sanohiro.github.io/qi-lang/
 site_description: A simple Lisp-based programming language for designing data flow
 site_author: Qi Language Team
-repo_url: https://github.com/anthropics/qi-lang
-repo_name: anthropics/qi-lang
+repo_url: https://github.com/sanohiro/qi-lang
+repo_name: sanohiro/qi-lang
 edit_uri: edit/master/docs/
 
 theme:
