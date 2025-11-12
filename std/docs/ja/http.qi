@@ -4,98 +4,129 @@
 ;; シンプル版 - レスポンスボディのみを返す
 (def __doc__http/get
   {:desc "HTTP GETリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/get \"https://api.example.com/data\") ;=> \"{\\\"result\\\": ...}\""
-              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"]})
+              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"
+              "(http/get url {:headers {\"X-API-Key\" \"key123\"}})"
+              "(http/get url {:bearer-token \"token\" :timeout 5000})"]})
 
 (def __doc__http/post
   {:desc "HTTP POSTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}]
+            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
-              "(http/post url (json/stringify data) |> json/parse)"]})
+              "(http/post url (json/stringify data) |> json/parse)"
+              "(http/post url data {:bearer-token \"token\"})"
+              "(http/post url data {:headers {\"X-Request-ID\" \"123\"} :timeout 10000})"]})
 
 (def __doc__http/put
   {:desc "HTTP PUTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}]
+            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
-   :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+   :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"
+              "(http/put url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/delete
   {:desc "HTTP DELETEリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
-   :examples ["(http/delete \"https://api.example.com/users/1\")"]})
+   :examples ["(http/delete \"https://api.example.com/users/1\")"
+              "(http/delete url {:bearer-token \"token\"})"]})
 
 (def __doc__http/patch
   {:desc "HTTP PATCHリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}]
+            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
-   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
+              "(http/patch url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/head
   {:desc "HTTP HEADリクエストを送信します（シンプル版）。レスポンスボディのみを返します（通常は空文字列）。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ（通常は空）"}
-   :examples ["(http/head \"https://example.com\")"]})
+   :examples ["(http/head \"https://example.com\")"
+              "(http/head url {:bearer-token \"token\"})"]})
 
 (def __doc__http/options
   {:desc "HTTP OPTIONSリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
-   :examples ["(http/options \"https://api.example.com\")"]})
+   :examples ["(http/options \"https://api.example.com\")"
+              "(http/options url {:bearer-token \"token\"})"]})
+
 
 ;; 詳細版 - ステータスコード・ヘッダー・ボディを含むマップを返す
 (def __doc__http/get!
   {:desc "HTTP GETリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ（:status, :headers, :body）"}
    :examples ["(http/get! \"https://api.example.com/data\") ;=> {:status 200 :headers {...} :body \"...\"}"
-              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"]})
+              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"
+              "(http/get! url {:headers {\"X-API-Key\" \"key123\"}})"]})
 
 (def __doc__http/post!
   {:desc "HTTP POSTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}]
+            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
-              "(http/post! url data |> (fn [r] (:status r)))"]})
+              "(http/post! url data |> (fn [r] (:status r)))"
+              "(http/post! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/put!
   {:desc "HTTP PUTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}]
+            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
-   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"
+              "(http/put! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/delete!
   {:desc "HTTP DELETEリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
-   :examples ["(http/delete! \"https://api.example.com/users/1\")"]})
+   :examples ["(http/delete! \"https://api.example.com/users/1\")"
+              "(http/delete! url {:bearer-token \"token\"})"]})
 
 (def __doc__http/patch!
   {:desc "HTTP PATCHリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}]
+            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
-   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
+              "(http/patch! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/head!
   {:desc "HTTP HEADリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ（ボディなし）"}
-   :examples ["(http/head! \"https://example.com\")"]})
+   :examples ["(http/head! \"https://example.com\")"
+              "(http/head! url {:bearer-token \"token\"})"]})
 
 (def __doc__http/options!
   {:desc "HTTP OPTIONSリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
-   :examples ["(http/options! \"https://api.example.com\")"]})
+   :examples ["(http/options! \"https://api.example.com\")"
+              "(http/options! url {:bearer-token \"token\"})"]})
 
 ;; 詳細リクエスト
 (def __doc__http/request

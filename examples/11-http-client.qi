@@ -33,15 +33,15 @@
 
 (def post-data {:name "Alice" :age 25})
 (def post-response (http/post "https://httpbin.org/post"
-                              {:body (json/stringify post-data)
-                               :headers {"Content-Type" "application/json"}}))
+                              post-data
+                              {:headers {"Content-Type" "application/json"}}))
 
 (println f"POST Response (first 200 chars): {(str/slice post-response 0 200)}")
 
 ;; POST リクエスト（詳細版）
 (def post-response-detail (http/post! "https://httpbin.org/post"
-                                      {:body (json/stringify post-data)
-                                       :headers {"Content-Type" "application/json"}}))
+                                      post-data
+                                      {:headers {"Content-Type" "application/json"}}))
 
 (println f"POST Status: {(get post-response-detail :status)}")
 
@@ -81,8 +81,8 @@
 ; POST - リソース作成（詳細版でステータスコード取得）
 (defn create-resource [data]
   (http/post! "https://httpbin.org/post"
-              {:body (json/stringify data)
-               :headers {"Content-Type" "application/json"}})
+              data
+              {:headers {"Content-Type" "application/json"}})
   |> (fn [r] (get r :status)))
 
 (println f"POST /resource: {(create-resource {:name \"Bob\" :value 42})}")

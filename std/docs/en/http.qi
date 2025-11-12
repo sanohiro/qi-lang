@@ -4,98 +4,129 @@
 ;; Simple version - returns response body only
 (def __doc__http/get
   {:desc "Sends an HTTP GET request (simple version). Returns only the response body as a string."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
    :examples ["(http/get \"https://api.example.com/data\") ;=> \"{\\\"result\\\": ...}\""
-              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"]})
+              "(http/get \"http://localhost:3000/api/users\" |> json/parse)"
+              "(http/get url {:headers {\"X-API-Key\" \"key123\"}})"
+              "(http/get url {:bearer-token \"token\" :timeout 5000})"]})
 
 (def __doc__http/post
   {:desc "Sends an HTTP POST request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body (string or map)"}]
+            {:name "body" :type "any" :desc "Request body (string or map)"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
    :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
-              "(http/post url (json/stringify data) |> json/parse)"]})
+              "(http/post url (json/stringify data) |> json/parse)"
+              "(http/post url data {:bearer-token \"token\"})"
+              "(http/post url data {:headers {\"X-Request-ID\" \"123\"} :timeout 10000})"]})
 
 (def __doc__http/put
   {:desc "Sends an HTTP PUT request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}]
+            {:name "body" :type "any" :desc "Request body"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
-   :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+   :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"
+              "(http/put url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/delete
   {:desc "Sends an HTTP DELETE request (simple version). Returns only the response body as a string."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
-   :examples ["(http/delete \"https://api.example.com/users/1\")"]})
+   :examples ["(http/delete \"https://api.example.com/users/1\")"
+              "(http/delete url {:bearer-token \"token\"})"]})
 
 (def __doc__http/patch
   {:desc "Sends an HTTP PATCH request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}]
+            {:name "body" :type "any" :desc "Request body"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
-   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+   :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
+              "(http/patch url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/head
   {:desc "Sends an HTTP HEAD request (simple version). Returns only the response body (usually empty string)."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body (usually empty)"}
-   :examples ["(http/head \"https://example.com\")"]})
+   :examples ["(http/head \"https://example.com\")"
+              "(http/head url {:bearer-token \"token\"})"]})
 
 (def __doc__http/options
   {:desc "Sends an HTTP OPTIONS request (simple version). Returns only the response body as a string."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
-   :examples ["(http/options \"https://api.example.com\")"]})
+   :examples ["(http/options \"https://api.example.com\")"
+              "(http/options url {:bearer-token \"token\"})"]})
+
 
 ;; Detailed version - returns a map with status code, headers, and body
 (def __doc__http/get!
   {:desc "Sends an HTTP GET request (detailed version). Returns a map containing status code, headers, and body."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map (:status, :headers, :body)"}
    :examples ["(http/get! \"https://api.example.com/data\") ;=> {:status 200 :headers {...} :body \"...\"}"
-              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"]})
+              "(let [res (http/get! url)] (if (= 200 (:status res)) (:body res) (error \"HTTP error\")))"
+              "(http/get! url {:headers {\"X-API-Key\" \"key123\"}})"]})
 
 (def __doc__http/post!
   {:desc "Sends an HTTP POST request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body (string or map)"}]
+            {:name "body" :type "any" :desc "Request body (string or map)"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
    :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
-              "(http/post! url data |> (fn [r] (:status r)))"]})
+              "(http/post! url data |> (fn [r] (:status r)))"
+              "(http/post! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/put!
   {:desc "Sends an HTTP PUT request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}]
+            {:name "body" :type "any" :desc "Request body"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
-   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"]})
+   :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"
+              "(http/put! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/delete!
   {:desc "Sends an HTTP DELETE request (detailed version). Returns a map containing status code, headers, and body."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
-   :examples ["(http/delete! \"https://api.example.com/users/1\")"]})
+   :examples ["(http/delete! \"https://api.example.com/users/1\")"
+              "(http/delete! url {:bearer-token \"token\"})"]})
 
 (def __doc__http/patch!
   {:desc "Sends an HTTP PATCH request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}]
+            {:name "body" :type "any" :desc "Request body"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
-   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"]})
+   :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
+              "(http/patch! url data {:bearer-token \"token\"})"]})
 
 (def __doc__http/head!
   {:desc "Sends an HTTP HEAD request (detailed version). Returns a map containing status code, headers, and body."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map (no body)"}
-   :examples ["(http/head! \"https://example.com\")"]})
+   :examples ["(http/head! \"https://example.com\")"
+              "(http/head! url {:bearer-token \"token\"})"]})
 
 (def __doc__http/options!
   {:desc "Sends an HTTP OPTIONS request (detailed version). Returns a map containing status code, headers, and body."
-   :params [{:name "url" :type "string" :desc "URL"}]
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
-   :examples ["(http/options! \"https://api.example.com\")"]})
+   :examples ["(http/options! \"https://api.example.com\")"
+              "(http/options! url {:bearer-token \"token\"})"]})
 
 ;; Detailed request
 (def __doc__http/request
