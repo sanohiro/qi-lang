@@ -235,6 +235,36 @@ qi -v
 
 ---
 
+#### `qi --upgrade`
+
+Upgrades Qi to the latest version from GitHub Releases.
+
+```bash
+qi --upgrade
+```
+
+**Behavior:**
+1. Checks the latest release from GitHub
+2. Downloads the appropriate binary for your platform
+3. Replaces the current binary (backs up to `.old`)
+4. Displays upgrade status
+
+**Supported Platforms:**
+- macOS (Apple Silicon / Intel)
+- Linux (x86_64 / aarch64)
+- Windows (x86_64)
+
+**Examples:**
+```bash
+# Upgrade to the latest version
+qi --upgrade
+
+# Check current version
+qi --version
+```
+
+---
+
 ## Environment Variables
 
 ### `QI_LANG`

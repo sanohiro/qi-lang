@@ -235,6 +235,36 @@ qi -v
 
 ---
 
+#### `qi --upgrade`
+
+Qiを最新版にアップグレードします（GitHub Releasesから取得）。
+
+```bash
+qi --upgrade
+```
+
+**動作:**
+1. GitHubから最新リリースを確認
+2. プラットフォームに対応したバイナリをダウンロード
+3. 現在のバイナリを置き換え（バックアップを`.old`に作成）
+4. アップグレード状況を表示
+
+**対応プラットフォーム:**
+- macOS (Apple Silicon / Intel)
+- Linux (x86_64 / aarch64)
+- Windows (x86_64)
+
+**使用例:**
+```bash
+# 最新版にアップグレード
+qi --upgrade
+
+# 現在のバージョンを確認
+qi --version
+```
+
+---
+
 ## 環境変数
 
 ### `QI_LANG`

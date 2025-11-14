@@ -9,6 +9,7 @@ pub mod intern;
 pub mod lexer;
 pub mod parser;
 pub mod project;
+pub mod upgrade;
 pub mod value;
 
 // ========================================

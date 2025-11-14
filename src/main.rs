@@ -109,6 +109,13 @@ fn main() {
         "-v" | "--version" => {
             println!("{}", fmt_ui_msg(UiMsg::VersionString, &[VERSION]));
         }
+        "--upgrade" => match qi_lang::upgrade::upgrade() {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        },
         #[cfg(feature = "dap-server")]
         "--dap" => {
             // DAPサーバーを起動（非同期版、stdin/stdoutで通信）

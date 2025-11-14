@@ -454,6 +454,19 @@ pub enum MsgKey {
     QiTomlAlreadyExists,              // qi.toml already exists
     PatternErrorNotAllowed, // Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)
     UnexpectedResponse,     // Unexpected response
+
+    // Upgrade
+    CheckingForUpdates,   // Checking for updates...
+    CurrentVersion,       // Current version: {0}
+    LatestVersion,        // Latest version: {0}
+    AlreadyLatest,        // Already using the latest version
+    NewVersionAvailable,  // New version available: {0}
+    DownloadingBinary,    // Downloading binary...
+    InstallingUpdate,     // Installing update...
+    UpgradeSuccess,       // Successfully upgraded to version {0}
+    RestartRequired,      // Please restart qi to use the new version
+    UnsupportedPlatform,  // Unsupported platform: {0}-{1}
+    HttpClientNotEnabled, // HTTP client not enabled (feature 'http-client' required)
 }
 
 /// UIメッセージキー
@@ -1245,6 +1258,19 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (QiTomlAlreadyExists, "qi.toml already exists"),
         (PatternErrorNotAllowed, "Pattern error: this pattern cannot be used in function parameters or let bindings (only in match)"),
         (UnexpectedResponse, "Unexpected response"),
+
+        // Upgrade
+        (CheckingForUpdates, "Checking for updates..."),
+        (CurrentVersion, "Current version: {0}"),
+        (LatestVersion, "Latest version: {0}"),
+        (AlreadyLatest, "Already using the latest version"),
+        (NewVersionAvailable, "New version available: {0}"),
+        (DownloadingBinary, "Downloading binary..."),
+        (InstallingUpdate, "Installing update..."),
+        (UpgradeSuccess, "Successfully upgraded to version {0}"),
+        (RestartRequired, "Please restart qi to use the new version"),
+        (UnsupportedPlatform, "Unsupported platform: {0}-{1}"),
+        (HttpClientNotEnabled, "HTTP client not enabled (feature 'http-client' required)"),
     ])
 });
 
@@ -1705,6 +1731,19 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (QiTomlAlreadyExists, "qi.tomlが既に存在します"),
         (PatternErrorNotAllowed, "パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）"),
         (UnexpectedResponse, "予期しないレスポンス"),
+
+        // Upgrade
+        (CheckingForUpdates, "アップデートを確認中..."),
+        (CurrentVersion, "現在のバージョン: {0}"),
+        (LatestVersion, "最新バージョン: {0}"),
+        (AlreadyLatest, "既に最新バージョンを使用しています"),
+        (NewVersionAvailable, "新しいバージョンがあります: {0}"),
+        (DownloadingBinary, "バイナリをダウンロード中..."),
+        (InstallingUpdate, "アップデートをインストール中..."),
+        (UpgradeSuccess, "バージョン {0} へのアップグレードが完了しました"),
+        (RestartRequired, "新しいバージョンを使用するには qi を再起動してください"),
+        (UnsupportedPlatform, "サポートされていないプラットフォーム: {0}-{1}"),
+        (HttpClientNotEnabled, "HTTP client が有効になっていません (feature 'http-client' が必要です)"),
     ])
 });
 

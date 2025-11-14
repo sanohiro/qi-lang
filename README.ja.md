@@ -114,6 +114,15 @@ cargo install --path .
 cargo build --release
 ```
 
+### アップグレード
+
+```bash
+# 最新版にアップグレード
+qi --upgrade
+```
+
+Qiは自動的にGitHubから最新版にアップグレードできます。手動でビルドやインストールする必要はありません。
+
 ### プロジェクトを作成
 
 ```bash
