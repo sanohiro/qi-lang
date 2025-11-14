@@ -213,53 +213,47 @@
 ;; ========== 使用例 ==========
 
 ;; 統一インターフェースの利点
-(def unified-interface-example
-  (do
-    ;; バックエンドはURLで自動判別
-    (def kvs (kvs/connect "redis://localhost:6379"))
+(comment
+  ;; バックエンドはURLで自動判別
+  (def kvs (kvs/connect "redis://localhost:6379"))
 
-    ;; 以降のコードは同じ
-    (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
-    (kvs/expire kvs "cache:user:1" 3600)
-    (kvs/get kvs "cache:user:1")
+  ;; 以降のコードは同じ
+  (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
+  (kvs/expire kvs "cache:user:1" 3600)
+  (kvs/get kvs "cache:user:1")
 
-    ;; バックエンドを変更する場合も、connectのURLだけ変えればOK
-    ;; (def kvs (kvs/connect "memcached://localhost:11211"))
-    ;; 以降のコード（kvs/get, kvs/setなど）は変更不要！
-    ))
+  ;; バックエンドを変更する場合も、connectのURLだけ変えればOK
+  ;; (def kvs (kvs/connect "memcached://localhost:11211"))
+  ;; 以降のコード（kvs/get, kvs/setなど）は変更不要！
+  )
 
 ;; キャッシュパターン
-(def cache-example
-  (do
-    (def kvs (kvs/connect "redis://localhost:6379"))
-    (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
-    (kvs/expire kvs "cache:user:1" 3600)
-    (kvs/get kvs "cache:user:1")))
+(comment
+  (def kvs (kvs/connect "redis://localhost:6379"))
+  (kvs/set kvs "cache:user:1" "{\"name\":\"Alice\"}")
+  (kvs/expire kvs "cache:user:1" 3600)
+  (kvs/get kvs "cache:user:1"))
 
 ;; キューパターン（FIFO）
-(def queue-example
-  (do
-    (def kvs (kvs/connect "redis://localhost:6379"))
-    (kvs/rpush kvs "tasks" "task1")
-    (kvs/rpush kvs "tasks" "task2")
-    (kvs/lpop kvs "tasks") ;=> "task1"
-    (kvs/lpop kvs "tasks") ;=> "task2"
-    ))
+(comment
+  (def kvs (kvs/connect "redis://localhost:6379"))
+  (kvs/rpush kvs "tasks" "task1")
+  (kvs/rpush kvs "tasks" "task2")
+  (kvs/lpop kvs "tasks") ;=> "task1"
+  (kvs/lpop kvs "tasks")) ;=> "task2"
 
 ;; カウンターパターン
-(def counter-example
-  (do
-    (def kvs (kvs/connect "redis://localhost:6379"))
-    (kvs/set kvs "page-views" 0)
-    (kvs/incr kvs "page-views")
-    (kvs/incr kvs "page-views")
-    (kvs/get kvs "page-views"))) ;=> "2"
+(comment
+  (def kvs (kvs/connect "redis://localhost:6379"))
+  (kvs/set kvs "page-views" 0)
+  (kvs/incr kvs "page-views")
+  (kvs/incr kvs "page-views")
+  (kvs/get kvs "page-views")) ;=> "2"
 
 ;; ユーザープロファイルパターン（ハッシュ）
-(def profile-example
-  (do
-    (def kvs (kvs/connect "redis://localhost:6379"))
-    (kvs/hset kvs "user:1" "name" "Alice")
-    (kvs/hset kvs "user:1" "email" "alice@example.com")
-    (kvs/hset kvs "user:1" "age" 30)
-    (kvs/hgetall kvs "user:1"))) ;=> {:name "Alice" :email "alice@example.com" :age "30"}
+(comment
+  (def kvs (kvs/connect "redis://localhost:6379"))
+  (kvs/hset kvs "user:1" "name" "Alice")
+  (kvs/hset kvs "user:1" "email" "alice@example.com")
+  (kvs/hset kvs "user:1" "age" 30)
+  (kvs/hgetall kvs "user:1")) ;=> {:name "Alice" :email "alice@example.com" :age "30"}

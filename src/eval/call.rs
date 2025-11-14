@@ -36,6 +36,7 @@ impl Evaluator {
                 "_railway-pipe" => Some(self.eval_railway_pipe(args, env)),
                 "and" => Some(self.eval_and(args, env)),
                 "apply" => Some(self.eval_apply(args, env)),
+                "comment" => Some(Ok(Value::Nil)),
                 "go/catch" => Some(self.eval_catch(args, env)),
                 "go/parallel-do" => Some(self.eval_parallel_do(args, env)),
                 "go/pfilter" => Some(self.eval_pfilter(args, env)),

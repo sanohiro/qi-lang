@@ -166,5 +166,7 @@ pub fn native_time(args: &[Value], evaluator: &crate::eval::Evaluator) -> Result
 /// @qi-doc:category util
 /// @qi-doc:functions inspect
 ///
-/// 注意: _railway-pipe, timeはEvaluatorが必要なため、mod.rsで別途登録されます
+/// 注意:
+/// - _railway-pipe, timeはEvaluatorが必要なため、mod.rsで別途登録されます
+/// - commentは特殊形式として実装されています（eval/call.rsで処理）
 pub const FUNCTIONS: super::NativeFunctions = &[("inspect", native_inspect)];
