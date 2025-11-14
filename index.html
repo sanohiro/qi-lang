@@ -537,6 +537,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#create-a-project" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2203,6 +2214,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#create-a-project" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2505,62 +2527,67 @@
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Or</span>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>cargo<span class="w"> </span>build<span class="w"> </span>--release
 </span></code></pre></div>
+<h3 id="upgrade">Upgrade<a class="headerlink" href="#upgrade" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Upgrade to the latest version</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>qi<span class="w"> </span>--upgrade
+</span></code></pre></div>
+<p>Qi can automatically upgrade itself to the latest release from GitHub. No need to manually build or install.</p>
 <h3 id="create-a-project">Create a Project<a class="headerlink" href="#create-a-project" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Basic project</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>qi<span class="w"> </span>new<span class="w"> </span>my-project
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nb">cd</span><span class="w"> </span>my-project
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>qi<span class="w"> </span>main.qi
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># HTTP server project</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>qi<span class="w"> </span>new<span class="w"> </span>myapi<span class="w"> </span>--template<span class="w"> </span>http-server
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nb">cd</span><span class="w"> </span>myapi
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>qi<span class="w"> </span>main.qi
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Basic project</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>qi<span class="w"> </span>new<span class="w"> </span>my-project
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nb">cd</span><span class="w"> </span>my-project
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>qi<span class="w"> </span>main.qi
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># HTTP server project</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>qi<span class="w"> </span>new<span class="w"> </span>myapi<span class="w"> </span>--template<span class="w"> </span>http-server
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="nb">cd</span><span class="w"> </span>myapi
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>qi<span class="w"> </span>main.qi
 </span></code></pre></div>
 <h3 id="available-templates">Available Templates<a class="headerlink" href="#available-templates" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>qi<span class="w"> </span>template<span class="w"> </span>list
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>qi<span class="w"> </span>template<span class="w"> </span>info<span class="w"> </span>http-server
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>qi<span class="w"> </span>template<span class="w"> </span>list
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>qi<span class="w"> </span>template<span class="w"> </span>info<span class="w"> </span>http-server
 </span></code></pre></div>
 <h3 id="repl-interactive-environment">REPL (Interactive Environment)<a class="headerlink" href="#repl-interactive-environment" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>qi
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1"># Inside REPL</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="o">)</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="m">6</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>qi:2&gt;<span class="w"> </span><span class="o">([</span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="p">|</span>&gt;<span class="w"> </span><span class="o">(</span>map<span class="w"> </span><span class="o">(</span>fn<span class="w"> </span><span class="o">[</span>x<span class="o">]</span><span class="w"> </span><span class="o">(</span>*<span class="w"> </span>x<span class="w"> </span><span class="m">2</span><span class="o">))))</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Vector<span class="o">([</span>Integer<span class="o">(</span><span class="m">2</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">4</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">6</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">8</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">10</span><span class="o">)])</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>qi
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Inside REPL</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="o">)</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="m">6</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>qi:2&gt;<span class="w"> </span><span class="o">([</span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="p">|</span>&gt;<span class="w"> </span><span class="o">(</span>map<span class="w"> </span><span class="o">(</span>fn<span class="w"> </span><span class="o">[</span>x<span class="o">]</span><span class="w"> </span><span class="o">(</span>*<span class="w"> </span>x<span class="w"> </span><span class="m">2</span><span class="o">))))</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>Vector<span class="o">([</span>Integer<span class="o">(</span><span class="m">2</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">4</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">6</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">8</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">10</span><span class="o">)])</span>
 </span></code></pre></div>
 <h3 id="other-commands">Other Commands<a class="headerlink" href="#other-commands" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Execute script file</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>qi<span class="w"> </span>script.qi
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># One-liner execution</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(+ 1 2 3)&#39;</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Process piped input (automatically stored in stdin variable)</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>cat<span class="w"> </span>data.csv<span class="w"> </span><span class="p">|</span><span class="w"> </span>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(stdin |&gt; (map str/trim) |&gt; (filter (fn [x] (&gt; (len x) 0))))&#39;</span>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>ls<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span><span class="w"> </span>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(count stdin)&#39;</span>
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
-</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1"># Show help</span>
-</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>qi<span class="w"> </span>--help
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Execute script file</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>qi<span class="w"> </span>script.qi
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># One-liner execution</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(+ 1 2 3)&#39;</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># Process piped input (automatically stored in stdin variable)</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>cat<span class="w"> </span>data.csv<span class="w"> </span><span class="p">|</span><span class="w"> </span>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(stdin |&gt; (map str/trim) |&gt; (filter (fn [x] (&gt; (len x) 0))))&#39;</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>ls<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span><span class="w"> </span>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(count stdin)&#39;</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="c1"># Show help</span>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>qi<span class="w"> </span>--help
 </span></code></pre></div>
 <h3 id="initialization-file-qiinitqi">Initialization File (.qi/init.qi)<a class="headerlink" href="#initialization-file-qiinitqi" title="Permanent link">&para;</a></h3>
 <p>During REPL and one-liner execution, initialization files are automatically loaded in the following order:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># 1. User global settings (priority)</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>~/.qi/init.qi
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># 2. Project local settings</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>./.qi/init.qi
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># 1. User global settings (priority)</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>~/.qi/init.qi
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># 2. Project local settings</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>./.qi/init.qi
 </span></code></pre></div>
 <p>You can preload commonly used libraries or define convenience functions in initialization files:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>;; Example ~/.qi/init.qi
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>;; Preload table processing library
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>(use &quot;std/lib/table&quot; :as table)
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>;; Debug function
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>(defn dbg [x]
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  (do (println (str &quot;DEBUG: &quot; x))
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>      x))
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>;; Example ~/.qi/init.qi
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>;; Preload table processing library
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>(use &quot;std/lib/table&quot; :as table)
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>;; Debug function
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>(defn dbg [x]
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>  (do (println (str &quot;DEBUG: &quot; x))
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>      x))
 </span></code></pre></div>
 <h2 id="editor-extensions">Editor Extensions<a class="headerlink" href="#editor-extensions" title="Permanent link">&para;</a></h2>
 <h3 id="visual-studio-code">Visual Studio Code<a class="headerlink" href="#visual-studio-code" title="Permanent link">&para;</a></h3>
@@ -2575,23 +2602,23 @@
 <p>See the <a href="https://github.com/sanohiro/qi-vscode">qi-vscode repository</a> for installation instructions and details.</p>
 <h2 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h2>
 <h3 id="unit-tests-fast">Unit Tests (Fast)<a class="headerlink" href="#unit-tests-fast" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Normal tests (without Docker)</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>cargo<span class="w"> </span><span class="nb">test</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Test specific modules</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>parser
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nb">eval</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Normal tests (without Docker)</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>cargo<span class="w"> </span><span class="nb">test</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Test specific modules</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>parser
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nb">eval</span>
 </span></code></pre></div>
 <h3 id="integration-tests-auto-docker">Integration Tests (Auto Docker)<a class="headerlink" href="#integration-tests-auto-docker" title="Permanent link">&para;</a></h3>
 <p>Integration tests for PostgreSQL, MySQL, and Redis automatically start and clean up Docker containers using testcontainers.</p>
 <p><strong>Prerequisites</strong>: Docker must be installed.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Run integration tests (PostgreSQL + MySQL + Redis)</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Individual execution</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_postgres
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_mysql
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_redis
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Run integration tests (PostgreSQL + MySQL + Redis)</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Individual execution</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_postgres
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_mysql
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>cargo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--features<span class="w"> </span>integration-tests<span class="w"> </span>--test<span class="w"> </span>integration_redis
 </span></code></pre></div>
 <p><strong>Behavior</strong>:
 - Containers automatically start at test startup (ports auto-assigned)

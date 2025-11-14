@@ -1958,6 +1958,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#qi-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        qi --upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2267,6 +2278,27 @@
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>qi<span class="w"> </span>-v
 </span></code></pre></div>
 <hr />
+<h4 id="qi-upgrade"><code>qi --upgrade</code><a class="headerlink" href="#qi-upgrade" title="Permanent link">&para;</a></h4>
+<p>Qiを最新版にアップグレードします（GitHub Releasesから取得）。</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>qi<span class="w"> </span>--upgrade
+</span></code></pre></div>
+<p><strong>動作:</strong>
+1. GitHubから最新リリースを確認
+2. プラットフォームに対応したバイナリをダウンロード
+3. 現在のバイナリを置き換え（バックアップを<code>.old</code>に作成）
+4. アップグレード状況を表示</p>
+<p><strong>対応プラットフォーム:</strong>
+- macOS (Apple Silicon / Intel)
+- Linux (x86_64 / aarch64)
+- Windows (x86_64)</p>
+<p><strong>使用例:</strong>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># 最新版にアップグレード</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>qi<span class="w"> </span>--upgrade
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># 現在のバージョンを確認</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>qi<span class="w"> </span>--version
+</span></code></pre></div></p>
+<hr />
 <h2 id="_7">環境変数<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
 <h3 id="qi_lang"><code>QI_LANG</code><a class="headerlink" href="#qi_lang" title="Permanent link">&para;</a></h3>
 <p>Qiのメッセージ言語を設定します。</p>
@@ -2274,8 +2306,8 @@
 - <code>ja</code> - 日本語
 - <code>en</code> - 英語（デフォルト）</p>
 <p><strong>例:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nv">QI_LANG</span><span class="o">=</span>ja<span class="w"> </span>qi<span class="w"> </span>script.qi
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nv">QI_LANG</span><span class="o">=</span>en<span class="w"> </span>qi<span class="w"> </span>--help
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nv">QI_LANG</span><span class="o">=</span>ja<span class="w"> </span>qi<span class="w"> </span>script.qi
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nv">QI_LANG</span><span class="o">=</span>en<span class="w"> </span>qi<span class="w"> </span>--help
 </span></code></pre></div></p>
 <p><strong>動作:</strong>
 - エラーメッセージ、ヘルプメッセージ、REPLメッセージが指定された言語で表示される
@@ -2284,7 +2316,7 @@
 <h3 id="lang"><code>LANG</code><a class="headerlink" href="#lang" title="Permanent link">&para;</a></h3>
 <p>システムのロケール設定。<code>QI_LANG</code>が設定されていない場合のフォールバック。</p>
 <p><strong>例:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nv">LANG</span><span class="o">=</span>ja_JP.UTF-8<span class="w"> </span>qi<span class="w"> </span>script.qi
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nv">LANG</span><span class="o">=</span>ja_JP.UTF-8<span class="w"> </span>qi<span class="w"> </span>script.qi
 </span></code></pre></div></p>
 <hr />
 <h2 id="_8">終了コード<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
@@ -2307,14 +2339,14 @@
 </tbody>
 </table>
 <p><strong>例:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>qi<span class="w"> </span>script.qi
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># 終了コードを確認</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(+ 1 2 3)&#39;</span>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># =&gt; 0</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
-</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(invalid syntax&#39;</span>
-</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># =&gt; 1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>qi<span class="w"> </span>script.qi
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># 終了コードを確認</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(+ 1 2 3)&#39;</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># =&gt; 0</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(invalid syntax&#39;</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">  </span><span class="c1"># =&gt; 1</span>
 </span></code></pre></div></p>
 <hr />
 <h2 id="_9">テンプレート検索順序<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
@@ -2329,41 +2361,41 @@
 <hr />
 <h2 id="_10">使用例<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
 <h3 id="_11">プロジェクト作成の流れ<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># テンプレート一覧を確認</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>qi<span class="w"> </span>template<span class="w"> </span>list
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># HTTPサーバープロジェクトを作成</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>qi<span class="w"> </span>new<span class="w"> </span>myapi<span class="w"> </span>--template<span class="w"> </span>http-server
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="c1"># プロジェクトディレクトリに移動</span>
-</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="nb">cd</span><span class="w"> </span>myapi
-</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>
-</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="c1"># サーバーを起動</span>
-</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>qi<span class="w"> </span>main.qi
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># テンプレート一覧を確認</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>qi<span class="w"> </span>template<span class="w"> </span>list
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># HTTPサーバープロジェクトを作成</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>qi<span class="w"> </span>new<span class="w"> </span>myapi<span class="w"> </span>--template<span class="w"> </span>http-server
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="c1"># プロジェクトディレクトリに移動</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="nb">cd</span><span class="w"> </span>myapi
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="c1"># サーバーを起動</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>qi<span class="w"> </span>main.qi
 </span></code></pre></div>
 <h3 id="_12">ワンライナーでのデータ処理<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># フィボナッチ数列</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(defn fib [n] (if (&lt;= n 1) n (+ (fib (- n 1)) (fib (- n 2))))) (fib 10)&#39;</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># パイプライン処理</span>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;([1 2 3 4 5] |&gt; (filter (fn [x] (&gt; x 2))) |&gt; (map (fn [x] (* x 10))))&#39;</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="c1"># JSON処理（HTTP featureが有効な場合）</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(json/parse &quot;{\&quot;name\&quot;:\&quot;Alice\&quot;,\&quot;age\&quot;:30}&quot;)&#39;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># フィボナッチ数列</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(defn fib [n] (if (&lt;= n 1) n (+ (fib (- n 1)) (fib (- n 2))))) (fib 10)&#39;</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># パイプライン処理</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;([1 2 3 4 5] |&gt; (filter (fn [x] (&gt; x 2))) |&gt; (map (fn [x] (* x 10))))&#39;</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="c1"># JSON処理（HTTP featureが有効な場合）</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>qi<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;(json/parse &quot;{\&quot;name\&quot;:\&quot;Alice\&quot;,\&quot;age\&quot;:30}&quot;)&#39;</span>
 </span></code></pre></div>
 <h3 id="repl_1">REPLでの開発<a class="headerlink" href="#repl_1" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># ライブラリを読み込んでREPL起動</span>
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>qi<span class="w"> </span>-l<span class="w"> </span>src/lib.qi
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># REPL内で関数をテスト</span>
-</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>greet<span class="w"> </span><span class="s2">&quot;World&quot;</span><span class="o">)</span>
-</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>こんにちは、Worldさん！
-</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
-</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="c1"># ドキュメントを確認</span>
-</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>qi:2&gt;<span class="w"> </span>:doc<span class="w"> </span>map
-</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>
-</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="c1"># 組み込み関数を検索</span>
-</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>qi:3&gt;<span class="w"> </span>:builtins<span class="w"> </span>str
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># ライブラリを読み込んでREPL起動</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>qi<span class="w"> </span>-l<span class="w"> </span>src/lib.qi
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># REPL内で関数をテスト</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>greet<span class="w"> </span><span class="s2">&quot;World&quot;</span><span class="o">)</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>こんにちは、Worldさん！
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="c1"># ドキュメントを確認</span>
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>qi:2&gt;<span class="w"> </span>:doc<span class="w"> </span>map
+</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>
+</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a><span class="c1"># 組み込み関数を検索</span>
+</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>qi:3&gt;<span class="w"> </span>:builtins<span class="w"> </span>str
 </span></code></pre></div>
 <hr />
 <h2 id="_13">関連ドキュメント<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h2>
