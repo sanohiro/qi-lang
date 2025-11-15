@@ -45,8 +45,8 @@ Qi extends pipeline operators to **intuitively express data flow**.
 (def params [["user" "john"] ["id" "123"]])
 (def base-url "https://api.example.com")
 (params
- |> (map (fn [[k v]] (str k "=" v)))
- |> (join "&")
+ |> (map (fn [[k v]] f"{k}={v}"))
+ |> (join "&" _)
  |> (str base-url "?" _))
 ```
 

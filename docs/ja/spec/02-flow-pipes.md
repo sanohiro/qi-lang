@@ -46,8 +46,7 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 (def base-url "https://api.example.com/users")
 (params
  |> (map (fn [[k v]] f"{k}={v}"))
- |> (str/split _ "\n")
- |> (str (join "&" _))
+ |> (join "&" _)
  |> (str base-url "?" _))  ;; => "https://api.example.com/users?name=alice&age=30"
 ```
 
