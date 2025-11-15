@@ -223,7 +223,7 @@ Generate a Markdown link.
   {:name "Contact" :url "/contact"}])
 
 (links
- |> (map (fn [l] (markdown/link (:name l) (:url l))))
+ |> (map (fn [l] (markdown/link (get l :name) (get l :url))))
  |> markdown/list)
 ;; => "- [Home](/)\n- [About](/about)\n- [Contact](/contact)"
 ```
@@ -338,8 +338,8 @@ Hello, world!
 
 ;; Extract headers only
 (markdown/parse md-text
- |> (filter (fn [block] (= (:type block) "header")))
- |> (map (fn [h] (:text h))))
+ |> (filter (fn [block] (= (get block :type) "header")))
+ |> (map (fn [h] (get h :text))))
 ;; => ["Title"]
 ```
 
@@ -373,8 +373,8 @@ Convert an AST to a Markdown string. Inverse operation of `markdown/parse`.
 (def modified
   (markdown/parse original-text
    |> (map (fn [block]
-             (if (= (:type block) "header")
-                 (assoc block :text (str/upper (:text block)))
+             (if (= (get block :type) "header")
+                 (assoc block :text (str/upper (get block :text)))
                  block)))
    |> markdown/stringify))
 ```
@@ -415,14 +415,14 @@ console.log('Hello')
 
 ;; Execute only Qi code blocks
 (markdown/extract-code-blocks md-doc
- |> (filter (fn [block] (= (:lang block) "qi")))
- |> (each (fn [block] (eval-string (:code block)))))
+ |> (filter (fn [block] (= (get block :lang) "qi")))
+ |> (each (fn [block] (eval-string (get block :code)))))
 
 ;; Save code blocks to files
 (markdown/extract-code-blocks md-doc
  |> (each-indexed (fn [i block]
-                    (io/write f"code-{i}.{(:lang block)}"
-                              (:code block)))))
+                    (io/write f"code-{i}.{(get block :lang)}"
+                              (get block :code)))))
 ```
 
 ---
@@ -457,16 +457,16 @@ console.log('Hello')
 ;; Generate project README
 (defn generate-readme [project]
   (markdown/join [
-    (markdown/header 1 (:name project))
-    (:description project)
+    (markdown/header 1 (get project :name))
+    (get project :description)
     (markdown/header 2 "Features")
-    (markdown/list (:features project))
+    (markdown/list (get project :features))
     (markdown/header 2 "Installation")
     (markdown/code-block "bash" (:install-cmd project))
     (markdown/header 2 "Usage")
-    (markdown/code-block (:lang project) (:usage-example project))
+    (markdown/code-block (get project :lang) (get project :usage-example))
     (markdown/header 2 "License")
-    (:license project)]))
+    (get project :license)]))
 
 (def project-info {
   :name "My Project"
@@ -491,7 +491,7 @@ console.log('Hello')
   (let [content (io/read md-file)
         ast (markdown/parse content)
         title (-> ast
-                  (filter (fn [b] (= (:type b) "header")))
+                  (filter (fn [b] (= (get b :type) "header")))
                   first
                   :text)
         body (markdown/stringify ast)]
@@ -524,7 +524,7 @@ console.log('Hello')
       (markdown/header 2 "Top 5 Sales")
       (markdown/table
         (cons ["Date" "Product" "Amount"]
-              (map (fn [s] [(:date s) (:product s) (:amount s)])
+              (map (fn [s] [(get s :date) (get s :product) (get s :amount)])
                    top-sales)))])))
 
 (def sales [
@@ -584,10 +584,10 @@ This is my first blog post!")
 (defn extract-and-run-tests [md-file]
   (let [content (io/read md-file)
         code-blocks (markdown/extract-code-blocks content)
-        qi-tests (filter (fn [b] (= (:lang b) "qi")) code-blocks)]
+        qi-tests (filter (fn [b] (= (get b :lang) "qi")) code-blocks)]
     (doseq [test qi-tests]
       (try
-        (eval-string (:code test))
+        (eval-string (get test :code))
         (println "✓ Test passed")
         (catch e
           (println f"✗ Test failed: {e}"))))))
@@ -633,7 +633,7 @@ This is my first blog post!")
            (let [content (io/read file)
                  title (-> content
                            markdown/parse
-                           (filter (fn [b] (= (:type b) "header")))
+                           (filter (fn [b] (= (get b :type) "header")))
                            first
                            :text)]
              (markdown/link title file))))
@@ -695,9 +695,9 @@ This is my first blog post!")
 (def parsed-doc (markdown/parse (io/read "large-doc.md")))
 
 ;; Multiple filtering operations
-(def headers (filter (fn [b] (= (:type b) "header")) parsed-doc))
-(def lists (filter (fn [b] (= (:type b) "list")) parsed-doc))
-(def code-blocks (filter (fn [b] (= (:type b) "code-block")) parsed-doc))
+(def headers (filter (fn [b] (= (get b :type) "header")) parsed-doc))
+(def lists (filter (fn [b] (= (get b :type) "list")) parsed-doc))
+(def code-blocks (filter (fn [b] (= (get b :type) "code-block")) parsed-doc))
 ```
 
 ---

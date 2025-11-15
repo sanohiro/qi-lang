@@ -84,7 +84,7 @@ f"List: {[1 2 3]}"  ;; => "List: [1 2 3]"
 
 ;; Map access
 (def user {:name "Bob" :age 30})
-f"Name: {(:name user)}, Age: {(:age user)}"
+f"Name: {(get user :name)}, Age: {(get user :age)}"
 ;; => "Name: Bob, Age: 30"
 
 ;; Escaping
@@ -129,9 +129,9 @@ nil
 ;; Used as map keys
 {:name "Alice" :age 30}
 
-;; Usable as functions (get value from map)
+;; Get value from map using get function
 (def user {:name "Bob" :age 25})
-(:name user)  ;; => "Bob"
+(get user :name)  ;; => "Bob"
 ```
 
 ### Vectors
@@ -581,8 +581,8 @@ Evaluates expression and repeats until result is `{:error ...}`. Binds result to
 
 ;; HTTP request example
 (until-error [response (http/get next-url)]
-  (println f"Status: {(:status response)}")
-  (when (= (:status response) 200)
+  (println f"Status: {(get response :status)}")
+  (when (= (get response :status) 200)
     (process-response response)))
 
 ;; Pagination processing

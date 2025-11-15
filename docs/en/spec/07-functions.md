@@ -124,19 +124,19 @@ Functions can capture variables from their defining scope (closures).
 ;; |>:   x |> h |> g |> f is the same processing
 ```
 
-### partial - Partial Application
+### Partial Application (using fn)
 
 ```qi
 ;; Create new function with partial application
-(def add5 (partial + 5))
+(def add5 (fn [x] (+ 5 x)))
 (add5 10)                             ;; => 15
 
 ;; Partial application with multiple arguments
-(def greet-hello (partial str "Hello, "))
+(def greet-hello (fn [name] (str "Hello, " name)))
 (greet-hello "Alice")                 ;; => "Hello, Alice"
 
 ;; Practical example: Generate filter condition
-(def greater-than-10 (partial < 10))
+(def greater-than-10 (fn [x] (> x 10)))
 (filter greater-than-10 [5 15 3 20])  ;; => (15 20)
 ```
 
@@ -212,7 +212,7 @@ Functions can capture variables from their defining scope (closures).
   (comp
     str/upper
     str/trim
-    (partial str/replace _ "!" ".")))
+    (fn [s] (str/replace s "!" "."))))
 
 (process-text "  hello world!  ")     ;; => "HELLO WORLD."
 ```
@@ -224,8 +224,8 @@ Functions can capture variables from their defining scope (closures).
 (def valid-user?
   (fn [user]
     (and
-      ((complement nil?) (:name user))
-      (> (:age user) 18))))
+      ((complement nil?) (get user :name))
+      (> (get user :age) 18))))
 
 (filter valid-user?
   [{:name "Alice" :age 30}

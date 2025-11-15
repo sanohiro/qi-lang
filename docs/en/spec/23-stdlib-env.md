@@ -393,9 +393,10 @@ NODE_ENV=production
    :db-url (env/get "DATABASE_URL")
    :api-key (env/get "API_KEY")})
 
-;; Use config afterwards
-(defn start-server []
-  (http/serve (:port config) (:host config) handler))
+;; Use config afterwards (wrapped in comment)
+(comment
+  (defn start-server []
+    (http/serve (get config :port) (get config :host) handler)))
 ```
 
 ### Setting Default Values

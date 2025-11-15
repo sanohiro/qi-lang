@@ -239,13 +239,15 @@ Both simple and detailed versions support optional parameters:
                 ["/api/users" {:get list-users :post create-user}]
                 ["/api/users/:id" {:get get-user}]])
 
-;; server/serve - Start server
-(server/serve app {:port 3000})
-;; => HTTP server started on http://127.0.0.1:3000
+;; server/serve - Start server (wrapped in comment to prevent actual server startup)
+(comment
+  (server/serve app {:port 3000})
+  ;; => HTTP server started on http://127.0.0.1:3000
 
-;; server/serve - Detailed settings
-(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
-;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+  ;; server/serve - Detailed settings
+  (server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
+  ;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+  )
 ```
 
 ### Middleware
@@ -300,9 +302,10 @@ Both simple and detailed versions support optional parameters:
 ;; Route definition (data-driven)
 (def routes [["/" {:get hello-handler}]])
 
-;; Start app
+;; Start app (wrapped in comment)
 (def app (server/router routes))
-(server/serve app {:port 3000})
+(comment
+  (server/serve app {:port 3000}))
 ```
 
 ### JSON API with Path Parameters
@@ -329,9 +332,10 @@ Both simple and detailed versions support optional parameters:
    ["/api/users/:id" {:get get-user}]
    ["/api/users/:user_id/posts/:post_id" {:get get-post}]])
 
-;; Start app
+;; Start app (wrapped in comment)
 (def app (server/router routes))
-(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
+(comment
+  (server/serve app {:port 8080 :host "0.0.0.0" :timeout 30}))
 ```
 
 ### Middleware Composition
@@ -352,7 +356,7 @@ Both simple and detailed versions support optional parameters:
   (comp
     server/with-logging
     server/with-cors
-    (partial server/with-basic-auth _ "admin" "secret")
+    (fn [handler] (server/with-basic-auth handler "admin" "secret"))
     server/with-json-body))
 
 (def routes

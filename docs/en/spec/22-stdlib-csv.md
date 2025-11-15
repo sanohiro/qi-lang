@@ -310,7 +310,7 @@ Writes data to a CSV file. Pipeline-friendly.
       (let [values (zipmap (map keyword headers) row)
             sql (str/format "INSERT INTO {} VALUES ({})"
                            table-name
-                           (str/join ", " (repeat (len row) "?")))]
+                           (join ", " (repeat (len row) "?")))]
         (db/execute conn sql (vals values))))))
 
 ;; Memory-efficient stream import

@@ -410,7 +410,7 @@ A ∩ B = ∅
 ;; Extract IDs of admins or moderators
 (users
  |> (filter (fn [u]
-              (not (set/disjoint? (:roles u) [:admin :moderator]))))
+              (not (set/disjoint? (get u :roles) [:admin :moderator]))))
  |> (map :id))
 ;; => [1 3]
 
@@ -419,7 +419,7 @@ A ∩ B = ∅
 
 (users
  |> (filter (fn [u]
-              (set/subset? required-perms (:roles u))))
+              (set/subset? required-perms (get u :roles))))
  |> (map :id))
 ;; => (returns if any user satisfies condition)
 ```
@@ -480,7 +480,7 @@ A ∩ B = ∅
 (def all-items [{:id 1} {:id 2} {:id 4}])
 
 ;; filter - allows complex conditions
-(all-items |> (filter (fn [item] (some? (find (fn [id] (= id (:id item))) allowed-ids)))))
+(all-items |> (filter (fn [item] (some? (find (fn [id] (= id (get item :id))) allowed-ids)))))
 
 ;; For simple ID matching, set/intersect is more concise
 (def item-ids (all-items |> (map :id)))

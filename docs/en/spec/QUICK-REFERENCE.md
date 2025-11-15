@@ -227,7 +227,8 @@ nil               ;; nil
 (defn handler [req]
   (server/json {:message "Hello, World!"}))
 
-(server/serve handler {:port 3000})
+(comment
+  (server/serve handler {:port 3000}))
 ```
 
 ### JSON

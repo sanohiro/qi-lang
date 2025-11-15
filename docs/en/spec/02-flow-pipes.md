@@ -42,8 +42,10 @@ Qi extends pipeline operators to **intuitively express data flow**.
 ("world" |> (str "Hello, " _))  ;; (str "Hello, " "world") => "Hello, world"
 
 ;; Real-world example: URL construction
+(def params [["user" "john"] ["id" "123"]])
+(def base-url "https://api.example.com")
 (params
- |> (map (fn [[k v]] f"{k}={v}"))
+ |> (map (fn [[k v]] (str k "=" v)))
  |> (join "&")
  |> (str base-url "?" _))
 ```
@@ -325,13 +327,18 @@ They enable memory-efficient handling of infinite data structures and large data
 ### Real-world Examples
 
 ```qi
-;; Infinite stream of primes (concept)
-(def primes
-  (2
-   |> (stream/iterate inc)
-   |> (stream/filter prime?)))
+;; Infinite stream of primes (concept - requires prime? function)
+(comment
+  (defn prime? [n]
+    (and (> n 1)
+         (not (some (fn [i] (= (% n i) 0)) (range 2 (+ (int (math/sqrt n)) 1))))))
 
-(stream/realize (stream/take 10 primes))  ;; First 10 primes
+  (def primes
+    (2
+     |> (stream/iterate inc)
+     |> (stream/filter prime?)))
+
+  (stream/realize (stream/take 10 primes)))  ;; First 10 primes
 
 ;; Fibonacci sequence
 (def fib-stream
@@ -340,14 +347,18 @@ They enable memory-efficient handling of infinite data structures and large data
 (stream/realize (stream/take 10 fib-stream)
   |> (map first))  ;; (0 1 1 2 3 5 8 13 21 34)
 
-;; Data processing pipeline
-(defn process-data [data]
-  (data
-   |> stream
-   |> (stream/map parse)
-   |> (stream/filter valid?)
-   |> (stream/take 1000)
-   |> stream/realize))
+;; Data processing pipeline (concept - requires parse and valid? functions)
+(comment
+  (defn parse [x] (json/parse x))
+  (defn valid? [x] (get x "valid"))
+
+  (defn process-data [data]
+    (data
+     |> stream/stream
+     |> (stream/map parse)
+     |> (stream/filter valid?)
+     |> (stream/take 1000)
+     |> stream/realize)))
 ```
 
 ### I/O Streams
@@ -357,12 +368,16 @@ They enable memory-efficient handling of infinite data structures and large data
 #### Text Mode (line-based)
 
 ```qi
-;; stream/file: Lazy line-by-line file reading
-(stream/file "large.log")
-  |> (stream/filter error-line?)
-  |> (stream/map parse)
-  |> (stream/take 100)
-  |> stream/realize
+;; stream/file: Lazy line-by-line file reading (concept example)
+(comment
+  (defn error-line? [line] (str/contains? line "ERROR"))
+  (defn parse [line] (str/split line " "))
+
+  (stream/file "large.log")
+    |> (stream/filter error-line?)
+    |> (stream/map parse)
+    |> (stream/take 100)
+    |> stream/realize)
 
 ;; http/get-stream: Read HTTP response line-by-line
 (http/get-stream "https://api.example.com/data")
@@ -374,13 +389,16 @@ They enable memory-efficient handling of infinite data structures and large data
   |> (stream/take 10)
   |> stream/realize
 
-;; http/request-stream: Streaming with detailed configuration
-(http/request-stream {
-  :method "GET"
-  :url "https://api.example.com/stream"
-})
-  |> (stream/filter important?)
-  |> stream/realize
+;; http/request-stream: Streaming with detailed configuration (concept example)
+(comment
+  (defn important? [line] (str/contains? line "IMPORTANT"))
+
+  (http/request-stream {
+    :method "GET"
+    :url "https://api.example.com/stream"
+  })
+    |> (stream/filter important?)
+    |> stream/realize)
 ```
 
 #### Binary Mode (byte chunks)
@@ -435,17 +453,24 @@ They enable memory-efficient handling of infinite data structures and large data
 **Real-world Example: Log File Analysis**
 
 ```qi
-;; Process large log files memory-efficiently
-(defn analyze-logs [file]
-  (stream/file file
-   |> (stream/filter (fn [line] (str/contains? line "ERROR")))
-   |> (stream/map parse-log-line)
-   |> (stream/take 100)  ; First 100 errors
-   |> stream/realize))
+;; Process large log files memory-efficiently (concept example)
+(comment
+  (defn parse-log-line [line]
+    (let [parts (str/split line " ")]
+      {:timestamp (first parts)
+       :level (get parts 1)
+       :message (join " " (drop 2 parts))}))
 
-;; Get results
-(def errors (analyze-logs "/var/log/app.log"))
-(println (str "Found " (len errors) " errors"))
+  (defn analyze-logs [file]
+    (stream/file file
+     |> (stream/filter (fn [line] (str/contains? line "ERROR")))
+     |> (stream/map parse-log-line)
+     |> (stream/take 100)  ; First 100 errors
+     |> stream/realize))
+
+  ;; Get results
+  (def errors (analyze-logs "/var/log/app.log"))
+  (println (str "Found " (len errors) " errors")))
 ```
 
 ---
@@ -457,23 +482,31 @@ They enable memory-efficient handling of infinite data structures and large data
 You can build complex processing by defining small pipes and combining them.
 
 ```qi
-;; Define small pipes
-(def clean-text
-  (fn [text]
-    (text |> trim |> lower |> remove-punctuation)))
+;; Define small pipes (concept example)
+(comment
+  (defn remove-punctuation [text]
+    (str/replace text "[^a-zA-Z0-9\\s@.]" ""))
 
-(def extract-emails
-  (fn [text]
-    (text |> (split "\\s+") |> (filter email?))))
+  (defn email? [s]
+    (str/contains? s "@"))
 
-(def dedupe
-  (fn [coll]
-    (coll |> sort |> unique)))
+  (def clean-text
+    (fn [text]
+      (text |> str/trim |> str/lower |> remove-punctuation)))
 
-;; Combine them
-(document
- |> clean-text
- |> extract-emails
- |> dedupe
- |> (join ", "))
+  (def extract-emails
+    (fn [text]
+      (text |> (str/split "\\s+") |> (filter email?))))
+
+  (def dedupe
+    (fn [coll]
+      (coll |> sort |> distinct)))
+
+  ;; Combine them
+  (def document "Contact: john@example.com, JANE@EXAMPLE.COM!! Support: support@example.com")
+  (document
+   |> clean-text
+   |> extract-emails
+   |> dedupe
+   |> (join ", ")))
 ```
