@@ -224,8 +224,8 @@ Qiでは関数は第一級オブジェクトであり、変数に代入したり
 (def valid-user?
   (fn [user]
     (and
-      ((complement nil?) (:name user))
-      (> (:age user) 18))))
+      ((complement nil?) (get user :name))
+      (> (get user :age) 18))))
 
 (filter valid-user?
   [{:name "Alice" :age 30}

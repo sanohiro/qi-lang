@@ -325,12 +325,11 @@
 
 ```qi
 ;; URLパラメータの生成
-(def params {:user "alice" :page 1 :sort "name"})
+(def params [["user" "alice"] ["page" "1"] ["sort" "name"]])
 
 (params
- |> keys
- |> (map (fn [k] (str (name k) "=" (str/url-encode (get params k)))))
- |> (join "&"))
+ |> (map (fn [[k v]] (str k "=" (str/url-encode v))))
+ |> (join "&" _))
 ;; => "user=alice&page=1&sort=name"
 ```
 
@@ -368,6 +367,6 @@
 (headers
  |> (map str/lower)
  |> (map str/squish)
- |> (map (partial str/replace _ " " "_")))
+ |> (map (fn [s] (str/replace s " " "_"))))
 ;; => ["user_name" "e-mail" "created_at"]
 ```

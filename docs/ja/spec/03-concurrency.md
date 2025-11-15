@@ -87,9 +87,9 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 (go/run (go/send! ch1 "from ch1"))
 (go/run (go/send! ch2 "from ch2"))
 
-(go/select!
-  ch1 (fn [val] (println "Got from ch1:" val))
-  ch2 (fn [val] (println "Got from ch2:" val)))
+(go/select! [
+  [ch1 (fn [val] (println "Got from ch1:" val))]
+  [ch2 (fn [val] (println "Got from ch2:" val))]])
 ```
 
 ### Structured Concurrency（構造化並行処理）
@@ -185,10 +185,11 @@ Qiの並行・並列処理は**3層アーキテクチャ**で構成されます�
 ### Promise チェーン
 
 ```qi
-(-> (go/run (fn [] 10))
-    (go/then (fn [x] (* x 2)))
-    (go/then (fn [x] (+ x 1)))
-    (go/await))  ;; => 21
+;; go/thenでPromiseチェーンを構築
+(def p (go/run (fn [] 10)))
+(def p2 (go/then p (fn [x] (* x 2))))
+(def p3 (go/then p2 (fn [x] (+ x 1))))
+(go/await p3)  ;; => 21
 ```
 
 ### Promise.all風
@@ -308,13 +309,13 @@ reset!                  ;; 値を直接セット
 ### 実用例3: 接続管理（deferと組み合わせ）
 
 ```qi
-;; アクティブな接続を管理
-(def clients (atom #{}))
+;; アクティブな接続を管理（ベクターを使用）
+(def clients (atom []))
 
 (defn handle-connection [conn]
   (do
     (swap! clients conj conn)
-    (defer (swap! clients dissoc conn))  ;; 確実にクリーンアップ
+    (defer (swap! clients (fn [cs] (filter (fn [c] (!= c conn)) cs))))  ;; 確実にクリーンアップ
     (process-connection conn)))
 
 ;; アクティブ接続数

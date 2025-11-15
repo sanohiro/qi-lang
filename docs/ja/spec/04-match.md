@@ -30,10 +30,12 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 ### マップのマッチ
 
 ```qi
+(def data {:type "user" :name "Alice"})
 (match data
-  {:type "user" :name n} -> (greet n)
+  {:type "user" :name n} -> (str "Hello, " n)
   {:type "admin"} -> "admin"
   _ -> "unknown")
+;; => "Hello, Alice"
 ```
 
 ### リストのマッチ
@@ -64,15 +66,19 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ```qi
 ;; 基本的な:as使用
+(def data {:user {:name "Alice" :age 30}})
 (match data
   {:user {:name n :age a} :as u} -> (do
-    (log u)           ;; 全体をログ
-    (process n a)))   ;; 部分を処理
+    (println u)       ;; 全体を表示
+    (str n " is " a " years old")))   ;; 部分を使用
+;; => "Alice is 30 years old"
 
 ;; ネストした構造でも使える
+(def response {:body {:user "Bob" :posts 10}})
 (match response
-  {:body {:user u :posts ps} :as body} -> (cache body)
-  {:error e :as err} -> (log err))
+  {:body {:user u :posts ps} :as body} -> (str "User: " u ", Posts: " ps ", Body: " body)
+  {:error e :as err} -> (str "Error: " err))
+;; => "User: Bob, Posts: 10, Body: {:body {:user Bob, :posts 10}}"
 
 ;; 深くネストされた:as
 (match {:type "person" :data {:name "Alice" :age 30}}
@@ -94,12 +100,9 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
     (println f"Processing: {n}")
     user))  ;; 全体を返す
 
-;; 複雑なネスト例
-(defn handle-request [{:headers h :body {:user u :data d :as body} :as req}]
-  (do
-    (log req)      ;; リクエスト全体
-    (cache body)   ;; bodyだけキャッシュ
-    (process-user u d)))
+(process {:name "Charlie" :age 25})
+;; 出力: Processing: Charlie
+;; 戻り値: {:name "Charlie", :age 25}
 ```
 
 ### 2. `or` パターン - 複数パターンで同じ処理
@@ -131,12 +134,12 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ```qi
 ;; 深いネストでも読みやすい
+(def request {:user {:age 20 :country "JP"}})
 (match request
-  {:user {:age a :country c}} when (and (>= a 18) (= c "JP")) -> (allow)
-  {:user {:age a}} when (< a 18) -> (error "age restriction")
-  _ -> (deny))
-
-;; Flow的な読み方: データ構造を分解 → ガードで検証 → 処理
+  {:user {:age a :country c}} when (and (>= a 18) (= c "JP")) -> "allowed"
+  {:user {:age a}} when (< a 18) -> {:error "age restriction"}
+  _ -> "denied")
+;; => "allowed"
 ```
 
 ### 4. ワイルドカード `_` - 関心のある部分だけ抽出
@@ -145,14 +148,18 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ```qi
 ;; 一部のフィールドだけ使う
+(def data {:user {:name "Alice" :age 30 :city "Tokyo"}})
 (match data
-  {:user {:name _ :age a :city c}} -> (process-location a c)
+  {:user {:name _ :age a :city c}} -> (str "Age: " a ", City: " c)
   {:error _} -> "error occurred")
+;; => "Age: 30, City: Tokyo"
 
 ;; リストの一部をスキップ
+(def coords [10 20 30])
 (match coords
   [_ y _] -> y  ;; y座標だけ取り出す
   _ -> 0)
+;; => 20
 ```
 
 ### 5. 配列の複数束縛
@@ -161,14 +168,18 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ```qi
 ;; 複数要素を同時に束縛
+(def data [{:id 1} {:id 2}])
 (match data
-  [{:id id1} {:id id2}] -> (compare id1 id2)
-  [first ...rest] -> (process-batch first rest))
+  [{:id id1} {:id id2}] -> (str "ID1: " id1 ", ID2: " id2)
+  [first ...rest] -> (str "First: " first ", Rest: " rest))
+;; => "ID1: 1, ID2: 2"
 
 ;; パイプラインと組み合わせ
+(def coords [10 20 30 40])
 (match (coords |> (take 2))
-  [x y] -> (distance x y)
+  [x y] -> (+ x y)
   _ -> 0)
+;; => 30
 ```
 
 ---
@@ -187,18 +198,26 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 
 ```qi
 ;; 成功時は値そのまま、エラー時は {:error e}
+(defn risky-operation []
+  (if (> (rand) 0.5)
+    42
+    (panic "Failed")))
+
 (match (try (risky-operation))
-  {:error e} -> (log e)
+  {:error e} -> (str "Error: " e)
   result -> result)
+;; => 42 または "Error: Failed"
 
 ;; パイプラインと組み合わせ
+(def json-str "{\"value\": 100}")
 (match (try
-         (url
-          |> http-get
-          |> parse
-          |> process))
-  {:error e} -> []
+         (json-str
+          |> json/parse
+          |> (fn [data] (get data "value"))
+          |> (fn [v] (* v 2))))
+  {:error e} -> nil
   data -> data)
+;; => 200
 ```
 
 ---
@@ -208,22 +227,26 @@ Qiのパターンマッチは、単なる条件分岐ではなく、データ構
 ### 例1: HTTPレスポンスのハンドリング
 
 ```qi
-;; http/get!は例外を投げる可能性があるのでtryでキャッチ
-(match (try (http/get! url))  ;; 詳細版でステータスコードを取得
-  {:error e} -> (log-error e)
-  {:status 200 :body body} -> (process-body body)
-  {:status 404} -> nil
-  {:status s} -> (error (str "Unexpected status: " s)))
+;; (comment) でラップして実行不可能な例を示す
+(comment
+  ;; http/get!は例外を投げる可能性があるのでtryでキャッチ
+  (match (try (http/get! url))  ;; 詳細版でステータスコードを取得
+    {:error e} -> (str "Error: " e)
+    {:status 200 :body body} -> body
+    {:status 404} -> nil
+    {:status s} -> {:error (str "Unexpected status: " s)}))
 ```
 
 ### 例2: データバリデーション
 
 ```qi
+(def user {:name "Alice" :age 30 :email "alice@example.com"})
 (match user
-  {:name n :age a :email e} when (and (> a 0) (str/contains? e "@")) -> (save-user user)
-  {:name _ :age a} when (<= a 0) -> (error "Invalid age")
-  {:name _ :email e} when (not (str/contains? e "@")) -> (error "Invalid email")
-  _ -> (error "Missing required fields"))
+  {:name n :age a :email e} when (and (> a 0) (str/contains? e "@")) -> "Valid user"
+  {:name _ :age a} when (<= a 0) -> {:error "Invalid age"}
+  {:name _ :email e} when (not (str/contains? e "@")) -> {:error "Invalid email"}
+  _ -> {:error "Missing required fields"})
+;; => "Valid user"
 ```
 
 ### 例3: リスト処理

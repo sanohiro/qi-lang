@@ -82,14 +82,14 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 
 ;; ステータスコードをチェック
 (let [res (http/get! "https://api.example.com/users")]
-  (if (= 200 (:status res))
-    (json/parse (:body res))
-    (error (str "HTTP error: " (:status res)))))
+  (if (= 200 (get res :status))
+    (json/parse (get res :body))
+    (error (str "HTTP error: " (get res :status)))))
 
 ;; 404エラーでも例外を投げず、Mapを返す
 (let [res (http/get! "https://api.example.com/notfound")]
-  (println "Status:" (:status res))  ;; => "Status: 404"
-  (println "Body:" (:body res)))     ;; エラーメッセージを取得可能
+  (println "Status:" (get res :status))  ;; => "Status: 404"
+  (println "Body:" (get res :body)))     ;; エラーメッセージを取得可能
 
 ;; ヘッダーを取得
 (let [res (http/get! "https://api.example.com/data")]
@@ -182,9 +182,9 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 ("https://api.github.com/users/octocat"
  |> http/get!
  |> (fn [resp]
-      (if (= 200 (:status resp))
-        (:body resp)
-        (error (str "HTTP " (:status resp)))))
+      (if (= 200 (get resp :status))
+        (get resp :body)
+        (error (str "HTTP " (get resp :status)))))
  |> json/parse
  |> (fn [data] (get data "name")))
 ;; => "The Octocat"
@@ -240,12 +240,16 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
                 ["/api/users/:id" {:get get-user}]])
 
 ;; server/serve - サーバー起動
-(server/serve app {:port 3000})
-;; => HTTP server started on http://127.0.0.1:3000
+(comment
+  (server/serve app {:port 3000})
+  ;; => HTTP server started on http://127.0.0.1:3000
+  )
 
 ;; server/serve - 詳細設定
-(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
-;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+(comment
+  (server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
+  ;; => HTTP server started on http://0.0.0.0:8080 (timeout: 30s)
+  )
 ```
 
 ### ミドルウェア
@@ -302,7 +306,8 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 
 ;; アプリ起動
 (def app (server/router routes))
-(server/serve app {:port 3000})
+(comment
+  (server/serve app {:port 3000}))
 ```
 
 ### JSON API with パスパラメータ
@@ -331,7 +336,8 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 
 ;; アプリ起動
 (def app (server/router routes))
-(server/serve app {:port 8080 :host "0.0.0.0" :timeout 30})
+(comment
+  (server/serve app {:port 8080 :host "0.0.0.0" :timeout 30}))
 ```
 
 ### ミドルウェアの組み合わせ

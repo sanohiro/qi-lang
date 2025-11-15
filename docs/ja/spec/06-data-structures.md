@@ -288,10 +288,6 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 (get {:name "Alice" :age 30} :name)   ;; => "Alice"
 (get {:name "Alice"} :age 0)          ;; => 0 (デフォルト値)
 
-;; キーワードは関数として使える
-(:name {:name "Alice" :age 30})       ;; => "Alice"
-(:age {:name "Bob" :age 30})          ;; => 30
-
 ;; keys - 全キーを取得
 (keys {:name "Alice" :age 30})        ;; => ("name" "age")
 
@@ -467,6 +463,7 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 ;; => nil
 
 ;; パイプラインで使う
+(def lines ["  hello  " "  world  " "  test  "])
 (lines
  |> (map str/trim)
  |> (map str/upper)
@@ -474,16 +471,18 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 ;; 各行を大文字に変換して出力
 
 ;; when と組み合わせた条件付き処理
+(def data ["item1" "" "item2" "item3"])
 (data
  |> (each (fn [item]
             (when (> (len item) 0)
               (println f"処理: {item}")))))
 
 ;; 統計情報の集計
+(def data2 [1 2 3 4 5])
 (def count (atom 0))
-(data
+(data2
  |> (each (fn [item]
-            (when (valid? item)
+            (when (> item 2)
               (swap! count inc)))))
 ```
 

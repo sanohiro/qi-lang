@@ -223,7 +223,7 @@ Markdownリンクを生成します。
   {:name "Contact" :url "/contact"}])
 
 (links
- |> (map (fn [l] (markdown/link (:name l) (:url l))))
+ |> (map (fn [l] (markdown/link (get l :name) (:url l))))
  |> markdown/list)
 ;; => "- [Home](/)\n- [About](/about)\n- [Contact](/contact)"
 ```
@@ -457,7 +457,7 @@ console.log('Hello')
 ;; プロジェクトのREADMEを生成
 (defn generate-readme [project]
   (markdown/join [
-    (markdown/header 1 (:name project))
+    (markdown/header 1 (get project :name))
     (:description project)
     (markdown/header 2 "Features")
     (markdown/list (:features project))

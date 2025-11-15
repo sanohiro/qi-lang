@@ -25,14 +25,14 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 **左から右へデータを流す**
 
 ```qi
-;; 基本
-(data |> parse |> transform |> save)
+;; 基本的なパイプライン
+("hello" |> str/upper |> str/reverse)  ;; => "OLLEH"
 
 ;; ネスト回避
-(data
- |> (filter valid?)
- |> (map transform)
- |> (reduce merge {}))
+([1 2 3 4 5 6]
+ |> (filter (fn [x] (= (% x 2) 0)))
+ |> (map (fn [x] (* x 2)))
+ |> (reduce + 0))  ;; => 24
 
 ;; 引数付き関数
 (10 |> (+ 5) |> (* 2))  ;; (+ 10 5) |> (* 2) => 30
@@ -42,10 +42,13 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 ("world" |> (str "Hello, " _))  ;; (str "Hello, " "world") => "Hello, world"
 
 ;; 実用例: URL構築
+(def params [["name" "alice"] ["age" "30"]])
+(def base-url "https://api.example.com/users")
 (params
  |> (map (fn [[k v]] f"{k}={v}"))
- |> (join "&")
- |> (str base-url "?" _))
+ |> (str/split _ "\n")
+ |> (str (join "&" _))
+ |> (str base-url "?" _))  ;; => "https://api.example.com/users?name=alice&age=30"
 ```
 
 ---
@@ -55,28 +58,14 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 **自動的にpmapに展開**
 
 ```qi
-;; 並列処理
-(urls ||> http/get ||> json/parse)
-;; ↓ 展開
-(urls |> (pmap http/get) |> (pmap json/parse))
-
 ;; 基本的な使い方
 ([1 2 3 4 5] ||> inc)  ;; (2 3 4 5 6)
 
-;; CPU集約的処理
-(images ||> resize ||> compress ||> save)
-
-;; データ分析
-(files
- ||> load-csv
- ||> analyze
- |> merge-results)  ;; 最後は逐次でマージ
-
-;; 複雑なパイプライン
-(data
+;; 複雑な計算を並列化
+([10 20 30 40]
  ||> (fn [x] (* x 2))
  |> (filter (fn [n] (> n 50)))
- |> sum)
+ |> (reduce + 0))  ;; => 140
 ```
 
 **実装**:
@@ -96,16 +85,14 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 - メモリ制約がある場合
 
 ```qi
-;; ✅ 良い例：CPU集約的 + 大量データ
-(large-images ||> resize ||> compress)
-
 ;; ❌ 悪い例：軽量処理 + 少量データ（並列化のオーバーヘッドで遅くなる）
 ([1 2 3] ||> inc)  ;; |> を使う方が速い
 
 ;; 💡 使い分けの目安
+(def data [1 2 3 4 5])
 (if (> (len data) 100)
-  (data ||> heavy-process)  ;; 並列化
-  (data |> (map heavy-process)))  ;; 逐次処理
+  (data ||> (fn [x] (* x x)))  ;; 並列化
+  (data |> (map (fn [x] (* x x)))))  ;; 逐次処理
 ```
 
 ---
@@ -150,12 +137,12 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 ### 実用例
 
 ```qi
-;; HTTPリクエスト + データ変換（シンプル！）
-("https://api.example.com/users/123"
- |> http/get                 ;; => "{\"user\": {...}}"（ボディのみ）
+;; JSON文字列のパース + データ変換（シンプル！）
+(def json-str "{\"user\": {\"name\": \"Alice\", \"age\": 30}}")
+(json-str
  |>? json/parse              ;; => パース結果（値そのまま）
  |>? (fn [data] (get data "user")))  ;; 値を返すだけ！
-;; => ユーザーデータ（値そのまま）
+;; => {:name "Alice", :age 30}
 
 ;; 条件付きエラー
 (defn validate-age [age]
@@ -181,25 +168,21 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 **流れを止めずに観察**（Unix `tee`相当）
 
 ```qi
-;; デバッグ
-(data
- |> clean
- |> (tap print)
- |> analyze
- |> (tap log)
- |> save)
-
-;; ログ
-(requests
- |> (tap log-request)
- |> process
- |> (tap log-response))
-
 ;; 簡潔な使い方
 ([1 2 3]
  |> (map inc)
- |> (tap print)
- |> sum)
+ |> (tap println)
+ |> (reduce + 0))
+;; 出力: (2 3 4)
+;; 戻り値: 9
+
+;; パイプライン中のデバッグ
+("hello world"
+ |> str/upper
+ |> (tap println)  ;; 中間結果を確認
+ |> str/reverse)
+;; 出力: HELLO WORLD
+;; 戻り値: "DLROW OLLEH"
 ```
 
 **実装**:
@@ -217,17 +200,19 @@ Qiはパイプライン演算子を拡張し、**データの流れを直感的�
 
 ```qi
 ;; 基本的な非同期パイプライン
-(def result (data ~> transform ~> process))  ; 即座にチャネルを返す
-(go/recv! result)  ; 結果を受信
+(def result (10 ~> inc ~> (fn [x] (* x 2))))  ; 即座にチャネルを返す
+(go/recv! result)  ; 結果を受信 => 22
 
 ;; 複数の非同期処理
 (def r1 (10 ~> inc ~> (fn [x] (* x 2))))
 (def r2 (20 ~> (fn [x] (* x 2)) ~> inc))
-(println (go/recv! r1) (go/recv! r2))  ; 並行実行
+(println (go/recv! r1) (go/recv! r2))  ; 並行実行 => 22 41
 
 ;; goブロック内でも利用可能
+(def output-chan (go/chan))
 (go/run
-  (go/send! output-chan (data ~> transform)))
+  (go/send! output-chan (42 ~> inc ~> (fn [x] (* x 2)))))
+(go/recv! output-chan)  ; => 86
 ```
 
 ---
@@ -325,14 +310,6 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ### 実用例
 
 ```qi
-;; 素数の無限ストリーム（概念）
-(def primes
-  (2
-   |> (stream/iterate inc)
-   |> (stream/filter prime?)))
-
-(stream/realize (stream/take 10 primes))  ;; 最初の10個の素数
-
 ;; フィボナッチ数列
 (def fib-stream
   (stream/iterate (fn [[a b]] [b (+ a b)]) [0 1]))
@@ -343,11 +320,13 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 ;; データ処理パイプライン
 (defn process-data [data]
   (data
-   |> stream
-   |> (stream/map parse)
-   |> (stream/filter valid?)
+   |> stream/stream
+   |> (stream/map str/upper)
+   |> (stream/filter (fn [s] (> (len s) 3)))
    |> (stream/take 1000)
    |> stream/realize))
+
+(process-data ["hello" "hi" "world" "qi"])  ;; => ("HELLO" "WORLD")
 ```
 
 ### I/Oストリーム
@@ -357,56 +336,36 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 #### テキストモード（行ベース）
 
 ```qi
-;; stream/file: ファイルを行ごとに遅延読み込み
-(stream/file "large.log")
-  |> (stream/filter error-line?)
-  |> (stream/map parse)
-  |> (stream/take 100)
-  |> stream/realize
+;; (comment) でラップして実行不可能な例を示す
+(comment
+  ;; stream/file: ファイルを行ごとに遅延読み込み
+  (stream/file "large.log")
+    |> (stream/filter (fn [line] (str/contains? line "ERROR")))
+    |> (stream/map str/upper)
+    |> (stream/take 100)
+    |> stream/realize
 
-;; http/get-stream: HTTPレスポンスを行ごとに読み込み
-(http/get-stream "https://api.example.com/data")
-  |> (stream/take 10)
-  |> stream/realize
-
-;; http/post-stream: POSTリクエストでストリーミング受信
-(http/post-stream "https://api.example.com/upload" {:data "value"})
-  |> (stream/take 10)
-  |> stream/realize
-
-;; http/request-stream: 詳細設定でストリーミング
-(http/request-stream {
-  :method "GET"
-  :url "https://api.example.com/stream"
-})
-  |> (stream/filter important?)
-  |> stream/realize
+  ;; http/get-stream: HTTPレスポンスを行ごとに読み込み
+  (http/get-stream "https://api.example.com/data")
+    |> (stream/take 10)
+    |> stream/realize)
 ```
 
 #### バイナリモード（バイトチャンク）
 
 ```qi
-;; stream/file :bytes - ファイルを4KBチャンクで読み込み
-(stream/file "image.png" :bytes)
-  |> (stream/take 10)
-  |> stream/realize
-;; => Vector of Integers (bytes) のリスト
+;; (comment) でラップして実行不可能な例を示す
+(comment
+  ;; stream/file :bytes - ファイルを4KBチャンクで読み込み
+  (stream/file "image.png" :bytes)
+    |> (stream/take 10)
+    |> stream/realize
+  ;; => Vector of Integers (bytes) のリスト
 
-;; http/get-stream :bytes - HTTPバイナリダウンロード
-(http/get-stream "https://example.com/file.bin" :bytes)
-  |> (stream/map process-chunk)
-  |> stream/realize
-
-;; バイト処理の例
-(def bytes (first (stream/realize (stream/take 1 (stream/file "data.bin" :bytes)))))
-(def sum (reduce + bytes))  ; バイトの合計
-(println sum)
-
-;; 画像ダウンロード
-(http/get-stream "https://example.com/logo.png" :bytes)
-  |> stream/realize
-  |> flatten
-  |> (write-bytes "logo.png")  ; write-bytes は将来実装
+  ;; http/get-stream :bytes - HTTPバイナリダウンロード
+  (http/get-stream "https://example.com/file.bin" :bytes)
+    |> (stream/map (fn [chunk] (len chunk)))
+    |> stream/realize)
 ```
 
 **モード比較**:
@@ -417,35 +376,40 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 | バイナリ（`:bytes`） | 画像、動画、バイナリ | Vector of Integers（4KBチャンク） | `(stream/file "image.png" :bytes)` |
 
 ```qi
-;; CSVファイルの処理
-(stream/file "data.csv")
-  |> (stream/drop 1)  ; ヘッダースキップ
-  |> (stream/map (fn [line] (split line ",")))
-  |> (stream/filter (fn [cols] (> (len cols) 2)))
-  |> (stream/take 1000)
-  |> stream/realize
+;; (comment) でラップして実行不可能な例を示す
+(comment
+  ;; CSVファイルの処理
+  (stream/file "data.csv")
+    |> (stream/drop 1)  ; ヘッダースキップ
+    |> (stream/map (fn [line] (str/split line ",")))
+    |> (stream/filter (fn [cols] (> (len cols) 2)))
+    |> (stream/take 1000)
+    |> stream/realize
 
-;; HTTPからJSONを取得してパース
-(http/get-stream "https://jsonplaceholder.typicode.com/todos/1")
-  |> stream/realize
-  |> (join "\n")
-  |> json/parse
+  ;; HTTPからJSONを取得してパース
+  (http/get-stream "https://jsonplaceholder.typicode.com/todos/1")
+    |> stream/realize
+    |> (str/split _ "\n")
+    |> (join "\n" _)
+    |> json/parse)
 ```
 
 **実用例: ログファイル解析**
 
 ```qi
-;; 大きなログファイルをメモリ効率的に処理
-(defn analyze-logs [file]
-  (stream/file file
-   |> (stream/filter (fn [line] (str/contains? line "ERROR")))
-   |> (stream/map parse-log-line)
-   |> (stream/take 100)  ; 最初の100エラー
-   |> stream/realize))
+;; (comment) でラップして実行不可能な例を示す
+(comment
+  ;; 大きなログファイルをメモリ効率的に処理
+  (defn analyze-logs [file]
+    (stream/file file
+     |> (stream/filter (fn [line] (str/contains? line "ERROR")))
+     |> (stream/map str/upper)
+     |> (stream/take 100)  ; 最初の100エラー
+     |> stream/realize))
 
-;; 結果を取得
-(def errors (analyze-logs "/var/log/app.log"))
-(println (str "Found " (len errors) " errors"))
+  ;; 結果を取得
+  (def errors (analyze-logs "/var/log/app.log"))
+  (println (str "Found " (len errors) " errors")))
 ```
 
 ---
@@ -458,22 +422,20 @@ Streamは値を必要になるまで計算しない遅延評価のデータ構�
 
 ```qi
 ;; 小さなパイプを定義
-(def clean-text
-  (fn [text]
-    (text |> trim |> lower |> remove-punctuation)))
+(defn clean-text [text]
+  (text |> str/trim |> str/lower))
 
-(def extract-emails
-  (fn [text]
-    (text |> (split "\\s+") |> (filter email?))))
+(defn extract-words [text]
+  (text |> (str/split _ " ") |> (filter (fn [s] (> (len s) 3)))))
 
-(def dedupe
-  (fn [coll]
-    (coll |> sort |> unique)))
+(defn dedupe [coll]
+  (coll |> sort |> distinct))
 
 ;; 組み合わせて使う
+(def document "Hello World  from  Qi  Language")
 (document
  |> clean-text
- |> extract-emails
+ |> extract-words
  |> dedupe
- |> (join ", "))
+ |> (join ", " _))  ;; => "from, hello, language, world"
 ```

@@ -37,6 +37,11 @@ Qiは用途に応じて3つのエラー処理方法を提供します：
   (process result))
 
 ;; パイプラインでのエラー処理（詳細は02-flow-pipes.mdを参照）
+(def user-input "10")
+(defn validate [s] (if (> (len s) 0) s {:error "Empty input"}))
+(defn parse-number [s] (match (try (str/parse-int s)) {:error e} -> {:error e} n -> n))
+(defn format-result [n] (str "Result: " n))
+
 (user-input
  |> validate
  |>? parse-number      ;; 普通の値を返すだけでOK
@@ -270,6 +275,7 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
   data -> (process data))
 
 ;; パイプラインでの使用
+(def user-input "{\"name\":\"alice\",\"age\":30}")
 (user-input
  |> json/parse
  |>? (fn [data] (get data "name"))

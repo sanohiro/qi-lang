@@ -84,7 +84,7 @@ f"List: {[1 2 3]}"  ;; => "List: [1 2 3]"
 
 ;; マップアクセス
 (def user {:name "Bob" :age 30})
-f"Name: {(:name user)}, Age: {(:age user)}"
+f"Name: {(get user :name)}, Age: {(get user :age)}"
 ;; => "Name: Bob, Age: 30"
 
 ;; エスケープ
@@ -129,9 +129,9 @@ nil
 ;; マップのキーとして使用
 {:name "Alice" :age 30}
 
-;; 関数として使える（マップから値を取得）
+;; マップから値を取得（get関数を使用）
 (def user {:name "Bob" :age 25})
-(:name user)  ;; => "Bob"
+(get user :name)  ;; => "Bob"
 ```
 
 ### ベクター
@@ -581,8 +581,8 @@ fn、let、defなどの特殊形式内でもunquoteは正しく動作します�
 
 ;; HTTPリクエストの例
 (until-error [response (http/get next-url)]
-  (println f"ステータス: {(:status response)}")
-  (when (= (:status response) 200)
+  (println f"ステータス: {(get response :status)}")
+  (when (= (get response :status) 200)
     (process-response response)))
 
 ;; ページネーション処理
