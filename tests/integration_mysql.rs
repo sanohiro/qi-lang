@@ -362,7 +362,7 @@ fn test_mysql_metadata() {
     let tables = eval_qi(&mut evaluator, r#"(db/tables conn)"#).unwrap();
     match tables {
         Value::Vector(vec) => {
-            assert!(vec.len() > 0);
+            assert!(!vec.is_empty());
             let has_products = vec
                 .iter()
                 .any(|v| matches!(v, Value::String(s) if s == "products"));
@@ -399,7 +399,7 @@ fn test_mysql_metadata() {
     let indexes = eval_qi(&mut evaluator, r#"(db/indexes conn "products")"#).unwrap();
     match indexes {
         Value::Vector(vec) => {
-            assert!(vec.len() >= 1, "少なくとも1つのインデックスがあるべき");
+            assert!(!vec.is_empty(), "少なくとも1つのインデックスがあるべき");
             // インデックス名を確認
             let has_idx = vec.iter().any(|v| {
                 if let Value::Map(idx) = v {

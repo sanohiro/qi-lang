@@ -185,12 +185,15 @@ mod tests {
     #[test]
     fn test_get_float_arg() {
         let args = vec![
-            Value::Float(3.14),
+            Value::Float(std::f64::consts::PI),
             Value::Integer(42),
             Value::String("hello".to_string()),
         ];
 
-        assert_eq!(get_float_arg(&args, 0, "test").unwrap(), 3.14);
+        assert_eq!(
+            get_float_arg(&args, 0, "test").unwrap(),
+            std::f64::consts::PI
+        );
         assert_eq!(get_float_arg(&args, 1, "test").unwrap(), 42.0);
         assert!(get_float_arg(&args, 2, "test").is_err());
     }

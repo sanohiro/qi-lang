@@ -106,7 +106,7 @@ mod tests {
         let password = Value::String("my-secure-password".to_string());
 
         // パスワードをハッシュ化
-        let hash_result = native_password_hash(&[password.clone()]).unwrap();
+        let hash_result = native_password_hash(std::slice::from_ref(&password)).unwrap();
 
         let hash = match hash_result {
             Value::String(h) => h,
@@ -149,8 +149,8 @@ mod tests {
         // ソルトが異なるため、同じパスワードでも異なるハッシュが生成される
         let password = Value::String("test-password".to_string());
 
-        let hash1 = native_password_hash(&[password.clone()]).unwrap();
-        let hash2 = native_password_hash(&[password]).unwrap();
+        let hash1 = native_password_hash(std::slice::from_ref(&password)).unwrap();
+        let hash2 = native_password_hash(std::slice::from_ref(&password)).unwrap();
 
         assert_ne!(hash1, hash2);
     }

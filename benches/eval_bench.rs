@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use qi_lang::{parse, Evaluator};
+use qi_lang::{eval::Evaluator, parser::Parser};
 
 /// シンプルな式の評価ベンチマーク
 fn bench_simple_eval(c: &mut Criterion) {
@@ -7,15 +7,18 @@ fn bench_simple_eval(c: &mut Criterion) {
 
     c.bench_function("eval simple arithmetic", |b| {
         b.iter(|| {
-            let ast = parse("(+ 1 2)").unwrap();
+            let mut parser = Parser::new("(+ 1 2)").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval variable lookup", |b| {
-        eval.eval(&parse("(def x 42)").unwrap()).unwrap();
+        let mut parser = Parser::new("(def x 42)").unwrap();
+        eval.eval(&parser.parse().unwrap()).unwrap();
         b.iter(|| {
-            let ast = parse("x").unwrap();
+            let mut parser = Parser::new("x").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
@@ -26,24 +29,27 @@ fn bench_function_call(c: &mut Criterion) {
     let eval = Evaluator::new();
 
     // 単純な関数
-    eval.eval(&parse("(defn add [a b] (+ a b))").unwrap())
-        .unwrap();
+    let mut parser = Parser::new("(defn add [a b] (+ a b))").unwrap();
+    eval.eval(&parser.parse().unwrap()).unwrap();
     c.bench_function("eval function call simple", |b| {
         b.iter(|| {
-            let ast = parse("(add 10 20)").unwrap();
+            let mut parser = Parser::new("(add 10 20)").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     // 再帰関数（フィボナッチ）
-    eval.eval(&parse("(defn fib [n] (if (<= n 1) n (+ (fib (- n 1)) (fib (- n 2)))))").unwrap())
-        .unwrap();
+    let mut parser =
+        Parser::new("(defn fib [n] (if (<= n 1) n (+ (fib (- n 1)) (fib (- n 2)))))").unwrap();
+    eval.eval(&parser.parse().unwrap()).unwrap();
 
     let mut group = c.benchmark_group("fibonacci");
     for i in [5, 10, 15].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(i), i, |b, &n| {
             b.iter(|| {
-                let ast = parse(&format!("(fib {})", n)).unwrap();
+                let mut parser = Parser::new(&format!("(fib {})", n)).unwrap();
+                let ast = parser.parse().unwrap();
                 eval.eval(black_box(&ast)).unwrap()
             });
         });
@@ -57,21 +63,24 @@ fn bench_collections(c: &mut Criterion) {
 
     c.bench_function("eval map over vector", |b| {
         b.iter(|| {
-            let ast = parse("(map (fn [x] (* x 2)) [1 2 3 4 5])").unwrap();
+            let mut parser = Parser::new("(map (fn [x] (* x 2)) [1 2 3 4 5])").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval filter vector", |b| {
         b.iter(|| {
-            let ast = parse("(filter (fn [x] (> x 5)) [1 3 5 7 9 11])").unwrap();
+            let mut parser = Parser::new("(filter (fn [x] (> x 5)) [1 3 5 7 9 11])").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval reduce", |b| {
         b.iter(|| {
-            let ast = parse("(reduce + 0 [1 2 3 4 5])").unwrap();
+            let mut parser = Parser::new("(reduce + 0 [1 2 3 4 5])").unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
@@ -83,16 +92,20 @@ fn bench_pipeline(c: &mut Criterion) {
 
     c.bench_function("eval simple pipeline", |b| {
         b.iter(|| {
-            let ast = parse("[1 2 3 4 5] |> (map (fn [x] (* x 2))) |> (filter (fn [x] (> x 5)))")
-                .unwrap();
+            let mut parser =
+                Parser::new("[1 2 3 4 5] |> (map (fn [x] (* x 2))) |> (filter (fn [x] (> x 5)))")
+                    .unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval nested vs pipeline", |b| {
         b.iter(|| {
-            let ast =
-                parse("(filter (fn [x] (> x 5)) (map (fn [x] (* x 2)) [1 2 3 4 5]))").unwrap();
+            let mut parser =
+                Parser::new("(filter (fn [x] (> x 5)) (map (fn [x] (* x 2)) [1 2 3 4 5]))")
+                    .unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
@@ -104,7 +117,7 @@ fn bench_pattern_matching(c: &mut Criterion) {
 
     c.bench_function("eval simple match", |b| {
         b.iter(|| {
-            let ast = parse(
+            let mut parser = Parser::new(
                 r#"
                 (match 42
                   1 "one"
@@ -113,13 +126,14 @@ fn bench_pattern_matching(c: &mut Criterion) {
             "#,
             )
             .unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval match with guard", |b| {
         b.iter(|| {
-            let ast = parse(
+            let mut parser = Parser::new(
                 r#"
                 (match 15
                   x (if (< x 10) "small")
@@ -128,6 +142,7 @@ fn bench_pattern_matching(c: &mut Criterion) {
             "#,
             )
             .unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
@@ -139,14 +154,16 @@ fn bench_string_ops(c: &mut Criterion) {
 
     c.bench_function("eval string concat", |b| {
         b.iter(|| {
-            let ast = parse(r#"(str "hello" " " "world")"#).unwrap();
+            let mut parser = Parser::new(r#"(str "hello" " " "world")"#).unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
 
     c.bench_function("eval string split", |b| {
         b.iter(|| {
-            let ast = parse(r#"(split "," "a,b,c,d,e")"#).unwrap();
+            let mut parser = Parser::new(r#"(split "," "a,b,c,d,e")"#).unwrap();
+            let ast = parser.parse().unwrap();
             eval.eval(black_box(&ast)).unwrap()
         });
     });
