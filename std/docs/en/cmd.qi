@@ -2,22 +2,42 @@
 ;; Command Execution Functions (11 functions - cmd/*)
 ;; This module is compiled with the `cmd-exec` feature
 
+;; === SECURITY WARNING ===
+;; When passing commands as strings, they are executed via shell,
+;; which poses a command injection attack risk.
+;;
+;; [Safe Usage]
+;; - Use only hardcoded command strings
+;; - Use array format (["cmd" "arg1" "arg2"]) when including user input
+;;
+;; [Dangerous Example]
+;; (def user-input (http/get-param req "file"))
+;; (cmd/exec (str "cat " user-input))  ;; Command injection risk!
+;;
+;; [Safe Example]
+;; (cmd/exec "ls -la")                 ;; Hardcoded command
+;; (cmd/exec ["cat" user-input])       ;; Array format (shell metacharacters are escaped)
+
 (def __doc__cmd/exec
   {:desc "Executes a command and returns the exit code. Can be specified as a string or vector."
    :params [{:name "command" :type "string|vector" :desc "Command (string runs via shell, vector runs directly)"}]
    :returns {:type "integer" :desc "Exit code (0=success, non-zero=failure)"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(cmd/exec \"ls -la\") ;=> 0"
-              "(cmd/exec [\"ls\" \"-la\"]) ;=> 0"
+              "(cmd/exec [\"ls\" \"-la\"]) ;=> 0  ;; Safe (array format)"
               "(cmd/exec \"false\") ;=> 1"
-              "(if (= 0 (cmd/exec \"test -f data.json\")) (println \"File exists\") (println \"File not found\"))"]})
+              ";; Safe usage (when including user input)"
+              "(def file \"user-file.txt\")"
+              "(cmd/exec [\"cat\" file])  ;; Array format prevents shell injection"]})
 
 (def __doc__cmd/exec!
   {:desc "Executes a command and returns detailed information. Returns a map containing stdout, stderr, and exit code. String runs via shell, vector runs directly."
    :params [{:name "command" :type "string|vector" :desc "Command (string runs via shell, vector runs directly)"}]
    :returns {:type "map" :desc "Format: {:stdout \"...\" :stderr \"...\" :exit 0}"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(cmd/exec! \"cat *.txt | grep pattern | wc -l\") ;=> {:stdout \"10\\n\" :stderr \"\" :exit 0}"
               "(cmd/exec! [\"ls\" \"-la\"]) ;=> {:stdout \"total 48...\" :stderr \"\" :exit 0}"
-              "(cmd/exec! \"echo $HOME\") ;=> {:stdout \"/home/user\\n\" :stderr \"\" :exit 0}"
+              "(cmd/exec! [\"echo\" (str \"$HOME\")])  ;; Safe (array format)"
               "(let [res (cmd/exec! \"git status --porcelain\")] (if (= 0 (:exit res)) (println (:stdout res)) (println (:stderr res))))"]})
 
 (def __doc__cmd/pipe
@@ -25,14 +45,18 @@
    :params [{:name "command" :type "string|vector" :desc "Command"}
             {:name "data" :type "string|list" :desc "Data to pass to standard input"}]
    :returns {:type "string" :desc "Command's stdout"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(\"hello\\nworld\" |> (cmd/pipe \"sort\")) ;=> \"hello\\nworld\\n\""
-              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\")) ;=> \"       3\\n\""]})
+              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\")) ;=> \"       3\\n\""
+              ";; Safe usage"
+              "([\"line1\" \"line2\"] |> (cmd/pipe [\"grep\" \"pattern\"]))"]})
 
 (def __doc__cmd/pipe!
   {:desc "Pipes data to a command's standard input and returns detailed information. Always returns result regardless of success/failure."
    :params [{:name "command" :type "string|vector" :desc "Command"}
             {:name "data" :type "string|list" :desc "Data to pass to standard input"}]
    :returns {:type "vector" :desc "Vector of [stdout stderr exitcode]"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(let [[out err code] (\"test\" |> (cmd/pipe! \"cat\"))] ...)"
               "(\"data\" |> (cmd/pipe! \"grep pattern\")) ;=> [\"matched\\n\" \"\" 0]"
               "(\"data\" |> (cmd/pipe! \"false\")) ;=> [\"\" \"\" 1]"]})
@@ -48,6 +72,7 @@
   {:desc "Returns command stdout as a line-by-line stream."
    :params [{:name "command" :type "string|vector" :desc "Command"}]
    :returns {:type "stream" :desc "Line stream"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(cmd/stream-lines \"ls -1\")"
               "(cmd/stream-lines [\"find\" \".\" \"-name\" \"*.qi\"])"]})
 
@@ -55,13 +80,17 @@
   {:desc "Returns command stdout as a byte stream."
    :params [{:name "command" :type "string|vector" :desc "Command"}]
    :returns {:type "stream" :desc "Byte stream"}
-   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
+   :examples ["(cmd/stream-bytes \"cat binary.dat\")"
+              "(cmd/stream-bytes [\"curl\" \"-L\" url])  ;; Safe (array format)"]})
 
 (def __doc__cmd/interactive
   {:desc "Starts an interactive process. Returns a process ID."
    :params [{:name "command" :type "string|vector" :desc "Command"}]
    :returns {:type "integer" :desc "Process ID"}
+   :security "⚠️ String format displays warnings when dangerous characters are found. Use array format when including user input."
    :examples ["(def pid (cmd/interactive \"python3\"))"
+              "(def pid (cmd/interactive [\"python3\" \"-i\"]))  ;; Safe (array format)"
               "(cmd/write pid \"print(1 + 2)\\n\")"
               "(cmd/read-line pid) ;=> \"3\""]})
 

@@ -2,22 +2,42 @@
 ;; Command Execution Functions (11 functions - cmd/*)
 ;; このモジュールは `cmd-exec` feature でコンパイルされます
 
+;; === セキュリティ警告 ===
+;; 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+;; コマンドインジェクション攻撃のリスクがあります。
+;;
+;; 【安全な使い方】
+;; - ハードコードされたコマンド文字列のみ使用
+;; - ユーザー入力を含む場合は配列形式で渡す（["cmd" "arg1" "arg2"]）
+;;
+;; 【危険な例】
+;; (def user-input (http/get-param req "file"))
+;; (cmd/exec (str "cat " user-input))  ;; コマンドインジェクションの危険！
+;;
+;; 【安全な例】
+;; (cmd/exec "ls -la")                 ;; ハードコードされたコマンド
+;; (cmd/exec ["cat" user-input])       ;; 配列形式（シェルメタ文字がエスケープされる）
+
 (def __doc__cmd/exec
   {:desc "コマンドを実行して終了コードを返します。文字列またはベクタで指定できます。"
    :params [{:name "command" :type "string|vector" :desc "コマンド（文字列の場合はシェル経由、ベクタの場合は直接実行）"}]
    :returns {:type "integer" :desc "終了コード（0=成功、非0=失敗）"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(cmd/exec \"ls -la\") ;=> 0"
-              "(cmd/exec [\"ls\" \"-la\"]) ;=> 0"
+              "(cmd/exec [\"ls\" \"-la\"]) ;=> 0  ;; 安全（配列形式）"
               "(cmd/exec \"false\") ;=> 1"
-              "(if (= 0 (cmd/exec \"test -f data.json\")) (println \"ファイル存在\") (println \"ファイルなし\"))"]})
+              ";; 安全な使い方（ユーザー入力を含む場合）"
+              "(def file \"user-file.txt\")"
+              "(cmd/exec [\"cat\" file])  ;; 配列形式でシェルインジェクションを防ぐ"]})
 
 (def __doc__cmd/exec!
   {:desc "コマンドを実行して詳細情報を返します（詳細版）。stdout、stderr、終了コードを含むマップを返します。文字列の場合はシェル経由、ベクタの場合は直接実行されます。"
    :params [{:name "command" :type "string|vector" :desc "コマンド（文字列の場合はシェル経由、ベクタの場合は直接実行）"}]
    :returns {:type "map" :desc "{:stdout \"...\" :stderr \"...\" :exit 0} の形式"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(cmd/exec! \"cat *.txt | grep pattern | wc -l\") ;=> {:stdout \"10\\n\" :stderr \"\" :exit 0}"
               "(cmd/exec! [\"ls\" \"-la\"]) ;=> {:stdout \"total 48...\" :stderr \"\" :exit 0}"
-              "(cmd/exec! \"echo $HOME\") ;=> {:stdout \"/home/user\\n\" :stderr \"\" :exit 0}"
+              "(cmd/exec! [\"echo\" (str \"$HOME\")])  ;; 安全（配列形式）"
               "(let [res (cmd/exec! \"git status --porcelain\")] (if (= 0 (:exit res)) (println (:stdout res)) (println (:stderr res))))"]})
 
 (def __doc__cmd/pipe
@@ -25,14 +45,18 @@
    :params [{:name "command" :type "string|vector" :desc "コマンド"}
             {:name "data" :type "string|list" :desc "標準入力に渡すデータ"}]
    :returns {:type "string" :desc "コマンドの標準出力"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(\"hello\\nworld\" |> (cmd/pipe \"sort\")) ;=> \"hello\\nworld\\n\""
-              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\")) ;=> \"       3\\n\""]})
+              "([\"line1\" \"line2\" \"line3\"] |> (cmd/pipe \"wc -l\")) ;=> \"       3\\n\""
+              ";; 安全な使い方"
+              "([\"line1\" \"line2\"] |> (cmd/pipe [\"grep\" \"pattern\"]))"]})
 
 (def __doc__cmd/pipe!
   {:desc "データをコマンドの標準入力へパイプして、詳細情報を返します。成功・失敗に関わらず常に結果を返します。"
    :params [{:name "command" :type "string|vector" :desc "コマンド"}
             {:name "data" :type "string|list" :desc "標準入力に渡すデータ"}]
    :returns {:type "vector" :desc "[stdout stderr exitcode] の3要素ベクタ"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(let [[out err code] (\"test\" |> (cmd/pipe! \"cat\"))] ...)"
               "(\"data\" |> (cmd/pipe! \"grep pattern\")) ;=> [\"matched\\n\" \"\" 0]"
               "(\"data\" |> (cmd/pipe! \"false\")) ;=> [\"\" \"\" 1]"]})
@@ -48,6 +72,7 @@
   {:desc "コマンドのstdoutを行単位でストリームとして返します。"
    :params [{:name "command" :type "string|vector" :desc "コマンド"}]
    :returns {:type "stream" :desc "行ストリーム"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(cmd/stream-lines \"ls -1\")"
               "(cmd/stream-lines [\"find\" \".\" \"-name\" \"*.qi\"])"]})
 
@@ -55,13 +80,17 @@
   {:desc "コマンドのstdoutをバイトストリームとして返します。"
    :params [{:name "command" :type "string|vector" :desc "コマンド"}]
    :returns {:type "stream" :desc "バイトストリーム"}
-   :examples ["(cmd/stream-bytes \"cat binary.dat\")"]})
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
+   :examples ["(cmd/stream-bytes \"cat binary.dat\")"
+              "(cmd/stream-bytes [\"curl\" \"-L\" url])  ;; 安全（配列形式）"]})
 
 (def __doc__cmd/interactive
   {:desc "対話的プロセスを開始します。プロセスIDを返します。"
    :params [{:name "command" :type "string|vector" :desc "コマンド"}]
    :returns {:type "integer" :desc "プロセスID"}
+   :security "⚠️ 文字列形式は危険文字を含む場合に警告を表示します。ユーザー入力を含む場合は配列形式を使用してください。"
    :examples ["(def pid (cmd/interactive \"python3\"))"
+              "(def pid (cmd/interactive [\"python3\" \"-i\"]))  ;; 安全（配列形式）"
               "(cmd/write pid \"print(1 + 2)\\n\")"
               "(cmd/read-line pid) ;=> \"3\""]})
 

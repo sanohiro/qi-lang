@@ -3,6 +3,32 @@
 //! Unixコマンドをパイプラインで実行できる関数群。
 //! データの流れとしてコマンドを扱い、|> と統合される。
 //!
+//! ## セキュリティ警告
+//!
+//! シェル経由でコマンドを実行する関数（文字列としてコマンドを渡す場合）は、
+//! コマンドインジェクション攻撃のリスクがあります。
+//!
+//! **安全な使い方**:
+//! - ハードコードされたコマンド文字列のみ使用
+//! - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+//!
+//! **危険な例**:
+//! ```qi
+//! ;; 危険！ユーザー入力を文字列連結している
+//! (def user-input (http/get-param req "file"))
+//! (cmd/exec (str "cat " user-input))  ;; コマンドインジェクションの危険
+//! ```
+//!
+//! **安全な例**:
+//! ```qi
+//! ;; 安全：ハードコードされたコマンド
+//! (cmd/exec "ls -la")
+//!
+//! ;; 安全：配列形式で渡す（シェル経由しない）
+//! (def user-input (http/get-param req "file"))
+//! (cmd/exec ["cat" user-input])  ;; シェルメタ文字がエスケープされる
+//! ```
+//!
 //! このモジュールは `cmd-exec` feature でコンパイルされます。
 
 use crate::i18n::{fmt_msg, MsgKey};
@@ -25,6 +51,33 @@ type ProcessStreams = (
 /// グローバルプロセスマップ（PID -> ストリーム）
 static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// シェルメタ文字をチェック
+///
+/// コマンドインジェクション攻撃に利用される可能性のある文字を検出する。
+/// 検出された場合は警告を表示する。
+fn check_shell_metacharacters(cmd: &str) {
+    const DANGEROUS_CHARS: &[&str] = &[
+        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\"", "'", "\\",
+    ];
+
+    let found_chars: Vec<&str> = DANGEROUS_CHARS
+        .iter()
+        .filter(|&&c| cmd.contains(c))
+        .copied()
+        .collect();
+
+    if !found_chars.is_empty() {
+        eprintln!(
+            "⚠️  Warning: Command contains shell metacharacters. This may be a security risk."
+        );
+        eprintln!("   Found: {}", found_chars.join(", "));
+        eprintln!("   Command: {}", cmd);
+        eprintln!(
+            "   Hint: Use array format [\"cmd\" \"arg1\" \"arg2\"] to avoid shell injection."
+        );
+    }
+}
 
 /// コマンド実行結果をMapに変換
 fn result_to_map(stdout: Vec<u8>, stderr: Vec<u8>, exit_code: i32) -> Value {
@@ -71,6 +124,16 @@ fn parse_command_args(val: &Value) -> Result<(String, Vec<String>), String> {
 }
 
 /// exec - コマンド実行（終了コードを返す）
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド（文字列 or [コマンド 引数...]）
 /// 戻り値: 終了コード（整数）
 /// 例: (cmd/exec "ls -la")  ;=> 0
@@ -84,7 +147,9 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let output = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let result = Command::new("sh").arg("-c").arg(&cmd).output();
 
@@ -107,6 +172,16 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
 }
 
 /// exec! - コマンド実行（詳細版）
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド（文字列 or [コマンド 引数...]）
 /// 戻り値: {:stdout "..." :stderr "..." :exit 0}
 /// エラー時: Err(エラーメッセージ)
@@ -120,7 +195,9 @@ pub fn native_exec_bang(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let output = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let result = Command::new("sh").arg("-c").arg(&cmd).output();
 
@@ -143,6 +220,16 @@ pub fn native_exec_bang(args: &[Value]) -> Result<Value, String> {
 }
 
 /// pipe - コマンドを実行して標準出力を返す
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド, [入力データ（文字列 or リスト）]
 /// 戻り値: 標準出力（文字列）。コマンドが失敗した場合はエラーを投げる
 /// 例: (cmd/pipe "ls -la")  ;=> "total 48\ndrwxr-xr-x ...\n"
@@ -183,7 +270,9 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let child = Command::new("sh")
             .arg("-c")
@@ -273,6 +362,16 @@ pub fn native_lines(args: &[Value]) -> Result<Value, String> {
 }
 
 /// pipe! - コマンドを実行して詳細情報を返す
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド, [入力データ（文字列 or リスト）]
 /// 戻り値: [stdout stderr exitcode] ベクタ
 /// 例: (cmd/pipe! "ls -la")  ;=> ["total 48\n..." "" 0]
@@ -313,7 +412,9 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let child = Command::new("sh")
             .arg("-c")
@@ -378,6 +479,16 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
 }
 
 /// stream-lines - コマンドのstdoutを行単位でストリームとして返す
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド（文字列 or [コマンド 引数...]）
 /// 戻り値: Stream（各要素は行文字列）
 /// 例: (cmd/stream-lines "tail -f /var/log/app.log")
@@ -398,7 +509,9 @@ pub fn native_stream_lines(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let child = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let child = Command::new("sh")
             .arg("-c")
@@ -448,6 +561,16 @@ pub fn native_stream_lines(args: &[Value]) -> Result<Value, String> {
 }
 
 /// stream-bytes - コマンドのstdoutをバイトチャンク単位でストリームとして返す
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド（文字列 or [コマンド 引数...]）, [オプション: チャンクサイズ（デフォルト4096）]
 /// 戻り値: Stream（各要素はバイト配列の文字列表現）
 /// 例: (cmd/stream-bytes "cat large-file.bin")
@@ -479,7 +602,9 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let child = Command::new("sh")
             .arg("-c")
@@ -544,6 +669,16 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
 }
 
 /// interactive - 双方向インタラクティブプロセスを起動
+///
+/// ## セキュリティ警告
+///
+/// 文字列としてコマンドを渡す場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// **安全な使い方**:
+/// - ハードコードされたコマンド文字列のみ使用
+/// - ユーザー入力を含む場合は配列形式で渡す（`["cmd" "arg1" "arg2"]`）
+///
 /// 引数: コマンド（文字列 or [コマンド 引数...]）
 /// 戻り値: プロセスハンドル（Map形式）
 /// 例: (def py (cmd/interactive "python3 -i"))
@@ -559,7 +694,9 @@ pub fn native_interactive(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let child = if cmd_args.is_empty() {
-        // シェル経由
+        // シェル経由（セキュリティ警告を表示）
+        check_shell_metacharacters(&cmd);
+
         #[cfg(unix)]
         let child = Command::new("sh")
             .arg("-c")
