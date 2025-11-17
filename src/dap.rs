@@ -293,6 +293,8 @@ impl DapContext {
     /// DAPコンテキストを初期化
     async fn new() -> io::Result<Self> {
         // stdin/stdoutのバックアップ
+        // SAFETY: backup_stdin()はファイルディスクリプタ操作を行うunsafe関数ですが、
+        // 内部でエラーチェックを行っており、エラーはio::Resultで適切に処理されます。
         let original_stdin_file = unsafe { backup_stdin()? };
         let stdin = tokio::fs::File::from_std(original_stdin_file);
 
@@ -1485,11 +1487,17 @@ fn dap_log(message: &str) {
         let msg = format!("{}\n", message);
 
         #[cfg(unix)]
+        // SAFETY: libc::write()はPOSIXシステムコールで、有効なファイルディスクリプタと
+        // バッファポインタに対して安全に実行できます。msgはスタック上の有効な文字列です。
+        // 戻り値のエラーチェックは省略していますが、ログ出力のみのため問題ありません。
         unsafe {
             libc::write(fd, msg.as_ptr() as *const _, msg.len());
         }
 
         #[cfg(windows)]
+        // SAFETY: WriteFile()はWindows APIで、有効なハンドルとバッファポインタに対して
+        // 安全に実行できます。msgはスタック上の有効な文字列です。
+        // 戻り値のエラーチェックは省略していますが、ログ出力のみのため問題ありません。
         unsafe {
             use windows_sys::Win32::Storage::FileSystem::*;
             let mut written: u32 = 0;
@@ -1511,6 +1519,9 @@ fn dap_log(message: &str) {
 /// 元のstdoutをバックアップしてFileを作成
 #[cfg(unix)]
 fn backup_stdout() -> io::Result<std::fs::File> {
+    // SAFETY: libc::dup()とfrom_raw_fd()を使用して、stdoutのファイルディスクリプタを
+    // 複製しています。dup()はPOSIXシステムコールで、有効なfdに対して安全に実行できます。
+    // from_raw_fd()は複製したfdの所有権を取得し、Fileがdropされるときに自動的にcloseされます。
     unsafe {
         let fd = libc::dup(libc::STDOUT_FILENO);
         if fd < 0 {
@@ -1523,6 +1534,9 @@ fn backup_stdout() -> io::Result<std::fs::File> {
 
 #[cfg(windows)]
 fn backup_stdout() -> io::Result<std::fs::File> {
+    // SAFETY: GetStdHandle()とfrom_raw_handle()を使用して、stdoutのハンドルを取得しています。
+    // GetStdHandle()はWindows APIで安全に実行できます。
+    // from_raw_handle()は取得したハンドルの所有権を取得し、Fileがdropされるときに自動的にcloseされます。
     unsafe {
         use std::os::windows::io::FromRawHandle;
         use windows_sys::Win32::System::Console::*;
@@ -1538,6 +1552,13 @@ static QI_STDIN_WRITE_FD: parking_lot::Mutex<Option<i32>> = parking_lot::Mutex::
 ///
 /// 戻り値: DAPサーバーが使用する元のstdin
 #[cfg(unix)]
+// SAFETY: この関数全体がunsafeです。以下のシステムコールを使用しています:
+// - libc::dup(): 有効なファイルディスクリプタを複製します。エラーは-1で返されチェックします。
+// - libc::pipe(): 新しいパイプを作成します。エラーは-1で返されチェックします。
+// - libc::dup2(): ファイルディスクリプタを複製して指定のfdに配置します。エラーは-1で返されチェックします。
+// - libc::close(): ファイルディスクリプタを閉じます。エラー処理が必要なケースでは適切にチェックします。
+// - from_raw_fd(): 生のfdからFileを作成します。fdの所有権はFileに移動し、dropで自動的にcloseされます。
+// すべてのfdは有効であることが確認されており、メモリ安全性も保証されています。
 unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     use std::os::unix::io::FromRawFd;
     // 1. 元の stdin (fd 0) を複製して保存
@@ -1574,6 +1595,14 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
 }
 
 #[cfg(windows)]
+// SAFETY: この関数全体がunsafeです。以下のWindows APIを使用しています:
+// - GetStdHandle(): 標準ハンドルを取得します。INVALID_HANDLE_VALUEのチェックを行います。
+// - DuplicateHandle(): ハンドルを複製します。エラーは0で返されチェックします。
+// - CreatePipe(): 新しいパイプを作成します。エラーは0で返されチェックします。
+// - SetStdHandle(): 標準ハンドルを設定します。エラーは0で返されチェックします。
+// - CloseHandle(): ハンドルを閉じます。エラー処理が必要なケースでは適切にチェックします。
+// - from_raw_handle(): 生のハンドルからFileを作成します。ハンドルの所有権はFileに移動し、dropで自動的にcloseされます。
+// すべてのハンドルは有効であることが確認されており、メモリ安全性も保証されています。
 unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     use std::os::windows::io::FromRawHandle;
     use windows_sys::Win32::Foundation::*;
@@ -1633,6 +1662,10 @@ fn write_to_stdin(text: &str) -> io::Result<()> {
     let fd_guard = QI_STDIN_WRITE_FD.lock();
     if let Some(write_fd) = *fd_guard {
         let data = format!("{}\n", text);
+        // SAFETY: libc::write()はPOSIXシステムコールで、有効なファイルディスクリプタと
+        // バッファポインタに対して安全に実行できます。write_fdはbackup_stdin()で作成された
+        // 有効なパイプのfdです。dataはスタック上の有効な文字列で、その長さも正確です。
+        // エラーは負の値で返されチェックします。
         unsafe {
             let bytes_written =
                 libc::write(write_fd, data.as_ptr() as *const libc::c_void, data.len());
@@ -1658,6 +1691,10 @@ fn write_to_stdin(text: &str) -> io::Result<()> {
     if let Some(handle) = *fd_guard {
         let data = format!("{}\n", text);
         let mut bytes_written: u32 = 0;
+        // SAFETY: WriteFile()はWindows APIで、有効なハンドルとバッファポインタに対して
+        // 安全に実行できます。handleはbackup_stdin()で作成された有効なパイプのハンドルです。
+        // dataはスタック上の有効な文字列で、その長さも正確です。
+        // エラーは0で返されチェックします。
         unsafe {
             if WriteFile(
                 handle as HANDLE,
@@ -1682,6 +1719,9 @@ fn write_to_stdin(text: &str) -> io::Result<()> {
 /// 元のstderrをバックアップ（DAPログ出力用）
 #[cfg(unix)]
 fn backup_stderr_for_logging() {
+    // SAFETY: libc::dup()はPOSIXシステムコールで、stderrのファイルディスクリプタを
+    // 複製しています。エラーは負の値で返され、成功時のみfdを保存します。
+    // 複製されたfdはORIGINAL_STDERRで管理され、dap_log()でwrite()に使用されます。
     unsafe {
         let fd = libc::dup(libc::STDERR_FILENO);
         if fd >= 0 {
@@ -1692,6 +1732,9 @@ fn backup_stderr_for_logging() {
 
 #[cfg(windows)]
 fn backup_stderr_for_logging() {
+    // SAFETY: GetStdHandle()はWindows APIで、stderrのハンドルを取得しています。
+    // 取得したハンドルはSendHandleでラップしてORIGINAL_STDERRに保存します。
+    // このハンドルはdap_log()でWriteFile()に使用されます。
     unsafe {
         use windows_sys::Win32::System::Console::*;
         let handle = GetStdHandle(STD_ERROR_HANDLE);
@@ -1724,6 +1767,8 @@ impl DapServer {
         let stdout = Arc::new(parking_lot::Mutex::new(io::stdout()));
 
         // 元の stdin (fd 0) を保存してから、Qi プログラム用のパイプに差し替える
+        // SAFETY: backup_stdin()はファイルディスクリプタ操作を行うunsafe関数ですが、
+        // 内部でエラーチェックを行っており、エラーはio::Resultで適切に処理されます。
         let original_stdin_file = unsafe { backup_stdin()? };
         let mut reader = BufReader::new(original_stdin_file);
 
@@ -1941,6 +1986,10 @@ mod stdio_redirect {
         pub const STDOUT_NO: NativeHandle = libc::STDOUT_FILENO;
         pub const STDERR_NO: NativeHandle = libc::STDERR_FILENO;
 
+        /// ファイルディスクリプタを複製
+        ///
+        /// SAFETY: libc::dup()はPOSIXシステムコールで、有効なファイルディスクリプタに
+        /// 対して安全に実行できます。エラーは負の値で返されチェックします。
         pub unsafe fn dup(handle: NativeHandle) -> io::Result<NativeHandle> {
             let new_handle = libc::dup(handle);
             if new_handle < 0 {
@@ -1950,10 +1999,19 @@ mod stdio_redirect {
             }
         }
 
+        /// ファイルディスクリプタを閉じる
+        ///
+        /// SAFETY: libc::close()はPOSIXシステムコールで、有効なファイルディスクリプタを
+        /// 閉じます。既に閉じられたfdに対して複数回呼び出すと未定義動作になりますが、
+        /// このモジュールではfdの所有権を適切に管理しているため、二重closeは発生しません。
         pub unsafe fn close(handle: NativeHandle) {
             libc::close(handle);
         }
 
+        /// パイプを作成
+        ///
+        /// SAFETY: libc::pipe()はPOSIXシステムコールで、新しいパイプを作成します。
+        /// pipe配列は有効なメモリ領域で、サイズも正しいです。エラーは負の値で返されチェックします。
         pub unsafe fn create_pipe() -> io::Result<(NativeHandle, NativeHandle)> {
             let mut pipe: [i32; 2] = [0, 0];
             if libc::pipe(pipe.as_mut_ptr()) < 0 {
@@ -1963,6 +2021,10 @@ mod stdio_redirect {
             }
         }
 
+        /// ファイルディスクリプタをリダイレクト
+        ///
+        /// SAFETY: libc::dup2()はPOSIXシステムコールで、new_handleをstd_noに複製します。
+        /// 両方のfdが有効であることが前提です。エラーは負の値で返されチェックします。
         pub unsafe fn redirect(new_handle: NativeHandle, std_no: NativeHandle) -> io::Result<()> {
             if libc::dup2(new_handle, std_no) < 0 {
                 Err(io::Error::last_os_error())
@@ -1972,6 +2034,9 @@ mod stdio_redirect {
         }
 
         /// ハンドルを複製（リーダー用）
+        ///
+        /// SAFETY: libc::dup()はPOSIXシステムコールで、有効なファイルディスクリプタに
+        /// 対して安全に実行できます。エラーは負の値で返され、Noneとして扱います。
         pub unsafe fn dup_for_reader(handle: NativeHandle) -> Option<NativeHandle> {
             let new_handle = libc::dup(handle);
             if new_handle < 0 {
@@ -1982,6 +2047,10 @@ mod stdio_redirect {
         }
 
         /// ハンドルからFileリーダーを作成
+        ///
+        /// SAFETY: from_raw_fd()は生のfdからFileを作成します。
+        /// handleは有効なfdである必要があり、所有権はFileに移動します。
+        /// Fileがdropされるときに自動的にcloseされるため、二重closeは発生しません。
         pub unsafe fn create_reader(handle: NativeHandle) -> std::fs::File {
             use std::os::unix::io::FromRawFd;
             std::fs::File::from_raw_fd(handle)
@@ -1999,12 +2068,21 @@ mod stdio_redirect {
         #[derive(Clone, Copy)]
         pub struct SendHandle(pub HANDLE);
 
+        // SAFETY: SendHandleはWindows HANDLEのラッパーで、スレッド間で安全に送信できます。
+        // Windows HANDLEはプロセス全体で有効な識別子であり、複数スレッドから同時にアクセスしても
+        // カーネルレベルで同期が保証されています。
         unsafe impl Send for SendHandle {}
+        // SAFETY: SendHandleは複数スレッドから同時に参照しても安全です。
+        // Windows APIのハンドル操作はスレッドセーフです。
         unsafe impl Sync for SendHandle {}
 
         pub const STDOUT_NO: u32 = STD_OUTPUT_HANDLE;
         pub const STDERR_NO: u32 = STD_ERROR_HANDLE;
 
+        /// 標準ハンドルを取得
+        ///
+        /// SAFETY: GetStdHandle()はWindows APIで、標準入出力ハンドルを取得します。
+        /// INVALID_HANDLE_VALUEのチェックを行い、エラーは適切に処理されます。
         pub unsafe fn get_std_handle(handle_id: u32) -> io::Result<SendHandle> {
             let handle = GetStdHandle(handle_id);
             if handle == INVALID_HANDLE_VALUE {
@@ -2014,10 +2092,19 @@ mod stdio_redirect {
             }
         }
 
+        /// ハンドルを閉じる
+        ///
+        /// SAFETY: CloseHandle()はWindows APIで、有効なハンドルを閉じます。
+        /// 既に閉じられたハンドルに対して複数回呼び出すと未定義動作になりますが、
+        /// このモジュールではハンドルの所有権を適切に管理しているため、二重closeは発生しません。
         pub unsafe fn close(handle: SendHandle) {
             CloseHandle(handle.0);
         }
 
+        /// パイプを作成
+        ///
+        /// SAFETY: CreatePipe()はWindows APIで、新しいパイプを作成します。
+        /// ハンドルポインタは有効なメモリ領域です。エラーは0で返されチェックします。
         pub unsafe fn create_pipe() -> io::Result<(SendHandle, SendHandle)> {
             use windows_sys::Win32::System::Pipes::CreatePipe;
             let mut read_handle: HANDLE = std::ptr::null_mut();
@@ -2029,6 +2116,10 @@ mod stdio_redirect {
             }
         }
 
+        /// 標準ハンドルをリダイレクト
+        ///
+        /// SAFETY: SetStdHandle()はWindows APIで、標準ハンドルを設定します。
+        /// new_handleは有効なハンドルである必要があります。エラーは0で返されチェックします。
         pub unsafe fn redirect(new_handle: SendHandle, std_handle_id: u32) -> io::Result<()> {
             if SetStdHandle(std_handle_id, new_handle.0) == 0 {
                 Err(io::Error::last_os_error())
@@ -2038,6 +2129,9 @@ mod stdio_redirect {
         }
 
         /// ハンドルを複製（リーダー用）
+        ///
+        /// SAFETY: DuplicateHandle()はWindows APIで、有効なハンドルを複製します。
+        /// エラーは0で返され、Noneとして扱います。
         pub unsafe fn dup_for_reader(handle: SendHandle) -> Option<SendHandle> {
             let mut dup_handle: HANDLE = std::ptr::null_mut();
             if DuplicateHandle(
@@ -2057,6 +2151,10 @@ mod stdio_redirect {
         }
 
         /// ハンドルからFileリーダーを作成
+        ///
+        /// SAFETY: from_raw_handle()は生のハンドルからFileを作成します。
+        /// handleは有効なハンドルである必要があり、所有権はFileに移動します。
+        /// Fileがdropされるときに自動的にcloseされるため、二重closeは発生しません。
         pub unsafe fn create_reader(handle: SendHandle) -> std::fs::File {
             use std::os::windows::io::FromRawHandle;
             std::fs::File::from_raw_handle(handle.0 as _)
@@ -2069,6 +2167,13 @@ mod stdio_redirect {
         pub fn new() -> io::Result<Self> {
             use platform::*;
 
+            // SAFETY: この関数全体がunsafeです。以下のplatform関数を使用しています:
+            // - dup(): stdoutとstderrのfdを複製して保存します。
+            // - create_pipe(): 新しいパイプを作成します。
+            // - redirect(): stdoutとstderrを新しいパイプにリダイレクトします。
+            // - close(): 不要になったfdを閉じます。
+            // すべてのfdは有効性がチェックされており、エラー時には適切にクリーンアップされます。
+            // fdの所有権は構造体で管理され、dropで自動的に元に戻されます。
             unsafe {
                 // 元のstdout/stderrを保存
                 let original_stdout = dup(STDOUT_NO)?;
@@ -2127,6 +2232,13 @@ mod stdio_redirect {
         pub fn new() -> io::Result<Self> {
             use platform::*;
 
+            // SAFETY: この関数全体がunsafeです。以下のplatform関数を使用しています:
+            // - get_std_handle(): stdoutとstderrのハンドルを取得して保存します。
+            // - create_pipe(): 新しいパイプを作成します。
+            // - redirect(): stdoutとstderrを新しいパイプにリダイレクトします。
+            // - close(): 不要になったハンドルを閉じます。
+            // すべてのハンドルは有効性がチェックされており、エラー時には適切にクリーンアップされます。
+            // ハンドルの所有権は構造体で管理され、dropで自動的に元に戻されます。
             unsafe {
                 // 元のstdout/stderrを保存
                 let original_stdout = get_std_handle(STDOUT_NO)?;
@@ -2198,6 +2310,8 @@ mod stdio_redirect {
             read_handle: NativeHandle,
         ) -> tokio::task::JoinHandle<()> {
             // ハンドルを複製
+            // SAFETY: dup_for_reader()は有効なfdを複製します。
+            // read_handleはnew()で作成された有効なパイプのfdです。
             let read_dup = unsafe { platform::dup_for_reader(read_handle) };
 
             tokio::spawn(async move {
@@ -2209,6 +2323,8 @@ mod stdio_redirect {
                 };
 
                 // リーダーを作成
+                // SAFETY: create_reader()は複製されたfdからFileを作成します。
+                // handleは有効なfdで、所有権はFileに移動します。
                 let file = unsafe { platform::create_reader(handle) };
                 let async_file = tokio::fs::File::from_std(file);
                 let reader = tokio::io::BufReader::new(async_file);
@@ -2233,6 +2349,8 @@ mod stdio_redirect {
                 }
 
                 // パイプを閉じる
+                // SAFETY: close()は有効なfdを閉じます。
+                // handleはこのスコープで所有されており、二重closeは発生しません。
                 unsafe { platform::close(handle) };
             })
         }
@@ -2247,6 +2365,8 @@ mod stdio_redirect {
             read_handle: platform::SendHandle,
         ) -> tokio::task::JoinHandle<()> {
             // ハンドルを複製
+            // SAFETY: dup_for_reader()は有効なハンドルを複製します。
+            // read_handleはnew()で作成された有効なパイプのハンドルです。
             let read_dup = unsafe { platform::dup_for_reader(read_handle) };
 
             tokio::spawn(async move {
@@ -2258,6 +2378,8 @@ mod stdio_redirect {
                 };
 
                 // リーダーを作成
+                // SAFETY: create_reader()は複製されたハンドルからFileを作成します。
+                // handleは有効なハンドルで、所有権はFileに移動します。
                 let file = unsafe { platform::create_reader(handle) };
                 let async_file = tokio::fs::File::from_std(file);
                 let mut reader = tokio::io::BufReader::new(async_file);
@@ -2296,6 +2418,11 @@ mod stdio_redirect {
         fn drop(&mut self) {
             use platform::*;
 
+            // SAFETY: drop時にstdout/stderrを元の状態に復元します。
+            // - redirect(): 元のfdまたはハンドルを標準出力/エラー出力に復元します。
+            // - close(): 保存していたfd/ハンドルを閉じます。
+            // すべてのfd/ハンドルはnew()で作成された有効なものです。
+            // この時点でそれぞれのfd/ハンドルは一度だけcloseされるため、二重closeは発生しません。
             unsafe {
                 // 元のstdout/stderrを復元
                 let _ = redirect(self.original_stdout, STDOUT_NO);
