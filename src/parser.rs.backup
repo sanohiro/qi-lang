@@ -1,0 +1,2246 @@
+use crate::i18n::{fmt_msg, MsgKey};
+use crate::lexer::{Lexer, LocatedToken, Token};
+use crate::value::{Expr, MatchArm, Pattern, UseMode};
+use std::collections::HashSet;
+use std::sync::LazyLock;
+
+/// 特殊形式のリスト（LazyLockで初期化）
+/// @qi-doc:special-forms
+/// @qi-doc:definition def, defn, defn-
+/// @qi-doc:function fn
+/// @qi-doc:binding let
+/// @qi-doc:control-flow if, do, when, while, until, while-some, until-error, loop, recur
+/// @qi-doc:pattern-matching match
+/// @qi-doc:error-handling try, defer
+/// @qi-doc:macro mac
+/// @qi-doc:module module, export, use, flow
+static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    HashSet::from([
+        "def",
+        "defn",
+        "defn-",
+        "fn",
+        "let",
+        "if",
+        "do",
+        "when",
+        "while",
+        "until",
+        "while-some",
+        "until-error",
+        "match",
+        "try",
+        "defer",
+        "loop",
+        "recur",
+        "mac",
+        "flow",
+        "module",
+        "export",
+        "use",
+    ])
+});
+
+pub struct Parser {
+    tokens: Vec<LocatedToken>,
+    pos: usize,
+    #[allow(dead_code)]
+    source: String,
+    source_name: Option<String>,
+}
+
+impl Parser {
+    pub fn new(input: &str) -> Result<Self, String> {
+        let mut lexer = Lexer::new(input);
+        let tokens = lexer.tokenize()?;
+        Ok(Parser {
+            tokens,
+            pos: 0,
+            source: input.to_string(),
+            source_name: None,
+        })
+    }
+
+    /// ソース名を設定（エラーメッセージに使用）
+    pub fn set_source_name(&mut self, name: String) {
+        self.source_name = Some(name);
+    }
+
+    fn current(&self) -> Option<&Token> {
+        if self.pos < self.tokens.len() {
+            Some(&self.tokens[self.pos].token)
+        } else {
+            None
+        }
+    }
+
+    /// 現在のトークンのSpanを取得
+    fn current_span(&self) -> Option<&crate::lexer::Span> {
+        if self.pos < self.tokens.len() {
+            Some(&self.tokens[self.pos].span)
+        } else if !self.tokens.is_empty() {
+            // EOF時は最後のトークンのspanを返す
+            Some(&self.tokens[self.tokens.len() - 1].span)
+        } else {
+            None
+        }
+    }
+
+    /// 行番号付きエラーメッセージを生成
+    fn error_with_line(&self, key: MsgKey, args: &[&str]) -> String {
+        let base_msg = fmt_msg(key, args);
+
+        // 位置情報を追加
+        if let Some(span) = self.current_span() {
+            if span.line != 0 || span.column != 0 {
+                let file_name = self
+                    .source_name
+                    .clone()
+                    .unwrap_or_else(|| "<input>".to_string());
+                return format!("{}:{}:{}: {}", file_name, span.line, span.column, base_msg);
+            }
+        }
+
+        base_msg
+    }
+
+    fn advance(&mut self) {
+        self.pos += 1;
+    }
+
+    /// 現在のトークンがStringの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_string(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::String(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// 現在のトークンがSymbolの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_symbol(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::Symbol(s) => Some(s),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// 現在のトークンがKeywordの場合、所有権を取得して前進
+    /// クローンを避けるための最適化
+    #[inline]
+    fn take_keyword(&mut self) -> Option<String> {
+        if self.pos < self.tokens.len() {
+            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
+            self.pos += 1;
+            match token {
+                Token::Keyword(k) => Some(k),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn expect(&mut self, expected: Token) -> Result<(), String> {
+        match self.current() {
+            Some(token) if token == &expected => {
+                self.advance();
+                Ok(())
+            }
+            Some(token) => Err(self.error_with_line(
+                MsgKey::ExpectedToken,
+                &[&expected.display_name(), &token.display_name()],
+            )),
+            None => {
+                Err(self.error_with_line(MsgKey::ExpectedToken, &[&expected.display_name(), "EOF"]))
+            }
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Expr, String> {
+        self.parse_expr()
+    }
+
+    pub fn parse_all(&mut self) -> Result<Vec<Expr>, String> {
+        // トークン数 / 8: トークン5個で1式（関数呼び出しの平均）、
+        // さらにネストを考慮すると約1/8が妥当
+        let estimated_exprs = (self.tokens.len() / 8).max(4);
+        let mut exprs = Vec::with_capacity(estimated_exprs);
+        while self.current().is_some() {
+            exprs.push(self.parse_expr()?);
+        }
+        Ok(exprs)
+    }
+
+    fn parse_expr(&mut self) -> Result<Expr, String> {
+        let _start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        let mut expr = self.parse_primary()?;
+
+        // パイプライン演算子を処理
+        loop {
+            match self.current() {
+                Some(Token::Pipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+
+                    // _プレースホルダーがある場合は置き換え、ない場合は末尾に追加
+                    // x |> (str "?" _ "=") → (str "?" x "=")
+                    // x |> (f a b) → (f a b x)
+                    expr = if Self::has_placeholder(&right) {
+                        Self::replace_placeholder(right, expr)
+                    } else {
+                        match right {
+                            // 右辺が関数呼び出しの場合、最後の引数に追加
+                            Expr::Call {
+                                func,
+                                mut args,
+                                span,
+                            } => {
+                                args.push(expr);
+                                Expr::Call { func, args, span }
+                            }
+                            // それ以外は通常の呼び出し
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                                span: pipe_span,
+                            },
+                        }
+                    };
+                }
+                Some(Token::PipeRailway) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+
+                    // x |>? f を (_railway-pipe f x) に変換
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol {
+                            name: "_railway-pipe".to_string(),
+                            span: pipe_span,
+                        }),
+                        args: vec![right, expr],
+                        span: pipe_span,
+                    };
+                }
+                Some(Token::ParallelPipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+
+                    // x ||> f を (pmap f x) に変換
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol {
+                            name: "pmap".to_string(),
+                            span: pipe_span,
+                        }),
+                        args: vec![right, expr],
+                        span: pipe_span,
+                    };
+                }
+                _ => break,
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_primary(&mut self) -> Result<Expr, String> {
+        match self.current() {
+            Some(Token::Nil) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::Nil { span })
+            }
+            Some(Token::True) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::Bool { value: true, span })
+            }
+            Some(Token::False) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::Bool { value: false, span })
+            }
+            Some(Token::Integer(n)) => {
+                let value = *n;
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::Integer { value, span })
+            }
+            Some(Token::Float(f)) => {
+                let value = *f;
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::Float { value, span })
+            }
+            Some(Token::String(_)) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let value = self.take_string()
+                    .expect("token should be a string");
+                Ok(Expr::String { value, span })
+            }
+            Some(Token::FString(parts)) => {
+                let parts = parts.clone();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                self.advance();
+                Ok(Expr::FString { parts, span })
+            }
+            Some(Token::Symbol(_)) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let name = self.take_symbol()
+                    .expect("token should be a symbol");
+                Ok(Expr::Symbol { name, span })
+            }
+            Some(Token::Keyword(_)) => {
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let name = self.take_keyword()
+                    .expect("token should be a keyword");
+                Ok(Expr::Keyword { name, span })
+            }
+            Some(Token::LParen) => self.parse_list(),
+            Some(Token::LBracket) => self.parse_vector(),
+            Some(Token::LBrace) => self.parse_map(),
+            Some(Token::Quote) => self.parse_quote(),
+            Some(Token::Backquote) => self.parse_quasiquote(),
+            Some(Token::Unquote) => self.parse_unquote(),
+            Some(Token::UnquoteSplice) => self.parse_unquote_splice(),
+            Some(Token::At) => self.parse_at(),
+            Some(token) => {
+                Err(self.error_with_line(MsgKey::UnexpectedToken, &[&token.display_name()]))
+            }
+            None => Err(self.error_with_line(MsgKey::UnexpectedEof, &[])),
+        }
+    }
+
+    fn parse_list(&mut self) -> Result<Expr, String> {
+        let start_span = self
+            .current_span()
+            .copied()
+            .unwrap_or(crate::lexer::Span::new(0, 0, 0));
+        self.expect(Token::LParen)?;
+
+        // 空リスト
+        if self.current() == Some(&Token::RParen) {
+            self.advance();
+            return Ok(Expr::List {
+                items: vec![],
+                span: start_span,
+            });
+        }
+
+        // 特殊形式のチェック
+        if let Some(Token::Symbol(name)) = self.current() {
+            // HashSetで特殊形式かチェック（高速）
+            if SPECIAL_FORMS.contains(name.as_str()) {
+                let name_str = name.as_str();
+                return match name_str {
+                    "def" => self.parse_def(),
+                    "defn" => self.parse_defn(),
+                    "defn-" => self.parse_defn_private(),
+                    "fn" => self.parse_fn(),
+                    "let" => self.parse_let(),
+                    "if" => self.parse_if(),
+                    "do" => self.parse_do(),
+                    "when" => self.parse_when(),
+                    "while" => self.parse_while(),
+                    "until" => self.parse_until(),
+                    "while-some" => self.parse_while_some(),
+                    "until-error" => self.parse_until_error(),
+                    "match" => self.parse_match(),
+                    "try" => self.parse_try(),
+                    "defer" => self.parse_defer(),
+                    "loop" => self.parse_loop(),
+                    "recur" => self.parse_recur(),
+                    "mac" => self.parse_mac(),
+                    "flow" => self.parse_flow(),
+                    "module" => self.parse_module(),
+                    "export" => self.parse_export(),
+                    "use" => self.parse_use(),
+                    _ => unreachable!("All special forms should be handled"),
+                };
+            }
+        }
+
+        // 通常のリスト（関数呼び出し）
+        let first_expr = self.parse_primary()?; // パイプラインを含まない
+
+        // パイプラインのチェック
+        if self.current() == Some(&Token::Pipe)
+            || self.current() == Some(&Token::PipeRailway)
+            || self.current() == Some(&Token::ParallelPipe)
+            || self.current() == Some(&Token::AsyncPipe)
+        {
+            let mut expr = first_expr;
+            let mut is_async = false;
+
+            loop {
+                match self.current() {
+                    Some(Token::Pipe) => {
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        expr = if Self::has_placeholder(&right) {
+                            Self::replace_placeholder(right, expr)
+                        } else {
+                            match right {
+                                Expr::Call {
+                                    func,
+                                    mut args,
+                                    span,
+                                } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args, span }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                    span: start_span,
+                                },
+                            }
+                        };
+                    }
+                    Some(Token::PipeRailway) => {
+                        let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // x |>? f を (_railway-pipe f x) に変換
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol {
+                                name: "_railway-pipe".to_string(),
+                                span: pipe_span,
+                            }),
+                            args: vec![right, expr],
+                            span: pipe_span,
+                        };
+                    }
+                    Some(Token::ParallelPipe) => {
+                        let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // x ||> f を (pmap f x) に変換
+                        expr = Expr::Call {
+                            func: Box::new(Expr::Symbol {
+                                name: "pmap".to_string(),
+                                span: pipe_span,
+                            }),
+                            args: vec![right, expr],
+                            span: pipe_span,
+                        };
+                    }
+                    Some(Token::AsyncPipe) => {
+                        is_async = true;
+                        self.advance();
+                        let right = self.parse_primary()?;
+
+                        // パイプラインとして処理（_プレースホルダー対応）
+                        expr = if Self::has_placeholder(&right) {
+                            Self::replace_placeholder(right, expr)
+                        } else {
+                            match right {
+                                Expr::Call {
+                                    func,
+                                    mut args,
+                                    span,
+                                } => {
+                                    args.push(expr);
+                                    Expr::Call { func, args, span }
+                                }
+                                _ => Expr::Call {
+                                    func: Box::new(right),
+                                    args: vec![expr],
+                                    span: start_span,
+                                },
+                            }
+                        };
+                    }
+                    _ => break,
+                }
+            }
+            self.expect(Token::RParen)?;
+
+            // ~> が使われていたら、全体を (go (fn [] ...)) でラップ
+            if is_async {
+                // (fn [] expr) を作成
+                let lambda = Expr::Fn {
+                    params: vec![],
+                    body: Box::new(expr),
+                    is_variadic: false,
+                    span: start_span,
+                };
+
+                // (go lambda) を作成
+                expr = Expr::Call {
+                    func: Box::new(Expr::Symbol {
+                        name: "go".to_string(),
+                        span: start_span,
+                    }),
+                    args: vec![lambda],
+                    span: start_span,
+                };
+            }
+
+            return Ok(expr);
+        }
+
+        // 通常の関数呼び出し
+        let func = Box::new(first_expr);
+        // 4: 関数引数は通常2-4個（例: (f x y), (map fn coll)）
+        let mut args = Vec::with_capacity(4);
+
+        while self.current() != Some(&Token::RParen) {
+            args.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Call {
+            func,
+            args,
+            span: start_span,
+        })
+    }
+
+    fn parse_def(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'def'をスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["def"])),
+        };
+
+        let value = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Def {
+            name,
+            value,
+            is_private: false,
+            span: start_span,
+        })
+    }
+
+    /// defn/defn- 共通の内部実装
+    /// is_private: プライベート定義かどうか
+    /// keyword: エラーメッセージ用のキーワード名
+    fn parse_defn_internal(&mut self, is_private: bool, keyword: &str) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // キーワードをスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &[keyword])),
+        };
+
+        // ドキュメント文字列/マップの処理
+        let doc_expr = if !matches!(self.current(), Some(Token::LBracket)) {
+            // パラメータリストでない場合はドキュメント
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        // パラメータリストのパース
+        let (params, is_variadic) = self.parse_fn_params()?;
+
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
+        self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
+
+        // (fn [params] body) を構築
+        let fn_expr = Expr::Fn {
+            params,
+            body,
+            is_variadic,
+            span: start_span,
+        };
+
+        // ドキュメントがある場合は (do (def __doc__name doc) (def name (fn ...)))
+        // ない場合は (def name (fn ...))
+        if let Some(doc) = doc_expr {
+            let doc_key = format!("{}{}", crate::eval::DOC_PREFIX, name);
+            let doc_def = Expr::Def {
+                name: doc_key,
+                value: Box::new(doc),
+                is_private,
+                span: start_span,
+            };
+            let fn_def = Expr::Def {
+                name,
+                value: Box::new(fn_expr),
+                is_private,
+                span: start_span,
+            };
+            Ok(Expr::Do {
+                exprs: vec![doc_def, fn_def],
+                span: start_span,
+            })
+        } else {
+            Ok(Expr::Def {
+                name,
+                value: Box::new(fn_expr),
+                is_private,
+                span: start_span,
+            })
+        }
+    }
+
+    /// defn を def + fn に展開
+    /// (defn name [params] body) -> (def name (fn [params] body))
+    /// (defn name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body)))
+    fn parse_defn(&mut self) -> Result<Expr, String> {
+        self.parse_defn_internal(false, "defn")
+    }
+
+    /// defn- を def + fn に展開（プライベート）
+    /// (defn- name [params] body) -> (def name (fn [params] body)) with is_private=true
+    /// (defn- name doc [params] body) -> (do (def __doc__name doc) (def name (fn [params] body))) with is_private=true
+    fn parse_defn_private(&mut self) -> Result<Expr, String> {
+        self.parse_defn_internal(true, "defn-")
+    }
+
+    fn parse_fn(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'fn'をスキップ
+
+        let (params, is_variadic) = self.parse_fn_params()?;
+
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
+        self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
+
+        Ok(Expr::Fn {
+            params,
+            body,
+            is_variadic,
+            span: start_span,
+        })
+    }
+
+    /// 関数パラメータリストのパース（defn, defn-, fn共通）
+    fn parse_fn_params(&mut self) -> Result<(Vec<crate::value::Pattern>, bool), String> {
+        self.expect(Token::LBracket)?;
+        // 4: 関数パラメータは通常2-4個（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
+        let mut is_variadic = false;
+
+        while self.current() != Some(&Token::RBracket) {
+            if let Some(Token::Symbol(s)) = self.current() {
+                if s == "&" {
+                    self.advance();
+                    is_variadic = true;
+                    if let Some(Token::Symbol(_)) = self.current() {
+                        params.push(crate::value::Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol")));
+                    } else {
+                        return Err(self.error_with_line(MsgKey::VarargNeedsName, &[]));
+                    }
+                    break;
+                } else {
+                    params.push(self.parse_binding_pattern()?);
+                }
+            } else {
+                params.push(self.parse_binding_pattern()?);
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+        Ok((params, is_variadic))
+    }
+
+    /// 束縛パターンのパース（let, fn, defn等で共通）
+    /// シンボル、ベクタ分解、マップ分解をサポート
+    fn parse_binding_pattern(&mut self) -> Result<crate::value::Pattern, String> {
+        match self.current() {
+            Some(Token::Symbol(_)) => {
+                let name = self.take_symbol()
+                    .expect("token should be a symbol");
+                Ok(crate::value::Pattern::Var(name))
+            }
+            Some(Token::LBracket) => self.parse_fn_param_vector(),
+            Some(Token::LBrace) => self.parse_fn_param_map(),
+            _ => Err(self.error_with_line(MsgKey::NeedsSymbol, &["binding pattern"])),
+        }
+    }
+
+    /// ベクタの分解パターンをパース: [x y] or [[a b] c] or [x ...rest]
+    fn parse_fn_param_vector(&mut self) -> Result<crate::value::Pattern, String> {
+        self.expect(Token::LBracket)?;
+
+        // 4: ベクタ分解パターンは通常2-4個の要素（例: [x y], [a b c]）
+        let mut params = Vec::with_capacity(4);
+        let mut rest = None;
+
+        while self.current() != Some(&Token::RBracket) {
+            // ...rest パターンのチェック
+            if self.current() == Some(&Token::Ellipsis) {
+                self.advance(); // ...
+                                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(crate::value::Pattern::Var(
+                            self.take_symbol()
+                    .expect("token should be a symbol"),
+                        )));
+                        // ...rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                }
+            } else if let Some(Token::Symbol(s)) = self.current() {
+                // & rest パターンのチェック
+                if s == "&" {
+                    self.advance(); // &
+                                    // 次は変数名でなければならない
+                    match self.current() {
+                        Some(Token::Symbol(_)) => {
+                            rest = Some(Box::new(crate::value::Pattern::Var(
+                                self.take_symbol()
+                    .expect("token should be a symbol"),
+                            )));
+                            // & rest の後に他のパターンがあってはならない
+                            break;
+                        }
+                        _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                    }
+                } else {
+                    // 通常のシンボル - take_symbolを使ってクローンを避ける
+                    params.push(crate::value::Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol")));
+                }
+            } else if let Some(Token::LBracket) = self.current() {
+                // ネストしたベクタパターン
+                params.push(self.parse_fn_param_vector()?);
+            } else if let Some(Token::LBrace) = self.current() {
+                // ネストしたマップパターン
+                params.push(self.parse_fn_param_map()?);
+            } else {
+                return Err(self.error_with_line(MsgKey::NeedsSymbol, &["fn parameter"]));
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        Ok(crate::value::Pattern::Vector(params, rest))
+    }
+
+    /// マップの分解パターンをパース: {:key var} or {:key var :as all}
+    fn parse_fn_param_map(&mut self) -> Result<crate::value::Pattern, String> {
+        self.expect(Token::LBrace)?;
+
+        // 4: マップ分解パターンは通常2-4個のキー（例: {:x a :y b}）
+        let mut pairs = Vec::with_capacity(4);
+        let mut as_var = None;
+
+        while self.current() != Some(&Token::RBrace) {
+            // :as チェック
+            if let Some(Token::Keyword(k)) = self.current() {
+                if k == "as" {
+                    self.advance(); // :as
+                                    // 次は変数名
+                    match self.current() {
+                        Some(Token::Symbol(_)) => {
+                            as_var = Some(self.take_symbol()
+                    .expect("token should be a symbol"));
+                            break;
+                        }
+                        _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
+                    }
+                }
+            }
+
+            let key = match self.current() {
+                Some(Token::Keyword(_)) => self.take_keyword()
+                    .expect("token should be a keyword"),
+                _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
+            };
+
+            // 変数名またはパターン
+            let pattern = if let Some(Token::Symbol(_)) = self.current() {
+                let var_name = self.take_symbol()
+                    .expect("token should be a symbol");
+                crate::value::Pattern::Var(var_name)
+            } else if let Some(Token::LBracket) = self.current() {
+                // ネストしたベクタパターン
+                self.parse_fn_param_vector()?
+            } else if let Some(Token::LBrace) = self.current() {
+                // ネストしたマップパターン
+                self.parse_fn_param_map()?
+            } else {
+                return Err(self.error_with_line(MsgKey::NeedsSymbol, &["map pattern"]));
+            };
+
+            pairs.push((key, pattern));
+        }
+
+        self.expect(Token::RBrace)?;
+
+        Ok(crate::value::Pattern::Map(pairs, as_var))
+    }
+
+    fn parse_let(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'let'をスキップ
+
+        // 束縛のパース
+        self.expect(Token::LBracket)?;
+        // 4: let束縛は通常2-4個のペア（例: [x 1 y 2]）
+        let mut bindings = Vec::with_capacity(4);
+
+        while self.current() != Some(&Token::RBracket) {
+            // 共通化された束縛パターンパース関数を使用
+            let pattern = self.parse_binding_pattern()?;
+            let value = self.parse_expr()?;
+            bindings.push((pattern, value));
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース（複数の式を暗黙のdoで囲む）
+        let mut body_exprs = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body_exprs.push(self.parse_expr()?);
+        }
+        self.expect(Token::RParen)?;
+
+        // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
+        let body = Box::new(if body_exprs.len() == 1 {
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
+        } else {
+            Expr::Do {
+                exprs: body_exprs,
+                span: start_span,
+            }
+        });
+
+        Ok(Expr::Let {
+            bindings,
+            body,
+            span: start_span,
+        })
+    }
+
+    fn parse_if(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'if'をスキップ
+
+        let test = Box::new(self.parse_expr()?);
+        let then = Box::new(self.parse_expr()?);
+
+        let otherwise = if self.current() != Some(&Token::RParen) {
+            Some(Box::new(self.parse_expr()?))
+        } else {
+            None
+        };
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::If {
+            test,
+            then,
+            otherwise,
+            span: start_span,
+        })
+    }
+
+    fn parse_do(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'do'をスキップ
+
+        // 16: do式は副作用処理で長くなりがち（I/O、デバッグ等）
+        let mut exprs = Vec::with_capacity(16);
+        while self.current() != Some(&Token::RParen) {
+            exprs.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Do {
+            exprs,
+            span: start_span,
+        })
+    }
+
+    fn parse_vector(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.expect(Token::LBracket)?;
+
+        // 8: ベクタリテラルは通常4-8個の要素（例: [1 2 3 4 5]）
+        let mut items = Vec::with_capacity(8);
+        while self.current() != Some(&Token::RBracket) {
+            items.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RBracket)?;
+
+        Ok(Expr::Vector {
+            items,
+            span: start_span,
+        })
+    }
+
+    fn parse_map(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.expect(Token::LBrace)?;
+
+        // 8: マップリテラルは通常2-8ペア（例: {:x 1 :y 2 :z 3}）
+        let mut pairs = Vec::with_capacity(8);
+        while self.current() != Some(&Token::RBrace) {
+            let key = self.parse_expr()?;
+            let value = self.parse_expr()?;
+            pairs.push((key, value));
+        }
+
+        self.expect(Token::RBrace)?;
+
+        Ok(Expr::Map {
+            pairs,
+            span: start_span,
+        })
+    }
+
+    fn parse_quote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'をスキップ
+        let expr = self.parse_expr()?;
+        Ok(Expr::Call {
+            func: Box::new(Expr::Symbol {
+                name: "quote".to_string(),
+                span: start_span,
+            }),
+            args: vec![expr],
+            span: start_span,
+        })
+    }
+
+    fn parse_match(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'match'をスキップ
+
+        // マッチする式
+        let expr = Box::new(self.parse_expr()?);
+
+        // アームのパース
+        // 4: matchアームは通常2-5個（例: 値マッチ、デフォルト等）
+        let mut arms = Vec::with_capacity(4);
+        while self.current() != Some(&Token::RParen) {
+            let pattern = self.parse_pattern()?;
+
+            // ガード条件のチェック
+            let guard = if matches!(self.current(), Some(Token::Symbol(s)) if s == "when") {
+                self.advance();
+                Some(Box::new(self.parse_expr()?))
+            } else {
+                None
+            };
+
+            // ->
+            self.expect(Token::Arrow)?;
+
+            // 結果式
+            let body = Box::new(self.parse_expr()?);
+
+            arms.push(MatchArm {
+                pattern,
+                guard,
+                body,
+            });
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Match {
+            expr,
+            arms,
+            span: start_span,
+        })
+    }
+
+    /// (try expr)
+    fn parse_try(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'try'をスキップ
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Try {
+            expr,
+            span: start_span,
+        })
+    }
+
+    /// (defer expr)
+    fn parse_defer(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'defer'をスキップ
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Defer {
+            expr,
+            span: start_span,
+        })
+    }
+
+    fn parse_loop(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'loop'をスキップ
+
+        // 束縛のパース [var1 val1 var2 val2 ...]
+        self.expect(Token::LBracket)?;
+        // 4: loop束縛は通常2-4個のペア（例: [i 0 acc []]）
+        let mut bindings = Vec::with_capacity(4);
+
+        while self.current() != Some(&Token::RBracket) {
+            let name = match self.current() {
+                Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+                _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["loop"])),
+            };
+
+            let value = self.parse_expr()?;
+            bindings.push((name, value));
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let body = Box::new(self.parse_expr()?);
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Loop {
+            bindings,
+            body,
+            span: start_span,
+        })
+    }
+
+    fn parse_recur(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'recur'をスキップ
+
+        // 4: recur引数はloop束縛と同数（通常2-4個）
+        let mut args = Vec::with_capacity(4);
+        while self.current() != Some(&Token::RParen) {
+            args.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Recur {
+            args,
+            span: start_span,
+        })
+    }
+
+    /// whenをパース: (when condition expr1 expr2 ...)
+    fn parse_when(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'when'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::When {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// whileをパース: (while condition expr1 expr2 ...)
+    fn parse_while(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'while'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::While {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// untilをパース: (until condition expr1 expr2 ...)
+    fn parse_until(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'until'をスキップ
+
+        let condition = Box::new(self.parse_expr()?);
+
+        // 本体の式を全て読む
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Until {
+            condition,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// while-someをパース: (while-some [binding expr] body...)
+    fn parse_while_some(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'while-some'をスキップ
+
+        // 束縛のパース [var expr]
+        self.expect(Token::LBracket)?;
+
+        let binding = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["while-some"])),
+        };
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::WhileSome {
+            binding,
+            expr,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// until-errorをパース: (until-error [binding expr] body...)
+    fn parse_until_error(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'until-error'をスキップ
+
+        // 束縛のパース [var expr]
+        self.expect(Token::LBracket)?;
+
+        let binding = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["until-error"])),
+        };
+
+        let expr = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RBracket)?;
+
+        // 本体のパース
+        let mut body = Vec::new();
+        while self.current() != Some(&Token::RParen) {
+            body.push(self.parse_expr()?);
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::UntilError {
+            binding,
+            expr,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// macをパース
+    fn parse_mac(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'mac'をスキップ
+
+        // マクロ名
+        let name = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
+        };
+
+        // パラメータリスト
+        self.expect(Token::LBracket)?;
+        // 4: マクロパラメータは通常2-4個（例: [name body]）
+        let mut params = Vec::with_capacity(4);
+        let mut is_variadic = false;
+
+        while self.current() != Some(&Token::RBracket) {
+            match self.current() {
+                Some(Token::Symbol(s)) if s == "&" => {
+                    is_variadic = true;
+                    self.advance();
+                    // 次のシンボルが可変引数名
+                    match self.current() {
+                        Some(Token::Symbol(_)) => {
+                            params.push(self.take_symbol()
+                    .expect("token should be a symbol"));
+                        }
+                        _ => return Err(self.error_with_line(MsgKey::MacVarargNeedsSymbol, &[])),
+                    }
+                }
+                Some(Token::Symbol(_)) => {
+                    params.push(self.take_symbol()
+                    .expect("token should be a symbol"));
+                }
+                _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // 本体
+        let body = Box::new(self.parse_expr()?);
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Mac {
+            name,
+            params,
+            is_variadic,
+            body,
+            span: start_span,
+        })
+    }
+
+    /// flowをパース
+    /// (flow data |> fn1 |> fn2) → (data |> fn1 |> fn2)
+    /// (flow |> fn1 |> fn2) → (fn [x] (x |> fn1 |> fn2))
+    fn parse_flow(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'flow'をスキップ
+
+        // 最初が|>の場合、ラムダを生成
+        if self.current() == Some(&Token::Pipe) {
+            // (flow |> fn1 |> fn2) → (fn [__flow_x] (__flow_x |> fn1 |> fn2))
+            let var_name = "__flow_x".to_string();
+            let expr = Expr::Symbol {
+                name: var_name.clone(),
+                span: start_span,
+            };
+
+            // パイプラインをパース（共通ヘルパー使用）
+            let expr = self.parse_pipeline_chain(expr)?;
+
+            self.expect(Token::RParen)?;
+
+            // ラムダでラップ
+            Ok(Expr::Fn {
+                params: vec![crate::value::Pattern::Var(var_name)],
+                body: Box::new(expr),
+                is_variadic: false,
+                span: start_span,
+            })
+        } else {
+            // (flow data |> fn1 |> fn2) → 通常のパイプラインとしてパース
+            let first = self.parse_primary()?;
+
+            // パイプラインのチェック
+            if self.current() == Some(&Token::Pipe)
+                || self.current() == Some(&Token::PipeRailway)
+                || self.current() == Some(&Token::ParallelPipe)
+            {
+                // パイプラインをパース（共通ヘルパー使用）
+                let expr = self.parse_pipeline_chain(first)?;
+                self.expect(Token::RParen)?;
+                Ok(expr)
+            } else {
+                // パイプラインなし、単にfirstを返す
+                self.expect(Token::RParen)?;
+                Ok(first)
+            }
+        }
+    }
+
+    /// パイプラインチェーンをパース（共通ヘルパー）
+    /// |>, |>?, ||> をチェーンでパースし、初期式に適用する
+    fn parse_pipeline_chain(&mut self, mut expr: Expr) -> Result<Expr, String> {
+        while self.current() == Some(&Token::Pipe)
+            || self.current() == Some(&Token::PipeRailway)
+            || self.current() == Some(&Token::ParallelPipe)
+        {
+            match self.current() {
+                Some(Token::Pipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+                    expr = if Self::has_placeholder(&right) {
+                        Self::replace_placeholder(right, expr)
+                    } else {
+                        match right {
+                            Expr::Call {
+                                func,
+                                mut args,
+                                span,
+                            } => {
+                                args.push(expr);
+                                Expr::Call { func, args, span }
+                            }
+                            _ => Expr::Call {
+                                func: Box::new(right),
+                                args: vec![expr],
+                                span: pipe_span,
+                            },
+                        }
+                    };
+                }
+                Some(Token::PipeRailway) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol {
+                            name: "_railway-pipe".to_string(),
+                            span: pipe_span,
+                        }),
+                        args: vec![right, expr],
+                        span: pipe_span,
+                    };
+                }
+                Some(Token::ParallelPipe) => {
+                    let pipe_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+                    self.advance();
+                    let right = self.parse_primary()?;
+                    expr = Expr::Call {
+                        func: Box::new(Expr::Symbol {
+                            name: "pmap".to_string(),
+                            span: pipe_span,
+                        }),
+                        args: vec![right, expr],
+                        span: pipe_span,
+                    };
+                }
+                _ => break,
+            }
+        }
+        Ok(expr)
+    }
+
+    /// quasiquoteをパース
+    fn parse_quasiquote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // `をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::Quasiquote {
+            expr,
+            span: start_span,
+        })
+    }
+
+    /// unquoteをパース
+    fn parse_unquote(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // ,をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::Unquote {
+            expr,
+            span: start_span,
+        })
+    }
+
+    /// unquote-spliceをパース
+    fn parse_unquote_splice(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // ,@をスキップ
+        let expr = Box::new(self.parse_expr()?);
+        Ok(Expr::UnquoteSplice {
+            expr,
+            span: start_span,
+        })
+    }
+
+    /// @構文: @expr => (deref expr)
+    fn parse_at(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // @をスキップ
+        let expr = self.parse_primary()?;
+        Ok(Expr::Call {
+            func: Box::new(Expr::Symbol {
+                name: "deref".to_string(),
+                span: start_span,
+            }),
+            args: vec![expr],
+            span: start_span,
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pattern, String> {
+        // 最初のパターンをパース
+        let first_pattern = self.parse_single_pattern()?;
+
+        // | があればorパターンとして複数パターンを収集
+        if self.current() == Some(&Token::Bar) {
+            let mut patterns = vec![first_pattern];
+
+            while self.current() == Some(&Token::Bar) {
+                self.advance(); // |
+                patterns.push(self.parse_single_pattern()?);
+            }
+
+            Ok(Pattern::Or(patterns))
+        } else {
+            Ok(first_pattern)
+        }
+    }
+
+    fn parse_single_pattern(&mut self) -> Result<Pattern, String> {
+        match self.current() {
+            Some(Token::Symbol(s)) if s == "_" => {
+                self.advance();
+                Ok(Pattern::Wildcard)
+            }
+            Some(Token::Nil) => {
+                self.advance();
+                Ok(Pattern::Nil)
+            }
+            Some(Token::True) => {
+                self.advance();
+                Ok(Pattern::Bool(true))
+            }
+            Some(Token::False) => {
+                self.advance();
+                Ok(Pattern::Bool(false))
+            }
+            Some(Token::Integer(n)) => {
+                let n = *n;
+                self.advance();
+                Ok(Pattern::Integer(n))
+            }
+            Some(Token::Float(f)) => {
+                let f = *f;
+                self.advance();
+                Ok(Pattern::Float(f))
+            }
+            Some(Token::String(_)) => {
+                let s = self.take_string()
+                    .expect("token should be a string");
+                Ok(Pattern::String(s))
+            }
+            Some(Token::Keyword(_)) => {
+                let k = self.take_keyword()
+                    .expect("token should be a keyword");
+                Ok(Pattern::Keyword(k))
+            }
+            Some(Token::Symbol(_)) => {
+                let s = self.take_symbol()
+                    .expect("token should be a symbol");
+                Ok(Pattern::Var(s))
+            }
+            Some(Token::LBracket) => self.parse_vector_pattern(),
+            Some(Token::LBrace) => self.parse_map_pattern(),
+            Some(token) => {
+                Err(self.error_with_line(MsgKey::UnexpectedPattern, &[&token.display_name()]))
+            }
+            None => Err(self.error_with_line(MsgKey::UnexpectedEof, &[])),
+        }
+    }
+
+    fn parse_vector_pattern(&mut self) -> Result<Pattern, String> {
+        self.expect(Token::LBracket)?;
+
+        // 4: ベクタパターンは通常2-4個の要素（例: [x y], [a b c]）
+        let mut patterns = Vec::with_capacity(4);
+        let mut rest = None;
+
+        while self.current() != Some(&Token::RBracket) {
+            // ...rest パターンのチェック
+            if self.current() == Some(&Token::Ellipsis) {
+                self.advance(); // ...
+                                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol"))));
+                        // ...rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                }
+            } else if matches!(self.current(), Some(Token::Symbol(s)) if s == "&") {
+                // & rest パターン
+                self.advance(); // &
+                                // 次は変数名でなければならない
+                match self.current() {
+                    Some(Token::Symbol(_)) => {
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol"))));
+                        // & rest の後に他のパターンがあってはならない
+                        break;
+                    }
+                    _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
+                }
+            } else {
+                patterns.push(self.parse_pattern()?);
+            }
+        }
+
+        self.expect(Token::RBracket)?;
+
+        // restがある場合はListパターン、ない場合はVectorパターン
+        if rest.is_some() {
+            Ok(Pattern::List(patterns, rest))
+        } else {
+            Ok(Pattern::Vector(patterns, None))
+        }
+    }
+
+    fn parse_map_pattern(&mut self) -> Result<Pattern, String> {
+        self.expect(Token::LBrace)?;
+
+        // 4: マップパターンは通常2-4個のキー（例: {:x a :y b}）
+        let mut pairs = Vec::with_capacity(4);
+        let mut as_var = None;
+
+        while self.current() != Some(&Token::RBrace) {
+            // :as チェック
+            if let Some(Token::Keyword(k)) = self.current() {
+                if k == "as" {
+                    self.advance(); // :as
+                                    // 次は変数名
+                    match self.current() {
+                        Some(Token::Symbol(_)) => {
+                            as_var = Some(self.take_symbol()
+                    .expect("token should be a symbol"));
+                            break;
+                        }
+                        _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
+                    }
+                }
+            }
+
+            let key = match self.current() {
+                Some(Token::Keyword(_)) => self.take_keyword()
+                    .expect("token should be a keyword"),
+                _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
+            };
+
+            // 変数名またはパターン
+            let pattern = if let Some(Token::Symbol(_)) = self.current() {
+                let var_name = self.take_symbol()
+                    .expect("token should be a symbol");
+
+                // => チェック
+                if self.current() == Some(&Token::FatArrow) {
+                    // {:key var => transform} の形式
+                    self.advance(); // =>
+                    let transform = self.parse_primary()?;
+                    Pattern::Transform(var_name, Box::new(transform))
+                } else {
+                    // 通常の変数パターン
+                    Pattern::Var(var_name)
+                }
+            } else {
+                self.parse_pattern()?
+            };
+
+            pairs.push((key, pattern));
+        }
+
+        self.expect(Token::RBrace)?;
+
+        let map_pattern = Pattern::Map(pairs, None);
+
+        // :as があれば As パターンでラップ
+        if let Some(var) = as_var {
+            Ok(Pattern::As(Box::new(map_pattern), var))
+        } else {
+            Ok(map_pattern)
+        }
+    }
+
+    /// (module name)
+    fn parse_module(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'module'をスキップ
+
+        let name = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            Some(Token::String(_)) => self.take_string()
+                    .expect("token should be a string"),
+            _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
+        };
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Module {
+            name,
+            span: start_span,
+        })
+    }
+
+    /// (export sym1 sym2 ...)
+    fn parse_export(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'export'をスキップ
+
+        // 8: エクスポートシンボルは通常2-8個（モジュールの公開関数）
+        let mut symbols = Vec::with_capacity(8);
+        while self.current() != Some(&Token::RParen) {
+            match self.current() {
+                Some(Token::Symbol(_)) => {
+                    symbols.push(self.take_symbol()
+                    .expect("token should be a symbol"));
+                }
+                _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
+            }
+        }
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Export {
+            symbols,
+            span: start_span,
+        })
+    }
+
+    /// (use module :only [syms] | :as alias | :all)
+    fn parse_use(&mut self) -> Result<Expr, String> {
+        let start_span = self.current_span().copied().unwrap_or(Expr::dummy_span());
+        self.advance(); // 'use'をスキップ
+
+        // モジュール名（シンボルまたは文字列）
+        let module = match self.current() {
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            Some(Token::String(_)) => self.take_string()
+                    .expect("token should be a string"),
+            _ => return Err(self.error_with_line(MsgKey::UseNeedsModuleName, &[])),
+        };
+
+        // モード指定
+        let mode = match self.current() {
+            Some(Token::Keyword(k)) if k == "only" => {
+                self.advance();
+                // [sym1 sym2 ...]
+                self.expect(Token::LBracket)?;
+                // 8: :onlyで指定するシンボルは通常2-8個
+                let mut symbols = Vec::with_capacity(8);
+                while self.current() != Some(&Token::RBracket) {
+                    match self.current() {
+                        Some(Token::Symbol(_)) => {
+                            symbols.push(self.take_symbol()
+                    .expect("token should be a symbol"));
+                        }
+                        _ => {
+                            return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
+                        }
+                    }
+                }
+                self.expect(Token::RBracket)?;
+                UseMode::Only(symbols)
+            }
+            Some(Token::Keyword(k)) if k == "as" => {
+                self.advance();
+                match self.current() {
+                    Some(Token::Symbol(_)) => {
+                        let alias = self.take_symbol()
+                    .expect("token should be a symbol");
+                        UseMode::As(alias)
+                    }
+                    _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
+                }
+            }
+            Some(Token::Keyword(k)) if k == "all" => {
+                self.advance();
+                UseMode::All
+            }
+            _ => return Err(self.error_with_line(MsgKey::UseNeedsMode, &[])),
+        };
+
+        self.expect(Token::RParen)?;
+
+        Ok(Expr::Use {
+            module,
+            mode,
+            span: start_span,
+        })
+    }
+
+    /// 式の中に_プレースホルダーがあるかチェック
+    fn has_placeholder(expr: &Expr) -> bool {
+        match expr {
+            Expr::Symbol { name, .. } if name == "_" => true,
+            Expr::Call { args, .. } => args.iter().any(Self::has_placeholder),
+            Expr::Vector { items, .. } => items.iter().any(Self::has_placeholder),
+            Expr::List { items, .. } => items.iter().any(Self::has_placeholder),
+            Expr::Map { pairs, .. } => pairs
+                .iter()
+                .any(|(k, v)| Self::has_placeholder(k) || Self::has_placeholder(v)),
+            Expr::Match { expr, arms, .. } => {
+                Self::has_placeholder(expr)
+                    || arms
+                        .iter()
+                        .any(|arm| arm.guard.as_ref().is_some_and(|g| Self::has_placeholder(g)))
+            }
+            Expr::If {
+                test,
+                then,
+                otherwise,
+                ..
+            } => {
+                Self::has_placeholder(test)
+                    || Self::has_placeholder(then)
+                    || otherwise.as_ref().is_some_and(|e| Self::has_placeholder(e))
+            }
+            Expr::Let { bindings, body, .. } => {
+                bindings.iter().any(|(_, v)| Self::has_placeholder(v))
+                    || Self::has_placeholder(body)
+            }
+            Expr::Do { exprs, .. } => exprs.iter().any(Self::has_placeholder),
+            Expr::Try { expr, .. } | Expr::Defer { expr, .. } => Self::has_placeholder(expr),
+            Expr::Loop { bindings, body, .. } => {
+                bindings.iter().any(|(_, v)| Self::has_placeholder(v))
+                    || Self::has_placeholder(body)
+            }
+            Expr::Recur { args, .. } => args.iter().any(Self::has_placeholder),
+            Expr::Fn { body, .. } => Self::has_placeholder(body),
+            Expr::Def { value, .. } => Self::has_placeholder(value),
+            Expr::Quasiquote { expr, .. }
+            | Expr::Unquote { expr, .. }
+            | Expr::UnquoteSplice { expr, .. } => Self::has_placeholder(expr),
+            _ => false,
+        }
+    }
+
+    /// 式の中の_プレースホルダーを値で置き換え
+    fn replace_placeholder(expr: Expr, value: Expr) -> Expr {
+        match expr {
+            Expr::Symbol { name, .. } if name == "_" => value,
+            Expr::Call { func, args, span } => {
+                let new_args = args
+                    .into_iter()
+                    .map(|arg| Self::replace_placeholder(arg, value.clone()))
+                    .collect();
+                Expr::Call {
+                    func,
+                    args: new_args,
+                    span,
+                }
+            }
+            Expr::Vector { items, span } => {
+                let new_items = items
+                    .into_iter()
+                    .map(|item| Self::replace_placeholder(item, value.clone()))
+                    .collect();
+                Expr::Vector {
+                    items: new_items,
+                    span,
+                }
+            }
+            Expr::List { items, span } => {
+                let new_items = items
+                    .into_iter()
+                    .map(|item| Self::replace_placeholder(item, value.clone()))
+                    .collect();
+                Expr::List {
+                    items: new_items,
+                    span,
+                }
+            }
+            Expr::Map { pairs, span } => {
+                let new_pairs = pairs
+                    .into_iter()
+                    .map(|(k, v)| {
+                        (
+                            Self::replace_placeholder(k, value.clone()),
+                            Self::replace_placeholder(v, value.clone()),
+                        )
+                    })
+                    .collect();
+                Expr::Map {
+                    pairs: new_pairs,
+                    span,
+                }
+            }
+            Expr::Match {
+                expr: match_expr,
+                arms,
+                span,
+            } => {
+                let new_expr = Box::new(Self::replace_placeholder(*match_expr, value.clone()));
+                let new_arms = arms
+                    .into_iter()
+                    .map(|arm| MatchArm {
+                        pattern: arm.pattern,
+                        guard: arm
+                            .guard
+                            .map(|g| Box::new(Self::replace_placeholder(*g, value.clone()))),
+                        body: arm.body, // bodyはプレースホルダーを置換しない（パターンマッチ結果を使うため）
+                    })
+                    .collect();
+                Expr::Match {
+                    expr: new_expr,
+                    arms: new_arms,
+                    span,
+                }
+            }
+            Expr::If {
+                test,
+                then,
+                otherwise,
+                span,
+            } => Expr::If {
+                test: Box::new(Self::replace_placeholder(*test, value.clone())),
+                then: Box::new(Self::replace_placeholder(*then, value.clone())),
+                otherwise: otherwise
+                    .map(|e| Box::new(Self::replace_placeholder(*e, value.clone()))),
+                span,
+            },
+            Expr::Let {
+                bindings,
+                body,
+                span,
+            } => {
+                let new_bindings = bindings
+                    .into_iter()
+                    .map(|(pat, v)| (pat, Self::replace_placeholder(v, value.clone())))
+                    .collect();
+                Expr::Let {
+                    bindings: new_bindings,
+                    body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                    span,
+                }
+            }
+            Expr::Do { exprs, span } => {
+                let new_exprs = exprs
+                    .into_iter()
+                    .map(|e| Self::replace_placeholder(e, value.clone()))
+                    .collect();
+                Expr::Do {
+                    exprs: new_exprs,
+                    span,
+                }
+            }
+            Expr::Try { expr, span } => Expr::Try {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Defer { expr, span } => Expr::Defer {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Loop {
+                bindings,
+                body,
+                span,
+            } => {
+                let new_bindings = bindings
+                    .into_iter()
+                    .map(|(name, v)| (name, Self::replace_placeholder(v, value.clone())))
+                    .collect();
+                Expr::Loop {
+                    bindings: new_bindings,
+                    body: Box::new(Self::replace_placeholder(*body, value.clone())),
+                    span,
+                }
+            }
+            Expr::Recur { args, span } => {
+                let new_args = args
+                    .into_iter()
+                    .map(|arg| Self::replace_placeholder(arg, value.clone()))
+                    .collect();
+                Expr::Recur {
+                    args: new_args,
+                    span,
+                }
+            }
+            Expr::Fn {
+                params,
+                body,
+                is_variadic,
+                span,
+            } => Expr::Fn {
+                params,
+                body: Box::new(Self::replace_placeholder(*body, value)),
+                is_variadic,
+                span,
+            },
+            Expr::Def {
+                name,
+                value: def_value,
+                is_private,
+                span,
+            } => Expr::Def {
+                name,
+                value: Box::new(Self::replace_placeholder(*def_value, value)),
+                is_private,
+                span,
+            },
+            Expr::Quasiquote { expr, span } => Expr::Quasiquote {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::Unquote { expr, span } => Expr::Unquote {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            Expr::UnquoteSplice { expr, span } => Expr::UnquoteSplice {
+                expr: Box::new(Self::replace_placeholder(*expr, value)),
+                span,
+            },
+            _ => expr,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_integer() {
+        let mut parser = Parser::new("42").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Integer { value, .. } => assert_eq!(value, 42),
+            _ => panic!("Expected Integer"),
+        }
+    }
+
+    #[test]
+    fn test_parse_symbol() {
+        let mut parser = Parser::new("foo").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Symbol { name, .. } => assert_eq!(name, "foo"),
+            _ => panic!("Expected Symbol"),
+        }
+    }
+
+    #[test]
+    fn test_parse_list() {
+        let mut parser = Parser::new("(+ 1 2)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Call { func, args, .. } => {
+                match *func {
+                    Expr::Symbol { name, .. } => assert_eq!(name, "+"),
+                    _ => panic!("Expected Symbol"),
+                }
+                assert_eq!(args.len(), 2);
+            }
+            _ => panic!("Expected Call"),
+        }
+    }
+
+    #[test]
+    fn test_parse_def() {
+        let mut parser = Parser::new("(def x 42)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Def {
+                name,
+                value,
+                is_private,
+                ..
+            } => {
+                assert_eq!(name, "x");
+                match *value {
+                    Expr::Integer { value: v, .. } => assert_eq!(v, 42),
+                    _ => panic!("Expected Integer"),
+                }
+                assert!(!is_private);
+            }
+            _ => panic!("Expected Def"),
+        }
+    }
+
+    #[test]
+    fn test_parse_defn_private() {
+        let mut parser = Parser::new("(defn- helper [x] (+ x 1))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Def {
+                name,
+                value,
+                is_private,
+                ..
+            } => {
+                assert_eq!(name, "helper");
+                assert!(is_private);
+                match *value {
+                    Expr::Fn { .. } => {}
+                    _ => panic!("Expected Fn inside Def"),
+                }
+            }
+            _ => panic!("Expected Def"),
+        }
+    }
+
+    #[test]
+    fn test_parse_defn_private_with_doc() {
+        let mut parser = Parser::new("(defn- helper \"Helper function\" [x] (+ x 1))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Do { exprs, .. } => {
+                assert_eq!(exprs.len(), 2);
+                // 最初はドキュメント
+                match &exprs[0] {
+                    Expr::Def {
+                        name, is_private, ..
+                    } => {
+                        assert!(name.starts_with(crate::eval::DOC_PREFIX));
+                        assert!(*is_private);
+                    }
+                    _ => panic!("Expected doc Def"),
+                }
+                // 次は関数定義
+                match &exprs[1] {
+                    Expr::Def {
+                        name, is_private, ..
+                    } => {
+                        assert_eq!(name, "helper");
+                        assert!(*is_private);
+                    }
+                    _ => panic!("Expected fn Def"),
+                }
+            }
+            _ => panic!("Expected Do"),
+        }
+    }
+
+    #[test]
+    fn test_parse_fn() {
+        let mut parser = Parser::new("(fn [x y] (+ x y))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Fn { params, .. } => {
+                assert_eq!(params.len(), 2);
+                assert_eq!(params[0], crate::value::Pattern::Var("x".to_string()));
+                assert_eq!(params[1], crate::value::Pattern::Var("y".to_string()));
+            }
+            _ => panic!("Expected Fn"),
+        }
+    }
+
+    #[test]
+    fn test_parse_module() {
+        let mut parser = Parser::new("(module http)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Module { name, .. } => {
+                assert_eq!(name, "http");
+            }
+            _ => panic!("Expected Module"),
+        }
+    }
+
+    #[test]
+    fn test_parse_export() {
+        let mut parser = Parser::new("(export get post)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Export { symbols, .. } => {
+                assert_eq!(symbols, vec!["get", "post"]);
+            }
+            _ => panic!("Expected Export"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_only() {
+        let mut parser = Parser::new("(use http :only [get post])").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode, .. } => {
+                assert_eq!(module, "http");
+                assert_eq!(
+                    mode,
+                    UseMode::Only(vec!["get".to_string(), "post".to_string()])
+                );
+            }
+            _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_as() {
+        let mut parser = Parser::new("(use http :as h)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode, .. } => {
+                assert_eq!(module, "http");
+                assert_eq!(mode, UseMode::As("h".to_string()));
+            }
+            _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_all() {
+        let mut parser = Parser::new("(use http :all)").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Use { module, mode, .. } => {
+                assert_eq!(module, "http");
+                assert_eq!(mode, UseMode::All);
+            }
+            _ => panic!("Expected Use"),
+        }
+    }
+
+    #[test]
+    fn test_parse_try() {
+        let mut parser = Parser::new("(try (/ 1 0))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Try { .. } => {}
+            _ => panic!("Expected Try"),
+        }
+    }
+
+    #[test]
+    fn test_parse_defer() {
+        let mut parser = Parser::new("(defer (print \"cleanup\"))").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Defer { .. } => {}
+            _ => panic!("Expected Defer"),
+        }
+    }
+
+    #[test]
+    fn test_parse_or_pattern() {
+        let mut parser = Parser::new("(match x 1 | 2 | 3 -> \"small\")").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Match { arms, .. } => {
+                assert_eq!(arms.len(), 1);
+                match &arms[0].pattern {
+                    Pattern::Or(patterns) => {
+                        assert_eq!(patterns.len(), 3);
+                        assert_eq!(patterns[0], Pattern::Integer(1));
+                        assert_eq!(patterns[1], Pattern::Integer(2));
+                        assert_eq!(patterns[2], Pattern::Integer(3));
+                    }
+                    _ => panic!("Expected Or pattern"),
+                }
+            }
+            _ => panic!("Expected Match"),
+        }
+    }
+
+    #[test]
+    fn test_parse_or_pattern_string() {
+        let mut parser = Parser::new("(match x \"a\" | \"b\" -> \"ok\")").unwrap();
+        match parser.parse().unwrap() {
+            Expr::Match { arms, .. } => {
+                assert_eq!(arms.len(), 1);
+                match &arms[0].pattern {
+                    Pattern::Or(patterns) => {
+                        assert_eq!(patterns.len(), 2);
+                        assert_eq!(patterns[0], Pattern::String("a".to_string()));
+                        assert_eq!(patterns[1], Pattern::String("b".to_string()));
+                    }
+                    _ => panic!("Expected Or pattern"),
+                }
+            }
+            _ => panic!("Expected Match"),
+        }
+    }
+}
