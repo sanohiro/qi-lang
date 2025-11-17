@@ -1,0 +1,709 @@
+use super::msg_key::MsgKey;
+use super::ui_msg::UiMsg;
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
+/// 日本語エラーメッセージ
+pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
+    use MsgKey::*;
+    HashMap::from([
+        // パーサーエラー
+        (UnexpectedToken, "予期しないトークン: {0}"),
+        (UnexpectedEof, "ファイルが予期せず終了しました（括弧が閉じられていない可能性があります）"),
+        (ExpectedToken, "期待: {0}, 実際: {1}"),
+        (NeedsSymbol, "{0}にはシンボルが必要です"),
+        (VarargNeedsName, "&の後には変数名が必要です"),
+        (UnexpectedPattern, "予期しないパターン: {0}"),
+        (RestNeedsVar, "...の後には変数名が必要です"),
+        // レキサーエラー
+        (UnexpectedChar, "予期しない文字: {0}"),
+        (UnclosedString, "文字列が閉じられていません"),
+        (NumberLiteralInvalid, "不正な数値リテラル: {0}"),
+        (
+            EmptyKeyword,
+            "空のキーワード: ':' の後には識別子が必要です",
+        ),
+        // 評価器エラー
+        (UndefinedVar, "未定義の変数: {0}"),
+        (
+            UndefinedVarWithSuggestions,
+            "未定義の変数: {0}\n      もしかして: {1}?",
+        ),
+        (NotAFunction, "関数ではありません: {0}"),
+        (TypeMismatch, "型エラー: 期待={0}, 実際={1} ({2})"),
+        (
+            ArgCountMismatch,
+            "引数の数が一致しません: 期待 {0}, 実際 {1}",
+        ),
+        (DivisionByZero, "ゼロ除算エラー"),
+        (
+            ExportOnlyInModule,
+            "exportはmodule定義の中でのみ使用できます",
+        ),
+        (CannotQuote, "quoteできません: {0}"),
+        (NoMatchingPattern, "どのパターンにもマッチしませんでした"),
+        // モジュールエラー
+        (ModuleNeedsName, "moduleにはモジュール名が必要です"),
+        (ExportNeedsSymbols, "exportにはシンボルが必要です"),
+        (UseNeedsModuleName, "useにはモジュール名が必要です"),
+        (
+            ExpectedSymbolInOnlyList,
+            ":onlyリストにはシンボルが必要です",
+        ),
+        (AsNeedsAlias, ":asにはエイリアス名が必要です"),
+        (UseNeedsMode, "useには:only, :as, :allのいずれかが必要です"),
+        (
+            SymbolNotFound,
+            "シンボル{0}が見つかりません（モジュール: {1}）",
+        ),
+        (
+            ModuleNotFound,
+            "モジュール{0}が見つかりません（{0}.qi）",
+        ),
+        (
+            SymbolNotExported,
+            "シンボル{0}はモジュール{1}からエクスポートされていません",
+        ),
+        (FileNotFound, "ファイルが見つかりません: {0} ({1})"),
+        // 引数エラー
+        (
+            NeedAtLeastNArgs,
+            "{0}には少なくとも{1}個の引数が必要です",
+        ),
+        (NeedExactlyNArgs, "{0}には{1}個の引数が必要です"),
+        (Need2Or3Args, "{0}には2または3個の引数が必要です"),
+        (Need1Or2Args, "{0}には1または2個の引数が必要です"),
+        (Need0Or1Args, "{0}には0または1個の引数が必要です"),
+        (Need2Args, "{0}には2つの引数が必要です"),
+        (Need1Arg, "{0}には1つの引数が必要です"),
+        (Need0Args, "{0}には引数は不要です"),
+        // 型エラー
+        (TypeOnly, "{0}は{1}のみ受け付けます"),
+        (TypeOnlyWithDebug, "{0}は{1}のみ受け付けます: {2}"),
+        (ArgMustBeType, "{0}: 引数は{1}である必要があります"),
+        (FirstArgMustBe, "{0}の第1引数は{1}が必要です"),
+        (SecondArgMustBe, "{0}の第2引数は{1}が必要です"),
+        (ThirdArgMustBe, "{0}の第3引数は{1}が必要です"),
+        (
+            KeyMustBeKeyword,
+            "キーは文字列またはキーワードが必要です",
+        ),
+        (FloatKeyNotAllowed, "Floatはマップのキーとして使用できません"),
+        (InvalidMapKey, "無効なマップキー型: {0}"),
+        (KeyNotFound, "キーが見つかりません: {0}"),
+        (MustBePositive, "{0}: {1}は正の数である必要があります"),
+        (
+            MustBeNonNegative,
+            "{0}: {1}は非負の数である必要があります",
+        ),
+        (MustBeInteger, "{0}: {1}は整数である必要があります"),
+        (MustBeString, "{0}: {1}は文字列である必要があります"),
+        (
+            MinMustBeLessThanMax,
+            "{0}: minはmaxより小さい必要があります",
+        ),
+        (
+            MustBeListOrVector,
+            "{0}: {1}はリストまたはベクタである必要があります",
+        ),
+        (
+            MustBePromise,
+            "{0}: {1}はプロミス（チャネル）である必要があります",
+        ),
+        (MustBeScope, "{0}: {1}はスコープである必要があります"),
+        (MustNotBeEmpty, "{0}: {1}は空であってはいけません"),
+        (
+            FuncMustReturnType,
+            "{0}: 関数は{1}を返す必要があります",
+        ),
+        (MustBeMap, "{0}: {1}はマップである必要があります"),
+        // 特殊な引数エラー
+        (SplitTwoStrings, "splitは2つの文字列が必要です"),
+        (JoinStringAndList, "joinは文字列とリストが必要です"),
+        (
+            AssocMapAndKeyValues,
+            "assocはマップと1つ以上のキー・値のペアが必要です",
+        ),
+        (
+            DissocMapAndKeys,
+            "dissocはマップと1つ以上のキーが必要です",
+        ),
+        (
+            VariadicFnNeedsOneParam,
+            "可変長引数関数にはパラメータが1つだけ必要です",
+        ),
+        // f-string エラー
+        (FStringUnclosedBrace, "f-string: 閉じられていない { があります"),
+        (FStringUnclosed, "f-string: 閉じられていない文字列です"),
+        (FStringCannotBeQuoted, "f-string はquoteできません"),
+        (FStringCodeParseError, "f-string: コードのパースエラー: {0}"),
+        // マクロエラー
+        (MacVarargNeedsSymbol, "mac: &の後にシンボルが必要です"),
+        (
+            VariadicMacroNeedsParams,
+            "可変長マクロはパラメータが必要です",
+        ),
+        (
+            MacArgCountMismatch,
+            "mac {0}: 引数の数が一致しません（期待: {1}, 実際: {2}）",
+        ),
+        (
+            MacVariadicArgCountMismatch,
+            "mac {0}: 引数の数が不足しています（最低: {1}, 実際: {2}）",
+        ),
+        // quasiquote エラー
+        (
+            UnquoteOutsideQuasiquote,
+            "unquote: quasiquote外では使用できません",
+        ),
+        (
+            UnquoteSpliceOutsideQuasiquote,
+            "unquote-splice: quasiquote外では使用できません",
+        ),
+        (
+            UnquoteSpliceNeedsListOrVector,
+            "unquote-splice: リストまたはベクタが必要です",
+        ),
+        // loop/recur エラー
+        (RecurNotFound, "recurが見つかりません"),
+        (
+            RecurArgCountMismatch,
+            "recur: 引数の数が一致しません（期待: {0}, 実際: {1}）",
+        ),
+        // 内部変換エラー
+        (ValueCannotBeConverted, "この値は変換できません"),
+        // モジュールロード詳細エラー
+        (CircularDependency, "循環参照を検出しました: {0}"),
+        (
+            ModuleParserInitError,
+            "モジュール{0}のパーサー初期化エラー: {1}",
+        ),
+        (ModuleParseError, "モジュール{0}のパースエラー: {1}"),
+        (
+            ModuleMustExport,
+            "モジュール{0}はexportを含む必要があります",
+        ),
+        // その他の特殊エラー
+        (AsNeedsVarName, ":asには変数名が必要です"),
+        (NeedNArgsDesc, "{0}には{1}個の引数が必要です: {2}"),
+        (SelectNeedsList, "{0}にはリストが必要です"),
+        (
+            SelectNeedsAtLeastOne,
+            "{0}には少なくとも1つのケースが必要です",
+        ),
+        (
+            SelectTimeoutCase,
+            "{0}: :timeoutケースは3要素が必要です: [:timeout ms handler]",
+        ),
+        (
+            SelectOnlyOneTimeout,
+            "{0}には:timeoutケースは1つだけです",
+        ),
+        (
+            SelectChannelCase,
+            "{0}: チャネルケースは2要素が必要です: [channel handler]",
+        ),
+        (
+            SelectCaseMustStart,
+            "{0}: ケースはチャネルまたは:timeoutで始まる必要があります",
+        ),
+        (SelectCaseMustBe, "{0}: ケースはリストである必要があります [channel handler] or [:timeout ms handler]"),
+        (AllElementsMustBe, "{0}: 全ての要素は{1}である必要があります"),
+        (SetOperationError, "{0}"),
+        // 並行処理エラー
+        (ChannelClosed, "{0}: チャネルは閉じられています"),
+        (ExpectedKeyword, "{0}: {1}キーワードが必要です"),
+        (PromiseFailed, "プロミスが失敗しました"),
+        (NotAPromise, "プロミスではありません"),
+        (UnexpectedError, "{0}: 予期しないエラー"),
+        (RecvArgs, "{0}: 1または3個の引数が必要です: ({0} ch) or ({0} ch :timeout ms)"),
+        (TimeoutMustBeMs, "{0}: タイムアウトは整数（ミリ秒）である必要があります"),
+        // その他のエラー
+        (UnsupportedNumberType, "サポートされていない数値型です"),
+        (RailwayRequiresOkError, "|>? には {:ok/:error} マップが必要です"),
+        (InvalidTimestamp, "{0}: 不正なタイムスタンプです"),
+        (InvalidDateFormat, "{0}: 不正な日付フォーマット: {1}"),
+        (InvalidPercentile, "{0}: パーセンタイルは0から100の間である必要があります"),
+        (SystemTimeError, "{0}: システム時刻エラー: {1}"),
+        (JsonParseError, "{0}: {1}"),
+        (JsonStringifyError2, "{0}: {1}"),
+        (CannotParseAsInt, "{0}: '{1}'を整数としてパースできません"),
+        (CannotConvertToInt, "{0}: {1}を整数に変換できません"),
+        (CannotParseAsFloat, "{0}: '{1}'を浮動小数点数としてパースできません"),
+        (CannotConvertToFloat, "{0}: {1}を浮動小数点数に変換できません"),
+        (CannotConvertToJson, "{0}をJSONに変換できません"),
+        (InvalidRegex, "{0}: 不正な正規表現: {1}"),
+        // JWT エラー
+        (NeedNArgs, "{0}には{1}個の引数が必要です"),
+        (InvalidAlgorithm, "{0}: 不正なアルゴリズム'{1}'（サポート: {2}）"),
+        (InvalidFloat, "{0}: 不正な浮動小数点数値です"),
+        (InvalidNumber, "{0}: 不正な数値です"),
+        // パスワードハッシュエラー
+        (PasswordHashError, "{0}: パスワードハッシュエラー: {1}"),
+        // 警告
+        (RedefineBuiltin, "警告: ビルトイン関数'{0}'を再定義しています ({1})"),
+        (RedefineFunction, "警告: 関数'{0}'を再定義しています"),
+        (RedefineVariable, "警告: 変数'{0}'を再定義しています"),
+        // CSV エラー
+        (FileReadError, "{0}: ファイル読み込みエラー: {1}"),
+        (CsvCannotSerialize, "csv/stringify: {0}をシリアライズできません"),
+        (CsvRecordMustBeList, "csv/stringify: 各レコードはリストである必要があります"),
+        (CsvParseNeed1Or3Args, "csv/parseには1または3個の引数が必要です"),
+        (CsvDelimiterMustBeSingleChar, "csv/parse: デリミタは1文字である必要があります"),
+        (CsvInvalidDelimiterArg, "csv/parse: 不正なデリミタ引数です (:delimiter \"char\" を使用してください)"),
+        // コマンド実行エラー
+        (CmdEmptyCommand, "コマンドを空にすることはできません"),
+        (CmdFirstArgMustBeString, "コマンドリストの最初の要素は文字列である必要があります"),
+        (CmdArgsMustBeStrings, "すべてのコマンド引数は文字列である必要があります"),
+        (CmdInvalidArgument, "不正なコマンド引数: 文字列またはリストが必要です"),
+        (CmdExecutionFailed, "コマンド実行失敗: {0}"),
+        (CmdWriteFailed, "コマンド標準入力への書き込み失敗: {0}"),
+        (CmdWaitFailed, "コマンドの待機失敗: {0}"),
+        (CmdInvalidProcessHandle, "不正なプロセスハンドルです"),
+        (CmdProcessNotFound, "プロセスが見つかりません (PID: {0})"),
+        (CmdStdinClosed, "標準入力は既に閉じられています"),
+        (CmdStdoutClosed, "標準出力は既に閉じられています"),
+        (CmdReadFailed, "読み込み失敗: {0}"),
+        (MustBePositiveInteger, "{0}: {1}は正の整数である必要があります"),
+        // データ構造エラー
+        (MustBeQueue, "{0}: {1}はキューである必要があります"),
+        (MustBeStack, "{0}: {1}はスタックである必要があります"),
+        (IsEmpty, "{0}: {1}は空です"),
+        // テストエラー
+        (TestsFailed, "一部のテストが失敗しました"),
+        (AssertExpectedException, "アサーション失敗: 例外が期待されましたがスローされませんでした"),
+        // パスエラー
+        (AllPathsMustBeStrings, "{0}: すべてのパスは文字列である必要があります"),
+        // サーバーエラー
+        (JsonStringifyError, "JSON文字列化失敗"),
+        (RequestMustHave, "{0}: リクエストには{1}が必要です"),
+        (RequestMustBe, "{0}: リクエストは{1}である必要があります"),
+        (InvalidFilePath, "{0}: 不正なファイルパス (..を含んでいます)"),
+        (FourthArgMustBe, "{0}の第4引数は{1}が必要です"),
+        (Need3Args, "{0}には3個の引数が必要です"),
+        (Need1Or3Args, "{0}: 1または3個の引数が必要です"),
+        // 環境変数エラー
+        (ValueMustBeStringNumberBool, "{0}: 値は文字列、数値、または真偽値である必要があります"),
+        // I/Oエラー
+        (BothArgsMustBeStrings, "{0}: 両方の引数は文字列である必要があります"),
+        (UnsupportedEncoding, "サポートされていないエンコーディング: {0}"),
+        (KeywordRequiresValue, "キーワード:{0}には値が必要です"),
+        (ExpectedKeywordArg, "キーワード引数が必要です、実際: {0}"),
+        (FileAlreadyExists, "{0}: ファイルは既に存在します"),
+        (InvalidIfExistsOption, "不正な:if-existsオプション: {0}"),
+        // HTTPエラー
+        (HttpClientError, "HTTPクライアントエラー: {0}"),
+        (HttpCompressionError, "圧縮エラー: {0}"),
+        (HttpStreamClientError, "http stream: クライアント作成エラー: {0}"),
+        (HttpStreamRequestFailed, "http stream: リクエスト失敗: {0}"),
+        (HttpStreamReadBytesFailed, "http stream: バイト読み込み失敗: {0}"),
+        (HttpStreamReadBodyFailed, "http stream: ボディ読み込み失敗: {0}"),
+        (HttpRequestUrlRequired, "http/request: :urlが必要です"),
+        (HttpUnsupportedMethod, "サポートされていないHTTPメソッド: {0}"),
+        (HttpStreamError, "http stream: HTTP {0}"),
+        (HttpErrorStatus, "HTTPエラー {0}"),
+        // I/Oエラー（詳細）
+        (IoFileError, "{0}: {1}"),
+        (IoFailedToDecodeUtf8, "{0}: UTF-8としてデコード失敗 (不正なバイト列)"),
+        (IoFailedToCreateDir, "{0}: ディレクトリ作成失敗: {1}"),
+        (IoFailedToOpenForAppend, "{0}: 追記用オープン失敗: {1}"),
+        (IoFailedToAppend, "{0}: 追記失敗: {1}"),
+        (IoFailedToWrite, "{0}: 書き込み失敗: {1}"),
+        (FileStreamFailedToOpen, "file-stream: '{0}'のオープン失敗: {1}"),
+        (WriteStreamFailedToCreate, "write-stream: {0}の作成失敗: {1}"),
+        (WriteStreamFailedToWrite, "write-stream: {0}への書き込み失敗: {1}"),
+        (IoListDirInvalidPattern, "io/list-dir: 不正なパターン'{0}': {1}"),
+        (IoListDirFailedToRead, "io/list-dir: エントリ読み込み失敗: {0}"),
+        (IoCreateDirFailed, "io/create-dir: '{0}'の作成失敗: {1}"),
+        (IoDeleteFileFailed, "io/delete-file: '{0}'の削除失敗: {1}"),
+        (IoDeleteDirFailed, "io/delete-dir: '{0}'の削除失敗: {1}"),
+        (IoCopyFileFailed, "io/copy-file: '{0}'から'{1}'へのコピー失敗: {2}"),
+        (IoMoveFileFailed, "io/move-file: '{0}'から'{1}'への移動失敗: {2}"),
+        (IoGetMetadataFailed, "io/file-info: '{0}'のメタデータ取得失敗: {1}"),
+        // サーバーエラー（詳細）
+        (ServerFailedToReadBody, "リクエストボディの読み込み失敗: {0}"),
+        (ServerFailedToDecompressGzip, "gzipボディの解凍失敗: {0}"),
+        (ServerFailedToBuildResponse, "レスポンス構築失敗: {0}"),
+        (ServerStaticFileMetadataFailed, "server/static-file: ファイルメタデータ読み込み失敗: {0}"),
+        (ServerHandlerMustReturnMap, "ハンドラはマップを返す必要があります、実際: {0}"),
+        (ServerHandlerMustBeFunction, "ハンドラは関数またはルーターである必要があります、実際: {0}"),
+        (ServerHandlerError, "ハンドラエラー: {0}"),
+        (ServerFileTooLarge, "ファイルが大きすぎます: {0}バイト (最大: {1}バイト / {2}MB)。パス: {3}"),
+        (ServerFailedToReadFile, "ファイル読み込み失敗: {0}"),
+        (ServerStaticFileTooLarge, "server/static-file: ファイルが大きすぎます: {0}バイト (最大: {1}バイト / {2}MB)。将来的にストリーミングの使用を検討してください。"),
+        (ServerStaticFileFailedToRead, "server/static-file: ファイル読み込み失敗: {0}"),
+        (ServerStaticDirNotDirectory, "server/static-dir: {0}はディレクトリではありません"),
+        (ServerFailedToCreateRuntime, "Tokioランタイム作成失敗: {0}"),
+        // データベース汎用エラー（PostgreSQL/MySQL/SQLite共通）
+        (DbFailedToConnect, "データベース接続失敗: {0}"),
+        (DbFailedToExecuteQuery, "クエリ実行失敗: {0}"),
+        (DbFailedToExecuteStatement, "ステートメント実行失敗: {0}"),
+        (DbFailedToBeginTransaction, "トランザクション開始失敗: {0}"),
+        (DbFailedToCommitTransaction, "トランザクションコミット失敗: {0}"),
+        (DbFailedToRollbackTransaction, "トランザクションロールバック失敗: {0}"),
+        (DbUnsupportedUrl, "サポートされていないデータベースURL: {0}"),
+        // SQLiteエラー
+        (SqliteFailedToOpen, "SQLiteデータベースのオープン失敗: {0}"),
+        (SqliteFailedToSetTimeout, "タイムアウト設定失敗: {0}"),
+        (SqliteFailedToGetColumnName, "カラム名取得失敗: {0}"),
+        (SqliteFailedToPrepare, "ステートメント準備失敗: {0}"),
+        (SqliteFailedToExecuteQuery, "クエリ実行失敗: {0}"),
+        (SqliteFailedToExecuteStatement, "ステートメント実行失敗: {0}"),
+        (SqliteFailedToBeginTransaction, "トランザクション開始失敗: {0}"),
+        (SqliteFailedToCommitTransaction, "トランザクションコミット失敗: {0}"),
+        (SqliteFailedToRollbackTransaction, "トランザクションロールバック失敗: {0}"),
+        // 環境変数エラー（詳細）
+        (EnvLoadDotenvFailedToRead, "env/load-dotenv: ファイル'{0}'の読み込み失敗: {1}"),
+        (EnvLoadDotenvInvalidFormat, "env/load-dotenv: {0}行目の不正なフォーマット: '{1}'"),
+        // CSVエラー（詳細）
+        (CsvWriteFileStringifyFailed, "csv/write-file: 文字列化失敗"),
+        (CsvWriteFileFailedToWrite, "csv/write-file: '{0}'の書き込み失敗: {1}"),
+        // Tableエラー
+        (TableInvalidFormat, "テーブル: 無効な形式 (期待: {0})"),
+        (TableColumnNotFound, "テーブル: 列'{0}'が見つかりません"),
+        (TableNoHeaders, "テーブル: ヘッダーがありません（列名でアクセスできません）"),
+        (TableColumnIndexOutOfRange, "テーブル: 列インデックス{0}が範囲外です"),
+        (TableColumnSelectorInvalid, "テーブル: 列セレクタは{0}である必要があります"),
+        (TableSelectNeedsList, "table/select: 列セレクタは{0}である必要があります"),
+        (TableOrderByInvalidOrder, "table/order-by: 順序は{0}である必要があります"),
+        (TableTakeNegative, "table/take: nは非負である必要があります (指定値: {0})"),
+        (TableTakeNotInteger, "table/take: nは整数である必要があります"),
+        (TableDropNegative, "table/drop: nは非負である必要があります (指定値: {0})"),
+        (TableDropNotInteger, "table/drop: nは整数である必要があります"),
+        // ログエラー
+        (LogSetLevelInvalidLevel, "log/set-level: 不正なレベル'{0}' (有効: debug, info, warn, error)"),
+        (LogSetFormatInvalidFormat, "log/set-format: 不正なフォーマット'{0}' (有効: text, json)"),
+        // 時刻エラー（詳細）
+        (TimeParseFailedToParse, "time/parse: '{0}'をフォーマット'{1}'でパース失敗"),
+        // ZIPエラー
+        (ZipPathDoesNotExist, "{0}: パス'{1}'は存在しません"),
+        // データベースエラー
+        (DbUnsupportedUrl, "サポートされていないデータベースURL: {0}。サポート: sqlite:"),
+        (DbNeed2To4Args, "{0}には2-4個の引数が必要です、実際: {1}"),
+        (DbNeed1To3Args, "{0}には1-3個の引数が必要です、実際: {1}"),
+        (DbExpectedConnection, "DbConnectionが必要です、実際: {0}"),
+        (DbConnectionNotFound, "接続が見つかりません: {0}"),
+        (DbExpectedTransaction, "DbTransactionが必要です、実際: {0}"),
+        (DbTransactionNotFound, "トランザクションが見つかりません: {0}"),
+        (DbExpectedConnectionOrTransaction, "DbConnectionまたはDbTransactionが必要です、実際: {0}"),
+        (DbExpectedPool, "DbPoolが必要です、実際: {0}"),
+        (DbPoolNotFound, "プールが見つかりません: {0}"),
+        (DbInvalidPoolSize, "{0}: 不正なプールサイズです、期待: {1}"),
+        // I/Oエラー（追加）
+        (IoFailedToDecodeAs, "{0}: {1}としてデコード失敗 (不正なバイト列)"),
+        (IoCouldNotDetectEncoding, "{0}: エンコーディングを検出できませんでした (UTF-8、UTF-16、日本語、中国語、韓国語、ヨーロッパのエンコーディングを試行)"),
+        (IoAppendFileFailedToWrite, "append-file: {0}の書き込み失敗: {1}"),
+        (IoAppendFileFailedToOpen, "append-file: {0}のオープン失敗: {1}"),
+        (IoReadLinesFailedToRead, "read-lines: {0}の読み込み失敗: {1}"),
+        (IoEncodingNotSupportedInMinimalBuild, "エンコーディング '{0}' は最小ビルドではサポートされていません。UTF-8のみ利用可能です。'encoding-extended' featureを有効にしてください。"),
+        // Featureエラー
+        (FeatureDisabled, "{0}サポートは無効化されています。feature '{1}'でビルドしてください: {2}"),
+        (DbUnsupportedDriver, "サポートされていないデータベースドライバ: {0}"),
+        // Markdownエラー
+        (MdHeaderInvalidLevel, "markdown/header: レベルは1-6である必要があります、実際: {0}"),
+        (MdTableEmpty, "markdown/table: テーブルは空であってはいけません"),
+        (MdTableRowMustBeList, "markdown/table: 行{0}はリストである必要があります"),
+        (MdTableColumnMismatch, "markdown/table: 行{0}は{1}列ですが、{2}列が期待されています"),
+        // DAPデバッガーエラー
+        (DapEmptyExpression, "式が空です"),
+        (DapEvaluationError, "評価エラー: {0}"),
+        (DapParseError, "パースエラー: {0}"),
+        (DapNoEnvironment, "環境が利用できません（ブレークポイントで停止していません）"),
+        (DapDebuggerNotAvailable, "デバッガーが利用できません"),
+        (DapServerError, "DAPサーバーエラー: {0}"),
+        (DapServerNotEnabled, "エラー: DAPサーバーが有効化されていません。--features dap-serverでビルドしてください"),
+        (InternalError, "内部エラー: {0}"),
+        // プロジェクト管理エラー
+        (QiTomlFailedToRead, "qi.tomlの読み込みに失敗: {0}"),
+        (QiTomlFailedToParse, "qi.tomlのパースに失敗: {0}"),
+        (QiTomlFailedToSerialize, "qi.tomlのシリアライズに失敗: {0}"),
+        (QiTomlFailedToWrite, "qi.tomlの書き込みに失敗: {0}"),
+        (FailedToGetCurrentDir, "カレントディレクトリの取得に失敗: {0}"),
+        (DirectoryAlreadyExists, "ディレクトリ '{0}' は既に存在します"),
+        (FailedToCreateDirectory, "ディレクトリの作成に失敗: {0}"),
+        (TemplateNotFound, "テンプレート '{0}' が見つかりません"),
+        (FailedToReadDirectory, "ディレクトリの読み込みに失敗: {0}"),
+        (FailedToReadFile, "ファイルの読み込みに失敗: {0}"),
+        (FailedToWriteFile, "ファイルの書き込みに失敗: {0}"),
+        (TemplateTomlFailedToRead, "template.tomlの読み込みに失敗: {0}"),
+        (TemplateTomlFailedToParse, "template.tomlのパースに失敗: {0}"),
+        // 評価器エラー
+        (TypeErrorVectorPattern, "型エラー: ベクタパターンに対して{0}を渡すことはできません"),
+        (ArgErrorVectorPatternMinimum, "引数エラー: ベクタパターンは最低{0}個の要素を期待しましたが、{1}個が渡されました"),
+        (ArgErrorVectorPattern, "引数エラー: ベクタパターンは{0}個の要素を期待しましたが、{1}個が渡されました"),
+        (TypeErrorMapPattern, "型エラー: マップパターンに対して{0}を渡すことはできません"),
+        (KeyErrorMapMissing, "キーエラー: マップにキー :{0}が存在しません"),
+        // データベース・KVSエラー
+        (ConnectionError, "接続エラー: {0}"),
+        (ConnectionNotFound, "接続が見つかりません: {0}"),
+        (EvalError, "評価: {0}"),
+        (FailedToCreateRuntime, "ランタイムの作成に失敗: {0}"),
+        (FailedToExecuteColumnsQuery, "カラムクエリの実行に失敗: {0}"),
+        (FailedToExecuteForeignKeysQuery, "外部キークエリの実行に失敗: {0}"),
+        (FailedToExecuteIndexColumnsQuery, "インデックスカラムクエリの実行に失敗: {0}"),
+        (FailedToExecuteIndexesQuery, "インデックスクエリの実行に失敗: {0}"),
+        (FailedToExecuteTablesQuery, "テーブルクエリの実行に失敗: {0}"),
+        (FailedToGetColumnName, "カラム名の取得に失敗: {0}"),
+        (FailedToGetColumnValue, "カラム値の取得に失敗: {0}"),
+        (FailedToGetDatabaseVersion, "データベースバージョンの取得に失敗: {0}"),
+        (FailedToPrepareStatement, "ステートメントの準備に失敗: {0}"),
+        (FailedToQueryColumns, "カラムのクエリに失敗: {0}"),
+        (FailedToQueryForeignKeys, "外部キーのクエリに失敗: {0}"),
+        (FailedToQueryIndexColumns, "インデックスカラムのクエリに失敗: {0}"),
+        (FailedToQueryIndexes, "インデックスのクエリに失敗: {0}"),
+        (FailedToQueryTables, "テーブルのクエリに失敗: {0}"),
+        (FailedToReadFileMetadata, "ファイルメタデータの読み込みに失敗: {0}"),
+        (InvalidIsolationLevel, "無効なアイソレーションレベル: {0}"),
+        (UnsupportedKvsUrl, "サポートされていないKVS URL: {0}"),
+        (UnsupportedUrl, "サポートされていないURL: {0}"),
+        (RedisSupportNotEnabled, "Redisサポートが有効化されていません（feature 'kvs-redis'が必要です）"),
+        (InvalidConnection, "無効な接続（KvsConnection:xxxが期待されます）"),
+        (QiTomlAlreadyExists, "qi.tomlが既に存在します"),
+        (PatternErrorNotAllowed, "パターンエラー: このパターンは関数パラメータやlet束縛では使用できません（matchでのみ使用可能）"),
+        (UnexpectedResponse, "予期しないレスポンス"),
+
+        // Upgrade
+        (CheckingForUpdates, "アップデートを確認中..."),
+        (CurrentVersion, "現在のバージョン: {0}"),
+        (LatestVersion, "最新バージョン: {0}"),
+        (AlreadyLatest, "既に最新バージョンを使用しています"),
+        (NewVersionAvailable, "新しいバージョンがあります: {0}"),
+        (DownloadingBinary, "バイナリをダウンロード中..."),
+        (InstallingUpdate, "アップデートをインストール中..."),
+        (UpgradeSuccess, "バージョン {0} へのアップグレードが完了しました"),
+        (RestartRequired, "新しいバージョンを使用するには qi を再起動してください"),
+        (UnsupportedPlatform, "サポートされていないプラットフォーム: {0}-{1}"),
+        (HttpClientNotEnabled, "HTTP client が有効になっていません (feature 'http-client' が必要です)"),
+    ])
+});
+
+/// 日本語UIメッセージ
+pub static JA_UI_MSGS: LazyLock<HashMap<UiMsg, &'static str>> = LazyLock::new(|| {
+    use UiMsg::*;
+    HashMap::from([
+        // REPL
+        (ReplWelcome, "Qi REPL v{0}"),
+        (
+            ReplPressCtrlC,
+            "終了するには Ctrl+D、入力キャンセルは Ctrl+C",
+        ),
+        (ReplGoodbye, "さようなら！"),
+        (ReplLoading, "{0}を読み込んでいます..."),
+        (ReplLoaded, "{0}を読み込みました"),
+        (
+            ReplTypeHelp,
+            "ヘルプを表示するには :help と入力してください",
+        ),
+        (ReplAvailableCommands, "利用可能なコマンド:"),
+        (ReplNoVariables, "定義されている変数はありません"),
+        (ReplDefinedVariables, "定義されている変数:"),
+        (ReplNoFunctions, "定義されている関数はありません"),
+        (ReplDefinedFunctions, "定義されている関数:"),
+        (
+            ReplNoBuiltinsMatching,
+            "\"{0}\"に一致するビルトイン関数はありません",
+        ),
+        (ReplBuiltinsMatching, "\"{0}\"に一致するビルトイン関数:"),
+        (ReplBuiltinFunctions, "ビルトイン関数:"),
+        (ReplBuiltinTotal, "合計: {0}個の関数"),
+        (
+            ReplBuiltinTip,
+            "ヒント: :builtins <パターン> で検索できます",
+        ),
+        (ReplEnvCleared, "環境をクリアしました"),
+        (ReplLoadUsage, "使い方: :load <ファイル名>"),
+        (ReplNoFileLoaded, "まだファイルが読み込まれていません"),
+        (ReplUnknownCommand, "不明なコマンド: {0}"),
+        (
+            ReplTypeHelpForCommands,
+            "利用可能なコマンドを表示するには :help と入力してください",
+        ),
+        // REPLコマンドヘルプ
+        (ReplCommandHelp, "  :help              このヘルプを表示"),
+        (
+            ReplCommandDoc,
+            "  :doc <name>        関数のドキュメントを表示",
+        ),
+        (
+            ReplCommandVars,
+            "  :vars              定義されている変数を一覧表示",
+        ),
+        (
+            ReplCommandFuncs,
+            "  :funcs             定義されている関数を一覧表示",
+        ),
+        (
+            ReplCommandBuiltins,
+            "  :builtins [pat]    ビルトイン関数を一覧表示（パターン指定可能）",
+        ),
+        (ReplCommandClear, "  :clear             環境をクリア"),
+        (
+            ReplCommandLoad,
+            "  :load <file>       ファイルを読み込んで実行",
+        ),
+        (
+            ReplCommandReload,
+            "  :reload            最後に読み込んだファイルを再読み込み",
+        ),
+        (ReplCommandQuit, "  :quit, :q          REPLを終了"),
+        // テスト
+        (TestNoTests, "テストが見つかりません"),
+        (TestResults, "テスト結果:"),
+        (
+            TestResultsSeparator,
+            "----------------------------------------",
+        ),
+        (TestSummary, "要約: {0}件成功, {1}件失敗, 合計{2}件"),
+        (
+            TestAssertEqFailed,
+            "アサーション失敗: {0}\n  期待値: {1}\n  実際値: {2}",
+        ),
+        (
+            TestAssertTruthyFailed,
+            "アサーション失敗: {0}\n  真と評価される値が期待されましたが、実際: {1}",
+        ),
+        (
+            TestAssertFalsyFailed,
+            "アサーション失敗: {0}\n  偽と評価される値が期待されましたが、実際: {1}",
+        ),
+        // プロファイラー
+        (
+            ProfileNoData,
+            "プロファイリングデータがありません。(profile/start)で計測を開始してください。",
+        ),
+        (ProfileUseStart, "(profile/start)で計測を開始してください"),
+        (ProfileReport, "プロファイリングレポート:"),
+        (ProfileTableHeader, "{0:<30} {1:>10} {2:>12} {3:>12}"),
+        (ProfileTotalTime, "合計実行時間: {0}"),
+        // ヘルプ
+        (HelpTitle, "Qiプログラミング言語"),
+        (HelpUsage, "使い方: qi [オプション] [ファイル]"),
+        (HelpOptions, "オプション:"),
+        (HelpExamples, "例:"),
+        (HelpEnvVars, "環境変数:"),
+        // オプション説明
+        (OptExecute, "  -e <コード>        コードを直接実行"),
+        (
+            OptStdin,
+            "  -s, --stdin        標準入力からコードを読み込む",
+        ),
+        (
+            OptLoad,
+            "  -l <ファイル>      REPL起動前にファイルを読み込む",
+        ),
+        (
+            OptQuiet,
+            "  -q, --quiet        quietモードでREPL起動（起動メッセージなし）",
+        ),
+        (OptHelp, "  -h, --help         このヘルプメッセージを表示"),
+        (OptVersion, "  -v, --version      バージョン情報を表示"),
+        (
+            OptNew,
+            "    new <name> [-t <template>]  新しいQiプロジェクトを作成",
+        ),
+        (
+            OptTemplate,
+            "    template <list|info>        テンプレート管理",
+        ),
+        (
+            OptDap,
+            "    --dap                       Debug Adapter Protocolサーバーを起動",
+        ),
+        // ヘルプ例
+        (ExampleStartRepl, "  qi                 REPLを起動"),
+        (ExampleRunScript, "  qi script.qi       スクリプトを実行"),
+        (ExampleExecuteCode, "  qi -e '(+ 1 2)'    コードを実行"),
+        (ExampleStdin, "  echo '(+ 1 2)' | qi -s"),
+        (
+            ExampleLoadFile,
+            "  qi -l prelude.qi   ファイルを読み込んでREPL起動",
+        ),
+        (
+            ExampleNewProject,
+            "    qi new my-project        新しいプロジェクトを作成",
+        ),
+        (
+            ExampleNewHttpServer,
+            "    qi new myapi -t http-server  HTTPサーバープロジェクトを作成",
+        ),
+        (
+            ExampleTemplateList,
+            "    qi template list         利用可能なテンプレート一覧",
+        ),
+        // 環境変数説明
+        (EnvLangQi, "  QI_LANG            言語 (ja, en)"),
+        (
+            EnvLangSystem,
+            "  LANG               システム言語（フォールバック）",
+        ),
+        // バージョン
+        (VersionString, "Qi v{0}"),
+        // エラー
+        (ErrorFailedToRead, "ファイルの読み込み失敗"),
+        (ErrorFailedToReadStdin, "標準入力からの読み込み失敗"),
+        (ErrorRequiresArg, "オプション{0}には引数が必要です"),
+        (ErrorRequiresFile, "{0}にはファイルパスが必要です"),
+        (ErrorUnknownOption, "不明なオプション: {0}"),
+        (
+            ErrorUseHelp,
+            "使い方を表示するには --help を使用してください",
+        ),
+        (ErrorInput, "入力エラー"),
+        (ErrorParse, "パースエラー"),
+        (ErrorLexer, "字句解析エラー"),
+        (ErrorRuntime, "実行時エラー"),
+        // DAP
+        (DapStdinWaiting, "\n⏸️  標準入力を待っています"),
+        (
+            DapStdinInstructions,
+            "   デバッグコンソールで .stdin <text> と入力してください\n",
+        ),
+        (DapStdinSent, "✓ 入力を送信しました: {0}"),
+        // プロジェクト作成
+        (
+            ProjectNewNeedName,
+            "エラー: プロジェクト名を指定してください",
+        ),
+        (
+            ProjectNewUsage,
+            "使い方: qi new <project-name> [--template <template>]",
+        ),
+        (ProjectNewUnknownOption, "エラー: 不明なオプション: {0}"),
+        (ProjectNewError, "エラー: {0}"),
+        (
+            ProjectCreated,
+            "\n新しいQiプロジェクトが作成されました: {0}",
+        ),
+        (ProjectNextSteps, "\n次のステップ:"),
+        (ProjectCreating, "新しいQiプロジェクトを作成します\n"),
+        (PromptProjectName, "プロジェクト名"),
+        (PromptVersion, "バージョン"),
+        (PromptDescription, "説明"),
+        (PromptAuthor, "著者名"),
+        (PromptLicense, "ライセンス"),
+        (PromptOptional, "(省略可)"),
+        (
+            TemplateNeedSubcommand,
+            "エラー: サブコマンドを指定してください",
+        ),
+        (TemplateUsage, "使い方: qi template <list|info>"),
+        (TemplateNeedName, "エラー: テンプレート名を指定してください"),
+        (TemplateInfoUsage, "使い方: qi template info <name>"),
+        (TemplateUnknownSubcommand, "エラー: 不明なサブコマンド: {0}"),
+        (TemplateNoTemplates, "利用可能なテンプレートがありません"),
+        (TemplateAvailable, "利用可能なテンプレート:"),
+        (TemplateNoInfo, "(情報なし)"),
+        (TemplateInfoTemplate, "Template: {0}"),
+        (TemplateInfoDescription, "Description: {0}"),
+        (TemplateInfoAuthor, "Author: {0}"),
+        (TemplateInfoVersion, "Version: {0}"),
+        (TemplateInfoRequired, "Required features: {0}"),
+        (TemplateInfoLocation, "Location: {0}"),
+        // REPLドキュメント
+        (ReplDocUsage, "使い方: :doc <name>"),
+        (ReplDocNotFound, "関数または変数が見つかりません: {0}"),
+        (ReplDocParameters, "\nパラメータ:"),
+        (ReplDocExamples, "\n使用例:"),
+        (ReplDocNoDoc, "(ドキュメントがありません)"),
+    ])
+});
