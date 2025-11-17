@@ -1,7 +1,5 @@
 //! 並行処理関数（go/chan）
 
-use crate::eval::Evaluator;
-
 pub mod channel;
 pub mod pipeline;
 pub mod promise;
