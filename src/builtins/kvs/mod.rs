@@ -9,26 +9,26 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-mod driver;
-mod connection;
 mod basic;
+mod connection;
 mod counter;
-mod list;
+mod driver;
 mod hash;
-mod set;
+mod list;
 mod multi;
+mod set;
 
 #[cfg(feature = "kvs-redis")]
 mod redis_driver;
 
-pub use driver::*;
-pub use connection::*;
 pub use basic::*;
+pub use connection::*;
 pub use counter::*;
-pub use list::*;
+pub use driver::*;
 pub use hash::*;
-pub use set::*;
+pub use list::*;
 pub use multi::*;
+pub use set::*;
 
 /// KVS接続プール（接続ID → KvsDriver のマッピング）
 pub(super) static CONNECTIONS: LazyLock<Mutex<HashMap<String, Box<dyn KvsDriver>>>> =

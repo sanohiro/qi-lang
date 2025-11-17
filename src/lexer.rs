@@ -461,7 +461,7 @@ impl Lexer {
                 // { や } のエスケープは特殊処理
                 if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
                     self.advance(); // \ をスキップ
-                    // SAFETY: peek(1)で次の文字の存在を確認済み
+                                    // SAFETY: peek(1)で次の文字の存在を確認済み
                     let special_ch = self.current().expect("character after backslash");
                     current_text.push(special_ch);
                     self.advance();
@@ -576,7 +576,7 @@ impl Lexer {
                 // { や } のエスケープは特殊処理
                 if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
                     self.advance(); // \ をスキップ
-                    // SAFETY: peek(1)で次の文字の存在を確認済み
+                                    // SAFETY: peek(1)で次の文字の存在を確認済み
                     let special_ch = self.current().expect("character after backslash");
                     current_text.push(special_ch);
                     self.advance();

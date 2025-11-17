@@ -59,7 +59,6 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
     Ok(Value::Map(resp))
 }
 
-
 pub(super) fn get_content_type(path: &str) -> &'static str {
     let ext = std::path::Path::new(path)
         .extension()
@@ -247,4 +246,3 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
 // ========================================
 // 認証ミドルウェア
 // ========================================
-

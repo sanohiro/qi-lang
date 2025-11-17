@@ -119,4 +119,3 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
         Err(e) => Ok(Value::error(e)),
     }
 }
-

@@ -298,4 +298,3 @@ pub fn native_file_exists(args: &[Value]) -> Result<Value, String> {
         _ => Err(fmt_msg(MsgKey::MustBeString, &["file-exists?", "argument"])),
     }
 }
-

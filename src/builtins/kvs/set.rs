@@ -84,4 +84,3 @@ pub fn native_smembers(args: &[Value]) -> Result<Value, String> {
         Err(e) => Ok(Value::error(e)),
     }
 }
-

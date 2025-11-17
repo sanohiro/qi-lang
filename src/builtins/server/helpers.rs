@@ -4,6 +4,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use crate::HashMap;
 use flate2::read::GzDecoder;
+use futures_util::StreamExt;
 use http_body_util::{combinators::BoxBody, BodyExt, Full, StreamBody};
 use hyper::body::{Bytes, Frame};
 use hyper::{Request, Response};
@@ -11,7 +12,6 @@ use std::convert::Infallible;
 use std::io::Read;
 use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
-use futures_util::StreamExt;
 
 /// キーワードをマップキーに変換するヘルパー関数
 /// SAFETY: キーワード文字列は常に有効なマップキーに変換できる
@@ -98,7 +98,9 @@ pub(super) fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
 }
 
 /// HTTPリクエストをQi値に変換
-pub(super) async fn request_to_value(req: Request<hyper::body::Incoming>) -> Result<(Value, String), String> {
+pub(super) async fn request_to_value(
+    req: Request<hyper::body::Incoming>,
+) -> Result<(Value, String), String> {
     let (parts, body) = req.into_parts();
 
     // ボディを取得（非同期）
@@ -177,7 +179,9 @@ pub(super) async fn request_to_value(req: Request<hyper::body::Incoming>) -> Res
 }
 
 /// ファイルをストリーミングでレスポンスボディに変換
-pub(super) async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<Bytes, Infallible>, String> {
+pub(super) async fn create_file_stream_body(
+    file_path: &str,
+) -> Result<BoxBody<Bytes, Infallible>, String> {
     // ファイルを非同期で開く
     let file = TokioFile::open(file_path)
         .await
@@ -207,7 +211,9 @@ pub(super) async fn create_file_stream_body(file_path: &str) -> Result<BoxBody<B
 }
 
 /// Qi値をHTTPレスポンスに変換
-pub(super) async fn value_to_response(value: Value) -> Result<Response<BoxBody<Bytes, Infallible>>, String> {
+pub(super) async fn value_to_response(
+    value: Value,
+) -> Result<Response<BoxBody<Bytes, Infallible>>, String> {
     match value {
         Value::Map(m) => {
             // {:status 200, :headers {...}, :body "..." or :body-file "/path"}
@@ -268,7 +274,6 @@ pub(super) async fn value_to_response(value: Value) -> Result<Response<BoxBody<B
         )),
     }
 }
-
 
 fn get_content_type(path: &str) -> &'static str {
     let ext = std::path::Path::new(path)

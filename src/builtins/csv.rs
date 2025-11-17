@@ -29,7 +29,9 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
                     return Err(fmt_msg(MsgKey::CsvDelimiterMustBeSingleChar, &[]));
                 }
                 // SAFETY: 上のチェックで1文字であることを確認済み
-                d.chars().next().expect("delimiter must have exactly one character")
+                d.chars()
+                    .next()
+                    .expect("delimiter must have exactly one character")
             }
             _ => return Err(fmt_msg(MsgKey::CsvInvalidDelimiterArg, &[])),
         }

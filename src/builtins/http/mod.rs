@@ -19,18 +19,18 @@ use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
 
-mod helpers;
-mod simple;
-mod detailed;
-mod request;
 mod async_ops;
-mod stream;
 mod core;
+mod detailed;
+mod helpers;
+mod request;
+mod simple;
+mod stream;
 
-pub use simple::*;
+pub use async_ops::*;
 pub use detailed::*;
 pub use request::*;
-pub use async_ops::*;
+pub use simple::*;
 pub use stream::*;
 
 // ========================================

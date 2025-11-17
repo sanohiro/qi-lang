@@ -142,4 +142,3 @@ pub fn native_server_no_content(_args: &[Value]) -> Result<Value, String> {
     resp.insert(kw("body"), Value::String(String::new()));
     Ok(Value::Map(resp))
 }
-

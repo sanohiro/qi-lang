@@ -234,4 +234,3 @@ pub fn native_ttl(args: &[Value]) -> Result<Value, String> {
         Err(e) => Ok(Value::error(e)),
     }
 }
-

@@ -55,4 +55,3 @@ pub fn native_decr(args: &[Value]) -> Result<Value, String> {
         Err(e) => Ok(Value::error(e)),
     }
 }
-

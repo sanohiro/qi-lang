@@ -91,4 +91,3 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
         Err(e) => Ok(Value::error(e)),
     }
 }
-

@@ -140,7 +140,6 @@ pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-
 /// kvs/lrange - リストの範囲を取得
 pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
     if args.len() != 4 {

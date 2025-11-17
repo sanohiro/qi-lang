@@ -267,4 +267,3 @@ pub struct PendingLaunch {
     pub program: String,
     pub event_tx: tokio::sync::mpsc::Sender<String>,
 }
-

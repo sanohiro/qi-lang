@@ -174,7 +174,11 @@ fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
 }
 
 /// ミドルウェアを適用してハンドラーを実行
-pub(super) fn apply_middleware(handler: &Value, req: &Value, eval: &Evaluator) -> Result<Value, String> {
+pub(super) fn apply_middleware(
+    handler: &Value,
+    req: &Value,
+    eval: &Evaluator,
+) -> Result<Value, String> {
     // 静的ファイルハンドラーかチェック
     if let Value::Map(m) = handler {
         if let Some(Value::String(dir_path)) = m.get("__static_dir__") {
@@ -432,4 +436,3 @@ fn match_route_pattern(pattern: &str, path: &str) -> Option<HashMap<String, Valu
 
     Some(params)
 }
-

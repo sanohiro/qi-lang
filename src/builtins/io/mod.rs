@@ -211,16 +211,15 @@ fn parse_keyword_args(
 ///   :encoding :sjis (Shift_JIS)
 ///   :encoding :euc-jp (EUC-JP)
 ///   :encoding :auto (自動検出)
-
 mod basic;
-mod stream;
 mod ops;
 mod stdin;
+mod stream;
 
 pub use basic::*;
-pub use stream::*;
 pub use ops::*;
 pub use stdin::*;
+pub use stream::*;
 pub const FUNCTIONS: super::NativeFunctions = &[
     ("io/read-file", native_read_file),
     ("io/write-file", native_write_file),
