@@ -66,7 +66,7 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     if let Some(exp_secs) = exp_seconds {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after UNIX_EPOCH")
             .as_secs();
         let exp = now + (exp_secs as u64);
         if let JsonValue::Object(ref mut map) = claims {
@@ -179,7 +179,10 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
 
     match decode::<JsonValue>(token, &DecodingKey::from_secret(&[]), &validation) {
         Ok(token_data) => {
-            let header = json_to_qi_value(&serde_json::to_value(&token_data.header).unwrap())?;
+            let header = json_to_qi_value(
+                &serde_json::to_value(&token_data.header)
+                    .expect("JWT header should always be serializable"),
+            )?;
             let payload = json_to_qi_value(&token_data.claims)?;
 
             let mut result_map = crate::new_hashmap();

@@ -81,7 +81,10 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            numbers.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            numbers.sort_by(|a, b| {
+                a.partial_cmp(b)
+                    .expect("NaN values should have been filtered out")
+            });
 
             let len = numbers.len();
             let median = if len.is_multiple_of(2) {
@@ -259,7 +262,10 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            numbers.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            numbers.sort_by(|a, b| {
+                a.partial_cmp(b)
+                    .expect("NaN values should have been filtered out")
+            });
 
             // 線形補間法でパーセンタイルを計算
             let index = (p / 100.0) * (numbers.len() - 1) as f64;

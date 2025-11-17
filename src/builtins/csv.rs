@@ -28,7 +28,8 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
                 if d.chars().count() != 1 {
                     return Err(fmt_msg(MsgKey::CsvDelimiterMustBeSingleChar, &[]));
                 }
-                d.chars().next().unwrap()
+                // SAFETY: 上のチェックで1文字であることを確認済み
+                d.chars().next().expect("delimiter must have exactly one character")
             }
             _ => return Err(fmt_msg(MsgKey::CsvInvalidDelimiterArg, &[])),
         }
