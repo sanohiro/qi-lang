@@ -264,51 +264,90 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expr, String> {
         match self.current() {
             Some(Token::Nil) => {
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::Nil { span })
             }
             Some(Token::True) => {
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::Bool { value: true, span })
             }
             Some(Token::False) => {
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::Bool { value: false, span })
             }
             Some(Token::Integer(n)) => {
                 let value = *n;
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::Integer { value, span })
             }
             Some(Token::Float(f)) => {
                 let value = *f;
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::Float { value, span })
             }
             Some(Token::String(_)) => {
-                let span = self.current_span().copied().unwrap();
-                let value = self.take_string().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let value = self.take_string()
+                    .expect("token should be a string");
                 Ok(Expr::String { value, span })
             }
             Some(Token::FString(parts)) => {
                 let parts = parts.clone();
-                let span = self.current_span().copied().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
                 self.advance();
                 Ok(Expr::FString { parts, span })
             }
             Some(Token::Symbol(_)) => {
-                let span = self.current_span().copied().unwrap();
-                let name = self.take_symbol().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let name = self.take_symbol()
+                    .expect("token should be a symbol");
                 Ok(Expr::Symbol { name, span })
             }
             Some(Token::Keyword(_)) => {
-                let span = self.current_span().copied().unwrap();
-                let name = self.take_keyword().unwrap();
+                // SAFETY: current()がSomeであることを確認済み
+                let span = self
+                    .current_span()
+                    .copied()
+                    .expect("current token should have a span");
+                let name = self.take_keyword()
+                    .expect("token should be a keyword");
                 Ok(Expr::Keyword { name, span })
             }
             Some(Token::LParen) => self.parse_list(),
@@ -521,7 +560,8 @@ impl Parser {
         self.advance(); // 'def'をスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["def"])),
         };
 
@@ -544,7 +584,8 @@ impl Parser {
         self.advance(); // キーワードをスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &[keyword])),
         };
 
@@ -568,7 +609,11 @@ impl Parser {
 
         // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
         let body = Box::new(if body_exprs.len() == 1 {
-            body_exprs.into_iter().next().unwrap()
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
         } else {
             Expr::Do {
                 exprs: body_exprs,
@@ -643,7 +688,11 @@ impl Parser {
 
         // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
         let body = Box::new(if body_exprs.len() == 1 {
-            body_exprs.into_iter().next().unwrap()
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
         } else {
             Expr::Do {
                 exprs: body_exprs,
@@ -672,7 +721,8 @@ impl Parser {
                     self.advance();
                     is_variadic = true;
                     if let Some(Token::Symbol(_)) = self.current() {
-                        params.push(crate::value::Pattern::Var(self.take_symbol().unwrap()));
+                        params.push(crate::value::Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol")));
                     } else {
                         return Err(self.error_with_line(MsgKey::VarargNeedsName, &[]));
                     }
@@ -694,7 +744,8 @@ impl Parser {
     fn parse_binding_pattern(&mut self) -> Result<crate::value::Pattern, String> {
         match self.current() {
             Some(Token::Symbol(_)) => {
-                let name = self.take_symbol().unwrap();
+                let name = self.take_symbol()
+                    .expect("token should be a symbol");
                 Ok(crate::value::Pattern::Var(name))
             }
             Some(Token::LBracket) => self.parse_fn_param_vector(),
@@ -719,7 +770,8 @@ impl Parser {
                 match self.current() {
                     Some(Token::Symbol(_)) => {
                         rest = Some(Box::new(crate::value::Pattern::Var(
-                            self.take_symbol().unwrap(),
+                            self.take_symbol()
+                    .expect("token should be a symbol"),
                         )));
                         // ...rest の後に他のパターンがあってはならない
                         break;
@@ -734,7 +786,8 @@ impl Parser {
                     match self.current() {
                         Some(Token::Symbol(_)) => {
                             rest = Some(Box::new(crate::value::Pattern::Var(
-                                self.take_symbol().unwrap(),
+                                self.take_symbol()
+                    .expect("token should be a symbol"),
                             )));
                             // & rest の後に他のパターンがあってはならない
                             break;
@@ -743,7 +796,8 @@ impl Parser {
                     }
                 } else {
                     // 通常のシンボル - take_symbolを使ってクローンを避ける
-                    params.push(crate::value::Pattern::Var(self.take_symbol().unwrap()));
+                    params.push(crate::value::Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol")));
                 }
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
@@ -777,7 +831,8 @@ impl Parser {
                                     // 次は変数名
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            as_var = Some(self.take_symbol().unwrap());
+                            as_var = Some(self.take_symbol()
+                    .expect("token should be a symbol"));
                             break;
                         }
                         _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
@@ -786,13 +841,15 @@ impl Parser {
             }
 
             let key = match self.current() {
-                Some(Token::Keyword(_)) => self.take_keyword().unwrap(),
+                Some(Token::Keyword(_)) => self.take_keyword()
+                    .expect("token should be a keyword"),
                 _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
 
             // 変数名またはパターン
             let pattern = if let Some(Token::Symbol(_)) = self.current() {
-                let var_name = self.take_symbol().unwrap();
+                let var_name = self.take_symbol()
+                    .expect("token should be a symbol");
                 crate::value::Pattern::Var(var_name)
             } else if let Some(Token::LBracket) = self.current() {
                 // ネストしたベクタパターン
@@ -839,7 +896,11 @@ impl Parser {
 
         // 本体が1つの式の場合はそのまま、複数の場合はdoで囲む
         let body = Box::new(if body_exprs.len() == 1 {
-            body_exprs.into_iter().next().unwrap()
+            // SAFETY: len() == 1 をチェック済み
+            body_exprs
+                .into_iter()
+                .next()
+                .expect("body should have exactly one expression")
         } else {
             Expr::Do {
                 exprs: body_exprs,
@@ -1031,7 +1092,8 @@ impl Parser {
 
         while self.current() != Some(&Token::RBracket) {
             let name = match self.current() {
-                Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+                Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
                 _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["loop"])),
             };
 
@@ -1145,7 +1207,8 @@ impl Parser {
         self.expect(Token::LBracket)?;
 
         let binding = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["while-some"])),
         };
 
@@ -1178,7 +1241,8 @@ impl Parser {
         self.expect(Token::LBracket)?;
 
         let binding = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["until-error"])),
         };
 
@@ -1209,7 +1273,8 @@ impl Parser {
 
         // マクロ名
         let name = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
             _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
         };
 
@@ -1227,13 +1292,15 @@ impl Parser {
                     // 次のシンボルが可変引数名
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            params.push(self.take_symbol().unwrap());
+                            params.push(self.take_symbol()
+                    .expect("token should be a symbol"));
                         }
                         _ => return Err(self.error_with_line(MsgKey::MacVarargNeedsSymbol, &[])),
                     }
                 }
                 Some(Token::Symbol(_)) => {
-                    params.push(self.take_symbol().unwrap());
+                    params.push(self.take_symbol()
+                    .expect("token should be a symbol"));
                 }
                 _ => return Err(self.error_with_line(MsgKey::NeedsSymbol, &["mac"])),
             }
@@ -1464,15 +1531,18 @@ impl Parser {
                 Ok(Pattern::Float(f))
             }
             Some(Token::String(_)) => {
-                let s = self.take_string().unwrap();
+                let s = self.take_string()
+                    .expect("token should be a string");
                 Ok(Pattern::String(s))
             }
             Some(Token::Keyword(_)) => {
-                let k = self.take_keyword().unwrap();
+                let k = self.take_keyword()
+                    .expect("token should be a keyword");
                 Ok(Pattern::Keyword(k))
             }
             Some(Token::Symbol(_)) => {
-                let s = self.take_symbol().unwrap();
+                let s = self.take_symbol()
+                    .expect("token should be a symbol");
                 Ok(Pattern::Var(s))
             }
             Some(Token::LBracket) => self.parse_vector_pattern(),
@@ -1498,7 +1568,8 @@ impl Parser {
                                 // 次は変数名でなければならない
                 match self.current() {
                     Some(Token::Symbol(_)) => {
-                        rest = Some(Box::new(Pattern::Var(self.take_symbol().unwrap())));
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol"))));
                         // ...rest の後に他のパターンがあってはならない
                         break;
                     }
@@ -1510,7 +1581,8 @@ impl Parser {
                                 // 次は変数名でなければならない
                 match self.current() {
                     Some(Token::Symbol(_)) => {
-                        rest = Some(Box::new(Pattern::Var(self.take_symbol().unwrap())));
+                        rest = Some(Box::new(Pattern::Var(self.take_symbol()
+                    .expect("token should be a symbol"))));
                         // & rest の後に他のパターンがあってはならない
                         break;
                     }
@@ -1546,7 +1618,8 @@ impl Parser {
                                     // 次は変数名
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            as_var = Some(self.take_symbol().unwrap());
+                            as_var = Some(self.take_symbol()
+                    .expect("token should be a symbol"));
                             break;
                         }
                         _ => return Err(self.error_with_line(MsgKey::AsNeedsVarName, &[])),
@@ -1555,13 +1628,15 @@ impl Parser {
             }
 
             let key = match self.current() {
-                Some(Token::Keyword(_)) => self.take_keyword().unwrap(),
+                Some(Token::Keyword(_)) => self.take_keyword()
+                    .expect("token should be a keyword"),
                 _ => return Err(self.error_with_line(MsgKey::KeyMustBeKeyword, &[])),
             };
 
             // 変数名またはパターン
             let pattern = if let Some(Token::Symbol(_)) = self.current() {
-                let var_name = self.take_symbol().unwrap();
+                let var_name = self.take_symbol()
+                    .expect("token should be a symbol");
 
                 // => チェック
                 if self.current() == Some(&Token::FatArrow) {
@@ -1598,8 +1673,10 @@ impl Parser {
         self.advance(); // 'module'をスキップ
 
         let name = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
-            Some(Token::String(_)) => self.take_string().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            Some(Token::String(_)) => self.take_string()
+                    .expect("token should be a string"),
             _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
         };
 
@@ -1621,7 +1698,8 @@ impl Parser {
         while self.current() != Some(&Token::RParen) {
             match self.current() {
                 Some(Token::Symbol(_)) => {
-                    symbols.push(self.take_symbol().unwrap());
+                    symbols.push(self.take_symbol()
+                    .expect("token should be a symbol"));
                 }
                 _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
             }
@@ -1642,8 +1720,10 @@ impl Parser {
 
         // モジュール名（シンボルまたは文字列）
         let module = match self.current() {
-            Some(Token::Symbol(_)) => self.take_symbol().unwrap(),
-            Some(Token::String(_)) => self.take_string().unwrap(),
+            Some(Token::Symbol(_)) => self.take_symbol()
+                    .expect("token should be a symbol"),
+            Some(Token::String(_)) => self.take_string()
+                    .expect("token should be a string"),
             _ => return Err(self.error_with_line(MsgKey::UseNeedsModuleName, &[])),
         };
 
@@ -1658,7 +1738,8 @@ impl Parser {
                 while self.current() != Some(&Token::RBracket) {
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            symbols.push(self.take_symbol().unwrap());
+                            symbols.push(self.take_symbol()
+                    .expect("token should be a symbol"));
                         }
                         _ => {
                             return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
@@ -1672,7 +1753,8 @@ impl Parser {
                 self.advance();
                 match self.current() {
                     Some(Token::Symbol(_)) => {
-                        let alias = self.take_symbol().unwrap();
+                        let alias = self.take_symbol()
+                    .expect("token should be a symbol");
                         UseMode::As(alias)
                     }
                     _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
