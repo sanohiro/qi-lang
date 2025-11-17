@@ -2,10 +2,7 @@
 //!
 //! VSCodeとの統合のためのDAPサーバー
 
-use crate::constants::dap::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 /// DAPプロトコルのメッセージベース
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,7 +264,7 @@ pub struct StepOutArguments {
 
 /// launch時の保留情報
 pub struct PendingLaunch {
-    program: String,
-    event_tx: tokio::sync::mpsc::Sender<String>,
+    pub program: String,
+    pub event_tx: tokio::sync::mpsc::Sender<String>,
 }
 

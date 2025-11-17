@@ -3,8 +3,6 @@
 use super::stdio_redirect;
 use super::types::*;
 use crate::constants::dap::*;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Write};
 use std::sync::Arc;

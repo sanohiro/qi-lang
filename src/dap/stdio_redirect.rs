@@ -1,8 +1,6 @@
 //! 標準入出力のリダイレクト機能
 
-use std::fs::File;
-use std::io::{self, BufRead, BufReader, Write};
-use std::sync::Arc;
+use std::io;
 
 #[cfg(windows)]
 use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
