@@ -2563,13 +2563,12 @@
 <h2 id="_14">実用例<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h2>
 <h3 id="url">URL処理<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>;; URLパラメータの生成
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>(def params {:user &quot;alice&quot; :page 1 :sort &quot;name&quot;})
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>(def params [[&quot;user&quot; &quot;alice&quot;] [&quot;page&quot; &quot;1&quot;] [&quot;sort&quot; &quot;name&quot;]])
 </span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
 </span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>(params
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a> |&gt; keys
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a> |&gt; (map (fn [k] (str (name k) &quot;=&quot; (str/url-encode (get params k)))))
-</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a> |&gt; (join &quot;&amp;&quot;))
-</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>;; =&gt; &quot;user=alice&amp;page=1&amp;sort=name&quot;
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a> |&gt; (map (fn [[k v]] (str k &quot;=&quot; (str/url-encode v))))
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a> |&gt; (join &quot;&amp;&quot; _))
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>;; =&gt; &quot;user=alice&amp;page=1&amp;sort=name&quot;
 </span></code></pre></div>
 <h3 id="_15">テキスト整形<a class="headerlink" href="#_15" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>;; マークダウンのコード整形
@@ -2597,7 +2596,7 @@
 </span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>(headers
 </span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a> |&gt; (map str/lower)
 </span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a> |&gt; (map str/squish)
-</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a> |&gt; (map (partial str/replace _ &quot; &quot; &quot;_&quot;)))
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a> |&gt; (map (fn [s] (str/replace s &quot; &quot; &quot;_&quot;))))
 </span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>;; =&gt; [&quot;user_name&quot; &quot;e-mail&quot; &quot;created_at&quot;]
 </span></code></pre></div>
 

@@ -2586,12 +2586,17 @@
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  (process result))
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>;; パイプラインでのエラー処理（詳細は02-flow-pipes.mdを参照）
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>(user-input
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a> |&gt; validate
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a> |&gt;? parse-number      ;; 普通の値を返すだけでOK
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a> |&gt;? (fn [n] (divide 100 n))
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a> |&gt;? format-result)
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>;; 成功時 =&gt; 結果の値、エラー時 =&gt; {:error ...}
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>(def user-input &quot;10&quot;)
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>(defn validate [s] (if (&gt; (len s) 0) s {:error &quot;Empty input&quot;}))
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>(defn parse-number [s] (match (try (str/parse-int s)) {:error e} -&gt; {:error e} n -&gt; n))
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>(defn format-result [n] (str &quot;Result: &quot; n))
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>(user-input
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a> |&gt; validate
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a> |&gt;? parse-number      ;; 普通の値を返すだけでOK
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a> |&gt;? (fn [n] (divide 100 n))
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a> |&gt;? format-result)
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>;; 成功時 =&gt; 結果の値、エラー時 =&gt; {:error ...}
 </span></code></pre></div>
 <h3 id="railway-pipeline">Railway Pipelineとの統合<a class="headerlink" href="#railway-pipeline" title="Permanent link">&para;</a></h3>
 <p><code>|&gt;?</code> 演算子を使うことで、エラーハンドリングをパイプラインに統合できます。</p>
@@ -2768,10 +2773,11 @@
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  data -&gt; (process data))
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
 </span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>;; パイプラインでの使用
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>(user-input
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a> |&gt; json/parse
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a> |&gt;? (fn [data] (get data &quot;name&quot;))
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a> |&gt;? str/upper)
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>(def user-input &quot;{\&quot;name\&quot;:\&quot;alice\&quot;,\&quot;age\&quot;:30}&quot;)
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>(user-input
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a> |&gt; json/parse
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a> |&gt;? (fn [data] (get data &quot;name&quot;))
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a> |&gt;? str/upper)
 </span></code></pre></div>
 <h3 id="okvalue-errmessage">例外を投げる関数（<code>Ok(value)</code> / <code>Err(message)</code>）<a class="headerlink" href="#okvalue-errmessage" title="Permanent link">&para;</a></h3>
 <p><strong>I/O・ネットワーク系</strong> - 失敗は例外的な状況として扱う：</p>

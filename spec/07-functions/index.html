@@ -876,10 +876,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#partial-partial-application" class="md-nav__link">
+  <a href="#partial-application-using-fn" class="md-nav__link">
     <span class="md-ellipsis">
       
-        partial - Partial Application
+        Partial Application (using fn)
       
     </span>
   </a>
@@ -2153,10 +2153,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#partial-partial-application" class="md-nav__link">
+  <a href="#partial-application-using-fn" class="md-nav__link">
     <span class="md-ellipsis">
       
-        partial - Partial Application
+        Partial Application (using fn)
       
     </span>
   </a>
@@ -2395,17 +2395,17 @@
 </span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>;; comp: (comp f g h) applies h → g → f
 </span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>;; |&gt;:   x |&gt; h |&gt; g |&gt; f is the same processing
 </span></code></pre></div>
-<h3 id="partial-partial-application">partial - Partial Application<a class="headerlink" href="#partial-partial-application" title="Permanent link">&para;</a></h3>
+<h3 id="partial-application-using-fn">Partial Application (using fn)<a class="headerlink" href="#partial-application-using-fn" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>;; Create new function with partial application
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>(def add5 (partial + 5))
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>(def add5 (fn [x] (+ 5 x)))
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>(add5 10)                             ;; =&gt; 15
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>;; Partial application with multiple arguments
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>(def greet-hello (partial str &quot;Hello, &quot;))
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>(def greet-hello (fn [name] (str &quot;Hello, &quot; name)))
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>(greet-hello &quot;Alice&quot;)                 ;; =&gt; &quot;Hello, Alice&quot;
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>;; Practical example: Generate filter condition
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>(def greater-than-10 (partial &lt; 10))
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>(def greater-than-10 (fn [x] (&gt; x 10)))
 </span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>(filter greater-than-10 [5 15 3 20])  ;; =&gt; (15 20)
 </span></code></pre></div>
 <hr />
@@ -2465,7 +2465,7 @@
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  (comp
 </span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    str/upper
 </span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    str/trim
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    (partial str/replace _ &quot;!&quot; &quot;.&quot;)))
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    (fn [s] (str/replace s &quot;!&quot; &quot;.&quot;))))
 </span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
 </span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>(process-text &quot;  hello world!  &quot;)     ;; =&gt; &quot;HELLO WORLD.&quot;
 </span></code></pre></div>
@@ -2474,8 +2474,8 @@
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>(def valid-user?
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>  (fn [user]
 </span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    (and
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>      ((complement nil?) (:name user))
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>      (&gt; (:age user) 18))))
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>      ((complement nil?) (get user :name))
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>      (&gt; (get user :age) 18))))
 </span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
 </span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>(filter valid-user?
 </span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>  [{:name &quot;Alice&quot; :age 30}
