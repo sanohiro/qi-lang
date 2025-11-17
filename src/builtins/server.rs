@@ -605,7 +605,20 @@ pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
 }
 
 /// server/serve - HTTPサーバーを起動
+///
+/// ## オプション
+///
+/// - `:timeout` - リクエストタイムアウト（秒）
+///   - 最小: 1秒
+///   - 最大: 300秒（5分）
+///   - デフォルト: 30秒
+///   - 範囲外の値は自動的にクリップされます
 pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
+    // タイムアウト制限
+    const MIN_TIMEOUT_SECS: u64 = 1;
+    const MAX_TIMEOUT_SECS: u64 = 300; // 5分
+    const DEFAULT_TIMEOUT_SECS: u64 = 30;
+
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/serve", "1"]));
     }
@@ -637,8 +650,26 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     };
 
     let timeout_secs = match opts.get(&timeout_key) {
-        Some(Value::Integer(t)) => *t as u64,
-        _ => 30,
+        Some(Value::Integer(t))
+            if *t >= MIN_TIMEOUT_SECS as i64 && *t <= MAX_TIMEOUT_SECS as i64 =>
+        {
+            *t as u64
+        }
+        Some(Value::Integer(t)) if *t > MAX_TIMEOUT_SECS as i64 => {
+            eprintln!(
+                "Warning: Timeout {} exceeds maximum {}. Using maximum.",
+                t, MAX_TIMEOUT_SECS
+            );
+            MAX_TIMEOUT_SECS
+        }
+        Some(Value::Integer(t)) if *t < MIN_TIMEOUT_SECS as i64 => {
+            eprintln!(
+                "Warning: Timeout {} is below minimum {}. Using default.",
+                t, MIN_TIMEOUT_SECS
+            );
+            DEFAULT_TIMEOUT_SECS
+        }
+        _ => DEFAULT_TIMEOUT_SECS,
     };
 
     println!(
