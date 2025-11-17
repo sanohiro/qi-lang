@@ -172,6 +172,7 @@ pub enum MsgKey {
     SelectCaseMustStart,   // {0}: ケースはチャネルまたは:timeoutで始まる必要があります
     SelectCaseMustBe, // {0}: ケースはリストである必要があります [channel handler] or [:timeout ms handler]
     AllElementsMustBe, // {0}: 全ての要素は{1}である必要があります
+    SetOperationError, // {0}: set operation error
 
     // 並行処理エラー
     ChannelClosed,   // {0}: channel is closed
@@ -779,6 +780,7 @@ static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             "{0}: case must be a list [channel handler] or [:timeout ms handler]",
         ),
         (AllElementsMustBe, "{0}: all elements must be {1}"),
+        (SetOperationError, "{0}"),
         // 並行処理エラー
         (ChannelClosed, "{0}: channel is closed"),
         (ExpectedKeyword, "{0}: expected {1} keyword"),
@@ -1480,6 +1482,7 @@ static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         ),
         (SelectCaseMustBe, "{0}: ケースはリストである必要があります [channel handler] or [:timeout ms handler]"),
         (AllElementsMustBe, "{0}: 全ての要素は{1}である必要があります"),
+        (SetOperationError, "{0}"),
         // 並行処理エラー
         (ChannelClosed, "{0}: チャネルは閉じられています"),
         (ExpectedKeyword, "{0}: {1}キーワードが必要です"),

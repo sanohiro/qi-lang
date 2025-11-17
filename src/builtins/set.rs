@@ -2,9 +2,46 @@
 //!
 //! このモジュールは `std-set` feature でコンパイルされます。
 
+// ValueはArc<RwLock<Env>>を含むため、clippyがmutable_key_typeを警告する。
+// しかし、我々のHash/Eq実装は一貫しており（RwLockの中身は比較しない）、
+// 実際にはHashSetのキーとして安全に使用できる。
+#![allow(clippy::mutable_key_type)]
+
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashSet;
+
+/// ハッシュ化できない値が含まれているかチェック
+fn check_hashable(items: &im::Vector<Value>) -> Result<(), String> {
+    for item in items {
+        match item {
+            Value::Float(_) => {
+                return Err(fmt_msg(
+                    MsgKey::SetOperationError,
+                    &["Float values cannot be used in set operations"],
+                ))
+            }
+            Value::Function(_)
+            | Value::NativeFunc(_)
+            | Value::Macro(_)
+            | Value::Atom(_)
+            | Value::Channel(_)
+            | Value::Scope(_)
+            | Value::Stream(_)
+            | Value::Uvar(_) => {
+                return Err(fmt_msg(
+                    MsgKey::SetOperationError,
+                    &[&format!(
+                        "{} cannot be used in set operations",
+                        item.type_name()
+                    )],
+                ))
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
 
 /// union - 和集合
 pub fn native_union(args: &[Value]) -> Result<Value, String> {
@@ -18,9 +55,9 @@ pub fn native_union(args: &[Value]) -> Result<Value, String> {
     for arg in args {
         match arg {
             Value::List(items) | Value::Vector(items) => {
+                check_hashable(items)?;
                 for item in items {
-                    let key = format!("{:?}", item);
-                    if seen.insert(key) {
+                    if seen.insert(item.clone()) {
                         result.push(item.clone());
                     }
                 }
@@ -54,13 +91,15 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let mut result: HashSet<String> = first.iter().map(|v| format!("{:?}", v)).collect();
+    check_hashable(first)?;
+    let mut result: HashSet<Value> = first.iter().cloned().collect();
 
     // 他のリストとの積集合を取る
     for arg in &args[1..] {
         match arg {
             Value::List(items) | Value::Vector(items) => {
-                let set: HashSet<String> = items.iter().map(|v| format!("{:?}", v)).collect();
+                check_hashable(items)?;
+                let set: HashSet<Value> = items.iter().cloned().collect();
                 result.retain(|k| set.contains(k));
             }
             _ => {
@@ -72,10 +111,10 @@ pub fn native_intersect(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    // 元の値を復元
+    // 元の値を復元（順序を保持）
     let values: Vec<Value> = first
         .iter()
-        .filter(|v| result.contains(&format!("{:?}", v)))
+        .filter(|v| result.contains(v))
         .cloned()
         .collect();
 
@@ -98,12 +137,14 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
         }
     };
 
+    check_hashable(first)?;
     let mut exclude = HashSet::new();
     for arg in &args[1..] {
         match arg {
             Value::List(items) | Value::Vector(items) => {
+                check_hashable(items)?;
                 for item in items {
-                    exclude.insert(format!("{:?}", item));
+                    exclude.insert(item.clone());
                 }
             }
             _ => {
@@ -117,7 +158,7 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
 
     let values: Vec<Value> = first
         .iter()
-        .filter(|v| !exclude.contains(&format!("{:?}", v)))
+        .filter(|v| !exclude.contains(v))
         .cloned()
         .collect();
 
@@ -150,10 +191,13 @@ pub fn native_subset(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let superset_keys: HashSet<String> = superset.iter().map(|v| format!("{:?}", v)).collect();
+    check_hashable(subset)?;
+    check_hashable(superset)?;
+
+    let superset_set: HashSet<Value> = superset.iter().cloned().collect();
 
     for item in subset {
-        if !superset_keys.contains(&format!("{:?}", item)) {
+        if !superset_set.contains(item) {
             return Ok(Value::Bool(false));
         }
     }
@@ -197,10 +241,13 @@ pub fn native_disjoint(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let keys1: HashSet<String> = set1.iter().map(|v| format!("{:?}", v)).collect();
+    check_hashable(set1)?;
+    check_hashable(set2)?;
+
+    let set1_hash: HashSet<Value> = set1.iter().cloned().collect();
 
     for item in set2 {
-        if keys1.contains(&format!("{:?}", item)) {
+        if set1_hash.contains(item) {
             return Ok(Value::Bool(false));
         }
     }
@@ -234,25 +281,25 @@ pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let keys1: HashSet<String> = set1.iter().map(|v| format!("{:?}", v)).collect();
+    check_hashable(set1)?;
+    check_hashable(set2)?;
 
-    let keys2: HashSet<String> = set2.iter().map(|v| format!("{:?}", v)).collect();
+    let set1_hash: HashSet<Value> = set1.iter().cloned().collect();
+    let set2_hash: HashSet<Value> = set2.iter().cloned().collect();
 
     let mut result = Vec::new();
     let mut seen = HashSet::new();
 
     // set1にのみ存在する要素
     for item in set1 {
-        let key = format!("{:?}", item);
-        if !keys2.contains(&key) && seen.insert(key) {
+        if !set2_hash.contains(item) && seen.insert(item.clone()) {
             result.push(item.clone());
         }
     }
 
     // set2にのみ存在する要素
     for item in set2 {
-        let key = format!("{:?}", item);
-        if !keys1.contains(&key) && seen.insert(key) {
+        if !set1_hash.contains(item) && seen.insert(item.clone()) {
             result.push(item.clone());
         }
     }

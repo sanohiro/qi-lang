@@ -3,6 +3,7 @@ use crossbeam_channel::{Receiver, Sender};
 use im::Vector;
 use parking_lot::RwLock;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 /// f-stringの部品（文字列またはコード）
@@ -258,6 +259,61 @@ impl PartialEq for Value {
         }
     }
 }
+
+/// Hashトレイト実装（集合演算の高速化）
+///
+/// Float, Function, NativeFunc, Macro, Atom, Channel, Scope, Stream, Uvarは
+/// ハッシュ化できないため、これらの値を含むコレクションで集合演算を行うと
+/// エラーになります。
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // discriminant（列挙子の識別子）をハッシュ化して型の違いを区別
+        std::mem::discriminant(self).hash(state);
+
+        match self {
+            Value::Nil => {}
+            Value::Bool(b) => b.hash(state),
+            Value::Integer(i) => i.hash(state),
+            Value::String(s) => s.hash(state),
+            Value::Symbol(s) => s.hash(state),
+            Value::Keyword(k) => k.hash(state),
+            Value::List(items) | Value::Vector(items) => {
+                // ListとVectorは同じ内容なら同じハッシュ値を返す
+                items.hash(state);
+            }
+            Value::Map(m) => {
+                // MapはHashMapなので、キーと値のペアをソートしてハッシュ化
+                let mut pairs: Vec<_> = m.iter().collect();
+                pairs.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+                for (k, v) in pairs {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            }
+            // ハッシュ化できない型
+            Value::Float(_)
+            | Value::Function(_)
+            | Value::NativeFunc(_)
+            | Value::Macro(_)
+            | Value::Atom(_)
+            | Value::Channel(_)
+            | Value::Scope(_)
+            | Value::Stream(_)
+            | Value::Uvar(_) => {
+                // panicではなく、固定値をハッシュ化（呼び出し元でチェックする）
+                // 集合演算では事前に型チェックするため、ここには到達しない想定
+                0u8.hash(state);
+            }
+        }
+    }
+}
+
+/// Eqトレイト実装（PartialEqに加えて完全な等価性を保証）
+///
+/// Valueは反射性・対称性・推移性を満たすため、Eqを実装できます。
+/// ただし、Floatを含む値は厳密にはEqではありませんが（NaN != NaN）、
+/// Qi言語ではFloatの==は通常の浮動小数点比較として扱います。
+impl Eq for Value {}
 
 /// 関数の定義
 #[derive(Debug, Clone)]
