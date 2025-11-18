@@ -53,7 +53,6 @@ pub(super) fn compress_gzip_response(body: &str) -> Result<String, std::io::Erro
 // ========================================
 
 /// JSONボディをパースしてリクエストに追加
-
 pub(super) fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
     let mut params: HashMap<String, Vec<String>> = crate::new_hashmap();
 
@@ -275,47 +274,7 @@ pub(super) async fn value_to_response(
     }
 }
 
-fn get_content_type(path: &str) -> &'static str {
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-
-    match ext.to_lowercase().as_str() {
-        "html" | "htm" => "text/html; charset=utf-8",
-        "css" => "text/css; charset=utf-8",
-        "js" | "mjs" => "application/javascript; charset=utf-8",
-        "json" => "application/json; charset=utf-8",
-        "xml" => "application/xml; charset=utf-8",
-        "txt" => "text/plain; charset=utf-8",
-        "md" => "text/markdown; charset=utf-8",
-
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        "ico" => "image/x-icon",
-        "webp" => "image/webp",
-
-        "woff" => "font/woff",
-        "woff2" => "font/woff2",
-        "ttf" => "font/ttf",
-        "otf" => "font/otf",
-
-        "pdf" => "application/pdf",
-        "zip" => "application/zip",
-        "gz" => "application/gzip",
-
-        _ => "application/octet-stream",
-    }
-}
-
-/// 安全なパス検証（ベースディレクトリ外へのアクセスを防止）
-///
-/// パストラバーサル攻撃を防ぐため、以下のチェックを実施:
-/// - URLデコード後のパス検証
-/// - 正規化（canonicalize）によるシンボリックリンク・..の解決
-
+/// エラーレスポンスを生成
 pub(super) fn error_response(status: u16, message: &str) -> Response<BoxBody<Bytes, Infallible>> {
     // SAFETY: Response::builderは有効なステータスコードとヘッダーでは失敗しない
     Response::builder()

@@ -99,7 +99,6 @@ pub(super) fn get_content_type(path: &str) -> &'static str {
 /// パストラバーサル攻撃を防ぐため、以下のチェックを実施:
 /// - URLデコード後のパス検証
 /// - 正規化（canonicalize）によるシンボリックリンク・..の解決
-
 pub(super) fn validate_safe_path(
     base_dir: &std::path::Path,
     requested_path: &str,

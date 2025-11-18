@@ -6,7 +6,7 @@ use super::middleware::{
     apply_json_body_middleware, apply_logging_middleware,
 };
 use super::response::native_server_not_found;
-use super::static_files::{get_content_type, validate_safe_path};
+use super::static_files::serve_static_file;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -30,7 +30,6 @@ pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
 ///   - 最小: 1秒
 ///   - 最大: 300秒（5分）
 ///   - デフォルト: 30秒
-
 pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<Value, String> {
     let method_key = kw("method");
     let path_key = kw("path");
@@ -115,62 +114,6 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
 
     // ルートが見つからない
     native_server_not_found(&[])
-}
-
-/// 静的ファイルを配信（ストリーミング対応）
-fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
-    let path_key = kw("path");
-
-    let path = match req {
-        Value::Map(m) => match m.get(&path_key) {
-            Some(Value::String(p)) => p,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::RequestMustHave,
-                    &["request", ":path string"],
-                ))
-            }
-        },
-        _ => return Err(fmt_msg(MsgKey::RequestMustBe, &["request", "a map"])),
-    };
-
-    // セキュリティチェック（パストラバーサル攻撃を防止）
-    let file_path = validate_safe_path(std::path::Path::new(dir_path), path)
-        .map_err(|e| format!("Invalid path: {}", e))?;
-
-    // index.htmlの自動配信（ディレクトリの場合）
-    let file_path = if file_path.is_dir() {
-        file_path.join("index.html")
-    } else {
-        file_path
-    };
-
-    // ファイルの存在確認（メタデータ取得）
-    std::fs::metadata(&file_path).map_err(|e| {
-        if e.kind() == std::io::ErrorKind::NotFound {
-            return format!("File not found: {}", path);
-        }
-        format!("Failed to read file metadata: {}", e)
-    })?;
-
-    // ストリーミングレスポンスを生成（:body-file を使用）
-    let content_type = get_content_type(file_path.to_str().unwrap_or(""));
-    let file_path_str = file_path
-        .to_str()
-        .ok_or_else(|| fmt_msg(MsgKey::InvalidFilePath, &["serve_static_file"]))?;
-
-    let mut resp = crate::new_hashmap();
-    resp.insert(kw("status"), Value::Integer(200));
-    resp.insert(kw("body-file"), Value::String(file_path_str.to_string()));
-
-    let mut headers = crate::new_hashmap();
-    headers.insert(
-        "Content-Type".to_string(),
-        Value::String(content_type.to_string()),
-    );
-    resp.insert(kw("headers"), Value::Map(headers));
-
-    Ok(Value::Map(resp))
 }
 
 /// ミドルウェアを適用してハンドラーを実行

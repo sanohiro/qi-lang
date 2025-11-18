@@ -4,7 +4,7 @@
 
 use dashmap::DashMap;
 use redis::aio::MultiplexedConnection;
-use redis::{AsyncCommands, Client};
+use redis::Client;
 use std::sync::LazyLock;
 use tokio::runtime::Runtime;
 
