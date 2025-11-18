@@ -3,7 +3,9 @@
 use std::io;
 
 #[cfg(windows)]
-use super::{Event, OutputEventBody, EVENT_OUTPUT, MSG_TYPE_EVENT};
+use super::{Event, OutputEventBody};
+#[cfg(windows)]
+use crate::constants::dap::{EVENT_OUTPUT, MSG_TYPE_EVENT};
 
 #[cfg(unix)]
 type NativeHandle = i32;
