@@ -315,14 +315,24 @@ impl Evaluator {
             Value::Function(f) => {
                 // 特殊処理フラグがtrueの場合のみ環境ルックアップ（99.9%の通常関数で高速化）
                 if f.has_special_processing {
+                    // ロックは一度だけ取得し、必要な値をローカルにclone（ロック競合を削減）
+                    let env_guard = f.env.read();
+                    let complement_func = env_guard.get(hof_keys::COMPLEMENT_FUNC);
+                    let juxt_funcs = env_guard.get(hof_keys::JUXT_FUNCS);
+                    let tap_func = env_guard.get(hof_keys::TAP_FUNC);
+                    let partial_func = env_guard.get(hof_keys::PARTIAL_FUNC);
+                    let partial_args = env_guard.get(hof_keys::PARTIAL_ARGS);
+                    let comp_funcs = env_guard.get(hof_keys::COMP_FUNCS);
+                    drop(env_guard); // 明示的に解放
+
                     // complement特殊処理 - 実行前にチェック
-                    if let Some(complement_func) = f.env.read().get(hof_keys::COMPLEMENT_FUNC) {
+                    if let Some(complement_func) = complement_func {
                         let result = self.apply_func(&complement_func, args)?;
                         return Ok(Value::Bool(!result.is_truthy()));
                     }
 
                     // juxt特殊処理 - 実行前にチェック
-                    if let Some(Value::List(juxt_funcs)) = f.env.read().get(hof_keys::JUXT_FUNCS) {
+                    if let Some(Value::List(juxt_funcs)) = juxt_funcs {
                         let mut results = Vec::with_capacity(juxt_funcs.len());
                         for jfunc in &juxt_funcs {
                             let result = self.apply_func(jfunc, args.clone())?;
@@ -332,7 +342,7 @@ impl Evaluator {
                     }
 
                     // tap>特殊処理 - 副作用を実行してから値を返す
-                    if let Some(tap_func) = f.env.read().get(hof_keys::TAP_FUNC) {
+                    if let Some(tap_func) = tap_func {
                         if args.len() == 1 {
                             let value = args[0].clone();
                             // 副作用関数を実行（結果は無視）
@@ -343,10 +353,8 @@ impl Evaluator {
                     }
 
                     // partial特殊処理 - 部分適用された引数と新しい引数を結合
-                    if let Some(partial_func) = f.env.read().get(hof_keys::PARTIAL_FUNC) {
-                        if let Some(Value::List(partial_args)) =
-                            f.env.read().get(hof_keys::PARTIAL_ARGS)
-                        {
+                    if let Some(partial_func) = partial_func {
+                        if let Some(Value::List(partial_args)) = partial_args {
                             // 部分適用された引数と新しい引数を結合
                             let mut combined_args: SmallVec<[Value; 4]> =
                                 SmallVec::with_capacity(partial_args.len() + args.len());
@@ -357,7 +365,7 @@ impl Evaluator {
                     }
 
                     // comp特殊処理 - 関数合成（右から左に適用）
-                    if let Some(Value::List(comp_funcs)) = f.env.read().get(hof_keys::COMP_FUNCS) {
+                    if let Some(Value::List(comp_funcs)) = comp_funcs {
                         if args.len() != 1 {
                             return Err(fmt_msg(
                                 MsgKey::ArgCountMismatch,
