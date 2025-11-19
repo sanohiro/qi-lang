@@ -29,6 +29,9 @@ struct Asset {
 fn parse_version(version: &str) -> Vec<u32> {
     version
         .trim_start_matches('v')
+        .split('-')
+        .next()
+        .unwrap_or("")
         .split('.')
         .filter_map(|s| s.parse().ok())
         .collect()
