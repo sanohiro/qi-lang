@@ -321,14 +321,15 @@ impl Evaluator {
             }
 
             Expr::Map { pairs, .. } => {
-                let mut map = HashMap::with_capacity(pairs.len());
+                // ahashを使ったHashMapを最初から構築（std::HashMapからの変換を避ける）
+                let mut map = crate::new_hashmap();
                 for (k, v) in pairs {
                     let key_value = self.eval_with_env(k, Arc::clone(&env))?;
                     let key = key_value.to_map_key()?;
                     let value = self.eval_with_env(v, Arc::clone(&env))?;
                     map.insert(key, value);
                 }
-                Ok(Value::Map(map.into()))
+                Ok(Value::Map(map))
             }
 
             Expr::Def {
