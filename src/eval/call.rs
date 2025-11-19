@@ -139,11 +139,31 @@ impl Evaluator {
                     return Err(qerr(MsgKey::NeedExactlyNArgs, &["keyword", "1"]));
                 }
                 match &arg_vals[0] {
-                    Value::Map(m) => m
-                        .get(&key)
-                        .cloned()
-                        .ok_or_else(|| qerr(MsgKey::KeyNotFound, &[&key])),
+                    Value::Map(m) => {
+                        // キーワードをマップキーに変換（:付き）
+                        let map_key = Value::Keyword(key.clone()).to_map_key()?;
+                        m.get(&map_key)
+                            .cloned()
+                            .ok_or_else(|| qerr(MsgKey::KeyNotFound, &[&key]))
+                    }
                     _ => Err(qerr(MsgKey::TypeOnly, &["keyword fn", "maps"])),
+                }
+            }
+            Value::String(key) => {
+                // 文字列を関数として使う: ("name" map) => (get map "name")
+                // JSON等の文字列キーへのアクセスに便利
+                if arg_vals.len() != 1 {
+                    return Err(qerr(MsgKey::NeedExactlyNArgs, &["string", "1"]));
+                }
+                match &arg_vals[0] {
+                    Value::Map(m) => {
+                        // 文字列をマップキーに変換
+                        let map_key = Value::String(key.clone()).to_map_key()?;
+                        m.get(&map_key)
+                            .cloned()
+                            .ok_or_else(|| qerr(MsgKey::KeyNotFound, &[&key]))
+                    }
+                    _ => Err(qerr(MsgKey::TypeOnly, &["string fn", "maps"])),
                 }
             }
             _ => Err(fmt_msg(
@@ -517,5 +537,95 @@ impl Evaluator {
                 &["function", func.type_name(), &format!("{}", func)],
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::Parser;
+    use crate::value::Value;
+
+    fn eval_str(s: &str) -> Result<Value, String> {
+        crate::i18n::init(); // i18nシステムを初期化
+        let evaluator = Evaluator::new();
+        let mut parser = Parser::new(s)?;
+        let exprs = parser.parse_all()?;
+        let mut result = Value::Nil;
+        for expr in exprs {
+            result = evaluator.eval(&expr)?;
+        }
+        Ok(result)
+    }
+
+    #[test]
+    fn test_keyword_as_function() {
+        // キーワードキーのマップ作成とアクセス
+        let code = r#"
+(def response {:status 200 :body "Hello"})
+(:status response)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::Integer(200));
+
+        // 別のキーへのアクセス
+        let code = r#"
+(def response {:status 200 :body "Hello"})
+(:body response)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::String("Hello".to_string()));
+    }
+
+    #[test]
+    fn test_string_as_function() {
+        // 文字列キーのマップ作成とアクセス
+        let code = r#"
+(def user {"name" "Alice" "age" "30"})
+("name" user)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::String("Alice".to_string()));
+
+        // 別のキーへのアクセス
+        let code = r#"
+(def user {"name" "Alice" "age" "30"})
+("age" user)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::String("30".to_string()));
+    }
+
+    #[test]
+    fn test_keyword_function_with_nonexistent_key() {
+        // 存在しないキーへのアクセスはエラー
+        let code = r#"
+(def m {})
+(:nonexistent m)
+"#;
+        let result = eval_str(code);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_keyword_function_with_non_map() {
+        // マップ以外に対する適用はエラー
+        let code = r#"
+(def x "not a map")
+(:key x)
+"#;
+        let result = eval_str(code);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_function_with_non_map() {
+        // マップ以外に対する適用はエラー
+        let code = r#"
+(def x 123)
+("key" x)
+"#;
+        let result = eval_str(code);
+        assert!(result.is_err());
     }
 }
