@@ -11,6 +11,26 @@ use std::sync::Arc;
 
 use super::{Evaluator, DOC_PREFIX, RECUR_SENTINEL};
 
+/// RAIIガード: Drop時に必ずdeferスタックをクリーンアップ
+struct DeferGuard<'a> {
+    evaluator: &'a Evaluator,
+    env: Arc<RwLock<Env>>,
+}
+
+impl<'a> Drop for DeferGuard<'a> {
+    fn drop(&mut self) {
+        // deferを実行（LIFO順）
+        if let Some(defers) = self.evaluator.defer_stack.write().pop() {
+            for defer_expr in defers.iter().rev() {
+                // deferの実行中のエラーは無視（Lisp/Rust文化に則る）
+                let _ = self
+                    .evaluator
+                    .eval_with_env(defer_expr, Arc::clone(&self.env));
+            }
+        }
+    }
+}
+
 impl Evaluator {
     /// quote式を評価
     pub(super) fn eval_quote(&self, args: &[Expr]) -> Result<Value, String> {
@@ -22,20 +42,18 @@ impl Evaluator {
 
     /// do式を評価
     pub(super) fn eval_do(&self, exprs: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        // deferスコープを作成
+        // deferスコープを作成し、RAIIガードで確実にクリーンアップ
         self.defer_stack.write().push(Vec::new());
+
+        // RAIIガード: Drop時に必ずdeferを実行
+        let _guard = DeferGuard {
+            evaluator: self,
+            env: Arc::clone(&env),
+        };
 
         let mut result = Value::Nil;
         for expr in exprs {
             result = self.eval_with_env(expr, Arc::clone(&env))?;
-        }
-
-        // deferを実行（LIFO順）
-        let defers = self.defer_stack.write().pop();
-        if let Some(defers) = defers {
-            for defer_expr in defers.iter().rev() {
-                let _ = self.eval_with_env(defer_expr, Arc::clone(&env));
-            }
         }
 
         Ok(result)

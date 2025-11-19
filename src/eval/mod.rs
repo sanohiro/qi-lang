@@ -1748,4 +1748,77 @@ mod tests {
         // 結果確認: (tm/double 5) = 10, (tm/triple 3) = 9, 10 + 9 = 19
         assert_eq!(result.unwrap(), Value::Integer(19));
     }
+
+    #[test]
+    fn test_defer_executes_on_normal_exit() {
+        // deferは正常終了時に実行される
+        let code = r#"
+(def x (atom 0))
+(do
+  (defer (swap! x (fn [n] (+ n 10))))
+  (defer (swap! x (fn [n] (+ n 1))))
+  (swap! x (fn [n] (+ n 100))))
+@x  ;; 100 + 1 + 10 = 111 (LIFO順)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::Integer(111));
+    }
+
+    #[test]
+    fn test_defer_executes_on_error() {
+        // deferはエラー発生時も実行される（RAII）
+        let code = r#"
+(def x (atom 0))
+(match (try
+  (do
+    (defer (swap! x (fn [n] (+ n 10))))
+    (defer (swap! x (fn [n] (+ n 1))))
+    (/ 1 0)))  ;; エラー発生
+  {:error _} -> @x
+  result -> result)
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::Integer(11)); // 0 + 1 + 10 = 11
+    }
+
+    #[test]
+    fn test_defer_lifo_order() {
+        // deferはLIFO（後入れ先出し）順で実行される
+        let code = r#"
+(def result (atom []))
+(do
+  (defer (swap! result (fn [v] (conj v 1))))
+  (defer (swap! result (fn [v] (conj v 2))))
+  (defer (swap! result (fn [v] (conj v 3)))))
+@result
+"#;
+        let result = eval_str(code).unwrap();
+        // LIFO順: 3, 2, 1
+        match result {
+            Value::Vector(v) => {
+                assert_eq!(v.len(), 3);
+                assert_eq!(v[0], Value::Integer(3));
+                assert_eq!(v[1], Value::Integer(2));
+                assert_eq!(v[2], Value::Integer(1));
+            }
+            _ => panic!("Expected vector"),
+        }
+    }
+
+    #[test]
+    fn test_nested_defer_scopes() {
+        // ネストしたdoブロックでdeferが正しく動作する
+        let code = r#"
+(def x (atom 0))
+(do
+  (defer (swap! x (fn [n] (+ n 100))))
+  (do
+    (defer (swap! x (fn [n] (+ n 10))))
+    (swap! x (fn [n] (+ n 1))))  ;; 内側: 1 + 10 = 11
+  (swap! x (fn [n] (+ n 1000))))  ;; 外側: 11 + 1000 = 1011, then + 100 = 1111
+@x
+"#;
+        let result = eval_str(code).unwrap();
+        assert_eq!(result, Value::Integer(1111));
+    }
 }
