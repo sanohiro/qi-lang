@@ -288,6 +288,19 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 (get {:name "Alice" :age 30} :name)   ;; => "Alice"
 (get {:name "Alice"} :age 0)          ;; => 0 (デフォルト値)
 
+;; キーワード・文字列を関数として使う（簡潔な記法）
+(:name {:name "Alice" :age 30})       ;; => "Alice"
+(:age {:name "Alice" :age 30})        ;; => 30
+("name" {"name" "Bob" "age" 25})      ;; => "Bob"
+
+;; パイプラインでの使用
+(def response {:status 200 :body "OK"})
+(response |> :status)                 ;; => 200
+
+;; JSON等の外部データへのアクセス
+(def user-data {"name" "Carol" "email" "carol@example.com"})
+("email" user-data)                   ;; => "carol@example.com"
+
 ;; keys - 全キーを取得
 (keys {:name "Alice" :age 30})        ;; => ("name" "age")
 

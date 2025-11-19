@@ -288,9 +288,18 @@ Explicit type conversion as needed.
 (get {:name "Alice" :age 30} :name)   ;; => "Alice"
 (get {:name "Alice"} :age 0)          ;; => 0 (default value)
 
-;; Keywords can be used as functions
+;; Keywords and strings can be used as functions (concise syntax)
 (:name {:name "Alice" :age 30})       ;; => "Alice"
-(:age {:name "Bob" :age 30})          ;; => 30
+(:age {:name "Alice" :age 30})        ;; => 30
+("name" {"name" "Bob" "age" 25})      ;; => "Bob"
+
+;; Use with pipelines
+(def response {:status 200 :body "OK"})
+(response |> :status)                 ;; => 200
+
+;; Access external data (JSON, etc.)
+(def user-data {"name" "Carol" "email" "carol@example.com"})
+("email" user-data)                   ;; => "carol@example.com"
 
 ;; keys - Get all keys
 (keys {:name "Alice" :age 30})        ;; => ("name" "age")
