@@ -2,734 +2,734 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://sanohiro.github.io/qi-lang/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/cli/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/cli/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/cli/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/project/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/project/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/project/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/style-guide/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/style-guide/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/style-guide/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/01-overview/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/01-overview/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/01-overview/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/02-flow-pipes/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/02-flow-pipes/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/02-flow-pipes/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/03-concurrency/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/03-concurrency/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/03-concurrency/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/04-match/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/04-match/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/04-match/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/05-syntax-basics/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/05-syntax-basics/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/05-syntax-basics/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/06-data-structures/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/06-data-structures/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/06-data-structures/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/07-functions/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/07-functions/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/07-functions/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/08-error-handling/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/08-error-handling/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/08-error-handling/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/09-modules/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/09-modules/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/09-modules/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/10-stdlib-string/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/10-stdlib-string/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/10-stdlib-string/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/11-stdlib-http/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/11-stdlib-http/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/11-stdlib-http/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/12-stdlib-json/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/12-stdlib-json/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/12-stdlib-json/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/13-stdlib-io/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/13-stdlib-io/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/13-stdlib-io/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/14-stdlib-test/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/14-stdlib-test/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/14-stdlib-test/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/15-stdlib-math/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/15-stdlib-math/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/15-stdlib-math/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/16-stdlib-auth/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/16-stdlib-auth/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/16-stdlib-auth/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/17-stdlib-database/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/17-stdlib-database/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/17-stdlib-database/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/18-stdlib-websocket/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/18-stdlib-websocket/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/18-stdlib-websocket/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/19-stdlib-validation/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/19-stdlib-validation/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/19-stdlib-validation/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/20-stdlib-debug/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/20-stdlib-debug/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/20-stdlib-debug/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/21-stdlib-table/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/21-stdlib-table/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/21-stdlib-table/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/22-stdlib-csv/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/22-stdlib-csv/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/22-stdlib-csv/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/23-stdlib-env/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/23-stdlib-env/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/23-stdlib-env/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/24-stdlib-kvs/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/24-stdlib-kvs/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/24-stdlib-kvs/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/25-stdlib-log/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/25-stdlib-log/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/25-stdlib-log/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/26-stdlib-markdown/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/26-stdlib-markdown/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/26-stdlib-markdown/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/27-stdlib-path/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/27-stdlib-path/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/27-stdlib-path/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/28-stdlib-stats/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/28-stdlib-stats/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/28-stdlib-stats/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/29-stdlib-stream/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/29-stdlib-stream/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/29-stdlib-stream/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/30-stdlib-temp/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/30-stdlib-temp/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/30-stdlib-temp/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/31-stdlib-time/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/31-stdlib-time/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/31-stdlib-time/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/32-stdlib-zip/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/32-stdlib-zip/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/32-stdlib-zip/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/33-stdlib-cmd/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/33-stdlib-cmd/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/33-stdlib-cmd/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/34-stdlib-list/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/34-stdlib-list/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/34-stdlib-list/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/35-stdlib-map/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/35-stdlib-map/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/35-stdlib-map/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/36-stdlib-set/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/36-stdlib-set/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/36-stdlib-set/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/QUICK-REFERENCE/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/QUICK-REFERENCE/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/QUICK-REFERENCE/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/00-lisp-basics/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/00-lisp-basics/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/00-lisp-basics/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/01-getting-started/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/01-getting-started/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/01-getting-started/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/02-pipelines/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/02-pipelines/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/02-pipelines/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/03-pattern-matching/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/03-pattern-matching/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/03-pattern-matching/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/04-error-handling/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/04-error-handling/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/04-error-handling/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/05-concurrency/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/05-concurrency/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/05-concurrency/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/06-web-api/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/06-web-api/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/06-web-api/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/tutorial/openapi-tutorial/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/openapi-tutorial/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/openapi-tutorial/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/spec/FUNCTION-INDEX/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/FUNCTION-INDEX/"/>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/FUNCTION-INDEX/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/cli/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/cli/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/cli/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/project/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/project/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/project/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/style-guide/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/style-guide/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/style-guide/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/01-overview/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/01-overview/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/01-overview/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/02-flow-pipes/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/02-flow-pipes/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/02-flow-pipes/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/03-concurrency/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/03-concurrency/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/03-concurrency/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/04-match/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/04-match/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/04-match/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/05-syntax-basics/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/05-syntax-basics/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/05-syntax-basics/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/06-data-structures/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/06-data-structures/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/06-data-structures/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/07-functions/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/07-functions/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/07-functions/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/08-error-handling/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/08-error-handling/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/08-error-handling/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/09-modules/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/09-modules/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/09-modules/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/10-stdlib-string/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/10-stdlib-string/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/10-stdlib-string/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/11-stdlib-http/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/11-stdlib-http/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/11-stdlib-http/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/12-stdlib-json/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/12-stdlib-json/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/12-stdlib-json/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/13-stdlib-io/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/13-stdlib-io/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/13-stdlib-io/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/14-stdlib-test/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/14-stdlib-test/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/14-stdlib-test/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/15-stdlib-math/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/15-stdlib-math/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/15-stdlib-math/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/16-stdlib-auth/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/16-stdlib-auth/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/16-stdlib-auth/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/17-stdlib-database/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/17-stdlib-database/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/17-stdlib-database/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/18-stdlib-websocket/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/18-stdlib-websocket/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/18-stdlib-websocket/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/19-stdlib-validation/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/19-stdlib-validation/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/19-stdlib-validation/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/20-stdlib-debug/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/20-stdlib-debug/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/20-stdlib-debug/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/21-stdlib-table/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/21-stdlib-table/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/21-stdlib-table/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/22-stdlib-csv/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/22-stdlib-csv/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/22-stdlib-csv/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/23-stdlib-env/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/23-stdlib-env/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/23-stdlib-env/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/24-stdlib-kvs/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/24-stdlib-kvs/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/24-stdlib-kvs/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/25-stdlib-log/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/25-stdlib-log/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/25-stdlib-log/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/26-stdlib-markdown/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/26-stdlib-markdown/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/26-stdlib-markdown/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/27-stdlib-path/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/27-stdlib-path/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/27-stdlib-path/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/28-stdlib-stats/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/28-stdlib-stats/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/28-stdlib-stats/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/29-stdlib-stream/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/29-stdlib-stream/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/29-stdlib-stream/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/30-stdlib-temp/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/30-stdlib-temp/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/30-stdlib-temp/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/31-stdlib-time/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/31-stdlib-time/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/31-stdlib-time/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/32-stdlib-zip/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/32-stdlib-zip/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/32-stdlib-zip/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/33-stdlib-cmd/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/33-stdlib-cmd/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/33-stdlib-cmd/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/34-stdlib-list/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/34-stdlib-list/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/34-stdlib-list/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/35-stdlib-map/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/35-stdlib-map/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/35-stdlib-map/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/36-stdlib-set/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/36-stdlib-set/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/36-stdlib-set/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/QUICK-REFERENCE/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/QUICK-REFERENCE/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/QUICK-REFERENCE/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/00-lisp-basics/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/00-lisp-basics/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/00-lisp-basics/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/01-getting-started/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/01-getting-started/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/01-getting-started/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/02-pipelines/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/02-pipelines/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/02-pipelines/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/03-pattern-matching/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/03-pattern-matching/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/03-pattern-matching/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/04-error-handling/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/04-error-handling/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/04-error-handling/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/05-concurrency/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/05-concurrency/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/05-concurrency/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/06-web-api/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/06-web-api/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/06-web-api/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/tutorial/openapi-tutorial/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/tutorial/openapi-tutorial/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/tutorial/openapi-tutorial/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/VALIDATION_REPORT/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/VALIDATION_REPORT/"/>
     </url>
     <url>
         <loc>https://sanohiro.github.io/qi-lang/ja/spec/FUNCTION-INDEX/</loc>
-        <lastmod>2025-11-17</lastmod>
+        <lastmod>2025-11-19</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ja" href="https://sanohiro.github.io/qi-lang/ja/spec/FUNCTION-INDEX/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://sanohiro.github.io/qi-lang/spec/FUNCTION-INDEX/"/>
