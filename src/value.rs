@@ -26,10 +26,10 @@ pub enum Value {
     Float(f64),
     /// 文字列
     String(String),
-    /// シンボル
-    Symbol(String),
-    /// キーワード（:keyのような形式）
-    Keyword(String),
+    /// シンボル（インターン化でメモリ削減）
+    Symbol(Arc<str>),
+    /// キーワード（インターン化でメモリ削減・比較高速化）
+    Keyword(Arc<str>),
     /// リスト（cons cell）
     List(Vector<Value>),
     /// ベクタ

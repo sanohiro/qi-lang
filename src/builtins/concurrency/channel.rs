@@ -85,7 +85,7 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
             if args.len() == 3 {
                 // :timeout キーワードを確認
                 match &args[1] {
-                    Value::Keyword(k) if k == "timeout" => {
+                    Value::Keyword(k) if &**k == "timeout" => {
                         // タイムアウト値（ミリ秒）を取得
                         match &args[2] {
                             Value::Integer(ms) if *ms >= 0 => {

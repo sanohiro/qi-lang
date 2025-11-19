@@ -212,16 +212,21 @@ impl Table {
     /// カラムインデックスを解決
     fn resolve_column(&self, selector: &Value) -> Result<usize, String> {
         match selector {
-            Value::String(name) | Value::Keyword(name) => {
-                // 名前でアクセス（StringとKeywordの両方をサポート）
+            Value::String(name) => {
+                // 名前でアクセス（String）
                 if let Some(headers) = &self.headers {
-                    // キーワードの場合は:を含めた形式で検索
-                    let search_key = if matches!(selector, Value::Keyword(_)) {
-                        format!(":{}", name)
-                    } else {
-                        name.clone()
-                    };
-
+                    headers
+                        .iter()
+                        .position(|h| h == name)
+                        .ok_or_else(|| fmt_msg(MsgKey::TableColumnNotFound, &[name]))
+                } else {
+                    Err(fmt_msg(MsgKey::TableNoHeaders, &[]))
+                }
+            }
+            Value::Keyword(name) => {
+                // 名前でアクセス（Keyword）
+                if let Some(headers) = &self.headers {
+                    let search_key = format!(":{}", name);
                     headers
                         .iter()
                         .position(|h| h == &search_key)
@@ -380,8 +385,8 @@ pub fn native_table_order_by(args: &[Value]) -> Result<Value, String> {
     // ソート順序
     let descending = if args.len() == 3 {
         match &args[2] {
-            Value::Keyword(k) if k == "desc" => true,
-            Value::Keyword(k) if k == "asc" => false,
+            Value::Keyword(k) if &**k == "desc" => true,
+            Value::Keyword(k) if &**k == "asc" => false,
             _ => {
                 return Err(fmt_msg(
                     MsgKey::TableOrderByInvalidOrder,

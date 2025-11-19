@@ -1164,7 +1164,7 @@ pub fn native_hash(args: &[Value]) -> Result<Value, String> {
         Value::String(s) => {
             let algo = if args.len() == 2 {
                 match &args[1] {
-                    Value::Keyword(k) => k.as_str(),
+                    Value::Keyword(k) => &**k,
                     _ => "sha256",
                 }
             } else {
@@ -1193,7 +1193,7 @@ pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
     }
     let version = if args.len() == 1 {
         match &args[0] {
-            Value::Keyword(k) => k.as_str(),
+            Value::Keyword(k) => &**k,
             _ => "v4",
         }
     } else {

@@ -178,7 +178,7 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
     for (key, val) in keys.iter().zip(vals.iter()) {
         let key_str = match key {
             Value::String(s) => s.clone(),
-            Value::Keyword(k) => k.clone(),
+            Value::Keyword(k) => k.to_string(),
             _ => format!("{:?}", key),
         };
         result.insert(key_str, val.clone());

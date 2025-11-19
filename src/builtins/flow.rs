@@ -47,7 +47,7 @@ pub fn native_branch(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                 // 条件を評価
                 let is_match = match condition {
                     // :else は常に true
-                    Value::Keyword(k) if k == "else" => true,
+                    Value::Keyword(k) if &**k == "else" => true,
 
                     // 関数の場合、値を渡して評価
                     Value::Function(_) | Value::NativeFunc(_) => {

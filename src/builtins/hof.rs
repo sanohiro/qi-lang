@@ -345,7 +345,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
                 let key_str = match &key {
                     Value::String(s) => s.clone(),
                     Value::Keyword(k) => format!(":{}", k),
-                    Value::Symbol(s) => s.clone(),
+                    Value::Symbol(s) => s.to_string(),
                     _ => format!("{}", key),
                 };
                 groups.entry(key_str).or_default().push_back(item.clone());
@@ -414,7 +414,7 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
         Value::Map(m) => {
             let key = match key_val {
                 Value::String(s) => s.clone(),
-                Value::Keyword(k) => k.clone(),
+                Value::Keyword(k) => k.to_string(),
                 _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
             };
 
@@ -468,7 +468,7 @@ fn update_in_helper(
 ) -> Result<(), String> {
     let key = match &path[index] {
         Value::String(s) => s.clone(),
-        Value::Keyword(k) => k.clone(),
+        Value::Keyword(k) => k.to_string(),
         _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
     };
 

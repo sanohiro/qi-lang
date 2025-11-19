@@ -113,13 +113,13 @@ impl Evaluator {
 
                     // 値を文字列に変換
                     let s = match value {
-                        Value::String(s) => s,
+                        Value::String(s) => s.clone(),
                         Value::Integer(n) => n.to_string(),
                         Value::Float(f) => f.to_string(),
                         Value::Bool(b) => b.to_string(),
                         Value::Nil => "nil".to_string(),
                         Value::Keyword(k) => format!(":{}", k),
-                        Value::Symbol(s) => s,
+                        Value::Symbol(s) => s.to_string(),
                         Value::List(items) => {
                             let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
                             format!("({})", strs.join(" "))

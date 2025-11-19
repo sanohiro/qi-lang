@@ -65,7 +65,7 @@ pub fn native_to_string(args: &[Value]) -> Result<Value, String> {
         Value::Integer(i) => i.to_string(),
         Value::Float(f) => f.to_string(),
         Value::Bool(b) => b.to_string(),
-        Value::Keyword(k) => k.clone(),
+        Value::Keyword(k) => k.to_string(),
         Value::Nil => "nil".to_string(),
         _ => format!("{:?}", args[0]),
     };

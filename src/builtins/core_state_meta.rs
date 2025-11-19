@@ -102,7 +102,7 @@ pub fn native_variable(args: &[Value]) -> Result<Value, String> {
     let is_var = match &args[0] {
         Value::Symbol(s) => {
             // nil, true, false は変数ではない
-            !matches!(s.as_str(), "nil" | "true" | "false")
+            !matches!(&**s, "nil" | "true" | "false")
         }
         Value::Uvar(_) => true,
         _ => false,
@@ -133,12 +133,9 @@ pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
             let expr = parser.parse().map_err(|e| format!("eval: {}", e))?;
             evaluator.eval(&expr)
         }
-        // データ構造の場合は直接評価できるよう変換が必要
-        // とりあえず文字列化して再パース（簡易実装）
+        // データ構造の場合はValue→Exprに直接変換（Lispの「データ→コード」文化に沿う）
         value => {
-            let code = format!("{}", value);
-            let mut parser = Parser::new(&code).map_err(|e| format!("eval: {}", e))?;
-            let expr = parser.parse().map_err(|e| format!("eval: {}", e))?;
+            let expr = evaluator.value_to_expr(value)?;
             evaluator.eval(&expr)
         }
     }

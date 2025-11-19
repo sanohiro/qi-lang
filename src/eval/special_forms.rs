@@ -74,20 +74,17 @@ impl Evaluator {
         // Tryもdeferスコープを作成
         self.defer_stack.write().push(Vec::new());
 
-        let result = match self.eval_with_env(expr, Arc::clone(&env)) {
-            Ok(value) => Ok(value), // :okラップなし！
-            Err(e) => Ok(Value::error(e)),
+        // RAIIガード: Drop時に必ずdeferを実行（パニック時も安全）
+        let _guard = DeferGuard {
+            evaluator: self,
+            env: Arc::clone(&env),
         };
 
-        // deferを実行（LIFO順、エラーでも必ず実行）
-        let defers = self.defer_stack.write().pop();
-        if let Some(defers) = defers {
-            for defer_expr in defers.iter().rev() {
-                let _ = self.eval_with_env(defer_expr, Arc::clone(&env));
-            }
+        // エラーをキャッチして {:error} にラップ
+        match self.eval_with_env(expr, Arc::clone(&env)) {
+            Ok(value) => Ok(value), // :okラップなし！
+            Err(e) => Ok(Value::error(e)),
         }
-
-        result
     }
 
     /// deferを評価
@@ -133,7 +130,7 @@ impl Evaluator {
         };
         env.write()
             .set(name.to_string(), Value::Macro(Arc::new(mac)));
-        Ok(Value::Symbol(name.to_string()))
+        Ok(Value::Symbol(crate::intern::intern_symbol(name)))
     }
 
     /// loopを評価
@@ -320,7 +317,7 @@ impl Evaluator {
                 otherwise,
                 ..
             } => {
-                let mut result = vec![Value::Symbol("if".to_string())];
+                let mut result = vec![Value::Symbol(crate::intern::intern_symbol("if"))];
                 result.push(self.eval_quasiquote(test, Arc::clone(&env), depth)?);
                 result.push(self.eval_quasiquote(then, Arc::clone(&env), depth)?);
                 if let Some(o) = otherwise {
@@ -329,7 +326,7 @@ impl Evaluator {
                 Ok(Value::List(result.into()))
             }
             Expr::Do { exprs, .. } => {
-                let mut result = vec![Value::Symbol("do".to_string())];
+                let mut result = vec![Value::Symbol(crate::intern::intern_symbol("do"))];
                 for e in exprs {
                     if let Expr::UnquoteSplice { expr: us, .. } = e {
                         if depth == 0 {
@@ -360,10 +357,10 @@ impl Evaluator {
                 is_variadic,
                 ..
             } => {
-                let mut items = vec![Value::Symbol("fn".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("fn"))];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
                     vec![
-                        Value::Symbol("&".to_string()),
+                        Value::Symbol(crate::intern::intern_symbol("&")),
                         self.fn_param_to_value(&params[0]),
                     ]
                 } else if *is_variadic {
@@ -371,7 +368,7 @@ impl Evaluator {
                         .iter()
                         .map(|p| self.fn_param_to_value(p))
                         .collect();
-                    v.push(Value::Symbol("&".to_string()));
+                    v.push(Value::Symbol(crate::intern::intern_symbol("&")));
                     v.push(self.fn_param_to_value(&params[params.len() - 1]));
                     v
                 } else {
@@ -382,7 +379,7 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             Expr::Let { bindings, body, .. } => {
-                let mut items = vec![Value::Symbol("let".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("let"))];
                 let mut binding_vec = Vec::new();
                 for (pattern, expr) in bindings {
                     binding_vec.push(self.fn_param_to_value(pattern));
@@ -399,8 +396,8 @@ impl Evaluator {
                 ..
             } => {
                 let mut items = vec![
-                    Value::Symbol("def".to_string()),
-                    Value::Symbol(name.clone()),
+                    Value::Symbol(crate::intern::intern_symbol("def")),
+                    Value::Symbol(crate::intern::intern_symbol(name)),
                 ];
                 items.push(self.eval_quasiquote(value, env, depth)?);
                 Ok(Value::List(items.into()))
@@ -418,8 +415,8 @@ impl Evaluator {
             Expr::Integer { value, .. } => Ok(Value::Integer(*value)),
             Expr::Float { value, .. } => Ok(Value::Float(*value)),
             Expr::String { value, .. } => Ok(Value::String(value.clone())),
-            Expr::Symbol { name, .. } => Ok(Value::Symbol(name.clone())),
-            Expr::Keyword { name, .. } => Ok(Value::Keyword(name.clone())),
+            Expr::Symbol { name, .. } => Ok(Value::Symbol(crate::intern::intern_symbol(name))),
+            Expr::Keyword { name, .. } => Ok(Value::Keyword(crate::intern::intern_keyword(name))),
             Expr::List { items, .. } => {
                 let mut vals = Vec::with_capacity(items.len());
                 for item in items {
@@ -458,7 +455,7 @@ impl Evaluator {
                 otherwise,
                 ..
             } => {
-                let mut items = vec![Value::Symbol("if".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("if"))];
                 items.push(self.expr_to_value(test)?);
                 items.push(self.expr_to_value(then)?);
                 if let Some(o) = otherwise {
@@ -467,7 +464,7 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             Expr::Do { exprs, .. } => {
-                let mut items = vec![Value::Symbol("do".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("do"))];
                 for e in exprs {
                     items.push(self.expr_to_value(e)?);
                 }
@@ -480,14 +477,14 @@ impl Evaluator {
                 ..
             } => Ok(Value::List(
                 vec![
-                    Value::Symbol("def".to_string()),
-                    Value::Symbol(name.clone()),
+                    Value::Symbol(crate::intern::intern_symbol("def")),
+                    Value::Symbol(crate::intern::intern_symbol(name)),
                     self.expr_to_value(value)?,
                 ]
                 .into(),
             )),
             Expr::Let { bindings, body, .. } => {
-                let mut items = vec![Value::Symbol("let".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("let"))];
                 let mut binding_vec = Vec::new();
                 for (pattern, expr) in bindings {
                     binding_vec.push(self.fn_param_to_value(pattern));
@@ -503,10 +500,10 @@ impl Evaluator {
                 is_variadic,
                 ..
             } => {
-                let mut items = vec![Value::Symbol("fn".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("fn"))];
                 let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
                     vec![
-                        Value::Symbol("&".to_string()),
+                        Value::Symbol(crate::intern::intern_symbol("&")),
                         self.fn_param_to_value(&params[0]),
                     ]
                 } else if *is_variadic {
@@ -514,7 +511,7 @@ impl Evaluator {
                         .iter()
                         .map(|p| self.fn_param_to_value(p))
                         .collect();
-                    v.push(Value::Symbol("&".to_string()));
+                    v.push(Value::Symbol(crate::intern::intern_symbol("&")));
                     v.push(self.fn_param_to_value(&params[params.len() - 1]));
                     v
                 } else {
@@ -526,17 +523,17 @@ impl Evaluator {
             }
             Expr::Quasiquote { expr: e, .. } => Ok(Value::List(
                 vec![
-                    Value::Symbol("quasiquote".to_string()),
+                    Value::Symbol(crate::intern::intern_symbol("quasiquote")),
                     self.expr_to_value(e)?,
                 ]
                 .into(),
             )),
             Expr::Unquote { expr: e, .. } => Ok(Value::List(
-                vec![Value::Symbol("unquote".to_string()), self.expr_to_value(e)?].into(),
+                vec![Value::Symbol(crate::intern::intern_symbol("unquote")), self.expr_to_value(e)?].into(),
             )),
             Expr::UnquoteSplice { expr: e, .. } => Ok(Value::List(
                 vec![
-                    Value::Symbol("unquote-splice".to_string()),
+                    Value::Symbol(crate::intern::intern_symbol("unquote-splice")),
                     self.expr_to_value(e)?,
                 ]
                 .into(),
@@ -629,8 +626,8 @@ impl Evaluator {
         self.value_to_expr(&result)
     }
 
-    /// ValueをExprに変換（マクロ展開の結果をコードとして扱う）
-    pub(super) fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
+    /// ValueをExprに変換（マクロ展開の結果をコードとして扱う、evalでも使用）
+    pub fn value_to_expr(&self, val: &Value) -> Result<Expr, String> {
         match val {
             Value::Nil => Ok(Expr::Nil {
                 span: Expr::dummy_span(),
@@ -652,11 +649,11 @@ impl Evaluator {
                 span: Expr::dummy_span(),
             }),
             Value::Symbol(s) => Ok(Expr::Symbol {
-                name: s.clone(),
+                name: s.to_string(),
                 span: Expr::dummy_span(),
             }),
             Value::Keyword(k) => Ok(Expr::Keyword {
-                name: k.clone(),
+                name: k.to_string(),
                 span: Expr::dummy_span(),
             }),
             Value::List(items) if items.is_empty() => Ok(Expr::List {
@@ -666,7 +663,7 @@ impl Evaluator {
             Value::List(items) => {
                 // 先頭がシンボルの場合、特殊形式かチェック
                 if let Some(Value::Symbol(s)) = items.head() {
-                    match s.as_str() {
+                    match &**s {
                         "if" if items.len() >= 3 && items.len() <= 4 => {
                             return Ok(Expr::If {
                                 test: Box::new(self.value_to_expr(&items[1])?),
@@ -711,7 +708,7 @@ impl Evaluator {
                                     }
                                     // 値はitems[3]
                                     return Ok(Expr::Def {
-                                        name: name.clone(),
+                                        name: name.to_string(),
                                         value: Box::new(self.value_to_expr(&items[3])?),
                                         is_private: false,
                                         span: Expr::dummy_span(),
@@ -719,7 +716,7 @@ impl Evaluator {
                                 } else {
                                     // 3要素の場合: (def name value)
                                     return Ok(Expr::Def {
-                                        name: name.clone(),
+                                        name: name.to_string(),
                                         value: Box::new(self.value_to_expr(&items[2])?),
                                         is_private: false,
                                         span: Expr::dummy_span(),
@@ -766,15 +763,17 @@ impl Evaluator {
                                         items.iter().skip(params_idx + 1).cloned().collect();
 
                                     // (fn [params] body...) を構築
-                                    let mut fn_items =
-                                        vec![Value::Symbol("fn".to_string()), params];
+                                    let mut fn_items = vec![
+                                        Value::Symbol(crate::intern::intern_symbol("fn")),
+                                        params,
+                                    ];
                                     fn_items.extend(body);
                                     let fn_value = Value::List(fn_items.into());
 
                                     // (def name (fn ...)) を構築
                                     let def_items = vec![
-                                        Value::Symbol("def".to_string()),
-                                        Value::Symbol(name.clone()),
+                                        Value::Symbol(crate::intern::intern_symbol("def")),
+                                        Value::Symbol(crate::intern::intern_symbol(name)),
                                         fn_value,
                                     ];
 

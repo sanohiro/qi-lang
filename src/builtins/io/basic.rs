@@ -27,7 +27,7 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     let encoding_keyword = opts
         .get("encoding")
         .and_then(|v| match v {
-            Value::Keyword(k) => Some(k.as_str()),
+            Value::Keyword(k) => Some(&**k),
             _ => None,
         })
         .unwrap_or("utf-8");
@@ -124,7 +124,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     let encoding_keyword = opts
         .get("encoding")
         .and_then(|v| match v {
-            Value::Keyword(k) => Some(k.as_str()),
+            Value::Keyword(k) => Some(&**k),
             _ => None,
         })
         .unwrap_or("utf-8");
@@ -133,7 +133,7 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     let if_exists = opts
         .get("if-exists")
         .and_then(|v| match v {
-            Value::Keyword(k) => Some(k.as_str()),
+            Value::Keyword(k) => Some(&**k),
             _ => None,
         })
         .unwrap_or("overwrite");

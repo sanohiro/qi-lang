@@ -160,11 +160,12 @@ impl Evaluator {
 
                 // restパターンの処理
                 if let Some(rest_pattern) = rest {
-                    let rest_values: Vec<Value> =
+                    // im::Vector に直接 collect（Vec → im::Vector の二重アロケーション回避）
+                    let rest_values: im::Vector<Value> =
                         values.iter().skip(patterns.len()).cloned().collect();
                     self.match_pattern_with_transforms(
                         rest_pattern,
-                        &Value::Vector(rest_values.into()),
+                        &Value::Vector(rest_values),
                         bindings,
                         transforms,
                     )?;
@@ -192,11 +193,12 @@ impl Evaluator {
 
                 // restパターンの処理
                 if let Some(rest_pattern) = rest {
-                    let rest_values: Vec<Value> =
+                    // im::Vector に直接 collect（Vec → im::Vector の二重アロケーション回避）
+                    let rest_values: im::Vector<Value> =
                         values.iter().skip(patterns.len()).cloned().collect();
                     self.match_pattern_with_transforms(
                         rest_pattern,
-                        &Value::List(rest_values.into()),
+                        &Value::List(rest_values),
                         bindings,
                         transforms,
                     )?;
@@ -308,7 +310,7 @@ impl Evaluator {
                 Ok(matches!(value, Value::Float(vf) if (vf - f).abs() < f64::EPSILON))
             }
             Pattern::String(s) => Ok(matches!(value, Value::String(vs) if vs == s)),
-            Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if vk == k)),
+            Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if &**vk == k)),
             Pattern::Var(name) => {
                 bindings.push((name.clone(), value.clone()));
                 Ok(true)

@@ -12,7 +12,7 @@ pub fn native_file_stream(args: &[Value]) -> Result<Value, String> {
     };
 
     // 第2引数でバイナリモード判定
-    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
+    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
     if is_bytes {
         create_file_byte_stream(&path)

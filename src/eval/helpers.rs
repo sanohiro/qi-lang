@@ -166,13 +166,13 @@ impl Evaluator {
     #[allow(clippy::only_used_in_recursion)]
     pub(super) fn fn_param_to_value(&self, param: &Pattern) -> Value {
         match param {
-            Pattern::Var(name) => Value::Symbol(name.clone()),
+            Pattern::Var(name) => Value::Symbol(crate::intern::intern_symbol(name)),
             Pattern::List(params, rest) | Pattern::Vector(params, rest) => {
                 let mut items: Vec<Value> =
                     params.iter().map(|p| self.fn_param_to_value(p)).collect();
                 // restがある場合は [..., "&", rest_name] の形式にする
                 if let Some(rest_param) = rest {
-                    items.push(Value::Symbol("&".to_string()));
+                    items.push(Value::Symbol(crate::intern::intern_symbol("&")));
                     items.push(self.fn_param_to_value(rest_param));
                 }
                 // Listパターンの場合はList、Vectorパターンの場合はVectorとして返す
@@ -188,7 +188,10 @@ impl Evaluator {
                 }
                 // :as がある場合は追加
                 if let Some(var) = as_var {
-                    map.insert("as".to_string(), Value::Symbol(var.clone()));
+                    map.insert(
+                        "as".to_string(),
+                        Value::Symbol(crate::intern::intern_symbol(var)),
+                    );
                 }
                 Value::Map(map.into())
             }
@@ -196,27 +199,27 @@ impl Evaluator {
                 // (:as inner-pattern var) の形式で表現
                 Value::List(
                     vec![
-                        Value::Symbol("as".to_string()),
+                        Value::Symbol(crate::intern::intern_symbol("as")),
                         self.fn_param_to_value(inner),
-                        Value::Symbol(var.clone()),
+                        Value::Symbol(crate::intern::intern_symbol(var)),
                     ]
                     .into(),
                 )
             }
             // match専用パターン（quote/マクロでも表現）
-            Pattern::Wildcard => Value::Symbol("_".to_string()),
+            Pattern::Wildcard => Value::Symbol(crate::intern::intern_symbol("_")),
             Pattern::Nil => Value::Nil,
             Pattern::Bool(b) => Value::Bool(*b),
             Pattern::Integer(n) => Value::Integer(*n),
             Pattern::Float(f) => Value::Float(*f),
             Pattern::String(s) => Value::String(s.clone()),
-            Pattern::Keyword(k) => Value::Keyword(k.clone()),
+            Pattern::Keyword(k) => Value::Keyword(crate::intern::intern_keyword(k)),
             Pattern::Transform(var, expr) => {
                 // (:transform var expr) の形式で表現
                 Value::List(
                     vec![
-                        Value::Symbol("transform".to_string()),
-                        Value::Symbol(var.clone()),
+                        Value::Symbol(crate::intern::intern_symbol("transform")),
+                        Value::Symbol(crate::intern::intern_symbol(var)),
                         self.expr_to_value(expr).unwrap_or(Value::Nil),
                     ]
                     .into(),
@@ -224,7 +227,7 @@ impl Evaluator {
             }
             Pattern::Or(patterns) => {
                 // (:or pattern1 pattern2 ...) の形式で表現
-                let mut items = vec![Value::Symbol("or".to_string())];
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("or"))];
                 items.extend(patterns.iter().map(|p| self.fn_param_to_value(p)));
                 Value::List(items.into())
             }

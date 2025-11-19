@@ -104,7 +104,11 @@ pub fn get_map_arg(
 }
 
 /// 引数からKeyword型を抽出
-pub fn get_keyword_arg(args: &[Value], idx: usize, func: &str) -> Result<String, String> {
+pub fn get_keyword_arg(
+    args: &[Value],
+    idx: usize,
+    func: &str,
+) -> Result<std::sync::Arc<str>, String> {
     args.get(idx)
         .and_then(|v| match v {
             Value::Keyword(kw) => Some(kw.clone()),

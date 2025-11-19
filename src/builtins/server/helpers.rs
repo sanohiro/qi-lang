@@ -17,7 +17,7 @@ use tokio_util::io::ReaderStream;
 /// SAFETY: キーワード文字列は常に有効なマップキーに変換できる
 #[inline]
 pub(super) fn kw(s: &str) -> String {
-    Value::Keyword(s.to_string())
+    Value::Keyword(crate::intern::intern_keyword(s))
         .to_map_key()
         .expect("Keyword should always convert to MapKey")
 }
@@ -150,27 +150,27 @@ pub(super) async fn request_to_value(
     // リクエストマップ
     let mut req_map = crate::new_hashmap();
     req_map.insert(
-        Value::Keyword("method".to_string()).to_map_key()?,
-        Value::Keyword(method),
+        Value::Keyword(crate::intern::intern_keyword("method")).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword(&method)),
     );
     req_map.insert(
-        Value::Keyword("path".to_string()).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword("path")).to_map_key()?,
         Value::String(path),
     );
     req_map.insert(
-        Value::Keyword("query".to_string()).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword("query")).to_map_key()?,
         Value::String(query),
     );
     req_map.insert(
-        Value::Keyword("query-params".to_string()).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword("query-params")).to_map_key()?,
         Value::Map(query_params),
     );
     req_map.insert(
-        Value::Keyword("headers".to_string()).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword("headers")).to_map_key()?,
         Value::Map(headers),
     );
     req_map.insert(
-        Value::Keyword("body".to_string()).to_map_key()?,
+        Value::Keyword(crate::intern::intern_keyword("body")).to_map_key()?,
         Value::String(body_str.clone()),
     );
 

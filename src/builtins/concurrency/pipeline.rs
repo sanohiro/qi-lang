@@ -519,7 +519,7 @@ pub fn native_select(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
             Value::List(parts) | Value::Vector(parts) => {
                 // タイムアウトケースは3要素、通常のケースは2要素
                 match &parts[0] {
-                    Value::Keyword(k) if k == "timeout" => {
+                    Value::Keyword(k) if &**k == "timeout" => {
                         // タイムアウトケース: [:timeout ms handler]
                         if parts.len() != 3 {
                             return Err(fmt_msg(MsgKey::SelectTimeoutCase, &["select!"]));

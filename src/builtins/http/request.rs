@@ -12,25 +12,25 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     };
 
     // オプションをパース（キーワードキーに対応）
-    let method_key = Value::Keyword("method".to_string())
+    let method_key = Value::Keyword(crate::intern::intern_keyword("method"))
         .to_map_key()
         .unwrap_or_else(|_| "method".to_string());
-    let url_key = Value::Keyword("url".to_string())
+    let url_key = Value::Keyword(crate::intern::intern_keyword("url"))
         .to_map_key()
         .unwrap_or_else(|_| "url".to_string());
-    let body_key = Value::Keyword("body".to_string())
+    let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
         .to_map_key()
         .unwrap_or_else(|_| "body".to_string());
-    let headers_key = Value::Keyword("headers".to_string())
+    let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
         .to_map_key()
         .unwrap_or_else(|_| "headers".to_string());
-    let basic_auth_key = Value::Keyword("basic-auth".to_string())
+    let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
         .to_map_key()
         .unwrap_or_else(|_| "basic-auth".to_string());
-    let bearer_token_key = Value::Keyword("bearer-token".to_string())
+    let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
         .to_map_key()
         .unwrap_or_else(|_| "bearer-token".to_string());
-    let timeout_key = Value::Keyword("timeout".to_string())
+    let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
         .to_map_key()
         .unwrap_or_else(|_| "timeout".to_string());
 
@@ -38,7 +38,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
         .get(&method_key)
         .and_then(|v| match v {
             Value::String(s) => Some(s.as_str()),
-            Value::Keyword(s) => Some(s.as_str()),
+            Value::Keyword(s) => Some(&**s),
             _ => None,
         })
         .unwrap_or("GET");

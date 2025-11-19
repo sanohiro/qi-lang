@@ -15,19 +15,19 @@ pub(super) fn http_request(
     match result {
         Value::Map(m) => {
             // キーを準備
-            let status_key = Value::Keyword("status".to_string())
+            let status_key = Value::Keyword(crate::intern::intern_keyword("status"))
                 .to_map_key()
                 .expect("status keyword should be valid");
-            let body_key = Value::Keyword("body".to_string())
+            let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
                 .to_map_key()
                 .expect("body keyword should be valid");
-            let error_key = Value::Keyword("error".to_string())
+            let error_key = Value::Keyword(crate::intern::intern_keyword("error"))
                 .to_map_key()
                 .expect("error keyword should be valid");
 
             // errorキーがある場合（ネットワークエラー等）
             if let Some(Value::Map(err_map)) = m.get(&error_key) {
-                let message_key = Value::Keyword("message".to_string())
+                let message_key = Value::Keyword(crate::intern::intern_keyword("message"))
                     .to_map_key()
                     .expect("message keyword should be valid");
 
@@ -194,13 +194,13 @@ pub(super) fn http_request_detailed(
             let body = response.text().unwrap_or_else(|_| String::new());
 
             // キーワードキーを生成
-            let status_key = Value::Keyword("status".to_string())
+            let status_key = Value::Keyword(crate::intern::intern_keyword("status"))
                 .to_map_key()
                 .expect("status keyword should be valid");
-            let headers_key = Value::Keyword("headers".to_string())
+            let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
                 .to_map_key()
                 .expect("headers keyword should be valid");
-            let body_key = Value::Keyword("body".to_string())
+            let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
                 .to_map_key()
                 .expect("body keyword should be valid");
 
@@ -224,13 +224,13 @@ pub(super) fn http_request_detailed(
             };
 
             // エラーレスポンスもキーワードキーに変更
-            let error_key = Value::Keyword("error".to_string())
+            let error_key = Value::Keyword(crate::intern::intern_keyword("error"))
                 .to_map_key()
                 .expect("error keyword should be valid");
-            let type_key = Value::Keyword("type".to_string())
+            let type_key = Value::Keyword(crate::intern::intern_keyword("type"))
                 .to_map_key()
                 .expect("type keyword should be valid");
-            let message_key = Value::Keyword("message".to_string())
+            let message_key = Value::Keyword(crate::intern::intern_keyword("message"))
                 .to_map_key()
                 .expect("message keyword should be valid");
 

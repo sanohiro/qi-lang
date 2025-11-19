@@ -104,7 +104,7 @@ fn value_to_json(value: &Value) -> serde_json::Value {
             .map(serde_json::Value::Number)
             .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s.clone()),
-        Value::Keyword(s) => serde_json::Value::String(s.clone()),
+        Value::Keyword(s) => serde_json::Value::String(s.to_string()),
         Value::Vector(v) => {
             // サイズが分かっているので事前確保
             let mut arr = Vec::with_capacity(v.len());

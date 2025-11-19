@@ -19,16 +19,16 @@ pub(super) fn parse_http_options(
     };
 
     // キーを準備
-    let headers_key = Value::Keyword("headers".to_string())
+    let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
         .to_map_key()
         .unwrap_or_else(|_| "headers".to_string());
-    let basic_auth_key = Value::Keyword("basic-auth".to_string())
+    let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
         .to_map_key()
         .unwrap_or_else(|_| "basic-auth".to_string());
-    let bearer_token_key = Value::Keyword("bearer-token".to_string())
+    let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
         .to_map_key()
         .unwrap_or_else(|_| "bearer-token".to_string());
-    let timeout_key = Value::Keyword("timeout".to_string())
+    let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
         .to_map_key()
         .unwrap_or_else(|_| "timeout".to_string());
 

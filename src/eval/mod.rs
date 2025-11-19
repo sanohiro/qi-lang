@@ -285,7 +285,10 @@ impl Evaluator {
             Expr::Float { value, .. } => Ok(Value::Float(*value)),
             Expr::String { value, .. } => Ok(Value::String(value.clone())),
             Expr::FString { parts, .. } => self.eval_fstring(parts, Arc::clone(&env)),
-            Expr::Keyword { name, .. } => Ok(Value::Keyword(name.clone())),
+            Expr::Keyword { name, .. } => {
+                // インターン化でメモリ削減・比較高速化
+                Ok(Value::Keyword(crate::intern::intern_keyword(name)))
+            }
 
             Expr::Symbol { name, span } => {
                 let env_read = env.read();
@@ -305,19 +308,23 @@ impl Evaluator {
             }
 
             Expr::List { items, .. } => {
-                let mut values = Vec::with_capacity(items.len());
-                for item in items {
-                    values.push(self.eval_with_env(item, Arc::clone(&env))?);
-                }
-                Ok(Value::List(values.into()))
+                // im::Vector は FromIterator を実装しているので直接 collect
+                // Vec → im::Vector の二重アロケーションを回避
+                let values: im::Vector<Value> = items
+                    .iter()
+                    .map(|item| self.eval_with_env(item, Arc::clone(&env)))
+                    .collect::<Result<_, _>>()?;
+                Ok(Value::List(values))
             }
 
             Expr::Vector { items, .. } => {
-                let mut values = Vec::with_capacity(items.len());
-                for item in items {
-                    values.push(self.eval_with_env(item, Arc::clone(&env))?);
-                }
-                Ok(Value::Vector(values.into()))
+                // im::Vector は FromIterator を実装しているので直接 collect
+                // Vec → im::Vector の二重アロケーションを回避
+                let values: im::Vector<Value> = items
+                    .iter()
+                    .map(|item| self.eval_with_env(item, Arc::clone(&env)))
+                    .collect::<Result<_, _>>()?;
+                Ok(Value::Vector(values))
             }
 
             Expr::Map { pairs, .. } => {
@@ -1431,9 +1438,12 @@ mod tests {
         // quoteのテスト
         assert_eq!(
             eval_str("(quote x)").unwrap(),
-            Value::Symbol("x".to_string())
+            Value::Symbol(crate::intern::intern_symbol("x"))
         );
-        assert_eq!(eval_str("'x").unwrap(), Value::Symbol("x".to_string()));
+        assert_eq!(
+            eval_str("'x").unwrap(),
+            Value::Symbol(crate::intern::intern_symbol("x"))
+        );
         assert_eq!(
             eval_str("'(1 2 3)").unwrap(),
             Value::List(vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)].into())
@@ -1442,7 +1452,7 @@ mod tests {
             eval_str("'(+ 1 2)").unwrap(),
             Value::List(
                 vec![
-                    Value::Symbol("+".to_string()),
+                    Value::Symbol(crate::intern::intern_symbol("+")),
                     Value::Integer(1),
                     Value::Integer(2)
                 ]
@@ -1555,9 +1565,9 @@ mod tests {
             eval_str("(reverse '(a b c))").unwrap(),
             Value::List(
                 vec![
-                    Value::Symbol("c".to_string()),
-                    Value::Symbol("b".to_string()),
-                    Value::Symbol("a".to_string())
+                    Value::Symbol(crate::intern::intern_symbol("c")),
+                    Value::Symbol(crate::intern::intern_symbol("b")),
+                    Value::Symbol(crate::intern::intern_symbol("a"))
                 ]
                 .into()
             )

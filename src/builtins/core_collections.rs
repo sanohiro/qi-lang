@@ -428,7 +428,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
                     // キー文字列から元の型に復元
                     if let Some(keyword) = k.strip_prefix(':') {
                         // ":a" -> Keyword("a")
-                        Value::Keyword(keyword.to_string())
+                        Value::Keyword(crate::intern::intern_keyword(keyword))
                     } else if let Some(string) =
                         k.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                     {
@@ -436,7 +436,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
                         Value::String(string.to_string())
                     } else if let Some(symbol) = k.strip_prefix('\'') {
                         // "'bar" -> Symbol("bar")
-                        Value::Symbol(symbol.to_string())
+                        Value::Symbol(crate::intern::intern_symbol(symbol))
                     } else if k == "nil" {
                         // "nil" -> Nil
                         Value::Nil

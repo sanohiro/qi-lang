@@ -111,7 +111,7 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Integer(i) => serde_yaml::Value::Number((*i).into()),
         Value::Float(f) => serde_yaml::Value::Number(serde_yaml::Number::from(*f)),
         Value::String(s) => serde_yaml::Value::String(s.clone()),
-        Value::Keyword(s) => serde_yaml::Value::String(s.clone()),
+        Value::Keyword(s) => serde_yaml::Value::String(s.to_string()),
         Value::Vector(v) => {
             // サイズが分かっているので事前確保
             let mut seq = Vec::with_capacity(v.len());

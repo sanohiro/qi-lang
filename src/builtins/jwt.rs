@@ -251,7 +251,8 @@ fn qi_value_to_json(value: &Value) -> Result<JsonValue, String> {
         Value::Float(f) => serde_json::Number::from_f64(*f)
             .map(JsonValue::Number)
             .ok_or_else(|| fmt_msg(MsgKey::InvalidFloat, &["jwt/sign"])),
-        Value::String(s) | Value::Keyword(s) => Ok(JsonValue::String(s.clone())),
+        Value::String(s) => Ok(JsonValue::String(s.clone())),
+        Value::Keyword(s) => Ok(JsonValue::String(s.to_string())),
         Value::Vector(items) | Value::List(items) => {
             let json_items: Result<Vec<JsonValue>, String> =
                 items.iter().map(qi_value_to_json).collect();

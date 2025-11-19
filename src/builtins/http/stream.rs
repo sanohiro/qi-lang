@@ -13,7 +13,7 @@ pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/get-stream", "URL"])),
     };
 
-    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
+    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
     core::http_stream("GET", &url, None, is_bytes)
 }
@@ -29,7 +29,7 @@ pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeString, &["http/post-stream", "URL"])),
     };
 
-    let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if k == "bytes");
+    let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if &**k == "bytes");
 
     core::http_stream("POST", &url, Some(&args[1]), is_bytes)
 }
@@ -53,13 +53,13 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
     };
 
     // キーワードキーを生成
-    let method_key = Value::Keyword("method".to_string())
+    let method_key = Value::Keyword(crate::intern::intern_keyword("method"))
         .to_map_key()
         .expect("method keyword should be valid");
-    let url_key = Value::Keyword("url".to_string())
+    let url_key = Value::Keyword(crate::intern::intern_keyword("url"))
         .to_map_key()
         .expect("url keyword should be valid");
-    let body_key = Value::Keyword("body".to_string())
+    let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
         .to_map_key()
         .expect("body keyword should be valid");
 
@@ -75,7 +75,7 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let body = config.get(&body_key);
 
-    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if k == "bytes");
+    let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
     core::http_stream(method, &url, body, is_bytes)
 }

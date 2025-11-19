@@ -36,7 +36,7 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
 
     let method = match req {
         Value::Map(m) => match m.get(&method_key) {
-            Some(Value::Keyword(k)) => k.clone(),
+            Some(Value::Keyword(k)) => k.to_string(),
             _ => {
                 return Err(fmt_msg(
                     MsgKey::RequestMustHave,

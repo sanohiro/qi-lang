@@ -7,7 +7,10 @@ use std::collections::HashMap;
 /// queue/new - 空のキューを作成
 pub fn native_queue_new(_args: &[Value]) -> Result<Value, String> {
     let mut map = HashMap::new();
-    map.insert(":type".to_string(), Value::Keyword("queue".to_string()));
+    map.insert(
+        ":type".to_string(),
+        Value::Keyword(crate::intern::intern_keyword("queue")),
+    );
     map.insert(":items".to_string(), Value::List(Vec::new().into()));
     Ok(Value::Map(map.into()))
 }
@@ -29,7 +32,7 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
     };
 
     // キューであることを確認
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if k == "queue") {
+    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(
             MsgKey::MustBeQueue,
             &["queue/enqueue", "first argument"],
@@ -60,7 +63,7 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if k == "queue") {
+    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"]));
     }
 
@@ -97,7 +100,7 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if k == "queue") {
+    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"]));
     }
 
@@ -124,7 +127,7 @@ pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if k == "queue") {
+    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"]));
     }
 
@@ -147,7 +150,7 @@ pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if k == "queue") {
+    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"]));
     }
 
@@ -162,7 +165,10 @@ pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
 /// stack/new - 空のスタックを作成
 pub fn native_stack_new(_args: &[Value]) -> Result<Value, String> {
     let mut map = HashMap::new();
-    map.insert(":type".to_string(), Value::Keyword("stack".to_string()));
+    map.insert(
+        ":type".to_string(),
+        Value::Keyword(crate::intern::intern_keyword("stack")),
+    );
     map.insert(":items".to_string(), Value::List(Vec::new().into()));
     Ok(Value::Map(map.into()))
 }
@@ -183,7 +189,7 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if k == "stack") {
+    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(
             MsgKey::MustBeStack,
             &["stack/push", "first argument"],
@@ -214,7 +220,7 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if k == "stack") {
+    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"]));
     }
 
@@ -250,7 +256,7 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if k == "stack") {
+    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"]));
     }
 
@@ -277,7 +283,7 @@ pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if k == "stack") {
+    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"]));
     }
 
@@ -300,7 +306,7 @@ pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if k == "stack") {
+    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"]));
     }
 

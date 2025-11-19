@@ -24,7 +24,7 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
     let delimiter = if args.len() == 3 {
         // :delimiter "\t" 形式
         match (&args[1], &args[2]) {
-            (Value::Keyword(k), Value::String(d)) if k == "delimiter" => {
+            (Value::Keyword(k), Value::String(d)) if &**k == "delimiter" => {
                 if d.chars().count() != 1 {
                     return Err(fmt_msg(MsgKey::CsvDelimiterMustBeSingleChar, &[]));
                 }

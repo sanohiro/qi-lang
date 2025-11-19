@@ -188,7 +188,7 @@ fn parse_keyword_args(
                 if i + 1 >= args.len() {
                     return Err(fmt_msg(MsgKey::KeywordRequiresValue, &[key]));
                 }
-                opts.insert(key.clone(), args[i + 1].clone());
+                opts.insert(key.to_string(), args[i + 1].clone());
                 i += 2;
             }
             _ => {

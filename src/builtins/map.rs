@@ -166,7 +166,7 @@ pub fn native_update_keys(
                 let new_key_val = evaluator.apply_function(key_fn, &[key_val])?;
                 let new_key = match new_key_val {
                     Value::String(s) => s,
-                    Value::Keyword(k) => k,
+                    Value::Keyword(k) => k.to_string(),
                     _ => format!("{:?}", new_key_val),
                 };
                 result.insert(new_key, v.clone());
