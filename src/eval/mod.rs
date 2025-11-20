@@ -542,14 +542,33 @@ impl Evaluator {
                     }
                 }
 
-                // モジュールを登録または更新
-                let module = Module {
-                    name: module_name.clone(),
-                    file_path: None,
-                    env: Arc::clone(&env),
-                    exports: Some(symbols.iter().cloned().collect()), // VecからHashSetに変換
-                };
-                self.modules.write().insert(module_name, Arc::new(module));
+                // 既存のモジュールを取得または新規作成
+                let mut modules = self.modules.write();
+                if let Some(existing_module) = modules.get(&module_name) {
+                    // 既存のモジュールがある場合は、exportsを累積
+                    let mut new_exports = existing_module
+                        .exports
+                        .clone()
+                        .unwrap_or_else(crate::new_hashset);
+                    new_exports.extend(symbols.iter().cloned());
+
+                    let updated_module = Module {
+                        name: module_name.clone(),
+                        file_path: existing_module.file_path.clone(), // 既存のfile_pathを保持
+                        env: Arc::clone(&env),
+                        exports: Some(new_exports),
+                    };
+                    modules.insert(module_name, Arc::new(updated_module));
+                } else {
+                    // 新規モジュールの場合
+                    let module = Module {
+                        name: module_name.clone(),
+                        file_path: None,
+                        env: Arc::clone(&env),
+                        exports: Some(symbols.iter().cloned().collect()),
+                    };
+                    modules.insert(module_name, Arc::new(module));
+                }
 
                 Ok(Value::Nil)
             }

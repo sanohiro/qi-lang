@@ -314,8 +314,16 @@ impl Evaluator {
         // 新しい環境で評価（グローバル環境を親として参照、コピー不要）
         let module_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&self.global_env))));
 
-        // 現在のモジュール名をクリア（評価前の状態に戻す）
+        // 現在のモジュール名を保存（評価後に復元）
         let prev_module = self.current_module.read().clone();
+
+        // ファイル名から自動的にモジュール名を設定（module宣言がない場合のデフォルト）
+        let default_module_name: Arc<str> = std::path::Path::new(name)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(name)
+            .into();
+        *self.current_module.write() = Some(default_module_name);
 
         // 式を順次評価
         for expr in exprs {
