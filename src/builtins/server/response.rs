@@ -1,7 +1,6 @@
 //! レスポンス生成関数
 
 use super::helpers::kw;
-use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 

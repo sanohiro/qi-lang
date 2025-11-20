@@ -1,5 +1,4 @@
 use crate::builtins;
-use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
 use crate::value::{Env, Expr, Function, Module, NativeFunc, Value};

@@ -9,7 +9,7 @@ impl From<DbError> for Value {
 
 /// 行をQi ValueのMapに変換
 pub fn row_to_value(row: Row) -> Value {
-    Value::Map(row.into())
+    Value::Map(row)
 }
 
 /// 複数行をQi ValueのVectorに変換

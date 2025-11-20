@@ -10,7 +10,6 @@ use super::static_files::serve_static_file;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use crate::HashMap;
 
 // HTTPヘッダー定数
 const HEADER_CACHE_CONTROL: &str = "Cache-Control";

@@ -1,4 +1,3 @@
-use crate::constants::keywords::ERROR_KEY;
 use crate::lexer::Span;
 use crossbeam_channel::{Receiver, Sender};
 use im::Vector;
@@ -67,8 +66,8 @@ impl From<i64> for MapKey {
 
 impl From<Arc<str>> for MapKey {
     fn from(s: Arc<str>) -> Self {
-        if s.starts_with(':') {
-            MapKey::Keyword(Arc::from(&s[1..]))
+        if let Some(keyword) = s.strip_prefix(':') {
+            MapKey::Keyword(Arc::from(keyword))
         } else {
             MapKey::Symbol(s)
         }

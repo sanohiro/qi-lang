@@ -16,11 +16,7 @@ use super::Evaluator;
 
 /// マップキーを作成
 fn to_map_key(key: &str) -> crate::value::MapKey {
-    let key_str = if key.starts_with(':') {
-        &key[1..]
-    } else {
-        key
-    };
+    let key_str = key.strip_prefix(':').unwrap_or(key);
     crate::value::MapKey::Keyword(crate::intern::intern_keyword(key_str))
 }
 

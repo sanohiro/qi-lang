@@ -3,7 +3,6 @@
 //! 複数のKVSバックエンド（Redis, Memcached等）に対する統一インターフェースを提供。
 //! データベースAPIと同様の設計（接続IDをStringで管理）。
 
-use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::Mutex;
