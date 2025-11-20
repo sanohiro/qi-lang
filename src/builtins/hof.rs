@@ -557,7 +557,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::symbol_dummy("x"),
         env: {
             let mut env = crate::value::Env::new();
-            env.set(crate::eval::hof_keys::COMPLEMENT_FUNC.to_string(), func);
+            env.set(crate::eval::hof_keys::COMPLEMENT_FUNC, func);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
@@ -624,7 +624,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::symbol_dummy("x"),
         env: {
             let mut env = crate::value::Env::new();
-            env.set(crate::eval::hof_keys::TAP_FUNC.to_string(), func);
+            env.set(crate::eval::hof_keys::TAP_FUNC, func);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,

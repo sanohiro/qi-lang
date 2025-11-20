@@ -14,8 +14,9 @@ use super::{Evaluator, DOC_PREFIX, RECUR_SENTINEL};
 
 // recurで評価済みの引数を一時保存するThreadLocal
 // loop/recurの間でのみ使用し、二重評価を回避する
+// Vecを再利用することで、ヒープ再確保を避ける
 thread_local! {
-    static RECUR_VALUES: RefCell<Option<Vec<Value>>> = const { RefCell::new(None) };
+    static RECUR_VALUES: RefCell<Vec<Value>> = const { RefCell::new(Vec::new()) };
 }
 
 /// RAIIガード: Drop時に必ずdeferスタックをクリーンアップ
@@ -115,9 +116,9 @@ impl Evaluator {
             .collect();
         let values = values?;
 
-        // 評価済みの値をThreadLocalに保存
+        // 評価済みの値をThreadLocalに保存（Vecを再利用）
         RECUR_VALUES.with(|v| {
-            *v.borrow_mut() = Some(values);
+            *v.borrow_mut() = values;
         });
 
         // Recurシグナルをエラーとして返す
@@ -140,8 +141,7 @@ impl Evaluator {
             env: Arc::clone(&env),
             is_variadic,
         };
-        env.write()
-            .set(name.to_string(), Value::Macro(Arc::new(mac)));
+        env.write().set(name, Value::Macro(Arc::new(mac)));
         Ok(Value::Symbol(crate::intern::intern_symbol(name)))
     }
 
@@ -164,7 +164,7 @@ impl Evaluator {
 
         // 環境に設定
         for ((name, _), value) in bindings.iter().zip(current_values.iter()) {
-            loop_env.set(name.to_string(), value.clone());
+            loop_env.set(name.clone(), value.clone());
         }
 
         let loop_env_rc = Arc::new(RwLock::new(loop_env));
@@ -174,10 +174,12 @@ impl Evaluator {
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
                 Err(e) if e == RECUR_SENTINEL => {
-                    // Recurシグナルを検出 - ThreadLocalから評価済みの値を取得
-                    let new_values = RECUR_VALUES
-                        .with(|v| v.borrow_mut().take())
-                        .ok_or_else(|| msg(MsgKey::RecurNotFound).to_string())?;
+                    // Recurシグナルを検出 - ThreadLocalから評価済みの値を取得（Vecを再利用）
+                    let new_values = RECUR_VALUES.with(|v| std::mem::take(&mut *v.borrow_mut()));
+
+                    if new_values.is_empty() {
+                        return Err(msg(MsgKey::RecurNotFound).to_string());
+                    }
 
                     // 引数の数をチェック
                     if bindings.len() != new_values.len() {
@@ -189,7 +191,7 @@ impl Evaluator {
 
                     // 環境を更新（値は既に評価済み）
                     for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
-                        loop_env_rc.write().set(name.to_string(), value.clone());
+                        loop_env_rc.write().set(name.clone(), value.clone());
                     }
                 }
                 Err(e) => return Err(e),
@@ -583,7 +585,7 @@ impl Evaluator {
             // 固定引数を設定
             for (param, arg) in mac.params.iter().zip(args.iter()).take(fixed_count) {
                 let arg_val = self.expr_to_value(arg)?;
-                new_env.set(param.to_string(), arg_val);
+                new_env.set(param.clone(), arg_val);
             }
 
             // 残りを可変引数として設定
@@ -591,10 +593,7 @@ impl Evaluator {
                 .iter()
                 .map(|e| self.expr_to_value(e))
                 .collect::<Result<Vec<_>, _>>()?;
-            new_env.set(
-                mac.params[fixed_count].to_string(),
-                Value::List(rest.into()),
-            );
+            new_env.set(mac.params[fixed_count].clone(), Value::List(rest.into()));
         } else {
             // 通常の引数
             if mac.params.len() != args.len() {
@@ -610,7 +609,7 @@ impl Evaluator {
             for (param, arg) in mac.params.iter().zip(args.iter()) {
                 // 引数をそのまま環境に（評価しない）
                 let arg_val = self.expr_to_value(arg)?;
-                new_env.set(param.to_string(), arg_val);
+                new_env.set(param.clone(), arg_val);
             }
         }
 

@@ -29,7 +29,7 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::symbol_dummy(crate::eval::hof_keys::CONSTANTLY_VALUE),
         env: {
             let mut env = crate::value::Env::new();
-            env.set(crate::eval::hof_keys::CONSTANTLY_VALUE.to_string(), value);
+            env.set(crate::eval::hof_keys::CONSTANTLY_VALUE, value);
             Arc::new(parking_lot::RwLock::new(env))
         },
         is_variadic: false,
@@ -56,7 +56,7 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
         body: crate::value::Expr::symbol_dummy(crate::eval::hof_keys::PARTIAL_PLACEHOLDER),
         env: {
             let mut env = crate::value::Env::new();
-            env.set(crate::eval::hof_keys::PARTIAL_FUNC.to_string(), func);
+            env.set(crate::eval::hof_keys::PARTIAL_FUNC, func);
             env.set(
                 crate::eval::hof_keys::PARTIAL_ARGS.to_string(),
                 Value::List(partial_args),

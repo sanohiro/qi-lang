@@ -422,7 +422,7 @@ fn run_code(code: &str) {
             Ok(lines) => {
                 // グローバル変数'stdin'として環境にバインド
                 if let Some(env) = evaluator.get_env() {
-                    env.write().set("stdin".to_string(), lines);
+                    env.write().set("stdin", lines);
                 }
             }
             Err(e) => {

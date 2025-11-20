@@ -52,7 +52,7 @@ impl Evaluator {
                 if let Some(guard) = &arm.guard {
                     let mut guard_env = Env::with_parent(Arc::clone(&env));
                     for (name, val) in &bindings {
-                        guard_env.set(name.to_string(), val.clone());
+                        guard_env.set(name.as_str(), val.clone());
                     }
                     let guard_val = self.eval_with_env(guard, Arc::new(RwLock::new(guard_env)))?;
                     if !guard_val.is_truthy() {
@@ -63,7 +63,7 @@ impl Evaluator {
                 // 変換を適用
                 let mut match_env = Env::with_parent(Arc::clone(&env));
                 for (name, val) in bindings {
-                    match_env.set(name.to_string(), val.clone());
+                    match_env.set(name.as_str(), val.clone());
                 }
 
                 let match_env_rc = Arc::new(RwLock::new(match_env));
