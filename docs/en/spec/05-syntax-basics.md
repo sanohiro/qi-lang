@@ -134,6 +134,44 @@ nil
 (get user :name)  ;; => "Bob"
 ```
 
+#### Internal Implementation: Interning
+
+In Qi, **keywords and symbols are automatically interned**.
+
+**What is interning**:
+- A mechanism to store the same string in a single memory location and share it across multiple places
+- Implemented using Rust's `Arc<str>`
+
+**Benefits**:
+1. **Memory efficiency**: Same keyword uses only one memory location, no matter how many times it's used
+2. **Fast comparison**: Just compare pointers instead of string contents
+3. **Thread-safe**: Arc allows safe sharing across multiple threads
+
+```qi
+;; ✅ Interned (recommended)
+(def k1 :name)
+(def k2 :name)
+;; k1 and k2 point to the same memory location → fast comparison
+
+;; Symbols are also interned
+(def s1 'foo)
+(def s2 'foo)
+;; s1 and s2 point to the same memory location
+```
+
+**Technical details**:
+```rust
+// Internal implementation (Rust)
+pub enum Value {
+    Keyword(Arc<str>),  // :name
+    Symbol(Arc<str>),   // 'symbol
+    String(String),     // Regular strings (not interned)
+    // ...
+}
+```
+
+This design makes Qi fast and memory-efficient even when dealing with large numbers of keywords and symbols.
+
 ### Vectors
 
 ```qi
@@ -442,6 +480,64 @@ Special forms for tail recursion optimization.
 - `loop` creates new environment and binds variables with initial values
 - `recur` handled as special error, caught by `loop` to update variables
 - Unlike normal recursion, doesn't consume stack (tail recursion optimization)
+
+#### Detailed Specification and Constraints
+
+**How loop works**:
+1. Creates a dedicated new environment (scope) for the loop
+2. Evaluates initial values and binds them to variables
+3. Evaluates the body
+4. Repeats until `recur` is called
+
+**Constraints on recur**:
+- **Must be used only in tail position of loop** - All of these are errors:
+  ```qi
+  ;; ❌ recur in non-tail position (Error)
+  (loop [i 10]
+    (if (> i 0)
+      (+ (recur (dec i)) 1)  ;; Not in tail position
+      0))
+
+  ;; ✅ Correct tail position
+  (loop [i 10 acc 0]
+    (if (> i 0)
+      (recur (dec i) (+ acc i))  ;; OK: tail position of if
+      acc))
+  ```
+- **Number of arguments must match the number of loop variables**
+  ```qi
+  (loop [x 1 y 2]
+    (recur x))  ;; Error: requires 2 args but only 1 provided
+  ```
+
+**Internal implementation details**:
+- Qi implements `recur` as a special error message (sentinel value)
+- Arguments to `recur` are evaluated beforehand and stored in thread_local
+- `loop` catches this sentinel, updates variables, and re-evaluates
+- This design achieves tail recursion without consuming stack space
+
+**Performance characteristics**:
+- Normal recursion: O(n) stack consumption → Risk of stack overflow
+- loop/recur: O(1) stack consumption → Safe for infinite loops (as long as memory permits)
+
+```qi
+;; Normal recursion (consumes stack)
+(defn factorial-recursive [n]
+  (if (<= n 1)
+    1
+    (* n (factorial-recursive (dec n)))))
+
+;; loop/recur (no stack consumption)
+(defn factorial-loop [n]
+  (loop [i n acc 1]
+    (if (<= i 1)
+      acc
+      (recur (dec i) (* acc i)))))
+
+;; Safe even with 1 million iterations
+(factorial-loop 1000000)  ;; OK
+(factorial-recursive 1000000)  ;; Stack overflow
+```
 
 ### `when` - Execute Only When Condition is True
 

@@ -281,6 +281,49 @@ Explicit type conversion as needed.
 {}                         ;; Empty map
 ```
 
+### Valid Map Key Types
+
+Qi maps support only **type-safe keys** (`MapKey` type). The following 4 types can be used as keys:
+
+| Type | Example | Usage |
+|---|---|---|
+| **Keyword** | `:name`, `:age` | Most common. Keys for structured data |
+| **String** | `"name"`, `"email"` | JSON-compatible, external data integration |
+| **Symbol** | `'foo`, `'bar` | Macros, metaprogramming |
+| **Integer** | `0`, `1`, `42` | Array-like access, indices |
+
+#### Floats Cannot Be Keys
+
+**Reason**: Floating-point numbers have unstable hashing, so they cannot be used as map keys.
+
+```qi
+;; ✅ Valid types
+{:name "Alice"}           ;; Keyword
+{"email" "test@test.com"} ;; String
+{42 "value"}              ;; Integer
+
+;; ❌ Error
+{3.14 "pi"}               ;; Float - Error: Floats cannot be keys
+```
+
+#### Internal Implementation
+
+Internally, map keys are represented as the `MapKey` enum type:
+
+```rust
+pub enum MapKey {
+    Keyword(Arc<str>),   // :name
+    Symbol(Arc<str>),    // 'symbol
+    String(String),      // "text"
+    Integer(i64),        // 42
+}
+```
+
+This design provides:
+- **Type safety**: Key types are checked at compile time
+- **Performance**: Fast comparison via Arc<str> interning
+- **Memory efficiency**: Same keywords/symbols share memory
+
 ### Access
 
 ```qi

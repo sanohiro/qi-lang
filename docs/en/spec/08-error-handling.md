@@ -329,6 +329,94 @@ This policy allows users to naturally distinguish between "expected errors" and 
 
 ---
 
+## Internal Implementation: Rust Err vs Qi {:error}
+
+Qi's error handling bridges Rust's Result type and Qi's value type.
+
+### Dual Error Representation
+
+**Rust side (internal implementation)**:
+```rust
+fn eval(&self, expr: &Expr) -> Result<Value, String>
+```
+- Success: `Ok(Value)`
+- Error: `Err(String)`
+
+**Qi side (user-facing)**:
+```qi
+;; Success: values as-is
+42
+"hello"
+{:user "alice"}
+
+;; Error: {:error ...} map
+{:error "file not found"}
+{:error {:type "network" :code 404}}
+```
+
+### Conversion by try
+
+`try` converts Rust's Err to Qi's `{:error}`:
+
+```qi
+;; How try works
+(try (risky-operation))
+;; ↓ Internal processing
+;; Ok(value) → value (returns as-is)
+;; Err(msg) → {:error msg} (converts to error map)
+```
+
+**Implementation details**:
+```rust
+// src/eval/special_forms.rs
+pub fn eval_try(&self, expr: &Expr) -> Result<Value, String> {
+    match self.eval(expr) {
+        Ok(value) => Ok(value),     // Success → as-is
+        Err(msg) => Ok(Value::error(msg)),  // Error → {:error msg}
+    }
+}
+```
+
+### Railway Pipeline Internal Operation
+
+The `|>?` operator detects `{:error}` and short-circuits:
+
+```qi
+(value
+ |>? step1
+ |>? step2
+ |>? step3)
+```
+
+**Expanded**:
+```rust
+let v1 = step1(value);
+if v1.is_error() { return v1; }  // Short-circuit if {:error}
+let v2 = step2(v1);
+if v2.is_error() { return v2; }
+let v3 = step3(v2);
+v3
+```
+
+### Design Intent
+
+This dual structure achieves:
+
+1. **Rust side**: Type-safe exception handling (Result type)
+2. **Qi side**: Lisp-style data-oriented error handling (treat as values)
+3. **try**: Bridge between them (Err → {:error})
+
+```qi
+;; Catch Rust exceptions and convert to Qi values
+(match (try (io/read-file path))
+  {:error e} -> (handle-error e)  ;; Treat as data on Qi side
+  content -> content)
+```
+
+This design balances Rust's safety with Lisp's flexibility.
+
+---
+
 ## Practical Examples
 
 ### API Client

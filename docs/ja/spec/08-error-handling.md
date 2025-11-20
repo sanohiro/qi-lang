@@ -335,6 +335,94 @@ Qiの組み込み関数は、エラーの性質に応じて異なる形式を返
 
 ---
 
+## 内部実装：RustのErrとQiの{:error}
+
+Qiのエラー処理は、RustのResult型とQiの値型を橋渡しします。
+
+### 二重のエラー表現
+
+**Rust側（内部実装）**:
+```rust
+fn eval(&self, expr: &Expr) -> Result<Value, String>
+```
+- 成功: `Ok(Value)`
+- エラー: `Err(String)`
+
+**Qi側（ユーザー向け）**:
+```qi
+;; 成功: 値そのまま
+42
+"hello"
+{:user "alice"}
+
+;; エラー: {:error ...}マップ
+{:error "file not found"}
+{:error {:type "network" :code 404}}
+```
+
+### tryによる変換
+
+`try`は、RustのErrをQiの`{:error}`に変換します：
+
+```qi
+;; tryの動作
+(try (risky-operation))
+;; ↓ 内部処理
+;; Ok(value) → value（そのまま返す）
+;; Err(msg) → {:error msg}（エラーマップに変換）
+```
+
+**実装の詳細**:
+```rust
+// src/eval/special_forms.rs
+pub fn eval_try(&self, expr: &Expr) -> Result<Value, String> {
+    match self.eval(expr) {
+        Ok(value) => Ok(value),     // 成功 → そのまま
+        Err(msg) => Ok(Value::error(msg)),  // エラー → {:error msg}
+    }
+}
+```
+
+### Railway Pipelineの内部動作
+
+`|>?`演算子は、`{:error}`を検出してショートサーキットします：
+
+```qi
+(value
+ |>? step1
+ |>? step2
+ |>? step3)
+```
+
+**展開後**:
+```rust
+let v1 = step1(value);
+if v1.is_error() { return v1; }  // {:error}ならショートサーキット
+let v2 = step2(v1);
+if v2.is_error() { return v2; }
+let v3 = step3(v2);
+v3
+```
+
+### 設計の意図
+
+この二重構造により、以下が実現されます：
+
+1. **Rust側**: 型安全な例外処理（Result型）
+2. **Qi側**: Lisp的なデータ指向エラー処理（値として扱う）
+3. **try**: 両者の橋渡し（Err → {:error}）
+
+```qi
+;; Rustの例外をキャッチして、Qiの値に変換
+(match (try (io/read-file path))
+  {:error e} -> (handle-error e)  ;; Qi側でデータとして扱う
+  content -> content)
+```
+
+この設計により、Rustの安全性とLispの柔軟性を両立しています。
+
+---
+
 ## 実用例
 
 ### APIクライアント
