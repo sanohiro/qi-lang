@@ -12,12 +12,12 @@ use std::sync::Arc;
 
 use super::{Evaluator, DOC_PREFIX, RECUR_SENTINEL};
 
-// recurで評価済みの引数を一時保存するThreadLocal
+// recurで評価済みの引数を一時保存するThreadLocalスタック
 // loop/recurの間でのみ使用し、二重評価を回避する
+// スタック構造により、入れ子のloopやEvaluatorでも正しく動作する
 // Option<Vec>で「recurが呼ばれていない」と「ゼロ引数recur」を区別
-// Vecを再利用することで、ヒープ再確保を避ける
 thread_local! {
-    static RECUR_VALUES: RefCell<Option<Vec<Value>>> = const { RefCell::new(None) };
+    static RECUR_STACK: RefCell<Vec<Option<Vec<Value>>>> = const { RefCell::new(Vec::new()) };
 }
 
 /// RAIIガード: Drop時に必ずdeferスタックをクリーンアップ
@@ -37,6 +37,17 @@ impl<'a> Drop for DeferGuard<'a> {
                     .eval_with_env(defer_expr, Arc::clone(&self.env));
             }
         }
+    }
+}
+
+/// RAIIガード: Drop時に必ずRECUR_STACKからpop
+struct RecurGuard;
+
+impl Drop for RecurGuard {
+    fn drop(&mut self) {
+        RECUR_STACK.with(|s| {
+            s.borrow_mut().pop();
+        });
     }
 }
 
@@ -117,18 +128,24 @@ impl Evaluator {
             .collect();
         let values = values?;
 
-        // 評価済みの値をThreadLocalに保存（Vecを再利用）
-        RECUR_VALUES.with(|v| {
-            let mut vec_ref = v.borrow_mut();
-            if let Some(existing_vec) = vec_ref.as_mut() {
-                // 既存のVecを再利用（キャパシティ保持）
-                existing_vec.clear();
-                existing_vec.extend(values);
+        // 評価済みの値をThreadLocalスタックに保存（Vecを再利用）
+        RECUR_STACK.with(|s| {
+            let mut stack = s.borrow_mut();
+            if let Some(last) = stack.last_mut() {
+                if let Some(existing_vec) = last.as_mut() {
+                    // 既存のVecを再利用（キャパシティ保持）
+                    existing_vec.clear();
+                    existing_vec.extend(values);
+                } else {
+                    // 新規作成
+                    *last = Some(values);
+                }
             } else {
-                // 新規作成
-                *vec_ref = Some(values);
+                // スタックが空の場合はエラー（loopの外でrecurが呼ばれた）
+                return Err(msg(MsgKey::RecurNotFound).to_string());
             }
-        });
+            Ok(())
+        })?;
 
         // Recurシグナルをエラーとして返す
         Err(RECUR_SENTINEL.to_string())
@@ -161,6 +178,10 @@ impl Evaluator {
         body: &Expr,
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
+        // RECURスタックにエントリを追加（RAIIガードで自動削除）
+        RECUR_STACK.with(|s| s.borrow_mut().push(None));
+        let _recur_guard = RecurGuard;
+
         // ループ用の環境を作成
         let mut loop_env = Env::with_parent(Arc::clone(&env));
 
@@ -183,9 +204,9 @@ impl Evaluator {
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
                 Err(e) if e == RECUR_SENTINEL => {
-                    // Recurシグナルを検出 - ThreadLocalから評価済みの値を取得
-                    let new_values = RECUR_VALUES
-                        .with(|v| v.borrow_mut().take())
+                    // Recurシグナルを検出 - ThreadLocalスタックから評価済みの値を取得
+                    let new_values = RECUR_STACK
+                        .with(|s| s.borrow_mut().last_mut().and_then(|v| v.take()))
                         .ok_or_else(|| msg(MsgKey::RecurNotFound).to_string())?;
 
                     // 引数の数をチェック

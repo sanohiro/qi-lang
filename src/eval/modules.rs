@@ -143,10 +143,20 @@ impl Evaluator {
 
             let resolved_path = if let Some(base) = base_dir {
                 // ソースファイルのディレクトリを基準に相対パスを解決
-                base.join(name).with_extension("qi").display().to_string()
+                let path = base.join(name);
+                // 既に.qiで終わっている場合は追加しない
+                if name.ends_with(".qi") {
+                    path.display().to_string()
+                } else {
+                    path.with_extension("qi").display().to_string()
+                }
             } else {
                 // ソース名がない場合はカレントディレクトリを基準にする
-                format!("{}.qi", name)
+                if name.ends_with(".qi") {
+                    name.to_string()
+                } else {
+                    format!("{}.qi", name)
+                }
             };
 
             paths.push(resolved_path);
@@ -368,7 +378,15 @@ impl Evaluator {
         })();
 
         // エラーが発生しても必ずクリーンアップを実行（deferパターン）
-        self.loading_modules.write().pop();
+        // スタック検証: pushした値と同じ値をpopすることを確認
+        let popped = self.loading_modules.write().pop();
+        if popped.as_ref().map(|s| s.as_ref()) != Some(name) {
+            // LIFO違反を検出（デバッグ用警告）
+            eprintln!(
+                "Warning: loading_modules LIFO violation: expected {}, got {:?}",
+                name, popped
+            );
+        }
         *self.current_module.write() = prev_module;
 
         result
