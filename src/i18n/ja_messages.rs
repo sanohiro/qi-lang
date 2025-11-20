@@ -469,6 +469,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (AlreadyLatest, "既に最新バージョンを使用しています"),
         (NewVersionAvailable, "新しいバージョンがあります: {0}"),
         (DownloadingBinary, "バイナリをダウンロード中..."),
+        (ExtractingBinary, "バイナリを展開中..."),
         (InstallingUpdate, "アップデートをインストール中..."),
         (UpgradeSuccess, "バージョン {0} へのアップグレードが完了しました"),
         (RestartRequired, "新しいバージョンを使用するには qi を再起動してください"),

@@ -655,6 +655,7 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (AlreadyLatest, "Already using the latest version"),
         (NewVersionAvailable, "New version available: {0}"),
         (DownloadingBinary, "Downloading binary..."),
+        (ExtractingBinary, "Extracting binary..."),
         (InstallingUpdate, "Installing update..."),
         (UpgradeSuccess, "Successfully upgraded to version {0}"),
         (RestartRequired, "Please restart qi to use the new version"),

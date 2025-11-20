@@ -53,17 +53,18 @@ fn is_newer_version(current: &str, latest: &str) -> bool {
     latest_parts.len() > current_parts.len()
 }
 
-/// 現在のプラットフォームに対応するアセット名を取得
-fn get_platform_asset_name() -> String {
+/// 現在のプラットフォームに対応するアセット名のパターンを取得
+/// バージョン番号を含むアセット名（例: qi-v0.1.3-linux-x86_64.tar.gz）を検索するためのパターン
+fn get_platform_asset_pattern() -> String {
     let os = env::consts::OS;
     let arch = env::consts::ARCH;
 
     match (os, arch) {
-        ("macos", "aarch64") => "qi-aarch64-apple-darwin".to_string(),
-        ("macos", "x86_64") => "qi-x86_64-apple-darwin".to_string(),
-        ("linux", "x86_64") => "qi-x86_64-unknown-linux-gnu".to_string(),
-        ("linux", "aarch64") => "qi-aarch64-unknown-linux-gnu".to_string(),
-        ("windows", "x86_64") => "qi-x86_64-pc-windows-msvc.exe".to_string(),
+        ("macos", "aarch64") => "darwin-arm64.tar.gz".to_string(),
+        ("macos", "x86_64") => "darwin-x86_64.tar.gz".to_string(),
+        ("linux", "x86_64") => "linux-x86_64.tar.gz".to_string(),
+        ("linux", "aarch64") => "linux-aarch64.tar.gz".to_string(),
+        ("windows", "x86_64") => "windows-x86_64.zip".to_string(),
         _ => {
             eprintln!("{}", fmt_msg(MsgKey::UnsupportedPlatform, &[os, arch]));
             std::process::exit(1);
@@ -121,6 +122,40 @@ fn download_binary(url: &str) -> Result<Vec<u8>, String> {
         .bytes()
         .map(|b| b.to_vec())
         .map_err(|e| format!("Failed to read response: {}", e))
+}
+
+/// tar.gzアーカイブからバイナリを展開
+#[cfg(feature = "http-client")]
+fn extract_binary_from_targz(archive_data: &[u8]) -> Result<Vec<u8>, String> {
+    use flate2::read::GzDecoder;
+    use std::io::Read;
+    use tar::Archive;
+
+    // gzip解凍
+    let tar_decoder = GzDecoder::new(archive_data);
+    let mut archive = Archive::new(tar_decoder);
+
+    // アーカイブ内のバイナリファイルを検索（通常は"qi"という名前）
+    for entry in archive
+        .entries()
+        .map_err(|e| format!("Failed to read archive: {}", e))?
+    {
+        let mut entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry
+            .path()
+            .map_err(|e| format!("Failed to get entry path: {}", e))?;
+
+        // バイナリファイルを検索（"qi"または最後が"qi"で終わるファイル）
+        if path.file_name().and_then(|n| n.to_str()) == Some("qi") {
+            let mut binary = Vec::new();
+            entry
+                .read_to_end(&mut binary)
+                .map_err(|e| format!("Failed to read binary: {}", e))?;
+            return Ok(binary);
+        }
+    }
+
+    Err("Binary file 'qi' not found in archive".to_string())
 }
 
 /// 現在の実行ファイルパスを取得
@@ -194,16 +229,20 @@ pub fn upgrade() -> Result<(), String> {
         fmt_msg(MsgKey::NewVersionAvailable, &[latest_version])
     );
 
-    // プラットフォームに対応するアセットを検索
-    let asset_name = get_platform_asset_name();
+    // プラットフォームに対応するアセットを検索（部分一致）
+    let asset_pattern = get_platform_asset_pattern();
     let asset = release
         .assets
         .iter()
-        .find(|a| a.name == asset_name)
-        .ok_or_else(|| format!("No binary found for platform: {}", asset_name))?;
+        .find(|a| a.name.ends_with(&asset_pattern))
+        .ok_or_else(|| format!("No binary found for platform pattern: {}", asset_pattern))?;
 
-    // バイナリをダウンロード
-    let binary_data = download_binary(&asset.browser_download_url)?;
+    // アーカイブをダウンロード
+    let archive_data = download_binary(&asset.browser_download_url)?;
+
+    // tar.gzから展開（Windowsの場合はzip対応が必要だが、今はLinux/macOSのみ対応）
+    println!("{}", fmt_msg(MsgKey::ExtractingBinary, &[]));
+    let binary_data = extract_binary_from_targz(&archive_data)?;
 
     // バイナリを置き換え
     println!("{}", fmt_msg(MsgKey::InstallingUpdate, &[]));
