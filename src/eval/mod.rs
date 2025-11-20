@@ -547,7 +547,7 @@ impl Evaluator {
                     name: module_name.clone(),
                     file_path: None,
                     env: Arc::clone(&env),
-                    exports: Some(symbols.clone()),
+                    exports: Some(symbols.iter().cloned().collect()), // VecからHashSetに変換
                 };
                 self.modules.write().insert(module_name, Arc::new(module));
 

@@ -388,7 +388,7 @@ pub struct Module {
     pub name: String,
     pub file_path: Option<String>,
     pub env: Arc<RwLock<Env>>,
-    pub exports: Option<Vec<Arc<str>>>, // Noneの場合は全公開、Some([])の場合は明示的export
+    pub exports: Option<crate::HashSet<Arc<str>>>, // Noneの場合は全公開、Some([])の場合は明示的export（O(1)高速検索）
 }
 
 impl Module {
@@ -413,10 +413,9 @@ impl Module {
                     .map(|b| !b.is_private)
                     .unwrap_or(false)
             }
-            Some(list) => {
-                // exportリストがある = 明示的export
-                // to_string() を避けて直接比較（ヒープ確保削減）
-                list.iter().any(|s| s.as_ref() == name)
+            Some(set) => {
+                // exportリストがある = 明示的export（O(1)検索）
+                set.contains(name)
             }
         }
     }
@@ -866,9 +865,9 @@ impl Expr {
 #[derive(Debug, Clone, PartialEq)]
 pub enum UseMode {
     /// :only [sym1 sym2]
-    Only(Vec<String>),
+    Only(Vec<Arc<str>>),
     /// :as alias
-    As(String),
+    As(Arc<str>),
     /// :all
     All,
 }

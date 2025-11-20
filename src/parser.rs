@@ -1711,11 +1711,7 @@ impl Parser {
                 while self.current() != Some(&Token::RBracket) {
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            symbols.push(
-                                self.take_symbol()
-                                    .expect("token should be a symbol")
-                                    .to_string(),
-                            );
+                            symbols.push(self.take_symbol().expect("token should be a symbol"));
                         }
                         _ => {
                             return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
@@ -1730,7 +1726,7 @@ impl Parser {
                 match self.current() {
                     Some(Token::Symbol(_)) => {
                         let alias = self.take_symbol().expect("token should be a symbol");
-                        UseMode::As(alias.to_string())
+                        UseMode::As(alias)
                     }
                     _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
                 }
@@ -2133,10 +2129,7 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Use { module, mode, .. } => {
                 assert_eq!(module, "http");
-                assert_eq!(
-                    mode,
-                    UseMode::Only(vec!["get".to_string(), "post".to_string()])
-                );
+                assert_eq!(mode, UseMode::Only(vec!["get".into(), "post".into()]));
             }
             _ => panic!("Expected Use"),
         }
@@ -2148,7 +2141,7 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Use { module, mode, .. } => {
                 assert_eq!(module, "http");
-                assert_eq!(mode, UseMode::As("h".to_string()));
+                assert_eq!(mode, UseMode::As("h".into()));
             }
             _ => panic!("Expected Use"),
         }
