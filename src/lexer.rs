@@ -179,9 +179,17 @@ impl Token {
 ///
 /// ソースコードをトークン列に分割します。
 /// 位置情報（行、列、オフセット）を記録し、エラーメッセージで使用します。
+///
+/// CharIndicesベースで実装し、O(n)の線形時間で走査します。
 pub struct Lexer<'a> {
     /// 入力文字列（参照、ゼロコピー）
     input: &'a str,
+    /// 文字イテレータ（CharIndices）
+    chars: std::str::CharIndices<'a>,
+    /// 現在の文字とバイトオフセット
+    current: Option<(usize, char)>,
+    /// 次の文字とバイトオフセット（peek用）
+    next: Option<(usize, char)>,
     /// 現在の読み取り位置（バイトオフセット）
     pos: usize,
     /// 現在の行番号（1始まり）
@@ -192,8 +200,15 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
+        let mut chars = input.char_indices();
+        let current = chars.next();
+        let next = chars.next();
+
         Lexer {
             input,
+            chars,
+            current,
+            next,
             pos: 0,
             line: 1,
             column: 1,
@@ -218,23 +233,34 @@ impl<'a> Lexer<'a> {
     }
 
     fn current(&self) -> Option<char> {
-        self.input[self.pos..].chars().next()
+        self.current.map(|(_, ch)| ch)
     }
 
     fn peek(&self, offset: usize) -> Option<char> {
-        self.input[self.pos..].chars().nth(offset)
+        match offset {
+            0 => self.current.map(|(_, ch)| ch),
+            1 => self.next.map(|(_, ch)| ch),
+            _ => {
+                // offset >= 2の場合はフォールバック（稀なケース）
+                self.input[self.pos..].chars().nth(offset)
+            }
+        }
     }
 
     fn advance(&mut self) {
-        if let Some(ch) = self.current() {
+        if let Some((byte_pos, ch)) = self.current {
+            // 位置情報を更新
             if ch == '\n' {
                 self.line += 1;
                 self.column = 1;
             } else {
                 self.column += 1;
             }
-            // UTF-8のバイト長分だけposを進める
-            self.pos += ch.len_utf8();
+            self.pos = byte_pos + ch.len_utf8();
+
+            // イテレータを進める
+            self.current = self.next;
+            self.next = self.chars.next();
         }
     }
 
