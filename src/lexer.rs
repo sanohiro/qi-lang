@@ -859,6 +859,21 @@ impl<'a> Lexer<'a> {
     }
 }
 
+/// LexerをIteratorとして実装（ストリーミングパース用）
+///
+/// Result<LocatedToken, String>を返し、Eofで終了します。
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Result<LocatedToken, String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next_token() {
+            Ok(token) if token.token == Token::Eof => None,
+            Ok(token) => Some(Ok(token)),
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
