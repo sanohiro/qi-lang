@@ -285,7 +285,8 @@ impl Evaluator {
             }
             Expr::Call { func, args, .. } => {
                 // Callもリストとして扱う
-                let mut result = vec![self.eval_quasiquote(func, Arc::clone(&env), depth)?];
+                let mut result = Vec::with_capacity(1 + args.len());
+                result.push(self.eval_quasiquote(func, Arc::clone(&env), depth)?);
                 for arg in args {
                     if let Expr::UnquoteSplice { expr: e, .. } = arg {
                         if depth == 0 {
@@ -319,7 +320,8 @@ impl Evaluator {
                 otherwise,
                 ..
             } => {
-                let mut result = vec![Value::Symbol(crate::intern::intern_symbol("if"))];
+                let mut result = Vec::with_capacity(4);
+                result.push(Value::Symbol(crate::intern::intern_symbol("if")));
                 result.push(self.eval_quasiquote(test, Arc::clone(&env), depth)?);
                 result.push(self.eval_quasiquote(then, Arc::clone(&env), depth)?);
                 if let Some(o) = otherwise {
@@ -328,7 +330,8 @@ impl Evaluator {
                 Ok(Value::List(result.into()))
             }
             Expr::Do { exprs, .. } => {
-                let mut result = vec![Value::Symbol(crate::intern::intern_symbol("do"))];
+                let mut result = Vec::with_capacity(1 + exprs.len());
+                result.push(Value::Symbol(crate::intern::intern_symbol("do")));
                 for e in exprs {
                     if let Expr::UnquoteSplice { expr: us, .. } = e {
                         if depth == 0 {
