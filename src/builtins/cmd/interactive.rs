@@ -1,6 +1,7 @@
 //! コマンド実行 - interactive
 
 use super::helpers::*;
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::RwLock;
@@ -105,7 +106,7 @@ pub fn native_interactive(args: &[Value]) -> Result<Value, String> {
         .lock()
         .insert(pid, (stdin, stdout, stderr, child));
 
-    Ok(Value::Map(handle.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(handle)))
 }
 
 /// write - プロセスのstdinに書き込む
@@ -127,7 +128,7 @@ pub fn native_proc_write(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let pid = match handle.get("pid") {
+    let pid = match handle.get(&crate::value::MapKey::String("pid".to_string())) {
         Some(Value::Integer(n)) => *n as u32,
         _ => return Err(fmt_msg(MsgKey::CmdInvalidProcessHandle, &[])),
     };
@@ -175,7 +176,7 @@ pub fn native_proc_read_line(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let pid = match handle.get("pid") {
+    let pid = match handle.get(&crate::value::MapKey::String("pid".to_string())) {
         Some(Value::Integer(n)) => *n as u32,
         _ => return Err(fmt_msg(MsgKey::CmdInvalidProcessHandle, &[])),
     };
@@ -225,7 +226,7 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let pid = match handle.get("pid") {
+    let pid = match handle.get(&crate::value::MapKey::String("pid".to_string())) {
         Some(Value::Integer(n)) => *n as u32,
         _ => return Err(fmt_msg(MsgKey::CmdInvalidProcessHandle, &[])),
     };
@@ -256,5 +257,5 @@ pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
     result.insert("exit".to_string(), Value::Integer(exit_code as i64));
     result.insert("stderr".to_string(), Value::String(stderr_content));
 
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(result)))
 }

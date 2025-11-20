@@ -1,5 +1,6 @@
 //! データ構造 - Queue, Stack等
 
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;
@@ -12,7 +13,7 @@ pub fn native_queue_new(_args: &[Value]) -> Result<Value, String> {
         Value::Keyword(crate::intern::intern_keyword("queue")),
     );
     map.insert(":items".to_string(), Value::List(Vec::new().into()));
-    Ok(Value::Map(map.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(map)))
 }
 
 /// queue/enqueue - 要素をキューに追加（末尾）
@@ -32,14 +33,14 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
     };
 
     // キューであることを確認
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
+    if !matches!(queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(
             MsgKey::MustBeQueue,
             &["queue/enqueue", "first argument"],
         ));
     }
 
-    let items = match queue.get(":items") {
+    let items = match queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst.clone(),
         _ => Vec::new().into(),
     };
@@ -48,7 +49,7 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
     new_items.push_back(args[1].clone());
 
     let mut new_map = queue.clone();
-    new_map.insert(":items".to_string(), Value::List(new_items));
+    new_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("items")), Value::List(new_items));
     Ok(Value::Map(new_map))
 }
 
@@ -63,11 +64,11 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
+    if !matches!(queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/dequeue", "argument"]));
     }
 
-    let items = match queue.get(":items") {
+    let items = match queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst.clone(),
         _ => return Err(fmt_msg(MsgKey::IsEmpty, &["queue/dequeue", "queue"])),
     };
@@ -80,13 +81,13 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
     let new_items: Vec<Value> = items.into_iter().skip(1).collect();
 
     let mut new_map = queue.clone();
-    new_map.insert(":items".to_string(), Value::List(new_items.into()));
+    new_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("items")), Value::List(new_items.into()));
 
     // {:value item, :queue new-queue} を返す
     let mut result = HashMap::new();
     result.insert(":value".to_string(), item);
     result.insert(":queue".to_string(), Value::Map(new_map));
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(result)))
 }
 
 /// queue/peek - キューの先頭要素を見る（取り出さない）
@@ -100,11 +101,11 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
+    if !matches!(queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/peek", "argument"]));
     }
 
-    let items = match queue.get(":items") {
+    let items = match queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Nil),
     };
@@ -127,11 +128,11 @@ pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
+    if !matches!(queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/empty?", "argument"]));
     }
 
-    let items = match queue.get(":items") {
+    let items = match queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Bool(true)),
     };
@@ -150,11 +151,11 @@ pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"])),
     };
 
-    if !matches!(queue.get(":type"), Some(Value::Keyword(k)) if &**k == "queue") {
+    if !matches!(queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "queue") {
         return Err(fmt_msg(MsgKey::MustBeQueue, &["queue/size", "argument"]));
     }
 
-    let items = match queue.get(":items") {
+    let items = match queue.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Integer(0)),
     };
@@ -170,7 +171,7 @@ pub fn native_stack_new(_args: &[Value]) -> Result<Value, String> {
         Value::Keyword(crate::intern::intern_keyword("stack")),
     );
     map.insert(":items".to_string(), Value::List(Vec::new().into()));
-    Ok(Value::Map(map.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(map)))
 }
 
 /// stack/push - スタックに要素を追加
@@ -189,14 +190,14 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
+    if !matches!(stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(
             MsgKey::MustBeStack,
             &["stack/push", "first argument"],
         ));
     }
 
-    let items = match stack.get(":items") {
+    let items = match stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst.clone(),
         _ => Vec::new().into(),
     };
@@ -205,7 +206,7 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
     new_items.append(items);
 
     let mut new_map = stack.clone();
-    new_map.insert(":items".to_string(), Value::List(new_items));
+    new_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("items")), Value::List(new_items));
     Ok(Value::Map(new_map))
 }
 
@@ -220,11 +221,11 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
+    if !matches!(stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/pop", "argument"]));
     }
 
-    let items = match stack.get(":items") {
+    let items = match stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst.clone(),
         _ => return Err(fmt_msg(MsgKey::IsEmpty, &["stack/pop", "stack"])),
     };
@@ -237,12 +238,12 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
     let new_items: Vec<Value> = items.into_iter().skip(1).collect();
 
     let mut new_map = stack.clone();
-    new_map.insert(":items".to_string(), Value::List(new_items.into()));
+    new_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("items")), Value::List(new_items.into()));
 
     let mut result = HashMap::new();
     result.insert(":value".to_string(), item);
     result.insert(":stack".to_string(), Value::Map(new_map));
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(result)))
 }
 
 /// stack/peek - スタックの先頭要素を見る
@@ -256,11 +257,11 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
+    if !matches!(stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/peek", "argument"]));
     }
 
-    let items = match stack.get(":items") {
+    let items = match stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Nil),
     };
@@ -283,11 +284,11 @@ pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
+    if !matches!(stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/empty?", "argument"]));
     }
 
-    let items = match stack.get(":items") {
+    let items = match stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Bool(true)),
     };
@@ -306,11 +307,11 @@ pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"])),
     };
 
-    if !matches!(stack.get(":type"), Some(Value::Keyword(k)) if &**k == "stack") {
+    if !matches!(stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("type"))), Some(Value::Keyword(k)) if &**k == "stack") {
         return Err(fmt_msg(MsgKey::MustBeStack, &["stack/size", "argument"]));
     }
 
-    let items = match stack.get(":items") {
+    let items = match stack.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("items"))) {
         Some(Value::List(lst)) => lst,
         _ => return Ok(Value::Integer(0)),
     };

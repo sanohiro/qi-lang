@@ -51,7 +51,7 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String(content_type.to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));
@@ -187,7 +187,7 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String(content_type.to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));
@@ -235,7 +235,7 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
     // 正規化されたパスを保存（セキュリティ向上）
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__static_dir__".to_string(),
+        crate::value::MapKey::String("__static_dir__".to_string()),
         Value::String(canonical_dir_str),
     );
 

@@ -215,7 +215,6 @@ pub fn native_move_file(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path)
 /// 戻り値: {:size 1024 :modified "2024-01-01" :is-dir false :is-file true}
 pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
-    use std::collections::HashMap;
     use std::time::UNIX_EPOCH;
 
     check_args!(args, 1, "io/file-info");
@@ -225,26 +224,26 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
             let metadata = fs::metadata(path)
                 .map_err(|e| fmt_msg(MsgKey::IoGetMetadataFailed, &[path, &e.to_string()]))?;
 
-            let mut info = HashMap::new();
+            let mut info = crate::new_hashmap();
 
             // サイズ
-            info.insert("size".to_string(), Value::Integer(metadata.len() as i64));
+            info.insert(crate::value::MapKey::String("size".to_string()), Value::Integer(metadata.len() as i64));
 
             // ファイルタイプ
-            info.insert("is-dir".to_string(), Value::Bool(metadata.is_dir()));
-            info.insert("is-file".to_string(), Value::Bool(metadata.is_file()));
+            info.insert(crate::value::MapKey::String("is-dir".to_string()), Value::Bool(metadata.is_dir()));
+            info.insert(crate::value::MapKey::String("is-file".to_string()), Value::Bool(metadata.is_file()));
 
             // 更新日時
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
                     info.insert(
-                        "modified".to_string(),
+                        crate::value::MapKey::String("modified".to_string()),
                         Value::Integer(duration.as_secs() as i64),
                     );
                 }
             }
 
-            Ok(Value::Map(info.into()))
+            Ok(Value::Map(info))
         }
         _ => Err(fmt_msg(
             MsgKey::ArgMustBeType,

@@ -73,7 +73,7 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
                         ))
                     }
                 };
-                map.insert(k.clone(), value_str);
+                map.insert(k.to_string(), value_str);
             }
             map
         }

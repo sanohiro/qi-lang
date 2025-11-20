@@ -14,25 +14,25 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     // オプションをパース（キーワードキーに対応）
     let method_key = Value::Keyword(crate::intern::intern_keyword("method"))
         .to_map_key()
-        .unwrap_or_else(|_| "method".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("method".to_string()));
     let url_key = Value::Keyword(crate::intern::intern_keyword("url"))
         .to_map_key()
-        .unwrap_or_else(|_| "url".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("url".to_string()));
     let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
         .to_map_key()
-        .unwrap_or_else(|_| "body".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("body".to_string()));
     let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
         .to_map_key()
-        .unwrap_or_else(|_| "headers".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("headers".to_string()));
     let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
         .to_map_key()
-        .unwrap_or_else(|_| "basic-auth".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("basic-auth".to_string()));
     let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
         .to_map_key()
-        .unwrap_or_else(|_| "bearer-token".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("bearer-token".to_string()));
     let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
         .to_map_key()
-        .unwrap_or_else(|_| "timeout".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("timeout".to_string()));
 
     let method = opts
         .get(&method_key)
@@ -69,7 +69,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
                 let credentials = format!("{}:{}", user, pass);
                 let encoded = general_purpose::STANDARD.encode(credentials);
                 headers.insert(
-                    "authorization".to_string(),
+                    crate::value::MapKey::String("authorization".to_string()),
                     Value::String(format!("Basic {}", encoded)),
                 );
             }
@@ -79,7 +79,7 @@ pub fn native_request(args: &[Value]) -> Result<Value, String> {
     // Bearer Token処理
     if let Some(Value::String(token)) = opts.get(&bearer_token_key) {
         headers.insert(
-            "authorization".to_string(),
+            crate::value::MapKey::String("authorization".to_string()),
             Value::String(format!("Bearer {}", token)),
         );
     }

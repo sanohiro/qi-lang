@@ -61,7 +61,7 @@ pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
 }
 
 fn assoc_in_helper(
-    map: &mut crate::HashMap<String, Value>,
+    map: &mut crate::HashMap<crate::value::MapKey, Value>,
     path: &im::Vector<Value>,
     index: usize,
     value: &Value,
@@ -123,7 +123,7 @@ pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
 }
 
 fn dissoc_in_helper(
-    map: &mut crate::HashMap<String, Value>,
+    map: &mut crate::HashMap<crate::value::MapKey, Value>,
     path: &im::Vector<Value>,
     index: usize,
 ) -> Result<(), String> {
@@ -162,12 +162,12 @@ pub fn native_update_keys(
         Value::Map(m) => {
             let mut result = crate::new_hashmap();
             for (k, v) in m {
-                let key_val = Value::String(k.clone());
+                let key_val = Value::String(k.to_string());
                 let new_key_val = evaluator.apply_function(key_fn, &[key_val])?;
                 let new_key = match new_key_val {
-                    Value::String(s) => s,
-                    Value::Keyword(k) => k.to_string(),
-                    _ => format!("{:?}", new_key_val),
+                    Value::String(s) => crate::value::MapKey::String(s),
+                    Value::Keyword(kw) => crate::value::MapKey::Keyword(kw),
+                    _ => crate::value::MapKey::String(format!("{:?}", new_key_val)),
                 };
                 result.insert(new_key, v.clone());
             }

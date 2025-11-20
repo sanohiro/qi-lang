@@ -4,7 +4,7 @@
 //! パターンマッチの重複を削減し、エラーメッセージを統一します。
 
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use crate::HashMap;
 
 /// 引数からString型を抽出
@@ -94,7 +94,7 @@ pub fn get_map_arg(
     args: &[Value],
     idx: usize,
     func: &str,
-) -> Result<HashMap<String, Value>, String> {
+) -> Result<HashMap<MapKey, Value>, String> {
     args.get(idx)
         .and_then(|v| match v {
             Value::Map(map) => Some(map.clone()),

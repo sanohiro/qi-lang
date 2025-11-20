@@ -1,5 +1,6 @@
 //! 文字列操作関数
 
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
@@ -1345,7 +1346,7 @@ pub fn native_re_match_groups(args: &[Value]) -> Result<Value, String> {
             result.insert("match".to_string(), Value::String(full_match.to_string()));
             result.insert("groups".to_string(), Value::Vector(groups.into()));
 
-            Ok(Value::Map(result.into()))
+            Ok(Value::Map(convert_string_map_to_mapkey(result)))
         }
         None => Ok(Value::Nil),
     }

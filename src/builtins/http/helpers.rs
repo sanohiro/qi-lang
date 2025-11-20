@@ -12,7 +12,7 @@ pub(super) fn compress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
 /// 戻り値: (ヘッダーMap, タイムアウトms)
 pub(super) fn parse_http_options(
     opts: Option<&Value>,
-) -> Result<(Option<crate::HashMap<String, Value>>, u64), String> {
+) -> Result<(Option<crate::HashMap<crate::value::MapKey, Value>>, u64), String> {
     let Some(Value::Map(opts_map)) = opts else {
         // オプションがない場合はデフォルト値
         return Ok((None, 30000));
@@ -21,16 +21,16 @@ pub(super) fn parse_http_options(
     // キーを準備
     let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
         .to_map_key()
-        .unwrap_or_else(|_| "headers".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("headers".to_string()));
     let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
         .to_map_key()
-        .unwrap_or_else(|_| "basic-auth".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("basic-auth".to_string()));
     let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
         .to_map_key()
-        .unwrap_or_else(|_| "bearer-token".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("bearer-token".to_string()));
     let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
         .to_map_key()
-        .unwrap_or_else(|_| "timeout".to_string());
+        .unwrap_or_else(|_| crate::value::MapKey::String("timeout".to_string()));
 
     // ヘッダーを取得
     let mut headers = opts_map
@@ -49,7 +49,7 @@ pub(super) fn parse_http_options(
                 let credentials = format!("{}:{}", user, pass);
                 let encoded = general_purpose::STANDARD.encode(credentials);
                 headers.insert(
-                    "authorization".to_string(),
+                    crate::value::MapKey::String("authorization".to_string()),
                     Value::String(format!("Basic {}", encoded)),
                 );
             }
@@ -59,7 +59,7 @@ pub(super) fn parse_http_options(
     // Bearer Token処理
     if let Some(Value::String(token)) = opts_map.get(&bearer_token_key) {
         headers.insert(
-            "authorization".to_string(),
+            crate::value::MapKey::String("authorization".to_string()),
             Value::String(format!("Bearer {}", token)),
         );
     }

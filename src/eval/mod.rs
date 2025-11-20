@@ -481,7 +481,7 @@ impl Evaluator {
 
                     // {:error ...} の場合は終了して値を返す
                     if let Value::Map(ref m) = val {
-                        if m.contains_key(ERROR_KEY) {
+                        if m.contains_key(&crate::constants::keywords::error_mapkey()) {
                             return Ok(val);
                         }
                     }
@@ -1489,8 +1489,8 @@ mod tests {
         let result = eval_str("(try (/ 1 0))").unwrap();
         match result {
             Value::Map(m) => {
-                assert_eq!(m.get(OK_KEY), None);
-                assert!(m.get(ERROR_KEY).is_some());
+                assert_eq!(m.get(&crate::constants::keywords::ok_mapkey()), None);
+                assert!(m.get(&crate::constants::keywords::error_mapkey()).is_some());
             }
             _ => panic!("Expected map"),
         }

@@ -1,7 +1,7 @@
 //! サーバーヘルパー関数
 
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use crate::HashMap;
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
@@ -16,10 +16,8 @@ use tokio_util::io::ReaderStream;
 /// キーワードをマップキーに変換するヘルパー関数
 /// SAFETY: キーワード文字列は常に有効なマップキーに変換できる
 #[inline]
-pub(super) fn kw(s: &str) -> String {
-    Value::Keyword(crate::intern::intern_keyword(s))
-        .to_map_key()
-        .expect("Keyword should always convert to MapKey")
+pub(super) fn kw(s: &str) -> MapKey {
+    MapKey::Keyword(crate::intern::intern_keyword(s))
 }
 
 pub(super) fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
@@ -53,7 +51,7 @@ pub(super) fn compress_gzip_response(body: &str) -> Result<String, std::io::Erro
 // ========================================
 
 /// JSONボディをパースしてリクエストに追加
-pub(super) fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
+pub(super) fn parse_query_params(query_str: &str) -> HashMap<MapKey, Value> {
     let mut params: HashMap<String, Vec<String>> = crate::new_hashmap();
 
     if query_str.is_empty() {
@@ -91,7 +89,7 @@ pub(super) fn parse_query_params(query_str: &str) -> HashMap<String, Value> {
             } else {
                 Value::Vector(v.into_iter().map(Value::String).collect())
             };
-            (k, value)
+            (MapKey::String(k), value)
         })
         .collect()
 }
@@ -142,7 +140,7 @@ pub(super) async fn request_to_value(
     let mut headers = crate::new_hashmap();
     for (name, value) in parts.headers.iter() {
         if let Ok(v) = value.to_str() {
-            let key = Value::String(name.as_str().to_lowercase()).to_map_key()?;
+            let key = MapKey::String(name.as_str().to_lowercase());
             headers.insert(key, Value::String(v.to_string()));
         }
     }
@@ -150,29 +148,14 @@ pub(super) async fn request_to_value(
     // リクエストマップ
     let mut req_map = crate::new_hashmap();
     req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("method")).to_map_key()?,
+        kw("method"),
         Value::Keyword(crate::intern::intern_keyword(&method)),
     );
-    req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("path")).to_map_key()?,
-        Value::String(path),
-    );
-    req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("query")).to_map_key()?,
-        Value::String(query),
-    );
-    req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("query-params")).to_map_key()?,
-        Value::Map(query_params),
-    );
-    req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("headers")).to_map_key()?,
-        Value::Map(headers),
-    );
-    req_map.insert(
-        Value::Keyword(crate::intern::intern_keyword("body")).to_map_key()?,
-        Value::String(body_str.clone()),
-    );
+    req_map.insert(kw("path"), Value::String(path));
+    req_map.insert(kw("query"), Value::String(query));
+    req_map.insert(kw("query-params"), Value::Map(query_params));
+    req_map.insert(kw("headers"), Value::Map(headers));
+    req_map.insert(kw("body"), Value::String(body_str.clone()));
 
     Ok((Value::Map(req_map), body_str))
 }
@@ -232,7 +215,13 @@ pub(super) async fn value_to_response(
             if let Some(Value::Map(headers)) = m.get(&headers_key) {
                 for (k, v) in headers {
                     if let Value::String(val) = v {
-                        response = response.header(k.as_str(), val.as_str());
+                        let key_str = match k {
+                            MapKey::String(s) => s.as_str(),
+                            MapKey::Symbol(s) => s.as_ref(),
+                            MapKey::Keyword(s) => s.as_ref(),
+                            MapKey::Integer(i) => &i.to_string(),
+                        };
+                        response = response.header(key_str, val.as_str());
                     }
                 }
             }

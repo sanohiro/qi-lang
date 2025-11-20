@@ -2,6 +2,9 @@
 //!
 //! ハードコードされた文字列を定数化し、`to_string()` の呼び出しを削減します。
 
+use crate::value::MapKey;
+use std::sync::Arc;
+
 /// DAPプロトコル関連の定数
 pub mod dap {
     pub const MSG_TYPE_RESPONSE: &str = "response";
@@ -120,6 +123,8 @@ pub mod special_forms {
 
 /// よく使われるキーワード
 pub mod keywords {
+    use super::*;
+
     pub const OK: &str = "ok";
     pub const ERROR: &str = "error";
     pub const STATUS: &str = "status";
@@ -133,7 +138,7 @@ pub mod keywords {
     pub const CODE: &str = "code";
     pub const DATA: &str = "data";
 
-    // マップキー用（:プレフィックス付き）
+    // マップキー用（:プレフィックス付き文字列、後方互換性）
     pub const ERROR_KEY: &str = ":error";
     pub const OK_KEY: &str = ":ok";
     pub const STATUS_KEY: &str = ":status";
@@ -146,6 +151,20 @@ pub mod keywords {
     pub const MESSAGE_KEY: &str = ":message";
     pub const CODE_KEY: &str = ":code";
     pub const DATA_KEY: &str = ":data";
+
+    // MapKey定数（型安全）
+    pub fn error_mapkey() -> MapKey { MapKey::Keyword(Arc::from(ERROR)) }
+    pub fn ok_mapkey() -> MapKey { MapKey::Keyword(Arc::from(OK)) }
+    pub fn status_mapkey() -> MapKey { MapKey::Keyword(Arc::from(STATUS)) }
+    pub fn body_mapkey() -> MapKey { MapKey::Keyword(Arc::from(BODY)) }
+    pub fn headers_mapkey() -> MapKey { MapKey::Keyword(Arc::from(HEADERS)) }
+    pub fn method_mapkey() -> MapKey { MapKey::Keyword(Arc::from(METHOD)) }
+    pub fn path_mapkey() -> MapKey { MapKey::Keyword(Arc::from(PATH)) }
+    pub fn query_mapkey() -> MapKey { MapKey::Keyword(Arc::from(QUERY)) }
+    pub fn params_mapkey() -> MapKey { MapKey::Keyword(Arc::from(PARAMS)) }
+    pub fn message_mapkey() -> MapKey { MapKey::Keyword(Arc::from(MESSAGE)) }
+    pub fn code_mapkey() -> MapKey { MapKey::Keyword(Arc::from(CODE)) }
+    pub fn data_mapkey() -> MapKey { MapKey::Keyword(Arc::from(DATA)) }
 }
 
 /// ファイルI/O関連の定数

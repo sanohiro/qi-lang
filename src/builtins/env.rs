@@ -72,7 +72,7 @@ pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
 
     let mut map = crate::new_hashmap();
     for (key, value) in env::vars() {
-        map.insert(key, Value::String(value));
+        map.insert(crate::value::MapKey::String(key), Value::String(value));
     }
 
     Ok(Value::Map(map))

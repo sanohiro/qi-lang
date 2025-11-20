@@ -1,5 +1,6 @@
 use super::*;
 use crate::builtins::db::types::*;
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
 pub fn native_call(args: &[Value]) -> Result<Value, String> {
@@ -89,7 +90,7 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
         Value::String(info.database_version),
     );
 
-    Ok(Value::Map(map.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(map)))
 }
 
 /// db/query-info - クエリのメタデータを取得
@@ -130,7 +131,7 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
                 col.default_value.map(Value::String).unwrap_or(Value::Nil),
             );
             map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
-            Value::Map(map.into())
+            Value::Map(convert_string_map_to_mapkey(map))
         })
         .collect();
 
@@ -141,5 +142,5 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
         Value::Integer(info.parameter_count as i64),
     );
 
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(result)))
 }

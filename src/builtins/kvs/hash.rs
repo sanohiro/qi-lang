@@ -112,7 +112,7 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
             let mut map = crate::new_hashmap();
             for (field, value) in pairs {
                 // 文字列キーでマップに追加
-                map.insert(field, Value::String(value));
+                map.insert(crate::value::MapKey::String(field), Value::String(value));
             }
             Ok(Value::Map(map))
         }

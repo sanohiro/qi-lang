@@ -88,7 +88,7 @@ fn json_to_value(json: serde_json::Value) -> Value {
         }
         serde_json::Value::Object(obj) => Value::Map(
             obj.into_iter()
-                .map(|(k, v)| (format!("\"{}\"", k), json_to_value(v)))
+                .map(|(k, v)| (crate::value::MapKey::String(format!("\"{}\"", k)), json_to_value(v)))
                 .collect(),
         ),
     }
@@ -125,16 +125,28 @@ fn value_to_json(value: &Value) -> serde_json::Value {
             // サイズが分かっているので事前確保
             let mut obj = serde_json::Map::with_capacity(m.len());
             for (k, v) in m {
-                // Qiのマップキー形式からJSONキーに変換
-                let json_key = if let Some(stripped) = k.strip_prefix(':') {
-                    // キーワードキー ":name" → "name"
-                    stripped.to_string()
-                } else if k.starts_with('"') && k.ends_with('"') && k.len() >= 2 {
-                    // 文字列キー "\"test\"" → "test"
-                    k[1..k.len() - 1].to_string()
-                } else {
-                    // その他はそのまま
-                    k.clone()
+                // MapKeyからJSONキーに変換
+                let json_key = match k {
+                    crate::value::MapKey::Keyword(kw) => {
+                        // キーワードキー :name → "name"
+                        kw.to_string()
+                    }
+                    crate::value::MapKey::String(s) => {
+                        // 文字列キー "\"test\"" → "test"
+                        if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+                            s[1..s.len() - 1].to_string()
+                        } else {
+                            s.clone()
+                        }
+                    }
+                    crate::value::MapKey::Symbol(sym) => {
+                        // シンボルキー → そのまま
+                        sym.to_string()
+                    }
+                    crate::value::MapKey::Integer(i) => {
+                        // 整数キー → 文字列化
+                        i.to_string()
+                    }
                 };
                 obj.insert(json_key, value_to_json(v));
             }

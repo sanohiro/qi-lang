@@ -89,11 +89,11 @@ pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
                 *counts.entry(key).or_insert(0) += 1;
             }
 
-            let mut result = HashMap::new();
+            let mut result = crate::new_hashmap();
             for (key, count) in counts {
-                result.insert(key, Value::Integer(count));
+                result.insert(crate::value::MapKey::String(key), Value::Integer(count));
             }
-            Ok(Value::Map(result.into()))
+            Ok(Value::Map(result))
         }
         _ => Err(fmt_msg(
             MsgKey::MustBeListOrVector,
@@ -174,17 +174,15 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let mut result = std::collections::HashMap::new();
+    let mut result = crate::new_hashmap();
     for (key, val) in keys.iter().zip(vals.iter()) {
-        let key_str = match key {
-            Value::String(s) => s.clone(),
-            Value::Keyword(k) => k.to_string(),
-            _ => format!("{:?}", key),
-        };
-        result.insert(key_str, val.clone());
+        let map_key = key.to_map_key().unwrap_or_else(|_| {
+            crate::value::MapKey::String(format!("{:?}", key))
+        });
+        result.insert(map_key, val.clone());
     }
 
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(result))
 }
 
 /// take-nth - n番目ごとの要素を取得

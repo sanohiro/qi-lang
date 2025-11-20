@@ -2,13 +2,24 @@
 
 use crate::check_args;
 use crate::constants::keywords::ERROR_KEY;
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 
 /// キーワード形式のマップキーを生成
 ///
 /// 文字列からキーワードキー（`:key`形式）を生成する
-pub fn to_map_key(key: &str) -> String {
-    format!(":{}", key)
+pub fn to_map_key(key: &str) -> crate::value::MapKey {
+    crate::value::MapKey::Keyword(crate::intern::intern_keyword(key))
+}
+
+/// HashMap<String, Value>をHashMap<MapKey, Value>に変換
+///
+/// 文字列キーをMapKey::Stringに変換する
+pub fn convert_string_map_to_mapkey(
+    map: std::collections::HashMap<String, Value>,
+) -> crate::HashMap<MapKey, Value> {
+    map.into_iter()
+        .map(|(k, v)| (MapKey::String(k), v))
+        .collect()
 }
 
 // ========================================
@@ -67,7 +78,7 @@ pub fn native_railway_pipe(
     let value_to_pass = match input {
         Value::Map(m) => {
             // {:error ...}ならショートサーキット（後続の関数をスキップ）
-            if m.contains_key(ERROR_KEY) {
+            if m.contains_key(&crate::constants::keywords::error_mapkey()) {
                 return Ok(input.clone());
             }
             // その他のマップはそのまま渡す

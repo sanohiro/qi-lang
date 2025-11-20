@@ -1,7 +1,7 @@
 //! ログ関数
 
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use parking_lot::RwLock;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -111,7 +111,7 @@ fn is_leap_year(year: u64) -> bool {
 }
 
 /// ログ出力の内部実装
-fn log_internal(level: LogLevel, message: &str, context: Option<crate::HashMap<String, Value>>) {
+fn log_internal(level: LogLevel, message: &str, context: Option<crate::HashMap<MapKey, Value>>) {
     let config = LOG_CONFIG.read();
 
     // レベルフィルタ
@@ -154,7 +154,7 @@ fn log_internal(level: LogLevel, message: &str, context: Option<crate::HashMap<S
 
             if let Some(ctx) = context {
                 for (k, v) in ctx {
-                    json_obj.insert(k, value_to_json_string(&v));
+                    json_obj.insert(k.to_string(), value_to_json_string(&v));
                 }
             }
 

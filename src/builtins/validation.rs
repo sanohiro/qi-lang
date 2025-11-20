@@ -152,7 +152,7 @@ fn validate_type(
 
 /// 文字列バリデーション
 fn validate_string(
-    schema: &HashMap<String, Value>,
+    schema: &HashMap<MapKey, Value>,
     s: &str,
     field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
@@ -196,7 +196,7 @@ fn validate_string(
 
 /// 数値バリデーション
 fn validate_number(
-    schema: &HashMap<String, Value>,
+    schema: &HashMap<MapKey, Value>,
     n: f64,
     field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
@@ -267,7 +267,7 @@ fn validate_number(
 
 /// コレクションバリデーション
 fn validate_collection(
-    schema: &HashMap<String, Value>,
+    schema: &HashMap<MapKey, Value>,
     data: &Value,
     field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
@@ -304,8 +304,8 @@ fn validate_collection(
 
 /// マップバリデーション
 fn validate_map(
-    schema: &HashMap<String, Value>,
-    data: &HashMap<String, Value>,
+    schema: &HashMap<MapKey, Value>,
+    data: &HashMap<MapKey, Value>,
     _field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
     // :fields チェック
@@ -316,7 +316,7 @@ fn validate_map(
 
             // エラーがあれば即座に返す
             if let Value::Map(m) = &result {
-                if m.contains_key(ERROR_KEY) {
+                if m.contains_key(&crate::constants::keywords::error_mapkey()) {
                     return Ok(Some(result));
                 }
             }
@@ -373,7 +373,7 @@ mod tests {
     /// ヘルパー関数: エラー結果かどうかをチェック
     fn is_error(result: &Value) -> bool {
         if let Value::Map(m) = result {
-            m.contains_key(ERROR_KEY)
+            m.contains_key(&crate::constants::keywords::error_mapkey())
         } else {
             false
         }
@@ -382,7 +382,7 @@ mod tests {
     /// ヘルパー関数: エラーコードを取得
     fn get_error_code(result: &Value) -> Option<String> {
         if let Value::Map(m) = result {
-            if let Some(Value::Map(error_map)) = m.get(ERROR_KEY) {
+            if let Some(Value::Map(error_map)) = m.get(&crate::constants::keywords::error_mapkey()) {
                 if let Some(Value::String(code)) = error_map.get(":code") {
                     return Some(code.clone());
                 }

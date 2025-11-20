@@ -92,7 +92,7 @@ impl MysqlConnection {
         use base64::{engine::general_purpose, Engine as _};
         use mysql_async::Value as MySqlValue;
 
-        let mut map = Row::new();
+        let mut map = crate::new_hashmap();
         let columns = row.columns_ref();
 
         for (idx, column) in columns.iter().enumerate() {
@@ -164,7 +164,7 @@ impl MysqlConnection {
                 }
             };
 
-            map.insert(column_name, value);
+            map.insert(crate::value::MapKey::String(column_name), value);
         }
 
         Ok(map)
@@ -303,11 +303,11 @@ impl DbConnection for MysqlConnection {
         let columns = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get("Field")?.as_string()?;
-                let data_type = row.get("Type")?.as_string()?;
-                let nullable = row.get("Null")?.as_string()? == "YES";
-                let default_value = row.get("Default").and_then(|v| v.as_string());
-                let primary_key = row.get("Key")?.as_string()? == "PRI";
+                let name = row.get(&crate::value::MapKey::String("Field".to_string()))?.as_string()?;
+                let data_type = row.get(&crate::value::MapKey::String("Type".to_string()))?.as_string()?;
+                let nullable = row.get(&crate::value::MapKey::String("Null".to_string()))?.as_string()? == "YES";
+                let default_value = row.get(&crate::value::MapKey::String("Default".to_string())).and_then(|v| v.as_string());
+                let primary_key = row.get(&crate::value::MapKey::String("Key".to_string()))?.as_string()? == "PRI";
 
                 Some(ColumnInfo {
                     name,
@@ -330,11 +330,11 @@ impl DbConnection for MysqlConnection {
 
         for row in rows {
             if let (Some(name), Some(column)) = (
-                row.get("Key_name").and_then(|v| v.as_string()),
-                row.get("Column_name").and_then(|v| v.as_string()),
+                row.get(&crate::value::MapKey::String("Key_name".to_string())).and_then(|v| v.as_string()),
+                row.get(&crate::value::MapKey::String("Column_name".to_string())).and_then(|v| v.as_string()),
             ) {
                 let unique = row
-                    .get("Non_unique")
+                    .get(&crate::value::MapKey::String("Non_unique".to_string()))
                     .and_then(|v| {
                         if let Value::Integer(i) = v {
                             Some(*i)
@@ -387,12 +387,12 @@ impl DbConnection for MysqlConnection {
         let foreign_keys = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get("constraint_name")?.as_string()?;
-                let column = row.get("column_name")?.as_string()?;
-                let referenced_table = row.get("referenced_table")?.as_string()?;
-                let referenced_column = row.get("referenced_column")?.as_string()?;
-                let _on_update = row.get("update_rule").and_then(|v| v.as_string());
-                let _on_delete = row.get("delete_rule").and_then(|v| v.as_string());
+                let name = row.get(&crate::value::MapKey::String("constraint_name".to_string()))?.as_string()?;
+                let column = row.get(&crate::value::MapKey::String("column_name".to_string()))?.as_string()?;
+                let referenced_table = row.get(&crate::value::MapKey::String("referenced_table".to_string()))?.as_string()?;
+                let referenced_column = row.get(&crate::value::MapKey::String("referenced_column".to_string()))?.as_string()?;
+                let _on_update = row.get(&crate::value::MapKey::String("update_rule".to_string())).and_then(|v| v.as_string());
+                let _on_delete = row.get(&crate::value::MapKey::String("delete_rule".to_string())).and_then(|v| v.as_string());
 
                 Some(ForeignKeyInfo {
                     name,
@@ -451,7 +451,7 @@ impl DbConnection for MysqlConnection {
 
         let db_version = rows
             .first()
-            .and_then(|row| row.get("version"))
+            .and_then(|row| row.get(&crate::value::MapKey::String("version".to_string())))
             .and_then(|v| v.as_string())
             .unwrap_or_else(|| "unknown".to_string());
 

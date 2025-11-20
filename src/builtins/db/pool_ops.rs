@@ -1,5 +1,6 @@
 use super::*;
 use crate::builtins::db::types::*;
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
 pub fn native_create_pool(args: &[Value]) -> Result<Value, String> {
@@ -138,5 +139,5 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
     map.insert("in_use".to_string(), Value::Integer(in_use as i64));
     map.insert("max".to_string(), Value::Integer(max as i64));
 
-    Ok(Value::Map(map.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(map)))
 }

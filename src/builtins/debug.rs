@@ -97,17 +97,23 @@ pub fn native_debug_info(_args: &[Value]) -> Result<Value, String> {
     let mut info = crate::new_hashmap();
 
     if let Some(ref dbg) = *GLOBAL_DEBUGGER.read() {
-        info.insert(":enabled".to_string(), Value::Bool(dbg.is_enabled()));
         info.insert(
-            ":state".to_string(),
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("enabled")),
+            Value::Bool(dbg.is_enabled()),
+        );
+        info.insert(
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("state")),
             Value::String(format!("{:?}", dbg.state())),
         );
         info.insert(
-            ":stack-depth".to_string(),
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("stack-depth")),
             Value::Integer(dbg.call_stack().len() as i64),
         );
     } else {
-        info.insert(":enabled".to_string(), Value::Bool(false));
+        info.insert(
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("enabled")),
+            Value::Bool(false),
+        );
     }
 
     Ok(Value::Map(info))

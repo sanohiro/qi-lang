@@ -9,7 +9,7 @@
 //! - `ws/close` - 接続クローズ
 
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use std::sync::{
@@ -79,23 +79,23 @@ impl WebSocketConnection {
                 match stream.next().await {
                     Some(Ok(Message::Text(text))) => {
                         let mut result = crate::new_hashmap();
-                        result.insert("type".to_string(), Value::String("message".to_string()));
-                        result.insert("data".to_string(), Value::String(text));
+                        result.insert(MapKey::String("type".to_string()), Value::String("message".to_string()));
+                        result.insert(MapKey::String("data".to_string()), Value::String(text));
                         return Ok(Value::Map(result));
                     }
                     Some(Ok(Message::Binary(data))) => {
                         let mut result = crate::new_hashmap();
-                        result.insert("type".to_string(), Value::String("binary".to_string()));
+                        result.insert(MapKey::String("type".to_string()), Value::String("binary".to_string()));
                         #[cfg(feature = "string-encoding")]
                         {
                             use base64::{engine::general_purpose, Engine as _};
                             let encoded = general_purpose::STANDARD.encode(&data);
-                            result.insert("data".to_string(), Value::String(encoded));
+                            result.insert(MapKey::String("data".to_string()), Value::String(encoded));
                         }
                         #[cfg(not(feature = "string-encoding"))]
                         {
                             result.insert(
-                                "data".to_string(),
+                                MapKey::String("data".to_string()),
                                 Value::String(format!("<binary data {} bytes>", data.len())),
                             );
                         }
@@ -103,11 +103,11 @@ impl WebSocketConnection {
                     }
                     Some(Ok(Message::Close(frame))) => {
                         let mut result = crate::new_hashmap();
-                        result.insert("type".to_string(), Value::String("close".to_string()));
+                        result.insert(MapKey::String("type".to_string()), Value::String("close".to_string()));
                         if let Some(CloseFrame { code, reason }) = frame {
                             result
-                                .insert("code".to_string(), Value::Integer(u16::from(code) as i64));
-                            result.insert("reason".to_string(), Value::String(reason.to_string()));
+                                .insert(MapKey::String("code".to_string()), Value::Integer(u16::from(code) as i64));
+                            result.insert(MapKey::String("reason".to_string()), Value::String(reason.to_string()));
                         }
                         return Ok(Value::Map(result));
                     }
@@ -122,13 +122,13 @@ impl WebSocketConnection {
                     }
                     Some(Err(e)) => {
                         let mut result = crate::new_hashmap();
-                        result.insert("type".to_string(), Value::String("error".to_string()));
-                        result.insert("error".to_string(), Value::String(e.to_string()));
+                        result.insert(MapKey::String("type".to_string()), Value::String("error".to_string()));
+                        result.insert(MapKey::String("error".to_string()), Value::String(e.to_string()));
                         return Ok(Value::Map(result));
                     }
                     None => {
                         let mut result = crate::new_hashmap();
-                        result.insert("type".to_string(), Value::String("close".to_string()));
+                        result.insert(MapKey::String("type".to_string()), Value::String("close".to_string()));
                         return Ok(Value::Map(result));
                     }
                 }

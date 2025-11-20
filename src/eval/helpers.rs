@@ -7,6 +7,7 @@
 //! - ビルトイン関数の引数評価
 //! - パターンからValueへの変換
 
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Env, Expr, Pattern, Value};
 use parking_lot::RwLock;
@@ -215,7 +216,7 @@ impl Evaluator {
                         Value::Symbol(crate::intern::intern_symbol(var.as_ref())),
                     );
                 }
-                Value::Map(map.into())
+                Value::Map(convert_string_map_to_mapkey(map))
             }
             Pattern::As(inner, var) => {
                 // (:as inner-pattern var) の形式で表現

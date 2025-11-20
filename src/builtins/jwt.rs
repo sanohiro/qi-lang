@@ -4,7 +4,7 @@
 
 use crate::builtins::util::to_map_key;
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde_json::Value as JsonValue;
 
@@ -186,8 +186,8 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
             let payload = json_to_qi_value(&token_data.claims)?;
 
             let mut result_map = crate::new_hashmap();
-            result_map.insert(":header".to_string(), header);
-            result_map.insert(":payload".to_string(), payload);
+            result_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("header")), header);
+            result_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("payload")), payload);
 
             Ok(Value::Map(result_map))
         }
@@ -222,17 +222,23 @@ fn parse_algorithm(alg: &str) -> Result<Algorithm, String> {
 }
 
 /// QiのマップをJSON Valueに変換
-fn qi_map_to_json(map: &crate::HashMap<String, Value>) -> Result<JsonValue, String> {
+fn qi_map_to_json(map: &crate::HashMap<MapKey, Value>) -> Result<JsonValue, String> {
     let mut json_map = serde_json::Map::new();
 
     for (key, value) in map.iter() {
-        // キーワード形式（":name"）を通常の文字列（"name"）に変換
-        let key_str = if let Some(stripped) = key.strip_prefix(':') {
-            stripped.to_string()
-        } else if let Some(stripped) = key.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-            stripped.to_string()
-        } else {
-            key.clone()
+        // MapKeyを通常の文字列に変換
+        let key_str = match key {
+            MapKey::Keyword(k) => k.to_string(),
+            MapKey::String(s) => {
+                // ダブルクォートで囲まれている場合は取り除く
+                if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+                    s[1..s.len() - 1].to_string()
+                } else {
+                    s.clone()
+                }
+            }
+            MapKey::Symbol(sym) => sym.to_string(),
+            MapKey::Integer(i) => i.to_string(),
         };
 
         let json_value = qi_value_to_json(value)?;
@@ -314,13 +320,12 @@ pub const FUNCTIONS: super::NativeFunctions = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::keywords::ERROR_KEY;
 
     #[test]
     fn test_jwt_sign_and_verify() {
         let mut payload = crate::new_hashmap();
-        payload.insert(":user_id".to_string(), Value::Integer(123));
-        payload.insert(":name".to_string(), Value::String("Alice".to_string()));
+        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")), Value::Integer(123));
+        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("name")), Value::String("Alice".to_string()));
 
         let secret = Value::String("my-secret-key".to_string());
 
@@ -339,7 +344,7 @@ mod tests {
         // 成功時はペイロードマップを直接返す
         match verify_result {
             Value::Map(payload) => {
-                assert_eq!(payload.get(":user_id"), Some(&Value::Integer(123)));
+                assert_eq!(payload.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id"))), Some(&Value::Integer(123)));
             }
             _ => panic!("Expected payload map, got {:?}", verify_result),
         }
@@ -348,7 +353,7 @@ mod tests {
     #[test]
     fn test_jwt_decode() {
         let mut payload = crate::new_hashmap();
-        payload.insert(":user_id".to_string(), Value::Integer(123));
+        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")), Value::Integer(123));
 
         let secret = Value::String("my-secret-key".to_string());
 
@@ -367,8 +372,8 @@ mod tests {
         // 成功時は {:header ... :payload ...} マップを直接返す
         match decode_result {
             Value::Map(data) => {
-                assert!(data.contains_key(":header"));
-                assert!(data.contains_key(":payload"));
+                assert!(data.contains_key(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("header"))));
+                assert!(data.contains_key(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("payload"))));
             }
             _ => panic!(
                 "Expected map with :header and :payload, got {:?}",
@@ -386,7 +391,7 @@ mod tests {
 
         match result {
             Value::Map(m) => {
-                assert!(m.contains_key(ERROR_KEY));
+                assert!(m.contains_key(&crate::constants::keywords::error_mapkey()));
             }
             _ => panic!("Expected {{:error ...}}"),
         }

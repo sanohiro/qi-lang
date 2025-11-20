@@ -1,6 +1,7 @@
 //! コマンド実行 - ヘルパー関数
 
 use super::types::ProcessStreams;
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use once_cell::sync::Lazy;
@@ -50,7 +51,7 @@ pub(super) fn result_to_map(stdout: Vec<u8>, stderr: Vec<u8>, exit_code: i32) ->
         Value::String(String::from_utf8_lossy(&stderr).to_string()),
     );
     map.insert("exit".to_string(), Value::Integer(exit_code as i64));
-    Value::Map(map.into())
+    Value::Map(convert_string_map_to_mapkey(map))
 }
 
 /// コマンド引数を解析（文字列 or ベクタ）

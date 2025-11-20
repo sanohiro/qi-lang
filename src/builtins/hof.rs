@@ -353,7 +353,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
             let mut result = crate::new_hashmap();
             for (key_str, values) in groups {
-                result.insert(key_str, Value::List(values));
+                result.insert(crate::value::MapKey::String(key_str), Value::List(values));
             }
             Ok(Value::Map(result))
         }
@@ -412,11 +412,7 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
     match map {
         Value::Map(m) => {
-            let key = match key_val {
-                Value::String(s) => s.clone(),
-                Value::Keyword(k) => k.to_string(),
-                _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-            };
+            let key = key_val.to_map_key()?;
 
             let current_value = m.get(&key).cloned().unwrap_or(Value::Nil);
             let new_value = evaluator.apply_function(func, &[current_value])?;
@@ -460,17 +456,13 @@ pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 }
 
 fn update_in_helper(
-    map: &mut crate::HashMap<String, Value>,
+    map: &mut crate::HashMap<crate::value::MapKey, Value>,
     path: &im::Vector<Value>,
     index: usize,
     func: &Value,
     evaluator: &Evaluator,
 ) -> Result<(), String> {
-    let key = match &path[index] {
-        Value::String(s) => s.clone(),
-        Value::Keyword(k) => k.to_string(),
-        _ => return Err(fmt_msg(MsgKey::KeyMustBeKeyword, &[])),
-    };
+    let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {
         // 最後のキー：値を更新
@@ -524,7 +516,7 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
             let mut result = crate::new_hashmap();
             for (key, count) in counts {
-                result.insert(key, Value::Integer(count));
+                result.insert(crate::value::MapKey::String(key), Value::Integer(count));
             }
             Ok(Value::Map(result))
         }

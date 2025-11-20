@@ -99,9 +99,14 @@ pub fn native_redis_mset(args: &[Value]) -> Result<Value, String> {
             .iter()
             .map(|(k, v)| match v {
                 Value::String(s) => {
-                    // キーから引用符を取り除く（もし含まれている場合）
-                    let clean_key = k.trim_matches('"');
-                    Ok((clean_key.to_string(), s.clone()))
+                    // MapKeyを文字列に変換
+                    let clean_key = match k {
+                        crate::value::MapKey::Keyword(kw) => kw.to_string(),
+                        crate::value::MapKey::String(s) => s.trim_matches('"').to_string(),
+                        crate::value::MapKey::Symbol(sym) => sym.to_string(),
+                        crate::value::MapKey::Integer(i) => i.to_string(),
+                    };
+                    Ok((clean_key, s.clone()))
                 }
                 _ => Err(fmt_msg(
                     MsgKey::TypeOnly,

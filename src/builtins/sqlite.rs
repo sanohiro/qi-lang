@@ -103,7 +103,7 @@ impl SqliteConnection {
 
     /// SQLite行をQi Valueに変換
     fn row_to_hashmap(row: &SqliteRow) -> DbResult<Row> {
-        let mut map = Row::new();
+        let mut map = crate::new_hashmap();
         let column_count = row.as_ref().column_count();
 
         for i in 0..column_count {
@@ -137,7 +137,7 @@ impl SqliteConnection {
                 }
             };
 
-            map.insert(column_name, value);
+            map.insert(crate::value::MapKey::String(column_name), value);
         }
 
         Ok(map)
@@ -624,7 +624,7 @@ mod tests {
         let rows = conn.query("SELECT * FROM test", &[], &query_opts).unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(
-            rows[0].get("name"),
+            rows[0].get(&crate::value::MapKey::String("name".to_string())),
             Some(&Value::String("Alice".to_string()))
         );
     }

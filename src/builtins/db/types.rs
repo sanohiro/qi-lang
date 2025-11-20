@@ -1,6 +1,5 @@
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
-use std::collections::HashMap;
+use crate::value::{MapKey, Value};
 
 /// データベースエラー
 #[derive(Debug, Clone)]
@@ -31,7 +30,7 @@ impl From<&str> for DbError {
 pub type DbResult<T> = Result<T, DbError>;
 
 /// データベース行（カラム名 -> 値のマップ）
-pub type Row = HashMap<String, Value>;
+pub type Row = crate::HashMap<MapKey, Value>;
 
 /// クエリ結果（行のベクター）
 pub type Rows = Vec<Row>;
@@ -60,13 +59,13 @@ impl ConnectionOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::Integer(ms)) = map.get("timeout") {
+            if let Some(Value::Integer(ms)) = map.get(&crate::value::MapKey::String("timeout".to_string())) {
                 options.timeout_ms = Some(*ms as u64);
             }
-            if let Some(Value::Bool(ro)) = map.get("read-only") {
+            if let Some(Value::Bool(ro)) = map.get(&crate::value::MapKey::String("read-only".to_string())) {
                 options.read_only = *ro;
             }
-            if let Some(Value::Bool(ac)) = map.get("auto-commit") {
+            if let Some(Value::Bool(ac)) = map.get(&crate::value::MapKey::String("auto-commit".to_string())) {
                 options.auto_commit = *ac;
             }
         }
@@ -99,13 +98,13 @@ impl QueryOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::Integer(ms)) = map.get("timeout") {
+            if let Some(Value::Integer(ms)) = map.get(&crate::value::MapKey::String("timeout".to_string())) {
                 options.timeout_ms = Some(*ms as u64);
             }
-            if let Some(Value::Integer(n)) = map.get("limit") {
+            if let Some(Value::Integer(n)) = map.get(&crate::value::MapKey::String("limit".to_string())) {
                 options.limit = Some(*n);
             }
-            if let Some(Value::Integer(n)) = map.get("offset") {
+            if let Some(Value::Integer(n)) = map.get(&crate::value::MapKey::String("offset".to_string())) {
                 options.offset = Some(*n);
             }
         }
@@ -214,10 +213,10 @@ impl TransactionOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::String(iso)) = map.get("isolation") {
+            if let Some(Value::String(iso)) = map.get(&crate::value::MapKey::String("isolation".to_string())) {
                 options.isolation = iso.parse().map_err(DbError::new)?;
             }
-            if let Some(Value::Integer(ms)) = map.get("timeout") {
+            if let Some(Value::Integer(ms)) = map.get(&crate::value::MapKey::String("timeout".to_string())) {
                 options.timeout_ms = Some(*ms as u64);
             }
         }

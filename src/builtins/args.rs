@@ -1,5 +1,6 @@
 //! コマンドライン引数パース関数
 
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;
@@ -108,10 +109,13 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 
     let mut result = HashMap::new();
     result.insert("flags".to_string(), Value::List(flags.into()));
-    result.insert("options".to_string(), Value::Map(options.into()));
+    result.insert(
+        "options".to_string(),
+        Value::Map(convert_string_map_to_mapkey(options)),
+    );
     result.insert("args".to_string(), Value::List(positional.into()));
 
-    Ok(Value::Map(result.into()))
+    Ok(Value::Map(convert_string_map_to_mapkey(result)))
 }
 
 /// count - コマンドライン引数の数を取得

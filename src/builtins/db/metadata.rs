@@ -1,4 +1,5 @@
 use super::*;
+use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
 pub fn native_tables(args: &[Value]) -> Result<Value, String> {
@@ -52,7 +53,7 @@ pub fn native_columns(args: &[Value]) -> Result<Value, String> {
                 col.default_value.map(Value::String).unwrap_or(Value::Nil),
             );
             map.insert("primary_key".to_string(), Value::Bool(col.primary_key));
-            Value::Map(map.into())
+            Value::Map(convert_string_map_to_mapkey(map))
         })
         .collect();
 
@@ -90,7 +91,7 @@ pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
                 Value::Vector(idx.columns.into_iter().map(Value::String).collect()),
             );
             map.insert("unique".to_string(), Value::Bool(idx.unique));
-            Value::Map(map.into())
+            Value::Map(convert_string_map_to_mapkey(map))
         })
         .collect();
 
@@ -145,7 +146,7 @@ pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
                         .collect(),
                 ),
             );
-            Value::Map(map.into())
+            Value::Map(convert_string_map_to_mapkey(map))
         })
         .collect();
 

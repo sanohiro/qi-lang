@@ -14,6 +14,98 @@ pub enum FStringPart {
     Code(String), // {expr} 内のコード
 }
 
+/// マップのキー型（型安全性とパフォーマンス向上）
+///
+/// Lisp的な柔軟性を保ちつつ、Rustの型システムで安全に扱います。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum MapKey {
+    /// キーワード（:nameなど）
+    Keyword(Arc<str>),
+    /// シンボル（nameなど）
+    Symbol(Arc<str>),
+    /// 文字列
+    String(String),
+    /// 整数
+    Integer(i64),
+}
+
+impl MapKey {
+    /// 文字列表現を取得
+    pub fn as_str(&self) -> String {
+        match self {
+            MapKey::Keyword(k) => format!(":{}", k),
+            MapKey::Symbol(s) => s.to_string(),
+            MapKey::String(s) => format!("\"{}\"", s),
+            MapKey::Integer(i) => i.to_string(),
+        }
+    }
+}
+
+impl From<&str> for MapKey {
+    fn from(s: &str) -> Self {
+        if let Some(keyword) = s.strip_prefix(':') {
+            MapKey::Keyword(Arc::from(keyword))
+        } else if s.starts_with('"') && s.ends_with('"') {
+            MapKey::String(s[1..s.len()-1].to_string())
+        } else {
+            MapKey::Symbol(Arc::from(s))
+        }
+    }
+}
+
+impl From<String> for MapKey {
+    fn from(s: String) -> Self {
+        MapKey::from(s.as_str())
+    }
+}
+
+impl From<i64> for MapKey {
+    fn from(i: i64) -> Self {
+        MapKey::Integer(i)
+    }
+}
+
+impl From<Arc<str>> for MapKey {
+    fn from(s: Arc<str>) -> Self {
+        if s.starts_with(':') {
+            MapKey::Keyword(Arc::from(&s[1..]))
+        } else {
+            MapKey::Symbol(s)
+        }
+    }
+}
+
+impl std::fmt::Display for MapKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MapKey::Keyword(k) => write!(f, ":{}", k),
+            MapKey::Symbol(s) => write!(f, "{}", s),
+            MapKey::String(s) => write!(f, "\"{}\"", s),
+            MapKey::Integer(i) => write!(f, "{}", i),
+        }
+    }
+}
+
+/// 型安全なマップを簡単に作成するためのヘルパーマクロ
+///
+/// # Examples
+/// ```ignore
+/// let map = map_with_keys![
+///     ":status" => Value::Integer(200),
+///     "name" => Value::String("test".into())
+/// ];
+/// ```
+#[macro_export]
+macro_rules! map_with_keys {
+    ($($key:expr => $value:expr),* $(,)?) => {{
+        let mut map = $crate::HashMap::new();
+        $(
+            map.insert($crate::value::MapKey::from($key), $value);
+        )*
+        map
+    }};
+}
+
 /// Qi言語の値を表現する型
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -35,8 +127,8 @@ pub enum Value {
     List(Vector<Value>),
     /// ベクタ
     Vector(Vector<Value>),
-    /// マップ
-    Map(crate::HashMap<String, Value>),
+    /// マップ（型安全なキー）
+    Map(crate::HashMap<MapKey, Value>),
     /// 関数（クロージャ）
     Function(Arc<Function>),
     /// ネイティブ関数（Rustで実装された関数）
@@ -129,17 +221,15 @@ impl Value {
     /// - Integer: "123"
     /// - Nil: "nil"
     /// - Bool: "true" or "false"
-    pub fn to_map_key(&self) -> Result<String, String> {
-        use crate::i18n::{fmt_msg, msg, MsgKey};
+    pub fn to_map_key(&self) -> Result<MapKey, String> {
+        use crate::i18n::{fmt_msg, msg, MsgKey as MK};
         match self {
-            Value::Keyword(k) => Ok(format!(":{}", k)),
-            Value::String(s) => Ok(format!("\"{}\"", s)),
-            Value::Symbol(s) => Ok(format!("'{}", s)),
-            Value::Integer(n) => Ok(n.to_string()),
-            Value::Nil => Ok("nil".to_string()),
-            Value::Bool(b) => Ok(b.to_string()),
-            Value::Float(_) => Err(msg(MsgKey::FloatKeyNotAllowed).to_string()),
-            _ => Err(fmt_msg(MsgKey::InvalidMapKey, &[self.type_name()])),
+            Value::Keyword(k) => Ok(MapKey::Keyword(k.clone())),
+            Value::String(s) => Ok(MapKey::String(s.clone())),
+            Value::Symbol(s) => Ok(MapKey::Symbol(s.clone())),
+            Value::Integer(n) => Ok(MapKey::Integer(*n)),
+            Value::Float(_) => Err(msg(MK::FloatKeyNotAllowed).to_string()),
+            _ => Err(fmt_msg(MK::InvalidMapKey, &[self.type_name()])),
         }
     }
 
@@ -206,7 +296,7 @@ impl Value {
     /// ```
     pub fn error(message: impl Into<String>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(ERROR_KEY.to_string(), Value::String(message.into()));
+        map.insert(crate::constants::keywords::error_mapkey(), Value::String(message.into()));
         Value::Map(map)
     }
 
@@ -219,15 +309,15 @@ impl Value {
     ///     "code".to_string() => Value::Integer(404),
     /// }));
     /// ```
-    pub fn error_with_details(details: crate::HashMap<String, Value>) -> Value {
+    pub fn error_with_details(details: crate::HashMap<MapKey, Value>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(ERROR_KEY.to_string(), Value::Map(details));
+        map.insert(crate::constants::keywords::error_mapkey(), Value::Map(details));
         Value::Map(map)
     }
 
     /// 値がエラーかチェック（{:error ...}形式）
     pub fn is_error(&self) -> bool {
-        matches!(self, Value::Map(m) if m.contains_key(ERROR_KEY))
+        matches!(self, Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()))
     }
 }
 

@@ -425,33 +425,11 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
             let keys: im::Vector<Value> = m
                 .keys()
                 .map(|k| {
-                    // キー文字列から元の型に復元
-                    if let Some(keyword) = k.strip_prefix(':') {
-                        // ":a" -> Keyword("a")
-                        Value::Keyword(crate::intern::intern_keyword(keyword))
-                    } else if let Some(string) =
-                        k.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
-                    {
-                        // "\"foo\"" -> String("foo")
-                        Value::String(string.to_string())
-                    } else if let Some(symbol) = k.strip_prefix('\'') {
-                        // "'bar" -> Symbol("bar")
-                        Value::Symbol(crate::intern::intern_symbol(symbol))
-                    } else if k == "nil" {
-                        // "nil" -> Nil
-                        Value::Nil
-                    } else if k == "true" {
-                        // "true" -> Bool(true)
-                        Value::Bool(true)
-                    } else if k == "false" {
-                        // "false" -> Bool(false)
-                        Value::Bool(false)
-                    } else if let Ok(n) = k.parse::<i64>() {
-                        // "123" -> Integer(123)
-                        Value::Integer(n)
-                    } else {
-                        // パースできない場合は文字列として返す
-                        Value::String(k.clone())
+                    match k {
+                        crate::value::MapKey::Keyword(kw) => Value::Keyword(kw.clone()),
+                        crate::value::MapKey::Symbol(sym) => Value::Symbol(sym.clone()),
+                        crate::value::MapKey::String(s) => Value::String(s.clone()),
+                        crate::value::MapKey::Integer(n) => Value::Integer(*n),
                     }
                 })
                 .collect();

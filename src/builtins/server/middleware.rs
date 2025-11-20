@@ -43,12 +43,11 @@ pub(super) fn apply_bearer_middleware(req: &Value) -> Value {
     };
 
     let headers_key = kw("headers");
-    let auth_header_key = "authorization"; // HTTPヘッダーは文字列キーのまま
 
     let token = req_map
         .get(&headers_key)
         .and_then(|h| match h {
-            Value::Map(headers) => headers.get(auth_header_key),
+            Value::Map(headers) => headers.get(&crate::value::MapKey::String("authorization".to_string())),
             _ => None,
         })
         .and_then(|v| match v {
@@ -114,15 +113,15 @@ pub(super) fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -
     };
 
     headers.insert(
-        "Access-Control-Allow-Origin".to_string(),
+        crate::value::MapKey::String("Access-Control-Allow-Origin".to_string()),
         Value::String(origin),
     );
     headers.insert(
-        "Access-Control-Allow-Methods".to_string(),
+        crate::value::MapKey::String("Access-Control-Allow-Methods".to_string()),
         Value::String("GET, POST, PUT, DELETE, OPTIONS".to_string()),
     );
     headers.insert(
-        "Access-Control-Allow-Headers".to_string(),
+        crate::value::MapKey::String("Access-Control-Allow-Headers".to_string()),
         Value::String("Content-Type, Authorization".to_string()),
     );
 
@@ -160,7 +159,7 @@ pub(super) fn apply_compression_middleware(resp: &Value, min_size: usize) -> Val
         _ => crate::new_hashmap(),
     };
     headers.insert(
-        "Content-Encoding".to_string(),
+        crate::value::MapKey::String("Content-Encoding".to_string()),
         Value::String("gzip".to_string()),
     );
     new_resp.insert(headers_key.clone(), Value::Map(headers));
@@ -178,10 +177,10 @@ pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
     // ロギングミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("logging".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
 
     Ok(Value::Map(metadata))
 }
@@ -220,12 +219,12 @@ pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
     // CORSミドルウェアマーカーとして、マップにメタデータを埋め込む
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("cors".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
     metadata.insert(
-        "__origins__".to_string(),
+        crate::value::MapKey::String("__origins__".to_string()),
         Value::Vector(origins.iter().map(|s| Value::String(s.clone())).collect()),
     );
 
@@ -244,10 +243,10 @@ pub fn native_server_with_json_body(args: &[Value]) -> Result<Value, String> {
     // JSONボディパースミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("json-body".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
 
     Ok(Value::Map(metadata))
 }
@@ -280,11 +279,11 @@ pub fn native_server_with_compression(args: &[Value]) -> Result<Value, String> {
     // 圧縮ミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("compression".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
-    metadata.insert("__min_size__".to_string(), Value::Integer(min_size as i64));
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(crate::value::MapKey::String("__min_size__".to_string()), Value::Integer(min_size as i64));
 
     Ok(Value::Map(metadata))
 }
@@ -321,11 +320,11 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
     // Basic Authミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("basic-auth".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
-    metadata.insert("__users__".to_string(), Value::Map(users));
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(crate::value::MapKey::String("__users__".to_string()), Value::Map(users));
 
     Ok(Value::Map(metadata))
 }
@@ -342,10 +341,10 @@ pub fn native_server_with_bearer(args: &[Value]) -> Result<Value, String> {
     // Bearerミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("bearer".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
 
     Ok(Value::Map(metadata))
 }
@@ -366,10 +365,10 @@ pub fn native_server_with_no_cache(args: &[Value]) -> Result<Value, String> {
     // no-cacheミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("no-cache".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
 
     Ok(Value::Map(metadata))
 }
@@ -397,11 +396,11 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
     // cache-controlミドルウェアマーカー
     let mut metadata = crate::new_hashmap();
     metadata.insert(
-        "__middleware__".to_string(),
+        crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("cache-control".to_string()),
     );
-    metadata.insert("__handler__".to_string(), handler);
-    metadata.insert("__cache_opts__".to_string(), Value::Map(opts));
+    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(crate::value::MapKey::String("__cache_opts__".to_string()), Value::Map(opts));
 
     Ok(Value::Map(metadata))
 }

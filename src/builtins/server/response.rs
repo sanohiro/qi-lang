@@ -21,7 +21,7 @@ pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String("text/plain; charset=utf-8".to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));
@@ -39,7 +39,7 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     let json_result = crate::builtins::json::native_stringify(&[args[0].clone()])?;
     let json_str = match json_result {
         Value::String(s) => s,
-        Value::Map(m) if m.contains_key(ERROR_KEY) => {
+        Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
             return Err(fmt_msg(MsgKey::JsonStringifyError, &[]));
         }
         _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
@@ -65,7 +65,7 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String("application/json; charset=utf-8".to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));
@@ -103,7 +103,7 @@ pub fn native_server_response(args: &[Value]) -> Result<Value, String> {
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String("text/plain; charset=utf-8".to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));
@@ -128,7 +128,7 @@ pub fn native_server_not_found(args: &[Value]) -> Result<Value, String> {
 
     let mut headers = crate::new_hashmap();
     headers.insert(
-        "Content-Type".to_string(),
+        crate::value::MapKey::String("Content-Type".to_string()),
         Value::String("text/plain; charset=utf-8".to_string()),
     );
     resp.insert(kw("headers"), Value::Map(headers));

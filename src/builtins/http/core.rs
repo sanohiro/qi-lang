@@ -5,7 +5,7 @@ pub(super) fn http_request(
     method: &str,
     url: &str,
     body: Option<&Value>,
-    headers: Option<&crate::HashMap<String, Value>>,
+    headers: Option<&crate::HashMap<crate::value::MapKey, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
     // 詳細版を呼び出す
@@ -84,7 +84,7 @@ pub(super) fn http_request_detailed(
     method: &str,
     url: &str,
     body: Option<&Value>,
-    headers: Option<&crate::HashMap<String, Value>>,
+    headers: Option<&crate::HashMap<crate::value::MapKey, Value>>,
     timeout_ms: u64,
 ) -> Result<Value, String> {
     // デフォルトタイムアウト（30秒）の場合は共有Clientを使用
@@ -116,7 +116,7 @@ pub(super) fn http_request_detailed(
 
     // 圧縮が必要かチェック
     let should_compress = headers
-        .and_then(|h| h.get("content-encoding"))
+        .and_then(|h| h.get(&crate::value::MapKey::String("content-encoding".to_string())))
         .and_then(|v| match v {
             Value::String(s) => Some(s.to_lowercase()),
             _ => None,
@@ -128,8 +128,13 @@ pub(super) fn http_request_detailed(
     if let Some(h) = headers {
         for (k, v) in h.iter() {
             if let Value::String(val) = v {
-                // Qiパーサーがキーにダブルクォートを含める場合があるため除去
-                let key = k.trim_matches('"');
+                // MapKeyから文字列を取得
+                let key = match k {
+                    crate::value::MapKey::String(s) => s.trim_matches('"'),
+                    crate::value::MapKey::Symbol(s) => s.as_ref(),
+                    crate::value::MapKey::Keyword(s) => s.as_ref(),
+                    crate::value::MapKey::Integer(i) => &i.to_string(),
+                };
                 let value = val.trim_matches('"');
                 request = request.header(key, value);
             }
@@ -179,12 +184,12 @@ pub(super) fn http_request_detailed(
             let status = response.status().as_u16() as i64;
 
             // ヘッダーを取得
-            let headers: crate::HashMap<String, Value> = response
+            let headers: crate::HashMap<crate::value::MapKey, Value> = response
                 .headers()
                 .iter()
                 .map(|(k, v)| {
                     (
-                        k.as_str().to_string(),
+                        crate::value::MapKey::String(k.as_str().to_string()),
                         Value::String(v.to_str().unwrap_or("").to_string()),
                     )
                 })
