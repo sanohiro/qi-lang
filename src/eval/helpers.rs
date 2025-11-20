@@ -59,25 +59,46 @@ pub(super) fn find_similar_names(
     max_distance: usize,
     limit: usize,
 ) -> Vec<String> {
-    // limit.max(8): 通常limit=3だが、フィルタ前の候補は8個程度と推定
-    let mut candidates = Vec::with_capacity(limit.max(8));
-    for (name, _) in env.bindings() {
-        let distance = strsim::levenshtein(target, name);
-        if distance <= max_distance {
-            candidates.push((name.clone(), distance));
+    use std::cmp::Reverse;
+    use std::collections::{BinaryHeap, HashSet};
+
+    // BinaryHeap で上位 limit 件のみを保持（距離が小さい順、つまり類似度が高い順）
+    let mut heap: BinaryHeap<Reverse<(usize, Arc<str>)>> = BinaryHeap::new();
+    let mut seen = HashSet::new();
+
+    // 親環境チェーンを辿って全階層から候補を収集
+    let mut current = Some(env);
+    while let Some(e) = current {
+        for (name, _) in e.bindings() {
+            // 既に処理済みの名前はスキップ（子環境が優先）
+            if seen.contains(name) {
+                continue;
+            }
+            seen.insert(name.clone());
+
+            let distance = strsim::levenshtein(target, name);
+            if distance <= max_distance {
+                heap.push(Reverse((distance, name.clone())));
+                // limit を超えたら最も類似度が低いものを削除
+                if heap.len() > limit {
+                    heap.pop();
+                }
+            }
         }
+        // 親環境に移動
+        current = e.parent().and_then(|p| {
+            let guard = p.try_read();
+            guard.as_ref().map(|g| unsafe {
+                // SAFETY: この参照は次のループ開始前に破棄される
+                std::mem::transmute::<&Env, &Env>(&**g)
+            })
+        });
     }
 
-    // 距離でソート
-    candidates.sort_by_key(|(_, dist)| *dist);
-
-    // 上位のみ取得
-    // limit: 通常3個まで取得
-    let mut results = Vec::with_capacity(limit);
-    for (name, _) in candidates.into_iter().take(limit) {
-        results.push(name.to_string());
-    }
-    results
+    // BinaryHeap から結果を取り出し（距離が小さい順）
+    let mut results: Vec<_> = heap.into_iter().map(|Reverse((_, name))| name).collect();
+    results.reverse(); // 距離が小さい順にソート
+    results.into_iter().map(|s| s.to_string()).collect()
 }
 
 // ========================================
