@@ -276,98 +276,101 @@ impl Evaluator {
         // ロード中のモジュールリストに追加
         self.loading_modules.write().push(name_arc.clone());
 
-        // パッケージ検索パスを解決
-        let paths = self.resolve_module_path(name)?;
-
-        let mut content = None;
-        let mut found_path = None;
-        for path in &paths {
-            if let Ok(c) = std::fs::read_to_string(path) {
-                content = Some(c);
-                // Windows短縮形パス（~1など）およびverbatim prefix（\\?\）を正規化
-                found_path = dunce::canonicalize(path)
-                    .ok()
-                    .map(|p| p.to_string_lossy().to_string());
-                break;
-            }
-        }
-
-        let content = content.ok_or_else(|| qerr(MsgKey::ModuleNotFound, &[name]))?;
-
-        // デバッグ: ロードしたパスを表示（開発時のみ）
-        if std::env::var("QI_DEBUG").is_ok() {
-            eprintln!(
-                "[DEBUG] Loaded module '{}' from: {}",
-                name,
-                found_path.as_deref().unwrap_or_default()
-            );
-        }
-
-        // パースして評価
-        let mut parser = crate::parser::Parser::new(&content)
-            .map_err(|e| qerr(MsgKey::ModuleParserInitError, &[name, &e]))?;
-
-        let exprs = parser
-            .parse_all()
-            .map_err(|e| qerr(MsgKey::ModuleParseError, &[name, &e]))?;
-
-        // 新しい環境で評価（グローバル環境を親として参照、コピー不要）
-        let module_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&self.global_env))));
-
         // 現在のモジュール名を保存（評価後に復元）
         let prev_module = self.current_module.read().clone();
 
-        // ファイル名から自動的にモジュール名を設定（module宣言がない場合のデフォルト）
-        let default_module_name: Arc<str> = std::path::Path::new(name)
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or(name)
-            .into();
-        *self.current_module.write() = Some(default_module_name);
+        // 内部実装（エラーが発生する可能性がある処理）
+        let result = (|| -> Result<Arc<Module>, String> {
+            // パッケージ検索パスを解決
+            let paths = self.resolve_module_path(name)?;
 
-        // 式を順次評価
-        for expr in exprs {
-            self.eval_with_env(&expr, module_env.clone())?;
-        }
+            let mut content = None;
+            let mut found_path = None;
+            for path in &paths {
+                if let Ok(c) = std::fs::read_to_string(path) {
+                    content = Some(c);
+                    // Windows短縮形パス（~1など）およびverbatim prefix（\\?\）を正規化
+                    found_path = dunce::canonicalize(path)
+                        .ok()
+                        .map(|p| p.to_string_lossy().to_string());
+                    break;
+                }
+            }
 
-        // ロード中リストから削除
-        self.loading_modules.write().pop();
+            let content = content.ok_or_else(|| qerr(MsgKey::ModuleNotFound, &[name]))?;
 
-        // モジュールが登録されているか確認、なければデフォルトで全公開モジュールを作成
-        let module = {
-            let modules_guard = self.modules.read();
-            let existing = modules_guard.get(name).cloned();
-            std::mem::drop(modules_guard); // 明示的にロックを解放
+            // デバッグ: ロードしたパスを表示（開発時のみ）
+            if std::env::var("QI_DEBUG").is_ok() {
+                eprintln!(
+                    "[DEBUG] Loaded module '{}' from: {}",
+                    name,
+                    found_path.as_deref().unwrap_or_default()
+                );
+            }
 
-            if let Some(m) = existing {
-                m
-            } else {
-                // exportがない場合は全公開モジュールとして登録
-                let module_name: Arc<str> =
-                    self.current_module.read().clone().unwrap_or_else(|| {
-                        // モジュール名が設定されていない場合はファイル名から取得
-                        std::path::Path::new(name)
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or(name)
-                            .into()
+            // パースして評価
+            let mut parser = crate::parser::Parser::new(&content)
+                .map_err(|e| qerr(MsgKey::ModuleParserInitError, &[name, &e]))?;
+
+            let exprs = parser
+                .parse_all()
+                .map_err(|e| qerr(MsgKey::ModuleParseError, &[name, &e]))?;
+
+            // 新しい環境で評価（グローバル環境を親として参照、コピー不要）
+            let module_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&self.global_env))));
+
+            // ファイル名から自動的にモジュール名を設定（module宣言がない場合のデフォルト）
+            let default_module_name: Arc<str> = std::path::Path::new(name)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(name)
+                .into();
+            *self.current_module.write() = Some(default_module_name);
+
+            // 式を順次評価
+            for expr in exprs {
+                self.eval_with_env(&expr, module_env.clone())?;
+            }
+
+            // モジュールが登録されているか確認、なければデフォルトで全公開モジュールを作成
+            let module = {
+                let modules_guard = self.modules.read();
+                let existing = modules_guard.get(name).cloned();
+                std::mem::drop(modules_guard); // 明示的にロックを解放
+
+                if let Some(m) = existing {
+                    m
+                } else {
+                    // exportがない場合は全公開モジュールとして登録
+                    let module_name: Arc<str> =
+                        self.current_module.read().clone().unwrap_or_else(|| {
+                            // モジュール名が設定されていない場合はファイル名から取得
+                            std::path::Path::new(name)
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or(name)
+                                .into()
+                        });
+
+                    let module = Arc::new(Module {
+                        name: module_name,
+                        file_path: found_path,
+                        env: module_env.clone(),
+                        exports: None, // None = 全公開（defn-以外）
                     });
 
-                let module = Arc::new(Module {
-                    name: module_name,
-                    file_path: found_path,
-                    env: module_env.clone(),
-                    exports: None, // None = 全公開（defn-以外）
-                });
+                    self.modules.write().insert(Arc::from(name), module.clone());
+                    module
+                }
+            };
 
-                self.modules.write().insert(Arc::from(name), module.clone());
-                module
-            }
-        };
+            Ok(module)
+        })();
 
-        // 現在のモジュール名を元に戻す
+        // エラーが発生しても必ずクリーンアップを実行（deferパターン）
+        self.loading_modules.write().pop();
         *self.current_module.write() = prev_module;
 
-        Ok(module)
+        result
     }
 }

@@ -461,10 +461,10 @@ impl Evaluator {
                     if matches!(val, Value::Nil) {
                         break;
                     }
-                    {
-                        env.write().set(binding.clone(), val);
-                    }
-                    self.eval_do(body, Arc::clone(&env))?;
+                    // ループ専用の環境を作成（束縛のリークを防ぐ）
+                    let loop_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&env))));
+                    loop_env.write().set(binding.clone(), val);
+                    self.eval_do(body, loop_env)?;
                 }
                 Ok(Value::Nil)
             }
@@ -485,10 +485,10 @@ impl Evaluator {
                         }
                     }
 
-                    {
-                        env.write().set(binding.clone(), val);
-                    }
-                    self.eval_do(body, Arc::clone(&env))?;
+                    // ループ専用の環境を作成（束縛のリークを防ぐ）
+                    let loop_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&env))));
+                    loop_env.write().set(binding.clone(), val);
+                    self.eval_do(body, loop_env)?;
                 }
             }
 
@@ -528,23 +528,34 @@ impl Evaluator {
             }
 
             Expr::Export { symbols, .. } => {
-                // 現在のモジュール名を取得
-                let module_name = self
+                // 現在ロード中のファイル名を取得（モジュールマップのキーとして使用）
+                let module_key = self
+                    .loading_modules
+                    .read()
+                    .last()
+                    .cloned()
+                    .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
+
+                // current_moduleはModule構造体のnameフィールドとして使用（表示名）
+                let module_display_name = self
                     .current_module
                     .read()
                     .clone()
-                    .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
+                    .unwrap_or_else(|| module_key.clone());
 
                 // シンボルの存在確認
                 for symbol in symbols {
                     if env.read().get(symbol).is_none() {
-                        return Err(qerr(MsgKey::SymbolNotFound, &[symbol, &module_name]));
+                        return Err(qerr(
+                            MsgKey::SymbolNotFound,
+                            &[symbol, &module_display_name],
+                        ));
                     }
                 }
 
                 // 既存のモジュールを取得または新規作成
                 let mut modules = self.modules.write();
-                if let Some(existing_module) = modules.get(&module_name) {
+                if let Some(existing_module) = modules.get(&module_key) {
                     // 既存のモジュールがある場合は、exportsを累積
                     let mut new_exports = existing_module
                         .exports
@@ -553,21 +564,21 @@ impl Evaluator {
                     new_exports.extend(symbols.iter().cloned());
 
                     let updated_module = Module {
-                        name: module_name.clone(),
+                        name: module_display_name,
                         file_path: existing_module.file_path.clone(), // 既存のfile_pathを保持
                         env: Arc::clone(&env),
                         exports: Some(new_exports),
                     };
-                    modules.insert(module_name, Arc::new(updated_module));
+                    modules.insert(module_key, Arc::new(updated_module));
                 } else {
                     // 新規モジュールの場合
                     let module = Module {
-                        name: module_name.clone(),
+                        name: module_display_name,
                         file_path: None,
                         env: Arc::clone(&env),
                         exports: Some(symbols.iter().cloned().collect()),
                     };
-                    modules.insert(module_name, Arc::new(module));
+                    modules.insert(module_key, Arc::new(module));
                 }
 
                 Ok(Value::Nil)
