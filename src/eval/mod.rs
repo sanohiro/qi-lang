@@ -81,35 +81,35 @@ impl Evaluator {
 
         // 特殊な関数を登録（print, list, vector, to-list, to-vector）
         env_rc.write().set(
-            "print".to_string(),
+            "print",
             Value::NativeFunc(NativeFunc {
                 name: "print",
                 func: native_print,
             }),
         );
         env_rc.write().set(
-            "list".to_string(),
+            "list",
             Value::NativeFunc(NativeFunc {
                 name: "list",
                 func: native_list,
             }),
         );
         env_rc.write().set(
-            "vector".to_string(),
+            "vector",
             Value::NativeFunc(NativeFunc {
                 name: "vector",
                 func: native_vector,
             }),
         );
         env_rc.write().set(
-            "to-list".to_string(),
+            "to-list",
             Value::NativeFunc(NativeFunc {
                 name: "to-list",
                 func: native_to_list,
             }),
         );
         env_rc.write().set(
-            "to-vector".to_string(),
+            "to-vector",
             Value::NativeFunc(NativeFunc {
                 name: "to-vector",
                 func: native_to_vector,
@@ -118,14 +118,14 @@ impl Evaluator {
 
         // 型判定関数（builtins以外のもの）
         env_rc.write().set(
-            "number?".to_string(),
+            "number?",
             Value::NativeFunc(NativeFunc {
                 name: "number?",
                 func: native_is_number,
             }),
         );
         env_rc.write().set(
-            "fn?".to_string(),
+            "fn?",
             Value::NativeFunc(NativeFunc {
                 name: "fn?",
                 func: native_is_fn,
