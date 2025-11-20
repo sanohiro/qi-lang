@@ -132,6 +132,20 @@ pub mod keywords {
     pub const MESSAGE: &str = "message";
     pub const CODE: &str = "code";
     pub const DATA: &str = "data";
+
+    // マップキー用（:プレフィックス付き）
+    pub const ERROR_KEY: &str = ":error";
+    pub const OK_KEY: &str = ":ok";
+    pub const STATUS_KEY: &str = ":status";
+    pub const BODY_KEY: &str = ":body";
+    pub const HEADERS_KEY: &str = ":headers";
+    pub const METHOD_KEY: &str = ":method";
+    pub const PATH_KEY: &str = ":path";
+    pub const QUERY_KEY: &str = ":query";
+    pub const PARAMS_KEY: &str = ":params";
+    pub const MESSAGE_KEY: &str = ":message";
+    pub const CODE_KEY: &str = ":code";
+    pub const DATA_KEY: &str = ":data";
 }
 
 /// ファイルI/O関連の定数

@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::constants::keywords::{ERROR_KEY, OK_KEY};
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
 use crate::value::{Env, Expr, Function, Module, NativeFunc, Value};
@@ -57,7 +58,7 @@ pub struct Evaluator {
     defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
     modules: Arc<RwLock<HashMap<String, Arc<Module>>>>, // ロード済みモジュール
     current_module: Arc<RwLock<Option<String>>>,        // 現在評価中のモジュール名
-    loading_modules: Arc<RwLock<Vec<String>>>,          // 循環参照検出用
+    loading_modules: Arc<RwLock<Vec<Arc<str>>>>,        // 循環参照検出用（Arc<str>で統一）
     #[allow(dead_code)]
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
     source_name: Arc<RwLock<Option<String>>>,           // ソースファイル名または入力名
@@ -480,7 +481,7 @@ impl Evaluator {
 
                     // {:error ...} の場合は終了して値を返す
                     if let Value::Map(ref m) = val {
-                        if m.contains_key(":error") {
+                        if m.contains_key(ERROR_KEY) {
                             return Ok(val);
                         }
                     }
@@ -1487,8 +1488,8 @@ mod tests {
         let result = eval_str("(try (/ 1 0))").unwrap();
         match result {
             Value::Map(m) => {
-                assert_eq!(m.get(":ok"), None);
-                assert!(m.get(":error").is_some());
+                assert_eq!(m.get(OK_KEY), None);
+                assert!(m.get(ERROR_KEY).is_some());
             }
             _ => panic!("Expected map"),
         }

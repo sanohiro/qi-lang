@@ -25,9 +25,9 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -41,9 +41,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::String(s) => Ok(s),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -56,9 +56,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -71,9 +71,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -95,9 +95,9 @@ impl KvsDriver for RedisDriver {
                     }
                 })
                 .collect()),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -111,9 +111,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -126,9 +126,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -141,9 +141,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -156,9 +156,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -172,9 +172,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -188,9 +188,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -204,9 +204,9 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -220,9 +220,9 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -237,9 +237,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Bool(b) => Ok(b),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -254,9 +254,9 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Nil => Ok(None),
             Value::String(s) => Ok(Some(s)),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -269,8 +269,8 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Map(m) => {
-                if m.contains_key(":error") {
-                    return Err(m.get(":error").unwrap().to_string());
+                if m.contains_key(ERROR_KEY) {
+                    return Err(m.get(ERROR_KEY).unwrap().to_string());
                 }
                 let mut pairs = Vec::new();
                 for (k, v) in m.iter() {
@@ -298,9 +298,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::Integer(i) => Ok(i),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -322,9 +322,9 @@ impl KvsDriver for RedisDriver {
                     }
                 })
                 .collect()),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -345,9 +345,9 @@ impl KvsDriver for RedisDriver {
                     _ => None,
                 })
                 .collect()),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -364,9 +364,9 @@ impl KvsDriver for RedisDriver {
         ])
         .and_then(|v| match v {
             Value::String(s) => Ok(s),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -390,9 +390,9 @@ impl KvsDriver for RedisDriver {
                     }
                 })
                 .collect()),
-            Value::Map(m) if m.contains_key(":error") => {
+            Value::Map(m) if m.contains_key(ERROR_KEY) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(":error").expect(":error key exists").to_string())
+                Err(m.get(ERROR_KEY).expect(":error key exists").to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })

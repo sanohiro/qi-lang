@@ -1,3 +1,4 @@
+use crate::constants::keywords::ERROR_KEY;
 use crate::lexer::Span;
 use crossbeam_channel::{Receiver, Sender};
 use im::Vector;
@@ -205,7 +206,7 @@ impl Value {
     /// ```
     pub fn error(message: impl Into<String>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(":error".to_string(), Value::String(message.into()));
+        map.insert(ERROR_KEY.to_string(), Value::String(message.into()));
         Value::Map(map)
     }
 
@@ -220,13 +221,13 @@ impl Value {
     /// ```
     pub fn error_with_details(details: crate::HashMap<String, Value>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(":error".to_string(), Value::Map(details));
+        map.insert(ERROR_KEY.to_string(), Value::Map(details));
         Value::Map(map)
     }
 
     /// 値がエラーかチェック（{:error ...}形式）
     pub fn is_error(&self) -> bool {
-        matches!(self, Value::Map(m) if m.contains_key(":error"))
+        matches!(self, Value::Map(m) if m.contains_key(ERROR_KEY))
     }
 }
 

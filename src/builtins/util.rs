@@ -1,6 +1,7 @@
 //! ユーティリティ関数（デバッグ、Railway Pipeline、Result型ヘルパー）
 
 use crate::check_args;
+use crate::constants::keywords::ERROR_KEY;
 use crate::value::Value;
 
 /// キーワード形式のマップキーを生成
@@ -66,7 +67,7 @@ pub fn native_railway_pipe(
     let value_to_pass = match input {
         Value::Map(m) => {
             // {:error ...}ならショートサーキット（後続の関数をスキップ）
-            if m.contains_key(":error") {
+            if m.contains_key(ERROR_KEY) {
                 return Ok(input.clone());
             }
             // その他のマップはそのまま渡す

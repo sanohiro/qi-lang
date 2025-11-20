@@ -16,6 +16,7 @@
 //! (validate schema "ab")     ;=> {:error {:code "min-length" :message "..."}}
 //! ```
 
+use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use crate::HashMap;
@@ -315,7 +316,7 @@ fn validate_map(
 
             // エラーがあれば即座に返す
             if let Value::Map(m) = &result {
-                if m.contains_key(":error") {
+                if m.contains_key(ERROR_KEY) {
                     return Ok(Some(result));
                 }
             }
@@ -336,7 +337,7 @@ fn error_result(field: Option<&str>, code: &str, message: String) -> Value {
     }
 
     let mut result_map = crate::new_hashmap();
-    result_map.insert(":error".to_string(), Value::Map(error_map));
+    result_map.insert(ERROR_KEY.to_string(), Value::Map(error_map));
     Value::Map(result_map)
 }
 
@@ -372,7 +373,7 @@ mod tests {
     /// ヘルパー関数: エラー結果かどうかをチェック
     fn is_error(result: &Value) -> bool {
         if let Value::Map(m) = result {
-            m.contains_key(":error")
+            m.contains_key(ERROR_KEY)
         } else {
             false
         }
@@ -381,7 +382,7 @@ mod tests {
     /// ヘルパー関数: エラーコードを取得
     fn get_error_code(result: &Value) -> Option<String> {
         if let Value::Map(m) = result {
-            if let Some(Value::Map(error_map)) = m.get(":error") {
+            if let Some(Value::Map(error_map)) = m.get(ERROR_KEY) {
                 if let Some(Value::String(code)) = error_map.get(":code") {
                     return Some(code.clone());
                 }

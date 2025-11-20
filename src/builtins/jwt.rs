@@ -3,6 +3,7 @@
 //! このモジュールは `auth-jwt` feature でコンパイルされます。
 
 use crate::builtins::util::to_map_key;
+use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
@@ -385,7 +386,7 @@ mod tests {
 
         match result {
             Value::Map(m) => {
-                assert!(m.contains_key(":error"));
+                assert!(m.contains_key(ERROR_KEY));
             }
             _ => panic!("Expected {{:error ...}}"),
         }

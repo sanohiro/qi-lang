@@ -250,18 +250,22 @@ impl Evaluator {
         }
 
         // 循環参照チェック
+        let name_arc: Arc<str> = Arc::from(name);
         {
             let loading = self.loading_modules.read();
-            if loading.contains(&name.to_string()) {
-                return Err(fmt_msg(
-                    MsgKey::CircularDependency,
-                    &[&loading.join(" -> ")],
-                ));
+            if loading.iter().any(|m| &**m == name) {
+                // エラーメッセージ用にパスを構築
+                let path = loading
+                    .iter()
+                    .map(|s| s.as_ref())
+                    .collect::<Vec<_>>()
+                    .join(" -> ");
+                return Err(fmt_msg(MsgKey::CircularDependency, &[&path]));
             }
         }
 
         // ロード中のモジュールリストに追加
-        self.loading_modules.write().push(name.to_string());
+        self.loading_modules.write().push(name_arc.clone());
 
         // パッケージ検索パスを解決
         let paths = self.resolve_module_path(name)?;
@@ -298,19 +302,10 @@ impl Evaluator {
             .parse_all()
             .map_err(|e| qerr(MsgKey::ModuleParseError, &[name, &e]))?;
 
-        // 新しい環境で評価
-        let module_env = Arc::new(RwLock::new(Env::new()));
-
-        // グローバル環境から組み込み関数をコピー
-        let bindings: Vec<_> = self
-            .global_env
-            .read()
-            .bindings()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        for (key, value) in bindings {
-            module_env.write().set(key, value);
-        }
+        // 新しい環境で評価（グローバル環境を親として参照、コピー不要）
+        let module_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(
+            &self.global_env,
+        ))));
 
         // 現在のモジュール名をクリア（評価前の状態に戻す）
         let prev_module = self.current_module.read().clone();

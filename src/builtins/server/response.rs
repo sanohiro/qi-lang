@@ -1,6 +1,7 @@
 //! レスポンス生成関数
 
 use super::helpers::kw;
+use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
@@ -38,7 +39,7 @@ pub fn native_server_json(args: &[Value]) -> Result<Value, String> {
     let json_result = crate::builtins::json::native_stringify(&[args[0].clone()])?;
     let json_str = match json_result {
         Value::String(s) => s,
-        Value::Map(m) if m.contains_key(":error") => {
+        Value::Map(m) if m.contains_key(ERROR_KEY) => {
             return Err(fmt_msg(MsgKey::JsonStringifyError, &[]));
         }
         _ => return Err(fmt_msg(MsgKey::JsonStringifyError, &[])),
