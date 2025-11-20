@@ -6,10 +6,17 @@
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{Env, Expr, Macro, Value};
 use parking_lot::RwLock;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::{Evaluator, DOC_PREFIX, RECUR_SENTINEL};
+
+// recurで評価済みの引数を一時保存するThreadLocal
+// loop/recurの間でのみ使用し、二重評価を回避する
+thread_local! {
+    static RECUR_VALUES: RefCell<Option<Vec<Value>>> = const { RefCell::new(None) };
+}
 
 /// RAIIガード: Drop時に必ずdeferスタックをクリーンアップ
 struct DeferGuard<'a> {
@@ -101,15 +108,20 @@ impl Evaluator {
 
     /// recurを評価
     pub(super) fn eval_recur(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        // 引数を評価
+        // 引数を評価（一度だけ）
         let values: Result<Vec<_>, _> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect();
         let values = values?;
 
-        // Recurは特別なエラーとして扱う
-        Err(format!("{}{}", RECUR_SENTINEL, values.len()))
+        // 評価済みの値をThreadLocalに保存
+        RECUR_VALUES.with(|v| {
+            *v.borrow_mut() = Some(values);
+        });
+
+        // Recurシグナルをエラーとして返す
+        Err(RECUR_SENTINEL.to_string())
     }
 
     /// macroを評価
@@ -161,46 +173,27 @@ impl Evaluator {
         loop {
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
-                Err(e) if e.starts_with(RECUR_SENTINEL) => {
-                    // Recurエラーを検出 - 評価し直す必要がある
-                    // 実際のrecur呼び出しを見つけて引数を評価
-                    if let Some(args) = Self::find_recur(body) {
-                        let new_values: Result<Vec<_>, _> = args
-                            .iter()
-                            .map(|e| self.eval_with_env(e, loop_env_rc.clone()))
-                            .collect();
-                        let new_values = new_values?;
+                Err(e) if e == RECUR_SENTINEL => {
+                    // Recurシグナルを検出 - ThreadLocalから評価済みの値を取得
+                    let new_values = RECUR_VALUES
+                        .with(|v| v.borrow_mut().take())
+                        .ok_or_else(|| msg(MsgKey::RecurNotFound).to_string())?;
 
-                        // 環境を更新
-                        if bindings.len() != new_values.len() {
-                            return Err(fmt_msg(
-                                MsgKey::RecurArgCountMismatch,
-                                &[&bindings.len().to_string(), &new_values.len().to_string()],
-                            ));
-                        }
+                    // 引数の数をチェック
+                    if bindings.len() != new_values.len() {
+                        return Err(fmt_msg(
+                            MsgKey::RecurArgCountMismatch,
+                            &[&bindings.len().to_string(), &new_values.len().to_string()],
+                        ));
+                    }
 
-                        for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
-                            loop_env_rc.write().set(name.to_string(), value.clone());
-                        }
-                    } else {
-                        return Err(msg(MsgKey::RecurNotFound).to_string());
+                    // 環境を更新（値は既に評価済み）
+                    for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
+                        loop_env_rc.write().set(name.to_string(), value.clone());
                     }
                 }
                 Err(e) => return Err(e),
             }
-        }
-    }
-
-    /// Exprからrecurを見つける（簡易版）
-    pub(super) fn find_recur(expr: &Expr) -> Option<&Vec<Expr>> {
-        match expr {
-            Expr::Recur { args, .. } => Some(args),
-            Expr::If {
-                then, otherwise, ..
-            } => Self::find_recur(then)
-                .or_else(|| otherwise.as_ref().and_then(|e| Self::find_recur(e))),
-            Expr::Do { exprs, .. } => exprs.iter().find_map(Self::find_recur),
-            _ => None,
         }
     }
 

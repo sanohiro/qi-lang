@@ -44,7 +44,7 @@ impl QiHelper {
         if let Some(env) = evaluator.get_env() {
             let env = env.read();
             for (name, _) in env.bindings() {
-                self.completions.insert(name.clone());
+                self.completions.insert(name.to_string());
             }
         }
     }
