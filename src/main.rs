@@ -2,7 +2,7 @@ use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
 use qi_lang::parser::Parser;
 use qi_lang::project;
-use qi_lang::value::Value;
+use qi_lang::value::{MapKey, Value};
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
@@ -865,24 +865,32 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                     Some(Value::Map(m)) => {
                         // 構造化ドキュメント
                         println!("\n{}:", name);
-                        if let Some(Value::String(desc)) = m.get("desc") {
+                        if let Some(Value::String(desc)) =
+                            m.get(&MapKey::String("desc".to_string()))
+                        {
                             println!("  {}", desc);
                         }
-                        if let Some(Value::Vector(params)) = m.get("params") {
+                        if let Some(Value::Vector(params)) =
+                            m.get(&MapKey::String("params".to_string()))
+                        {
                             println!("{}", ui_msg(UiMsg::ReplDocParameters));
                             for param in params {
                                 if let Value::Map(pm) = param {
                                     if let (
                                         Some(Value::String(pname)),
                                         Some(Value::String(pdesc)),
-                                    ) = (pm.get("name"), pm.get("desc"))
-                                    {
+                                    ) = (
+                                        pm.get(&MapKey::String("name".to_string())),
+                                        pm.get(&MapKey::String("desc".to_string())),
+                                    ) {
                                         println!("  {} - {}", pname, pdesc);
                                     }
                                 }
                             }
                         }
-                        if let Some(Value::Vector(examples)) = m.get("examples") {
+                        if let Some(Value::Vector(examples)) =
+                            m.get(&MapKey::String("examples".to_string()))
+                        {
                             println!("{}", ui_msg(UiMsg::ReplDocExamples));
                             for ex in examples {
                                 if let Value::String(s) = ex {
