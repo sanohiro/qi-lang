@@ -65,7 +65,7 @@ impl Evaluator {
                                 Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
                             }
                         })
-                        .map(|(name, binding)| (name, binding.value))
+                        .map(|(name, binding)| (name.to_string(), binding.value))
                         .collect()
                 };
 
@@ -92,7 +92,7 @@ impl Evaluator {
                                 Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
                             }
                         })
-                        .map(|(name, binding)| (name, binding.value))
+                        .map(|(name, binding)| (name.to_string(), binding.value))
                         .collect()
                 };
 

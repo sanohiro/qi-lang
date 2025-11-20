@@ -10,6 +10,7 @@
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Env, Expr, Pattern, Value};
 use parking_lot::RwLock;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -74,7 +75,7 @@ pub(super) fn find_similar_names(
     // limit: 通常3個まで取得
     let mut results = Vec::with_capacity(limit);
     for (name, _) in candidates.into_iter().take(limit) {
-        results.push(name);
+        results.push(name.to_string());
     }
     results
 }
@@ -109,10 +110,10 @@ impl Evaluator {
         if args.len() != 2 {
             return Err(qerr(MsgKey::Need2Args, &[func_name]));
         }
-        let vals: Vec<Value> = args
+        let vals: SmallVec<[Value; 2]> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
         builtin(&vals, self)
     }
 
@@ -141,10 +142,10 @@ impl Evaluator {
         if args.len() != 3 {
             return Err(qerr(MsgKey::NeedNArgsDesc, &[func_name, "3", ""]));
         }
-        let vals: Vec<Value> = args
+        let vals: SmallVec<[Value; 3]> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
         builtin(&vals, self)
     }
 

@@ -388,7 +388,7 @@ pub struct Module {
     pub name: String,
     pub file_path: Option<String>,
     pub env: Arc<RwLock<Env>>,
-    pub exports: Option<Vec<String>>, // Noneの場合は全公開、Some([])の場合は明示的export
+    pub exports: Option<Vec<Arc<str>>>, // Noneの場合は全公開、Some([])の場合は明示的export
 }
 
 impl Module {
@@ -416,7 +416,7 @@ impl Module {
             Some(list) => {
                 // exportリストがある = 明示的export
                 // to_string() を避けて直接比較（ヒープ確保削減）
-                list.iter().any(|s| s == name)
+                list.iter().any(|s| s.as_ref() == name)
             }
         }
     }
@@ -471,12 +471,12 @@ impl PartialEq for Binding {
 /// - 並行処理（goroutine）でのクロージャキャプチャで使用
 #[derive(Debug, Clone)]
 pub struct Env {
-    bindings: crate::HashMap<String, Binding>,
+    bindings: crate::HashMap<Arc<str>, Binding>,
     parent: Option<Arc<RwLock<Env>>>,
     /// モジュール名（moduleで設定、未設定ならファイル名のbasename）
     module_name: Option<String>,
     /// 公開シンボルのリスト（Noneなら全公開、Someなら選択公開）
-    exports: Option<crate::HashSet<String>>,
+    exports: Option<crate::HashSet<Arc<str>>>,
 }
 
 // NOTE: この実装はrust-analyzerの誤検知を防ぐためのもの
@@ -537,25 +537,25 @@ impl Env {
         })
     }
 
-    pub fn set(&mut self, name: String, value: Value) {
-        self.bindings.insert(name, Binding::public(value));
+    pub fn set(&mut self, name: impl Into<Arc<str>>, value: Value) {
+        self.bindings.insert(name.into(), Binding::public(value));
     }
 
-    pub fn set_private(&mut self, name: String, value: Value) {
-        self.bindings.insert(name, Binding::private(value));
+    pub fn set_private(&mut self, name: impl Into<Arc<str>>, value: Value) {
+        self.bindings.insert(name.into(), Binding::private(value));
     }
 
-    pub fn set_binding(&mut self, name: String, binding: Binding) {
-        self.bindings.insert(name, binding);
+    pub fn set_binding(&mut self, name: impl Into<Arc<str>>, binding: Binding) {
+        self.bindings.insert(name.into(), binding);
     }
 
     /// バインディングの反復子を取得（モジュールシステム用）
-    pub fn bindings(&self) -> impl Iterator<Item = (&String, &Value)> {
+    pub fn bindings(&self) -> impl Iterator<Item = (&Arc<str>, &Value)> {
         self.bindings.iter().map(|(k, b)| (k, &b.value))
     }
 
     /// バインディング（メタデータ含む）の反復子を取得
-    pub fn all_bindings(&self) -> impl Iterator<Item = (&String, &Binding)> {
+    pub fn all_bindings(&self) -> impl Iterator<Item = (&Arc<str>, &Binding)> {
         self.bindings.iter()
     }
 
@@ -565,7 +565,7 @@ impl Env {
     }
 
     /// ローカルバインディングのみを取得（親環境にあるものを除外）
-    pub fn local_bindings(&self) -> Vec<(String, Binding)> {
+    pub fn local_bindings(&self) -> Vec<(Arc<str>, Binding)> {
         let mut result = Vec::new();
         for (name, binding) in &self.bindings {
             // 親環境にも存在するキーはスキップ（グローバル変数/関数）
@@ -597,11 +597,11 @@ impl Env {
     }
 
     /// 公開シンボルを追加（export宣言で使用）
-    pub fn add_exports(&mut self, symbols: Vec<String>) {
+    pub fn add_exports(&mut self, symbols: Vec<impl Into<Arc<str>>>) {
         if let Some(ref mut exports) = self.exports {
-            exports.extend(symbols);
+            exports.extend(symbols.into_iter().map(|s| s.into()));
         } else {
-            self.exports = Some(symbols.into_iter().collect());
+            self.exports = Some(symbols.into_iter().map(|s| s.into()).collect());
         }
     }
 
@@ -627,7 +627,7 @@ impl Env {
         self.bindings
             .iter()
             .filter(|(name, _)| self.is_exported(name))
-            .map(|(name, binding)| (name.clone(), binding.value.clone()))
+            .map(|(name, binding)| (name.to_string(), binding.value.clone()))
             .collect()
     }
 }
@@ -788,7 +788,7 @@ pub enum Expr {
         span: Span,
     },
     Export {
-        symbols: Vec<String>,
+        symbols: Vec<Arc<str>>,
         span: Span,
     },
     Use {

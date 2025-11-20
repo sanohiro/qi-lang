@@ -587,7 +587,11 @@ impl DapServer {
                             );
 
                             if !is_callable {
-                                Self::push_variable(&mut variables, name, &binding.value);
+                                Self::push_variable(
+                                    &mut variables,
+                                    name.to_string(),
+                                    &binding.value,
+                                );
                             }
                         }
                     }
@@ -600,7 +604,11 @@ impl DapServer {
                             );
 
                             if !is_callable {
-                                Self::push_variable(&mut variables, name.clone(), &binding.value);
+                                Self::push_variable(
+                                    &mut variables,
+                                    name.to_string(),
+                                    &binding.value,
+                                );
                             }
                         }
                     }

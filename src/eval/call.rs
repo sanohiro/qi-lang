@@ -190,7 +190,7 @@ impl Evaluator {
             for (name, value) in self.global_env.read().bindings() {
                 if let Value::Function(stored_f) = value {
                     if Arc::ptr_eq(f, stored_f) {
-                        return Some(name.clone());
+                        return Some(name.to_string());
                     }
                 }
             }

@@ -1674,11 +1674,7 @@ impl Parser {
         while self.current() != Some(&Token::RParen) {
             match self.current() {
                 Some(Token::Symbol(_)) => {
-                    symbols.push(
-                        self.take_symbol()
-                            .expect("token should be a symbol")
-                            .to_string(),
-                    );
+                    symbols.push(self.take_symbol().expect("token should be a symbol"));
                 }
                 _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
             }
