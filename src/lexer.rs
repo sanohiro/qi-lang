@@ -634,7 +634,12 @@ impl<'a> Lexer<'a> {
         }
 
         while let Some(ch) = self.current() {
-            if ch.is_alphanumeric() || "+-*/%<>=!?_-&".contains(ch) {
+            if ch.is_alphanumeric()
+                || matches!(
+                    ch,
+                    '+' | '-' | '*' | '/' | '%' | '<' | '>' | '=' | '!' | '?' | '_' | '&'
+                )
+            {
                 result.push(ch);
                 self.advance();
             } else {
@@ -795,7 +800,13 @@ impl<'a> Lexer<'a> {
                 Some(':') => {
                     return self.read_symbol_or_keyword(start_span);
                 }
-                Some(ch) if ch.is_alphabetic() || "+-*/%<>=!?_-&".contains(ch) => {
+                Some(ch)
+                    if ch.is_alphabetic()
+                        || matches!(
+                            ch,
+                            '+' | '-' | '*' | '/' | '%' | '<' | '>' | '=' | '!' | '?' | '_' | '&'
+                        ) =>
+                {
                     return self.read_symbol_or_keyword(start_span);
                 }
                 Some(ch) => {
