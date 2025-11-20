@@ -33,22 +33,31 @@ impl Evaluator {
         // インポートモードに応じて環境に追加
         match mode {
             UseMode::Only(names) => {
-                // 指定された関数のみインポート
-                for name in names {
-                    if module.is_exported(name) {
-                        if let Some(value) = module.env.read().get(name) {
-                            env.write().set(name.clone(), value);
+                // 指定された関数のみインポート（ロック時間短縮のため一度に収集）
+                let bindings: Vec<(Arc<str>, Value)> = {
+                    let env_guard = module.env.read();
+                    let mut result = Vec::with_capacity(names.len());
+
+                    for name in names {
+                        if !module.is_exported(name) {
+                            return Err(qerr(MsgKey::SymbolNotExported, &[name, module_name]));
+                        }
+                        if let Some(value) = env_guard.get(name) {
+                            result.push((name.clone(), value));
                         } else {
                             return Err(qerr(MsgKey::SymbolNotFound, &[name, module_name]));
                         }
-                    } else {
-                        return Err(qerr(MsgKey::SymbolNotExported, &[name, module_name]));
                     }
+                    result
+                };
+
+                for (name, value) in bindings {
+                    env.write().set(name, value);
                 }
             }
             UseMode::All => {
                 // 全ての公開シンボルをインポート（デッドロック回避のため先に収集）
-                let bindings: Vec<(String, Value)> = {
+                let bindings: Vec<(Arc<str>, Value)> = {
                     let env_guard = module.env.read();
                     let all_bindings: Vec<_> = env_guard
                         .all_bindings()
@@ -62,10 +71,10 @@ impl Evaluator {
                         .filter(|(name, binding)| {
                             match &module.exports {
                                 None => !binding.is_private,       // exportなし = privateでなければ公開
-                                Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
+                                Some(list) => list.contains(name.as_ref()), // exportあり = リストに含まれていれば公開
                             }
                         })
-                        .map(|(name, binding)| (name.to_string(), binding.value))
+                        .map(|(name, binding)| (name, binding.value))
                         .collect()
                 };
 
@@ -75,7 +84,7 @@ impl Evaluator {
             }
             UseMode::As(alias) => {
                 // エイリアス機能: alias/name という形式で全ての公開関数をインポート（デッドロック回避のため先に収集）
-                let bindings: Vec<(String, Value)> = {
+                let bindings: Vec<(Arc<str>, Value)> = {
                     let env_guard = module.env.read();
                     let all_bindings: Vec<_> = env_guard
                         .all_bindings()
@@ -89,15 +98,15 @@ impl Evaluator {
                         .filter(|(name, binding)| {
                             match &module.exports {
                                 None => !binding.is_private,       // exportなし = privateでなければ公開
-                                Some(list) => list.contains(name), // exportあり = リストに含まれていれば公開
+                                Some(list) => list.contains(name.as_ref()), // exportあり = リストに含まれていれば公開
                             }
                         })
-                        .map(|(name, binding)| (name.to_string(), binding.value))
+                        .map(|(name, binding)| (name, binding.value))
                         .collect()
                 };
 
                 for (name, value) in bindings {
-                    let aliased_name = format!("{}/{}", alias, name);
+                    let aliased_name = format!("{}/{}", alias.as_ref(), name.as_ref());
                     env.write().set(aliased_name, value);
                 }
             }
