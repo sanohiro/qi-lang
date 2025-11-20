@@ -368,6 +368,8 @@ This design makes Qi fast and memory-efficient even when dealing with large numb
 
 Macros are special functions for code generation. Use quasiquote (`` ` ``), unquote (`,`), and unquote-splice (`,@`) to create code templates.
 
+**Qi macros are hygienic**: They only use the scope at macro definition time and cannot automatically reference local variables at the call site. This prevents variable capture and ensures safer, more predictable behavior.
+
 #### Quasiquote / Unquote Basics
 
 ```qi

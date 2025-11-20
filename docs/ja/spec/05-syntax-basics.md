@@ -368,6 +368,8 @@ pub enum Value {
 
 マクロはコード生成を行う特殊な関数です。quasiquote (`` ` ``)、unquote (`,`)、unquote-splice (`,@`) を使ってコードテンプレートを作成します。
 
+**Qiのマクロは衛生的（hygienic）です**: マクロ定義時のスコープのみを使用し、呼び出し位置のローカル変数は自動的には参照できません。これにより変数捕獲（variable capture）を防ぎ、より安全で予測可能な動作を実現します。
+
 #### Quasiquote / Unquote の基本
 
 ```qi
