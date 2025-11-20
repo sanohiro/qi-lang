@@ -380,7 +380,7 @@ impl Evaluator {
                 ..
             } => Ok(Value::Function(Arc::new(Function {
                 params: params.clone(),
-                body: (**body).clone(),
+                body: Arc::new((**body).clone()),
                 env: Arc::clone(&env),
                 is_variadic: *is_variadic,
                 has_special_processing: false,
@@ -911,7 +911,7 @@ impl Evaluator {
                 // 0引数の関数として作成: (fn [] expr)
                 Value::Function(Arc::new(crate::value::Function {
                     params: vec![],
-                    body: expr.clone(),
+                    body: Arc::new(expr.clone()),
                     env: Arc::clone(&env),
                     is_variadic: false,
                     has_special_processing: false,

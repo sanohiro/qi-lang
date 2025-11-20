@@ -321,7 +321,7 @@ impl Eq for Value {}
 pub struct Function {
     /// 関数のパラメータパターン（Pattern型に統一）
     pub params: Vec<Pattern>,
-    pub body: Expr,
+    pub body: Arc<Expr>,
     pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool, // &argsに対応
     /// 特殊処理が必要な関数フラグ（complement, juxt, tap>）

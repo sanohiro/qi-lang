@@ -554,7 +554,7 @@ pub fn native_complement(args: &[Value]) -> Result<Value, String> {
         params: vec![crate::value::Pattern::Var(crate::intern::intern_symbol(
             "x",
         ))],
-        body: crate::value::Expr::symbol_dummy("x"),
+        body: Arc::new(crate::value::Expr::symbol_dummy("x")),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::COMPLEMENT_FUNC, func);
@@ -580,7 +580,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
         params: vec![crate::value::Pattern::Var(crate::intern::intern_symbol(
             "x",
         ))],
-        body: crate::value::Expr::symbol_dummy("x"),
+        body: Arc::new(crate::value::Expr::symbol_dummy("x")),
         env: {
             let mut env = crate::value::Env::new();
             env.set(
@@ -621,7 +621,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
         params: vec![crate::value::Pattern::Var(crate::intern::intern_symbol(
             "x",
         ))],
-        body: crate::value::Expr::symbol_dummy("x"),
+        body: Arc::new(crate::value::Expr::symbol_dummy("x")),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::TAP_FUNC, func);
