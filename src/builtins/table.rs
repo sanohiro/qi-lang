@@ -63,10 +63,7 @@ impl Table {
 
         // 最初の要素からヘッダーを抽出
         let headers: Vec<String> = if let Value::Map(first_map) = &items[0] {
-            let mut h: Vec<String> = first_map
-                .keys()
-                .map(|k| k.to_string())
-                .collect();
+            let mut h: Vec<String> = first_map.keys().map(|k| k.to_string()).collect();
             h.sort(); // 順序を安定させる
             h
         } else {
@@ -81,7 +78,11 @@ impl Table {
             if let Value::Map(map) = item {
                 let mut row = Vec::new();
                 for header in &headers {
-                    row.push(map.get(&crate::value::MapKey::String(header.clone())).cloned().unwrap_or(Value::Nil));
+                    row.push(
+                        map.get(&crate::value::MapKey::String(header.clone()))
+                            .cloned()
+                            .unwrap_or(Value::Nil),
+                    );
                 }
                 rows.push(row);
             } else {
@@ -181,7 +182,10 @@ impl Table {
                         let mut map = new_hashmap();
                         for (i, header) in headers.iter().enumerate() {
                             if i < row.len() {
-                                map.insert(crate::value::MapKey::String(header.clone()), row[i].clone());
+                                map.insert(
+                                    crate::value::MapKey::String(header.clone()),
+                                    row[i].clone(),
+                                );
                             }
                         }
                         Value::Map(map)
@@ -290,7 +294,10 @@ pub fn native_table_where(args: &[Value], eval: &Evaluator) -> Result<Value, Str
                 let headers = table.headers.as_ref().unwrap();
                 let mut map = new_hashmap();
                 for (i, header) in headers.iter().enumerate() {
-                    map.insert(crate::value::MapKey::String(header.clone()), row.get(i).cloned().unwrap_or(Value::Nil));
+                    map.insert(
+                        crate::value::MapKey::String(header.clone()),
+                        row.get(i).cloned().unwrap_or(Value::Nil),
+                    );
                 }
                 Value::Map(map)
             }

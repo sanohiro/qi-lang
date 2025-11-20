@@ -176,9 +176,9 @@ pub fn native_zipmap(args: &[Value]) -> Result<Value, String> {
 
     let mut result = crate::new_hashmap();
     for (key, val) in keys.iter().zip(vals.iter()) {
-        let map_key = key.to_map_key().unwrap_or_else(|_| {
-            crate::value::MapKey::String(format!("{:?}", key))
-        });
+        let map_key = key
+            .to_map_key()
+            .unwrap_or_else(|_| crate::value::MapKey::String(format!("{:?}", key)));
         result.insert(map_key, val.clone());
     }
 

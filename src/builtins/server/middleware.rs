@@ -47,7 +47,9 @@ pub(super) fn apply_bearer_middleware(req: &Value) -> Value {
     let token = req_map
         .get(&headers_key)
         .and_then(|h| match h {
-            Value::Map(headers) => headers.get(&crate::value::MapKey::String("authorization".to_string())),
+            Value::Map(headers) => {
+                headers.get(&crate::value::MapKey::String("authorization".to_string()))
+            }
             _ => None,
         })
         .and_then(|v| match v {
@@ -180,7 +182,10 @@ pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("logging".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -222,7 +227,10 @@ pub fn native_server_with_cors(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("cors".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
     metadata.insert(
         crate::value::MapKey::String("__origins__".to_string()),
         Value::Vector(origins.iter().map(|s| Value::String(s.clone())).collect()),
@@ -246,7 +254,10 @@ pub fn native_server_with_json_body(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("json-body".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -282,8 +293,14 @@ pub fn native_server_with_compression(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("compression".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
-    metadata.insert(crate::value::MapKey::String("__min_size__".to_string()), Value::Integer(min_size as i64));
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
+    metadata.insert(
+        crate::value::MapKey::String("__min_size__".to_string()),
+        Value::Integer(min_size as i64),
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -323,8 +340,14 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("basic-auth".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
-    metadata.insert(crate::value::MapKey::String("__users__".to_string()), Value::Map(users));
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
+    metadata.insert(
+        crate::value::MapKey::String("__users__".to_string()),
+        Value::Map(users),
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -344,7 +367,10 @@ pub fn native_server_with_bearer(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("bearer".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -368,7 +394,10 @@ pub fn native_server_with_no_cache(args: &[Value]) -> Result<Value, String> {
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("no-cache".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
 
     Ok(Value::Map(metadata))
 }
@@ -399,8 +428,14 @@ pub fn native_server_with_cache_control(args: &[Value]) -> Result<Value, String>
         crate::value::MapKey::String("__middleware__".to_string()),
         Value::String("cache-control".to_string()),
     );
-    metadata.insert(crate::value::MapKey::String("__handler__".to_string()), handler);
-    metadata.insert(crate::value::MapKey::String("__cache_opts__".to_string()), Value::Map(opts));
+    metadata.insert(
+        crate::value::MapKey::String("__handler__".to_string()),
+        handler,
+    );
+    metadata.insert(
+        crate::value::MapKey::String("__cache_opts__".to_string()),
+        Value::Map(opts),
+    );
 
     Ok(Value::Map(metadata))
 }

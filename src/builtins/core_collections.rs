@@ -424,13 +424,11 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
         Value::Map(m) => {
             let keys: im::Vector<Value> = m
                 .keys()
-                .map(|k| {
-                    match k {
-                        crate::value::MapKey::Keyword(kw) => Value::Keyword(kw.clone()),
-                        crate::value::MapKey::Symbol(sym) => Value::Symbol(sym.clone()),
-                        crate::value::MapKey::String(s) => Value::String(s.clone()),
-                        crate::value::MapKey::Integer(n) => Value::Integer(*n),
-                    }
+                .map(|k| match k {
+                    crate::value::MapKey::Keyword(kw) => Value::Keyword(kw.clone()),
+                    crate::value::MapKey::Symbol(sym) => Value::Symbol(sym.clone()),
+                    crate::value::MapKey::String(s) => Value::String(s.clone()),
+                    crate::value::MapKey::Integer(n) => Value::Integer(*n),
                 })
                 .collect();
             Ok(Value::List(keys))

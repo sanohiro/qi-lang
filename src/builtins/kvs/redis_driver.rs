@@ -27,7 +27,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -43,7 +46,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(s),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -58,7 +64,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -73,7 +82,10 @@ impl KvsDriver for RedisDriver {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -97,7 +109,10 @@ impl KvsDriver for RedisDriver {
                 .collect()),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -113,7 +128,10 @@ impl KvsDriver for RedisDriver {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -128,7 +146,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -143,7 +164,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -158,7 +182,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -174,7 +201,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -190,7 +220,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -206,7 +239,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -222,7 +258,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -239,7 +278,10 @@ impl KvsDriver for RedisDriver {
             Value::Bool(b) => Ok(b),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -256,7 +298,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(Some(s)),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -270,7 +315,10 @@ impl KvsDriver for RedisDriver {
         .and_then(|v| match v {
             Value::Map(m) => {
                 if m.contains_key(&crate::constants::keywords::error_mapkey()) {
-                    return Err(m.get(&crate::constants::keywords::error_mapkey()).unwrap().to_string());
+                    return Err(m
+                        .get(&crate::constants::keywords::error_mapkey())
+                        .unwrap()
+                        .to_string());
                 }
                 let mut pairs = Vec::new();
                 for (k, v) in m.iter() {
@@ -301,7 +349,10 @@ impl KvsDriver for RedisDriver {
             Value::Integer(i) => Ok(i),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -325,7 +376,10 @@ impl KvsDriver for RedisDriver {
                 .collect()),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -348,7 +402,10 @@ impl KvsDriver for RedisDriver {
                 .collect()),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -357,7 +414,10 @@ impl KvsDriver for RedisDriver {
     fn mset(&self, pairs: &HashMap<String, String>) -> Result<String, String> {
         let mut map = crate::new_hashmap();
         for (k, v) in pairs {
-            map.insert(crate::value::MapKey::String(k.clone()), Value::String(v.clone()));
+            map.insert(
+                crate::value::MapKey::String(k.clone()),
+                Value::String(v.clone()),
+            );
         }
         crate::builtins::redis::native_redis_mset(&[
             Value::String(self.url.clone()),
@@ -367,7 +427,10 @@ impl KvsDriver for RedisDriver {
             Value::String(s) => Ok(s),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })
@@ -393,7 +456,10 @@ impl KvsDriver for RedisDriver {
                 .collect()),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
-                Err(m.get(&crate::constants::keywords::error_mapkey()).expect(":error key exists").to_string())
+                Err(m
+                    .get(&crate::constants::keywords::error_mapkey())
+                    .expect(":error key exists")
+                    .to_string())
             }
             _ => Err(fmt_msg(MsgKey::UnexpectedResponse, &[])),
         })

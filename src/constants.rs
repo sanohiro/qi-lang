@@ -153,18 +153,42 @@ pub mod keywords {
     pub const DATA_KEY: &str = ":data";
 
     // MapKey定数（型安全）
-    pub fn error_mapkey() -> MapKey { MapKey::Keyword(Arc::from(ERROR)) }
-    pub fn ok_mapkey() -> MapKey { MapKey::Keyword(Arc::from(OK)) }
-    pub fn status_mapkey() -> MapKey { MapKey::Keyword(Arc::from(STATUS)) }
-    pub fn body_mapkey() -> MapKey { MapKey::Keyword(Arc::from(BODY)) }
-    pub fn headers_mapkey() -> MapKey { MapKey::Keyword(Arc::from(HEADERS)) }
-    pub fn method_mapkey() -> MapKey { MapKey::Keyword(Arc::from(METHOD)) }
-    pub fn path_mapkey() -> MapKey { MapKey::Keyword(Arc::from(PATH)) }
-    pub fn query_mapkey() -> MapKey { MapKey::Keyword(Arc::from(QUERY)) }
-    pub fn params_mapkey() -> MapKey { MapKey::Keyword(Arc::from(PARAMS)) }
-    pub fn message_mapkey() -> MapKey { MapKey::Keyword(Arc::from(MESSAGE)) }
-    pub fn code_mapkey() -> MapKey { MapKey::Keyword(Arc::from(CODE)) }
-    pub fn data_mapkey() -> MapKey { MapKey::Keyword(Arc::from(DATA)) }
+    pub fn error_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(ERROR))
+    }
+    pub fn ok_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(OK))
+    }
+    pub fn status_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(STATUS))
+    }
+    pub fn body_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(BODY))
+    }
+    pub fn headers_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(HEADERS))
+    }
+    pub fn method_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(METHOD))
+    }
+    pub fn path_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(PATH))
+    }
+    pub fn query_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(QUERY))
+    }
+    pub fn params_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(PARAMS))
+    }
+    pub fn message_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(MESSAGE))
+    }
+    pub fn code_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(CODE))
+    }
+    pub fn data_mapkey() -> MapKey {
+        MapKey::Keyword(Arc::from(DATA))
+    }
 }
 
 /// ファイルI/O関連の定数

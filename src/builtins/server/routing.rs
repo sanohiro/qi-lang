@@ -77,10 +77,14 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
                     (&route_def[0], &route_def[1])
                 {
                     // メソッドに対応するハンドラーを取得
-                    if let Some(handler) = handlers.get(&crate::value::MapKey::String(method.clone())) {
+                    if let Some(handler) =
+                        handlers.get(&crate::value::MapKey::String(method.clone()))
+                    {
                         // 静的ファイルハンドラーの場合はプレフィックスマッチング
                         if let Value::Map(m) = handler {
-                            if m.contains_key(&crate::value::MapKey::String("__static_dir__".to_string())) {
+                            if m.contains_key(&crate::value::MapKey::String(
+                                "__static_dir__".to_string(),
+                            )) {
                                 // プレフィックスマッチング（パスがパターンで始まっているか）
                                 let pattern_normalized = if pattern == "/" {
                                     "/"
@@ -109,7 +113,12 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
                                 _ => crate::new_hashmap(),
                             };
                             let params_key = kw("params");
-                            req_with_params.insert(params_key, Value::Map(crate::builtins::util::convert_string_map_to_mapkey(params)));
+                            req_with_params.insert(
+                                params_key,
+                                Value::Map(crate::builtins::util::convert_string_map_to_mapkey(
+                                    params,
+                                )),
+                            );
 
                             // ミドルウェアを適用してハンドラーを実行
                             let eval = Evaluator::new();
@@ -133,24 +142,34 @@ pub(super) fn apply_middleware(
 ) -> Result<Value, String> {
     // 静的ファイルハンドラーかチェック
     if let Value::Map(m) = handler {
-        if let Some(Value::String(dir_path)) = m.get(&crate::value::MapKey::String("__static_dir__".to_string())) {
+        if let Some(Value::String(dir_path)) =
+            m.get(&crate::value::MapKey::String("__static_dir__".to_string()))
+        {
             // 静的ファイル配信
             return serve_static_file(dir_path, req);
         }
 
-        if let Some(Value::String(middleware_type)) = m.get(&crate::value::MapKey::String("__middleware__".to_string())) {
+        if let Some(Value::String(middleware_type)) =
+            m.get(&crate::value::MapKey::String("__middleware__".to_string()))
+        {
             // ミドルウェアの場合、内部のハンドラーを取得
-            if let Some(inner_handler) = m.get(&crate::value::MapKey::String("__handler__".to_string())) {
+            if let Some(inner_handler) =
+                m.get(&crate::value::MapKey::String("__handler__".to_string()))
+            {
                 // Basic Auth検証
                 if middleware_type == "basic-auth" {
                     if let Value::Map(req_map) = req {
-                        let authorized = if let Some(Value::Map(users)) = m.get(&crate::value::MapKey::String("__users__".to_string())) {
+                        let authorized = if let Some(Value::Map(users)) =
+                            m.get(&crate::value::MapKey::String("__users__".to_string()))
+                        {
                             // Authorizationヘッダーを取得
                             let headers_key = kw("headers");
                             let auth_header = req_map
                                 .get(&headers_key)
                                 .and_then(|h| match h {
-                                    Value::Map(headers) => headers.get(&crate::value::MapKey::String("authorization".to_string())),
+                                    Value::Map(headers) => headers.get(
+                                        &crate::value::MapKey::String("authorization".to_string()),
+                                    ),
                                     _ => None,
                                 })
                                 .and_then(|v| match v {
@@ -168,7 +187,9 @@ pub(super) fn apply_middleware(
                                             if let Some((user, pass)) = decoded.split_once(':') {
                                                 // ユーザー名とパスワードを検証
                                                 users
-                                                    .get(&crate::value::MapKey::String(user.to_string()))
+                                                    .get(&crate::value::MapKey::String(
+                                                        user.to_string(),
+                                                    ))
                                                     .and_then(|v| match v {
                                                         Value::String(expected_pass) => {
                                                             Some(pass == expected_pass)
@@ -282,7 +303,10 @@ pub(super) fn apply_middleware(
                                 crate::value::MapKey::String("Pragma".to_string()),
                                 Value::String("no-cache".to_string()),
                             );
-                            headers.insert(crate::value::MapKey::String("Expires".to_string()), Value::String("0".to_string()));
+                            headers.insert(
+                                crate::value::MapKey::String("Expires".to_string()),
+                                Value::String("0".to_string()),
+                            );
 
                             resp_map.insert(headers_key, Value::Map(headers));
                             Value::Map(resp_map)
@@ -293,7 +317,9 @@ pub(super) fn apply_middleware(
                     "cache-control" => {
                         // カスタムCache-Controlヘッダーを追加
                         if let Value::Map(mut resp_map) = response.clone() {
-                            if let Some(Value::Map(opts)) = m.get(&crate::value::MapKey::String("__cache_opts__".to_string())) {
+                            if let Some(Value::Map(opts)) =
+                                m.get(&crate::value::MapKey::String("__cache_opts__".to_string()))
+                            {
                                 let mut cache_parts = Vec::new();
 
                                 let max_age_key = kw("max-age");
@@ -338,7 +364,9 @@ pub(super) fn apply_middleware(
                                         _ => crate::new_hashmap(),
                                     };
                                     headers.insert(
-                                        crate::value::MapKey::String(HEADER_CACHE_CONTROL.to_string()),
+                                        crate::value::MapKey::String(
+                                            HEADER_CACHE_CONTROL.to_string(),
+                                        ),
                                         Value::String(cache_control),
                                     );
                                     resp_map.insert(headers_key, Value::Map(headers));
@@ -364,7 +392,10 @@ pub(super) fn apply_middleware(
 
 /// パスパターンマッチング - /users/:id のような形式をサポート
 /// 戻り値: マッチした場合はパラメータマップ、マッチしない場合はNone
-fn match_route_pattern(pattern: &str, path: &str) -> Option<std::collections::HashMap<String, Value>> {
+fn match_route_pattern(
+    pattern: &str,
+    path: &str,
+) -> Option<std::collections::HashMap<String, Value>> {
     let pattern_parts: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
     let path_parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 

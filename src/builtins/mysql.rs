@@ -303,11 +303,23 @@ impl DbConnection for MysqlConnection {
         let columns = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get(&crate::value::MapKey::String("Field".to_string()))?.as_string()?;
-                let data_type = row.get(&crate::value::MapKey::String("Type".to_string()))?.as_string()?;
-                let nullable = row.get(&crate::value::MapKey::String("Null".to_string()))?.as_string()? == "YES";
-                let default_value = row.get(&crate::value::MapKey::String("Default".to_string())).and_then(|v| v.as_string());
-                let primary_key = row.get(&crate::value::MapKey::String("Key".to_string()))?.as_string()? == "PRI";
+                let name = row
+                    .get(&crate::value::MapKey::String("Field".to_string()))?
+                    .as_string()?;
+                let data_type = row
+                    .get(&crate::value::MapKey::String("Type".to_string()))?
+                    .as_string()?;
+                let nullable = row
+                    .get(&crate::value::MapKey::String("Null".to_string()))?
+                    .as_string()?
+                    == "YES";
+                let default_value = row
+                    .get(&crate::value::MapKey::String("Default".to_string()))
+                    .and_then(|v| v.as_string());
+                let primary_key = row
+                    .get(&crate::value::MapKey::String("Key".to_string()))?
+                    .as_string()?
+                    == "PRI";
 
                 Some(ColumnInfo {
                     name,
@@ -330,8 +342,10 @@ impl DbConnection for MysqlConnection {
 
         for row in rows {
             if let (Some(name), Some(column)) = (
-                row.get(&crate::value::MapKey::String("Key_name".to_string())).and_then(|v| v.as_string()),
-                row.get(&crate::value::MapKey::String("Column_name".to_string())).and_then(|v| v.as_string()),
+                row.get(&crate::value::MapKey::String("Key_name".to_string()))
+                    .and_then(|v| v.as_string()),
+                row.get(&crate::value::MapKey::String("Column_name".to_string()))
+                    .and_then(|v| v.as_string()),
             ) {
                 let unique = row
                     .get(&crate::value::MapKey::String("Non_unique".to_string()))
@@ -387,12 +401,28 @@ impl DbConnection for MysqlConnection {
         let foreign_keys = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get(&crate::value::MapKey::String("constraint_name".to_string()))?.as_string()?;
-                let column = row.get(&crate::value::MapKey::String("column_name".to_string()))?.as_string()?;
-                let referenced_table = row.get(&crate::value::MapKey::String("referenced_table".to_string()))?.as_string()?;
-                let referenced_column = row.get(&crate::value::MapKey::String("referenced_column".to_string()))?.as_string()?;
-                let _on_update = row.get(&crate::value::MapKey::String("update_rule".to_string())).and_then(|v| v.as_string());
-                let _on_delete = row.get(&crate::value::MapKey::String("delete_rule".to_string())).and_then(|v| v.as_string());
+                let name = row
+                    .get(&crate::value::MapKey::String("constraint_name".to_string()))?
+                    .as_string()?;
+                let column = row
+                    .get(&crate::value::MapKey::String("column_name".to_string()))?
+                    .as_string()?;
+                let referenced_table = row
+                    .get(&crate::value::MapKey::String(
+                        "referenced_table".to_string(),
+                    ))?
+                    .as_string()?;
+                let referenced_column = row
+                    .get(&crate::value::MapKey::String(
+                        "referenced_column".to_string(),
+                    ))?
+                    .as_string()?;
+                let _on_update = row
+                    .get(&crate::value::MapKey::String("update_rule".to_string()))
+                    .and_then(|v| v.as_string());
+                let _on_delete = row
+                    .get(&crate::value::MapKey::String("delete_rule".to_string()))
+                    .and_then(|v| v.as_string());
 
                 Some(ForeignKeyInfo {
                     name,

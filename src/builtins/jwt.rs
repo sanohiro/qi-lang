@@ -186,8 +186,14 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
             let payload = json_to_qi_value(&token_data.claims)?;
 
             let mut result_map = crate::new_hashmap();
-            result_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("header")), header);
-            result_map.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("payload")), payload);
+            result_map.insert(
+                crate::value::MapKey::Keyword(crate::intern::intern_keyword("header")),
+                header,
+            );
+            result_map.insert(
+                crate::value::MapKey::Keyword(crate::intern::intern_keyword("payload")),
+                payload,
+            );
 
             Ok(Value::Map(result_map))
         }
@@ -324,8 +330,14 @@ mod tests {
     #[test]
     fn test_jwt_sign_and_verify() {
         let mut payload = crate::new_hashmap();
-        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")), Value::Integer(123));
-        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("name")), Value::String("Alice".to_string()));
+        payload.insert(
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")),
+            Value::Integer(123),
+        );
+        payload.insert(
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("name")),
+            Value::String("Alice".to_string()),
+        );
 
         let secret = Value::String("my-secret-key".to_string());
 
@@ -344,7 +356,12 @@ mod tests {
         // 成功時はペイロードマップを直接返す
         match verify_result {
             Value::Map(payload) => {
-                assert_eq!(payload.get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id"))), Some(&Value::Integer(123)));
+                assert_eq!(
+                    payload.get(&crate::value::MapKey::Keyword(
+                        crate::intern::intern_keyword("user_id")
+                    )),
+                    Some(&Value::Integer(123))
+                );
             }
             _ => panic!("Expected payload map, got {:?}", verify_result),
         }
@@ -353,7 +370,10 @@ mod tests {
     #[test]
     fn test_jwt_decode() {
         let mut payload = crate::new_hashmap();
-        payload.insert(crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")), Value::Integer(123));
+        payload.insert(
+            crate::value::MapKey::Keyword(crate::intern::intern_keyword("user_id")),
+            Value::Integer(123),
+        );
 
         let secret = Value::String("my-secret-key".to_string());
 
@@ -372,8 +392,12 @@ mod tests {
         // 成功時は {:header ... :payload ...} マップを直接返す
         match decode_result {
             Value::Map(data) => {
-                assert!(data.contains_key(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("header"))));
-                assert!(data.contains_key(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("payload"))));
+                assert!(data.contains_key(&crate::value::MapKey::Keyword(
+                    crate::intern::intern_keyword("header")
+                )));
+                assert!(data.contains_key(&crate::value::MapKey::Keyword(
+                    crate::intern::intern_keyword("payload")
+                )));
             }
             _ => panic!(
                 "Expected map with :header and :payload, got {:?}",

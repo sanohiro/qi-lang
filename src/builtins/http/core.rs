@@ -116,7 +116,11 @@ pub(super) fn http_request_detailed(
 
     // 圧縮が必要かチェック
     let should_compress = headers
-        .and_then(|h| h.get(&crate::value::MapKey::String("content-encoding".to_string())))
+        .and_then(|h| {
+            h.get(&crate::value::MapKey::String(
+                "content-encoding".to_string(),
+            ))
+        })
         .and_then(|v| match v {
             Value::String(s) => Some(s.to_lowercase()),
             _ => None,

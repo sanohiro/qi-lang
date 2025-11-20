@@ -240,13 +240,22 @@ pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
             .map_err(|e| format!("zip/list: failed to read entry {}: {}", i, e))?;
 
         let mut info = crate::new_hashmap();
-        info.insert(crate::value::MapKey::String("name".to_string()), Value::String(file.name().to_string()));
-        info.insert(crate::value::MapKey::String("size".to_string()), Value::Integer(file.size() as i64));
+        info.insert(
+            crate::value::MapKey::String("name".to_string()),
+            Value::String(file.name().to_string()),
+        );
+        info.insert(
+            crate::value::MapKey::String("size".to_string()),
+            Value::Integer(file.size() as i64),
+        );
         info.insert(
             crate::value::MapKey::String("compressed-size".to_string()),
             Value::Integer(file.compressed_size() as i64),
         );
-        info.insert(crate::value::MapKey::String("is-dir".to_string()), Value::Bool(file.is_dir()));
+        info.insert(
+            crate::value::MapKey::String("is-dir".to_string()),
+            Value::Bool(file.is_dir()),
+        );
 
         entries.push(Value::Map(info));
     }

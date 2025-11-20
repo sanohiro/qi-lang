@@ -227,11 +227,20 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
             let mut info = crate::new_hashmap();
 
             // サイズ
-            info.insert(crate::value::MapKey::String("size".to_string()), Value::Integer(metadata.len() as i64));
+            info.insert(
+                crate::value::MapKey::String("size".to_string()),
+                Value::Integer(metadata.len() as i64),
+            );
 
             // ファイルタイプ
-            info.insert(crate::value::MapKey::String("is-dir".to_string()), Value::Bool(metadata.is_dir()));
-            info.insert(crate::value::MapKey::String("is-file".to_string()), Value::Bool(metadata.is_file()));
+            info.insert(
+                crate::value::MapKey::String("is-dir".to_string()),
+                Value::Bool(metadata.is_dir()),
+            );
+            info.insert(
+                crate::value::MapKey::String("is-file".to_string()),
+                Value::Bool(metadata.is_file()),
+            );
 
             // 更新日時
             if let Ok(modified) = metadata.modified() {

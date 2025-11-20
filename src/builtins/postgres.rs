@@ -226,13 +226,14 @@ impl DbConnection for PostgresConnection {
         let tables = rows
             .into_iter()
             .filter_map(|row| {
-                row.get(&crate::value::MapKey::String("tablename".to_string())).and_then(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.clone())
-                    } else {
-                        None
-                    }
-                })
+                row.get(&crate::value::MapKey::String("tablename".to_string()))
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
+                    })
             })
             .collect();
 
@@ -264,10 +265,19 @@ impl DbConnection for PostgresConnection {
         let columns = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get(&crate::value::MapKey::String("column_name".to_string()))?.as_string()?;
-                let data_type = row.get(&crate::value::MapKey::String("data_type".to_string()))?.as_string()?;
-                let nullable = row.get(&crate::value::MapKey::String("is_nullable".to_string()))?.as_string()? == "YES";
-                let default_value = row.get(&crate::value::MapKey::String("column_default".to_string())).and_then(|v| v.as_string());
+                let name = row
+                    .get(&crate::value::MapKey::String("column_name".to_string()))?
+                    .as_string()?;
+                let data_type = row
+                    .get(&crate::value::MapKey::String("data_type".to_string()))?
+                    .as_string()?;
+                let nullable = row
+                    .get(&crate::value::MapKey::String("is_nullable".to_string()))?
+                    .as_string()?
+                    == "YES";
+                let default_value = row
+                    .get(&crate::value::MapKey::String("column_default".to_string()))
+                    .and_then(|v| v.as_string());
                 let primary_key = row
                     .get(&crate::value::MapKey::String("is_primary_key".to_string()))
                     .and_then(|v| match v {
@@ -312,7 +322,9 @@ impl DbConnection for PostgresConnection {
         let indexes = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get(&crate::value::MapKey::String("indexname".to_string()))?.as_string()?;
+                let name = row
+                    .get(&crate::value::MapKey::String("indexname".to_string()))?
+                    .as_string()?;
                 let unique = row
                     .get(&crate::value::MapKey::String("indisunique".to_string()))
                     .and_then(|v| match v {
@@ -322,7 +334,9 @@ impl DbConnection for PostgresConnection {
                     .unwrap_or(false);
 
                 // PostgreSQLの配列型から文字列のベクタに変換
-                let columns = if let Some(Value::String(col_str)) = row.get(&crate::value::MapKey::String("column_names".to_string())) {
+                let columns = if let Some(Value::String(col_str)) =
+                    row.get(&crate::value::MapKey::String("column_names".to_string()))
+                {
                     // PostgreSQLの配列は "{col1,col2}" の形式なので "{" と "}" を除去して分割
                     col_str
                         .trim_matches(|c| c == '{' || c == '}')
@@ -373,12 +387,28 @@ impl DbConnection for PostgresConnection {
         let foreign_keys = rows
             .into_iter()
             .filter_map(|row| {
-                let name = row.get(&crate::value::MapKey::String("constraint_name".to_string()))?.as_string()?;
-                let column = row.get(&crate::value::MapKey::String("column_name".to_string()))?.as_string()?;
-                let referenced_table = row.get(&crate::value::MapKey::String("referenced_table".to_string()))?.as_string()?;
-                let referenced_column = row.get(&crate::value::MapKey::String("referenced_column".to_string()))?.as_string()?;
-                let _on_update = row.get(&crate::value::MapKey::String("update_rule".to_string())).and_then(|v| v.as_string());
-                let _on_delete = row.get(&crate::value::MapKey::String("delete_rule".to_string())).and_then(|v| v.as_string());
+                let name = row
+                    .get(&crate::value::MapKey::String("constraint_name".to_string()))?
+                    .as_string()?;
+                let column = row
+                    .get(&crate::value::MapKey::String("column_name".to_string()))?
+                    .as_string()?;
+                let referenced_table = row
+                    .get(&crate::value::MapKey::String(
+                        "referenced_table".to_string(),
+                    ))?
+                    .as_string()?;
+                let referenced_column = row
+                    .get(&crate::value::MapKey::String(
+                        "referenced_column".to_string(),
+                    ))?
+                    .as_string()?;
+                let _on_update = row
+                    .get(&crate::value::MapKey::String("update_rule".to_string()))
+                    .and_then(|v| v.as_string());
+                let _on_delete = row
+                    .get(&crate::value::MapKey::String("delete_rule".to_string()))
+                    .and_then(|v| v.as_string());
 
                 Some(ForeignKeyInfo {
                     name,

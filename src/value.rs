@@ -45,7 +45,7 @@ impl From<&str> for MapKey {
         if let Some(keyword) = s.strip_prefix(':') {
             MapKey::Keyword(Arc::from(keyword))
         } else if s.starts_with('"') && s.ends_with('"') {
-            MapKey::String(s[1..s.len()-1].to_string())
+            MapKey::String(s[1..s.len() - 1].to_string())
         } else {
             MapKey::Symbol(Arc::from(s))
         }
@@ -295,7 +295,10 @@ impl Value {
     /// ```
     pub fn error(message: impl Into<String>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(crate::constants::keywords::error_mapkey(), Value::String(message.into()));
+        map.insert(
+            crate::constants::keywords::error_mapkey(),
+            Value::String(message.into()),
+        );
         Value::Map(map)
     }
 
@@ -310,7 +313,10 @@ impl Value {
     /// ```
     pub fn error_with_details(details: crate::HashMap<MapKey, Value>) -> Value {
         let mut map = crate::new_hashmap();
-        map.insert(crate::constants::keywords::error_mapkey(), Value::Map(details));
+        map.insert(
+            crate::constants::keywords::error_mapkey(),
+            Value::Map(details),
+        );
         Value::Map(map)
     }
 
