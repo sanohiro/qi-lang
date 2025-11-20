@@ -12,6 +12,16 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use crate::HashMap;
 
+// HTTPヘッダー定数
+const HEADER_CACHE_CONTROL: &str = "Cache-Control";
+
+// Cache-Controlディレクティブ定数
+const CACHE_DIRECTIVE_PUBLIC: &str = "public";
+const CACHE_DIRECTIVE_PRIVATE: &str = "private";
+const CACHE_DIRECTIVE_NO_STORE: &str = "no-store";
+const CACHE_DIRECTIVE_MUST_REVALIDATE: &str = "must-revalidate";
+const CACHE_DIRECTIVE_IMMUTABLE: &str = "immutable";
+
 pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/router", "1"]));
@@ -264,7 +274,7 @@ pub(super) fn apply_middleware(
                             };
 
                             headers.insert(
-                                "Cache-Control".to_string(),
+                                HEADER_CACHE_CONTROL.to_string(),
                                 Value::String(
                                     "no-store, no-cache, must-revalidate, private".to_string(),
                                 ),
@@ -301,24 +311,24 @@ pub(super) fn apply_middleware(
 
                                 // public/private
                                 if let Some(Value::Bool(true)) = opts.get(&public_key) {
-                                    cache_parts.push("public".to_string());
+                                    cache_parts.push(CACHE_DIRECTIVE_PUBLIC.to_string());
                                 } else if let Some(Value::Bool(true)) = opts.get(&private_key) {
-                                    cache_parts.push("private".to_string());
+                                    cache_parts.push(CACHE_DIRECTIVE_PRIVATE.to_string());
                                 }
 
                                 // no-store
                                 if let Some(Value::Bool(true)) = opts.get(&no_store_key) {
-                                    cache_parts.push("no-store".to_string());
+                                    cache_parts.push(CACHE_DIRECTIVE_NO_STORE.to_string());
                                 }
 
                                 // must-revalidate
                                 if let Some(Value::Bool(true)) = opts.get(&must_revalidate_key) {
-                                    cache_parts.push("must-revalidate".to_string());
+                                    cache_parts.push(CACHE_DIRECTIVE_MUST_REVALIDATE.to_string());
                                 }
 
                                 // immutable
                                 if let Some(Value::Bool(true)) = opts.get(&immutable_key) {
-                                    cache_parts.push("immutable".to_string());
+                                    cache_parts.push(CACHE_DIRECTIVE_IMMUTABLE.to_string());
                                 }
 
                                 if !cache_parts.is_empty() {
@@ -329,7 +339,7 @@ pub(super) fn apply_middleware(
                                         _ => crate::new_hashmap(),
                                     };
                                     headers.insert(
-                                        "Cache-Control".to_string(),
+                                        HEADER_CACHE_CONTROL.to_string(),
                                         Value::String(cache_control),
                                     );
                                     resp_map.insert(headers_key, Value::Map(headers));

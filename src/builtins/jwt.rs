@@ -314,6 +314,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::keywords::ERROR_KEY;
 
     #[test]
     fn test_jwt_sign_and_verify() {

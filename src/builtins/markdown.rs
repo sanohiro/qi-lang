@@ -5,6 +5,21 @@ use crate::value::Value;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+// マップキー定数
+const MAP_KEY_TYPE: &str = "type";
+const MAP_KEY_LANG: &str = "lang";
+const MAP_KEY_CODE: &str = "code";
+const MAP_KEY_LEVEL: &str = "level";
+const MAP_KEY_TEXT: &str = "text";
+const MAP_KEY_ORDERED: &str = "ordered";
+const MAP_KEY_ITEMS: &str = "items";
+
+// ブロックタイプ定数
+const BLOCK_TYPE_CODE_BLOCK: &str = "code-block";
+const BLOCK_TYPE_HEADER: &str = "header";
+const BLOCK_TYPE_LIST: &str = "list";
+const BLOCK_TYPE_PARAGRAPH: &str = "paragraph";
+
 /// header - Markdownヘッダーを生成
 /// 引数: (level text) - レベル (1-6)、テキスト
 /// 例: (markdown/header 2 "Report") → "## Report"
@@ -362,14 +377,14 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
 
         let mut block = crate::new_hashmap();
         block.insert(
-            "lang".to_string(),
+            MAP_KEY_LANG.to_string(),
             if lang.is_empty() {
                 Value::Nil
             } else {
                 Value::String(lang.to_string())
             },
         );
-        block.insert("code".to_string(), Value::String(code.to_string()));
+        block.insert(MAP_KEY_CODE.to_string(), Value::String(code.to_string()));
 
         blocks.push(Value::Map(block));
     }
@@ -421,16 +436,22 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             }
 
             let mut block = crate::new_hashmap();
-            block.insert("type".to_string(), Value::String("code-block".to_string()));
             block.insert(
-                "lang".to_string(),
+                MAP_KEY_TYPE.to_string(),
+                Value::String(BLOCK_TYPE_CODE_BLOCK.to_string()),
+            );
+            block.insert(
+                MAP_KEY_LANG.to_string(),
                 if lang.is_empty() {
                     Value::Nil
                 } else {
                     Value::String(lang.to_string())
                 },
             );
-            block.insert("code".to_string(), Value::String(code_lines.join("\n")));
+            block.insert(
+                MAP_KEY_CODE.to_string(),
+                Value::String(code_lines.join("\n")),
+            );
             blocks.push(Value::Map(block));
             i += 1;
             continue;
@@ -442,9 +463,12 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             let text = cap.get(2).map(|m| m.as_str()).unwrap_or("");
 
             let mut block = crate::new_hashmap();
-            block.insert("type".to_string(), Value::String("header".to_string()));
-            block.insert("level".to_string(), Value::Integer(level as i64));
-            block.insert("text".to_string(), Value::String(text.to_string()));
+            block.insert(
+                MAP_KEY_TYPE.to_string(),
+                Value::String(BLOCK_TYPE_HEADER.to_string()),
+            );
+            block.insert(MAP_KEY_LEVEL.to_string(), Value::Integer(level as i64));
+            block.insert(MAP_KEY_TEXT.to_string(), Value::String(text.to_string()));
             blocks.push(Value::Map(block));
             i += 1;
             continue;
@@ -465,9 +489,12 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             }
 
             let mut block = crate::new_hashmap();
-            block.insert("type".to_string(), Value::String("list".to_string()));
-            block.insert("ordered".to_string(), Value::Bool(false));
-            block.insert("items".to_string(), Value::List(items.into()));
+            block.insert(
+                MAP_KEY_TYPE.to_string(),
+                Value::String(BLOCK_TYPE_LIST.to_string()),
+            );
+            block.insert(MAP_KEY_ORDERED.to_string(), Value::Bool(false));
+            block.insert(MAP_KEY_ITEMS.to_string(), Value::List(items.into()));
             blocks.push(Value::Map(block));
             continue;
         }
@@ -487,9 +514,12 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
             }
 
             let mut block = crate::new_hashmap();
-            block.insert("type".to_string(), Value::String("list".to_string()));
-            block.insert("ordered".to_string(), Value::Bool(true));
-            block.insert("items".to_string(), Value::List(items.into()));
+            block.insert(
+                MAP_KEY_TYPE.to_string(),
+                Value::String(BLOCK_TYPE_LIST.to_string()),
+            );
+            block.insert(MAP_KEY_ORDERED.to_string(), Value::Bool(true));
+            block.insert(MAP_KEY_ITEMS.to_string(), Value::List(items.into()));
             blocks.push(Value::Map(block));
             continue;
         }
@@ -512,8 +542,14 @@ pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
 
         if !para_lines.is_empty() {
             let mut block = crate::new_hashmap();
-            block.insert("type".to_string(), Value::String("paragraph".to_string()));
-            block.insert("text".to_string(), Value::String(para_lines.join(" ")));
+            block.insert(
+                MAP_KEY_TYPE.to_string(),
+                Value::String(BLOCK_TYPE_PARAGRAPH.to_string()),
+            );
+            block.insert(
+                MAP_KEY_TEXT.to_string(),
+                Value::String(para_lines.join(" ")),
+            );
             blocks.push(Value::Map(block));
         }
     }
@@ -551,36 +587,36 @@ pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
             _ => continue,
         };
 
-        let block_type = match map.get("type") {
+        let block_type = match map.get(MAP_KEY_TYPE) {
             Some(Value::String(s)) => s.as_str(),
             _ => continue,
         };
 
         match block_type {
             "header" => {
-                let level = match map.get("level") {
+                let level = match map.get(MAP_KEY_LEVEL) {
                     Some(Value::Integer(n)) => *n as usize,
                     _ => 1,
                 };
-                let text = match map.get("text") {
+                let text = match map.get(MAP_KEY_TEXT) {
                     Some(Value::String(s)) => s.as_str(),
                     _ => "",
                 };
                 result.push(format!("{} {}", "#".repeat(level), text));
             }
             "paragraph" => {
-                let text = match map.get("text") {
+                let text = match map.get(MAP_KEY_TEXT) {
                     Some(Value::String(s)) => s.as_str(),
                     _ => "",
                 };
                 result.push(text.to_string());
             }
             "list" => {
-                let ordered = match map.get("ordered") {
+                let ordered = match map.get(MAP_KEY_ORDERED) {
                     Some(Value::Bool(b)) => *b,
                     _ => false,
                 };
-                let items = match map.get("items") {
+                let items = match map.get(MAP_KEY_ITEMS) {
                     Some(Value::List(items)) | Some(Value::Vector(items)) => items,
                     _ => continue,
                 };
@@ -598,12 +634,12 @@ pub fn native_markdown_stringify(args: &[Value]) -> Result<Value, String> {
                 }
             }
             "code-block" => {
-                let lang = match map.get("lang") {
+                let lang = match map.get(MAP_KEY_LANG) {
                     Some(Value::String(s)) => s.as_str(),
                     Some(Value::Nil) => "",
                     _ => "",
                 };
-                let code = match map.get("code") {
+                let code = match map.get(MAP_KEY_CODE) {
                     Some(Value::String(s)) => s.as_str(),
                     _ => "",
                 };

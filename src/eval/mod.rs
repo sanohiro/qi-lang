@@ -1065,6 +1065,7 @@ impl Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::keywords::{ERROR_KEY, OK_KEY};
     use crate::parser::Parser;
 
     fn eval_str(s: &str) -> Result<Value, String> {
