@@ -1995,7 +1995,7 @@ mod tests {
     fn test_parse_symbol() {
         let mut parser = Parser::new("foo").unwrap();
         match parser.parse().unwrap() {
-            Expr::Symbol { name, .. } => assert_eq!(name, "foo"),
+            Expr::Symbol { name, .. } => assert_eq!(name.as_ref(), "foo"),
             _ => panic!("Expected Symbol"),
         }
     }
@@ -2006,7 +2006,7 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Call { func, args, .. } => {
                 match *func {
-                    Expr::Symbol { name, .. } => assert_eq!(name, "+"),
+                    Expr::Symbol { name, .. } => assert_eq!(name.as_ref(), "+"),
                     _ => panic!("Expected Symbol"),
                 }
                 assert_eq!(args.len(), 2);
@@ -2025,7 +2025,7 @@ mod tests {
                 is_private,
                 ..
             } => {
-                assert_eq!(name, "x");
+                assert_eq!(name.as_ref(), "x");
                 match *value {
                     Expr::Integer { value: v, .. } => assert_eq!(v, 42),
                     _ => panic!("Expected Integer"),
@@ -2046,7 +2046,7 @@ mod tests {
                 is_private,
                 ..
             } => {
-                assert_eq!(name, "helper");
+                assert_eq!(name.as_ref(), "helper");
                 assert!(is_private);
                 match *value {
                     Expr::Fn { .. } => {}
@@ -2078,7 +2078,7 @@ mod tests {
                     Expr::Def {
                         name, is_private, ..
                     } => {
-                        assert_eq!(name, "helper");
+                        assert_eq!(name.as_ref(), "helper");
                         assert!(*is_private);
                     }
                     _ => panic!("Expected fn Def"),
@@ -2098,7 +2098,7 @@ mod tests {
                     params[0],
                     crate::value::Pattern::Var(crate::intern::intern_symbol("x"))
                 );
-                assert_eq!(params[1], crate::value::Pattern::Var("y".to_string()));
+                assert_eq!(params[1], crate::value::Pattern::Var("y".into()));
             }
             _ => panic!("Expected Fn"),
         }
@@ -2120,7 +2120,8 @@ mod tests {
         let mut parser = Parser::new("(export get post)").unwrap();
         match parser.parse().unwrap() {
             Expr::Export { symbols, .. } => {
-                assert_eq!(symbols, vec!["get", "post"]);
+                let symbols_str: Vec<&str> = symbols.iter().map(|s| s.as_ref()).collect();
+                assert_eq!(symbols_str, vec!["get", "post"]);
             }
             _ => panic!("Expected Export"),
         }

@@ -179,10 +179,10 @@ impl Token {
 ///
 /// ソースコードをトークン列に分割します。
 /// 位置情報（行、列、オフセット）を記録し、エラーメッセージで使用します。
-pub struct Lexer {
-    /// 入力文字列（Unicodeコードポイント単位）
-    input: Vec<char>,
-    /// 現在の読み取り位置（文字インデックス）
+pub struct Lexer<'a> {
+    /// 入力文字列（参照、ゼロコピー）
+    input: &'a str,
+    /// 現在の読み取り位置（バイトオフセット）
     pos: usize,
     /// 現在の行番号（1始まり）
     line: usize,
@@ -190,10 +190,10 @@ pub struct Lexer {
     column: usize,
 }
 
-impl Lexer {
-    pub fn new(input: &str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
         Lexer {
-            input: input.chars().collect(),
+            input,
             pos: 0,
             line: 1,
             column: 1,
@@ -218,20 +218,11 @@ impl Lexer {
     }
 
     fn current(&self) -> Option<char> {
-        if self.pos < self.input.len() {
-            Some(self.input[self.pos])
-        } else {
-            None
-        }
+        self.input[self.pos..].chars().next()
     }
 
     fn peek(&self, offset: usize) -> Option<char> {
-        let pos = self.pos + offset;
-        if pos < self.input.len() {
-            Some(self.input[pos])
-        } else {
-            None
-        }
+        self.input[self.pos..].chars().nth(offset)
     }
 
     fn advance(&mut self) {
@@ -242,8 +233,9 @@ impl Lexer {
             } else {
                 self.column += 1;
             }
+            // UTF-8のバイト長分だけposを進める
+            self.pos += ch.len_utf8();
         }
-        self.pos += 1;
     }
 
     fn skip_whitespace(&mut self) {
@@ -866,15 +858,15 @@ mod tests {
         let mut lexer = Lexer::new("foo bar+ baz?");
         assert_eq!(
             lexer.next_token().unwrap().token,
-            Token::Symbol("foo".to_string())
+            Token::Symbol("foo".into())
         );
         assert_eq!(
             lexer.next_token().unwrap().token,
-            Token::Symbol("bar+".to_string())
+            Token::Symbol("bar+".into())
         );
         assert_eq!(
             lexer.next_token().unwrap().token,
-            Token::Symbol("baz?".to_string())
+            Token::Symbol("baz?".into())
         );
     }
 
@@ -883,11 +875,11 @@ mod tests {
         let mut lexer = Lexer::new(":name :age");
         assert_eq!(
             lexer.next_token().unwrap().token,
-            Token::Keyword("name".to_string())
+            Token::Keyword("name".into())
         );
         assert_eq!(
             lexer.next_token().unwrap().token,
-            Token::Keyword("age".to_string())
+            Token::Keyword("age".into())
         );
     }
 
@@ -903,10 +895,7 @@ mod tests {
     fn test_parens() {
         let mut lexer = Lexer::new("(+ 1 2)");
         assert_eq!(lexer.next_token().unwrap().token, Token::LParen);
-        assert_eq!(
-            lexer.next_token().unwrap().token,
-            Token::Symbol("+".to_string())
-        );
+        assert_eq!(lexer.next_token().unwrap().token, Token::Symbol("+".into()));
         assert_eq!(lexer.next_token().unwrap().token, Token::Integer(1));
         assert_eq!(lexer.next_token().unwrap().token, Token::Integer(2));
         assert_eq!(lexer.next_token().unwrap().token, Token::RParen);
