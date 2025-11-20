@@ -32,7 +32,7 @@ impl Evaluator {
         env: Arc<RwLock<Env>>,
     ) -> Option<Result<Value, String>> {
         if let Expr::Symbol { name, .. } = func {
-            match name.as_str() {
+            match &**name {
                 "_railway-pipe" => Some(self.eval_railway_pipe(args, env)),
                 "and" => Some(self.eval_and(args, env)),
                 "apply" => Some(self.eval_apply(args, env)),
@@ -208,7 +208,7 @@ impl Evaluator {
     ) -> Result<(), String> {
         match param {
             Pattern::Var(name) => {
-                env.set(name.clone(), value.clone());
+                env.set(name.to_string(), value.clone());
                 Ok(())
             }
             Pattern::List(params, rest_param) | Pattern::Vector(params, rest_param) => {
@@ -279,7 +279,7 @@ impl Evaluator {
 
                 // :as 変数があればマップ全体をバインド
                 if let Some(var) = as_var {
-                    env.set(var.clone(), value.clone());
+                    env.set(var.to_string(), value.clone());
                 }
 
                 Ok(())
@@ -288,7 +288,7 @@ impl Evaluator {
                 // 内側のパターンをバインド
                 self.bind_fn_param(inner, value, env)?;
                 // 値全体も変数にバインド
-                env.set(var.clone(), value.clone());
+                env.set(var.to_string(), value.clone());
                 Ok(())
             }
             // match専用パターン（fn/letでは使用不可）
@@ -419,7 +419,7 @@ impl Evaluator {
 
                     if let crate::value::Pattern::Var(name) = variadic_param {
                         new_env.set(
-                            name.clone(),
+                            name.to_string(),
                             Value::List(remaining_args.into_iter().collect()),
                         );
                     } else {

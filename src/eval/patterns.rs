@@ -52,7 +52,7 @@ impl Evaluator {
                 if let Some(guard) = &arm.guard {
                     let mut guard_env = Env::with_parent(Arc::clone(&env));
                     for (name, val) in &bindings {
-                        guard_env.set(name.clone(), val.clone());
+                        guard_env.set(name.to_string(), val.clone());
                     }
                     let guard_val = self.eval_with_env(guard, Arc::new(RwLock::new(guard_env)))?;
                     if !guard_val.is_truthy() {
@@ -63,7 +63,7 @@ impl Evaluator {
                 // 変換を適用
                 let mut match_env = Env::with_parent(Arc::clone(&env));
                 for (name, val) in bindings {
-                    match_env.set(name.clone(), val.clone());
+                    match_env.set(name.to_string(), val.clone());
                 }
 
                 let match_env_rc = Arc::new(RwLock::new(match_env));
@@ -137,9 +137,9 @@ impl Evaluator {
         match pattern {
             Pattern::Transform(var, transform) => {
                 // 変換情報を記録（後でapply_transformで適用）
-                transforms.push((var.clone(), (**transform).clone(), value.clone()));
+                transforms.push((var.to_string(), (**transform).clone(), value.clone()));
                 // bindingsには元の値を設定（ガード評価で使用）
-                bindings.push((var.clone(), value.clone()));
+                bindings.push((var.to_string(), value.clone()));
                 Ok(true)
             }
             Pattern::Vector(patterns, rest) => {
@@ -225,7 +225,7 @@ impl Evaluator {
                     }
                     // :asパターンの処理
                     if let Some(var) = as_var {
-                        bindings.push((var.clone(), value.clone()));
+                        bindings.push((var.to_string(), value.clone()));
                     }
                     Ok(true)
                 } else {
@@ -235,7 +235,7 @@ impl Evaluator {
             Pattern::As(inner_pattern, var) => {
                 // ネストされたTransformパターンを扱うため、再帰的に処理
                 if self.match_pattern_with_transforms(inner_pattern, value, bindings, transforms)? {
-                    bindings.push((var.clone(), value.clone()));
+                    bindings.push((var.to_string(), value.clone()));
                     Ok(true)
                 } else {
                     Ok(false)
@@ -310,9 +310,9 @@ impl Evaluator {
                 Ok(matches!(value, Value::Float(vf) if (vf - f).abs() < f64::EPSILON))
             }
             Pattern::String(s) => Ok(matches!(value, Value::String(vs) if vs == s)),
-            Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if &**vk == k)),
+            Pattern::Keyword(k) => Ok(matches!(value, Value::Keyword(vk) if **vk == **k)),
             Pattern::Var(name) => {
-                bindings.push((name.clone(), value.clone()));
+                bindings.push((name.to_string(), value.clone()));
                 Ok(true)
             }
             Pattern::Vector(patterns, rest) => {
@@ -388,7 +388,7 @@ impl Evaluator {
                     }
                     // :asパターンの処理
                     if let Some(var) = as_var {
-                        bindings.push((var.clone(), value.clone()));
+                        bindings.push((var.to_string(), value.clone()));
                     }
                     Ok(true)
                 } else {
@@ -399,7 +399,7 @@ impl Evaluator {
                 // 内側のパターンをマッチ
                 if self.match_pattern(inner_pattern, value, bindings)? {
                     // マッチ成功したら、値全体も変数に束縛
-                    bindings.push((var.clone(), value.clone()));
+                    bindings.push((var.to_string(), value.clone()));
                     Ok(true)
                 } else {
                     Ok(false)

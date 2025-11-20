@@ -365,9 +365,9 @@ impl Evaluator {
                 let val = self.eval_with_env(value, Arc::clone(&env))?;
                 // 現在の環境に定義（プライベートフラグに応じて）
                 if *is_private {
-                    env.write().set_private(name.clone(), val.clone());
+                    env.write().set_private(name.to_string(), val.clone());
                 } else {
-                    env.write().set(name.clone(), val.clone());
+                    env.write().set(name.to_string(), val.clone());
                 }
                 Ok(val)
             }
@@ -462,7 +462,7 @@ impl Evaluator {
                         break;
                     }
                     {
-                        env.write().set(binding.clone(), val);
+                        env.write().set(binding.to_string(), val);
                     }
                     self.eval_do(body, Arc::clone(&env))?;
                 }
@@ -486,7 +486,7 @@ impl Evaluator {
                     }
 
                     {
-                        env.write().set(binding.clone(), val);
+                        env.write().set(binding.to_string(), val);
                     }
                     self.eval_do(body, Arc::clone(&env))?;
                 }

@@ -182,15 +182,15 @@ impl Evaluator {
                 }
             }
             Pattern::Map(pairs, as_var) => {
-                let mut map = HashMap::new();
+                let mut map: HashMap<String, Value> = HashMap::new();
                 for (key, pattern) in pairs {
-                    map.insert(key.clone(), self.fn_param_to_value(pattern));
+                    map.insert(key.to_string(), self.fn_param_to_value(pattern));
                 }
                 // :as がある場合は追加
                 if let Some(var) = as_var {
                     map.insert(
                         "as".to_string(),
-                        Value::Symbol(crate::intern::intern_symbol(var)),
+                        Value::Symbol(crate::intern::intern_symbol(var.as_ref())),
                     );
                 }
                 Value::Map(map.into())

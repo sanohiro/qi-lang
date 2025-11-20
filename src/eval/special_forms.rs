@@ -116,14 +116,14 @@ impl Evaluator {
     pub(super) fn eval_mac(
         &self,
         name: &str,
-        params: &[String],
+        params: &[std::sync::Arc<str>],
         is_variadic: bool,
         body: &Expr,
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         let mac = Macro {
             name: name.to_string(),
-            params: params.to_vec(),
+            params: params.iter().map(|s| s.to_string()).collect(),
             body: body.clone(),
             env: Arc::clone(&env),
             is_variadic,
@@ -136,7 +136,7 @@ impl Evaluator {
     /// loopを評価
     pub(super) fn eval_loop(
         &self,
-        bindings: &[(String, Expr)],
+        bindings: &[(std::sync::Arc<str>, Expr)],
         body: &Expr,
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
@@ -152,7 +152,7 @@ impl Evaluator {
 
         // 環境に設定
         for ((name, _), value) in bindings.iter().zip(current_values.iter()) {
-            loop_env.set(name.clone(), value.clone());
+            loop_env.set(name.to_string(), value.clone());
         }
 
         let loop_env_rc = Arc::new(RwLock::new(loop_env));
@@ -180,7 +180,7 @@ impl Evaluator {
                         }
 
                         for ((name, _), value) in bindings.iter().zip(new_values.iter()) {
-                            loop_env_rc.write().set(name.clone(), value.clone());
+                            loop_env_rc.write().set(name.to_string(), value.clone());
                         }
                     } else {
                         return Err(msg(MsgKey::RecurNotFound).to_string());
@@ -590,7 +590,7 @@ impl Evaluator {
             // 固定引数を設定
             for (param, arg) in mac.params.iter().zip(args.iter()).take(fixed_count) {
                 let arg_val = self.expr_to_value(arg)?;
-                new_env.set(param.clone(), arg_val);
+                new_env.set(param.to_string(), arg_val);
             }
 
             // 残りを可変引数として設定
@@ -598,7 +598,10 @@ impl Evaluator {
                 .iter()
                 .map(|e| self.expr_to_value(e))
                 .collect::<Result<Vec<_>, _>>()?;
-            new_env.set(mac.params[fixed_count].clone(), Value::List(rest.into()));
+            new_env.set(
+                mac.params[fixed_count].to_string(),
+                Value::List(rest.into()),
+            );
         } else {
             // 通常の引数
             if mac.params.len() != args.len() {
@@ -614,7 +617,7 @@ impl Evaluator {
             for (param, arg) in mac.params.iter().zip(args.iter()) {
                 // 引数をそのまま環境に（評価しない）
                 let arg_val = self.expr_to_value(arg)?;
-                new_env.set(param.clone(), arg_val);
+                new_env.set(param.to_string(), arg_val);
             }
         }
 
@@ -649,11 +652,11 @@ impl Evaluator {
                 span: Expr::dummy_span(),
             }),
             Value::Symbol(s) => Ok(Expr::Symbol {
-                name: s.to_string(),
+                name: s.clone(),
                 span: Expr::dummy_span(),
             }),
             Value::Keyword(k) => Ok(Expr::Keyword {
-                name: k.to_string(),
+                name: k.clone(),
                 span: Expr::dummy_span(),
             }),
             Value::List(items) if items.is_empty() => Ok(Expr::List {
@@ -708,7 +711,7 @@ impl Evaluator {
                                     }
                                     // 値はitems[3]
                                     return Ok(Expr::Def {
-                                        name: name.to_string(),
+                                        name: name.clone(),
                                         value: Box::new(self.value_to_expr(&items[3])?),
                                         is_private: false,
                                         span: Expr::dummy_span(),
@@ -716,7 +719,7 @@ impl Evaluator {
                                 } else {
                                     // 3要素の場合: (def name value)
                                     return Ok(Expr::Def {
-                                        name: name.to_string(),
+                                        name: name.clone(),
                                         value: Box::new(self.value_to_expr(&items[2])?),
                                         is_private: false,
                                         span: Expr::dummy_span(),

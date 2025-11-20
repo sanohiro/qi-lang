@@ -71,8 +71,8 @@ pub enum Token {
     Float(f64),
     String(String),
     FString(Vec<FStringPart>), // f"hello {name}"
-    Symbol(String),
-    Keyword(String),
+    Symbol(std::sync::Arc<str>),
+    Keyword(std::sync::Arc<str>),
     True,
     False,
     Nil,
@@ -112,7 +112,7 @@ impl Token {
             Token::Float(f) => f.to_string(),
             Token::String(s) => format!("\"{}\"", s),
             Token::FString(_) => "f-string".to_string(),
-            Token::Symbol(s) => s.clone(),
+            Token::Symbol(s) => s.to_string(),
             Token::Keyword(k) => format!(":{}", k),
             Token::True => "true".to_string(),
             Token::False => "false".to_string(),
@@ -655,7 +655,10 @@ impl Lexer {
             if result.is_empty() {
                 return Err(self.error(MsgKey::EmptyKeyword, &[]));
             }
-            return Ok(LocatedToken::new(Token::Keyword(result), start_span));
+            return Ok(LocatedToken::new(
+                Token::Keyword(crate::intern::intern_keyword(&result)),
+                start_span,
+            ));
         }
 
         // 特殊なシンボルのチェック
@@ -663,7 +666,7 @@ impl Lexer {
             "nil" => Token::Nil,
             "true" => Token::True,
             "false" => Token::False,
-            _ => Token::Symbol(result),
+            _ => Token::Symbol(crate::intern::intern_symbol(&result)),
         };
         Ok(LocatedToken::new(token, start_span))
     }

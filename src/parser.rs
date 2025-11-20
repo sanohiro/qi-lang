@@ -122,9 +122,9 @@ impl Parser {
     }
 
     /// 現在のトークンがSymbolの場合、所有権を取得して前進
-    /// クローンを避けるための最適化
+    /// インターン化されたArc<str>を返す
     #[inline]
-    fn take_symbol(&mut self) -> Option<String> {
+    fn take_symbol(&mut self) -> Option<std::sync::Arc<str>> {
         if self.pos < self.tokens.len() {
             let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
             self.pos += 1;
@@ -138,9 +138,9 @@ impl Parser {
     }
 
     /// 現在のトークンがKeywordの場合、所有権を取得して前進
-    /// クローンを避けるための最適化
+    /// インターン化されたArc<str>を返す
     #[inline]
-    fn take_keyword(&mut self) -> Option<String> {
+    fn take_keyword(&mut self) -> Option<std::sync::Arc<str>> {
         if self.pos < self.tokens.len() {
             let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
             self.pos += 1;
@@ -229,7 +229,7 @@ impl Parser {
                     // x |>? f を (_railway-pipe f x) に変換
                     expr = Expr::Call {
                         func: Box::new(Expr::Symbol {
-                            name: "_railway-pipe".to_string(),
+                            name: crate::intern::intern_symbol("_railway-pipe"),
                             span: pipe_span,
                         }),
                         args: vec![right, expr],
@@ -244,7 +244,7 @@ impl Parser {
                     // x ||> f を (pmap f x) に変換
                     expr = Expr::Call {
                         func: Box::new(Expr::Symbol {
-                            name: "pmap".to_string(),
+                            name: crate::intern::intern_symbol("pmap"),
                             span: pipe_span,
                         }),
                         args: vec![right, expr],
@@ -378,8 +378,8 @@ impl Parser {
         // 特殊形式のチェック
         if let Some(Token::Symbol(name)) = self.current() {
             // HashSetで特殊形式かチェック（高速）
-            if SPECIAL_FORMS.contains(name.as_str()) {
-                let name_str = name.as_str();
+            if SPECIAL_FORMS.contains(&**name) {
+                let name_str = &**name;
                 return match name_str {
                     "def" => self.parse_def(),
                     "defn" => self.parse_defn(),
@@ -454,7 +454,7 @@ impl Parser {
                         // x |>? f を (_railway-pipe f x) に変換
                         expr = Expr::Call {
                             func: Box::new(Expr::Symbol {
-                                name: "_railway-pipe".to_string(),
+                                name: crate::intern::intern_symbol("_railway-pipe"),
                                 span: pipe_span,
                             }),
                             args: vec![right, expr],
@@ -469,7 +469,7 @@ impl Parser {
                         // x ||> f を (pmap f x) に変換
                         expr = Expr::Call {
                             func: Box::new(Expr::Symbol {
-                                name: "pmap".to_string(),
+                                name: crate::intern::intern_symbol("pmap"),
                                 span: pipe_span,
                             }),
                             args: vec![right, expr],
@@ -520,7 +520,7 @@ impl Parser {
                 // (go lambda) を作成
                 expr = Expr::Call {
                     func: Box::new(Expr::Symbol {
-                        name: "go".to_string(),
+                        name: crate::intern::intern_symbol("go"),
                         span: start_span,
                     }),
                     args: vec![lambda],
@@ -626,7 +626,7 @@ impl Parser {
         if let Some(doc) = doc_expr {
             let doc_key = format!("{}{}", crate::eval::DOC_PREFIX, name);
             let doc_def = Expr::Def {
-                name: doc_key,
+                name: doc_key.into(),
                 value: Box::new(doc),
                 is_private,
                 span: start_span,
@@ -709,7 +709,7 @@ impl Parser {
 
         while self.current() != Some(&Token::RBracket) {
             if let Some(Token::Symbol(s)) = self.current() {
-                if s == "&" {
+                if &**s == "&" {
                     self.advance();
                     is_variadic = true;
                     if let Some(Token::Symbol(_)) = self.current() {
@@ -771,7 +771,7 @@ impl Parser {
                 }
             } else if let Some(Token::Symbol(s)) = self.current() {
                 // & rest パターンのチェック
-                if s == "&" {
+                if &**s == "&" {
                     self.advance(); // &
                                     // 次は変数名でなければならない
                     match self.current() {
@@ -817,7 +817,7 @@ impl Parser {
         while self.current() != Some(&Token::RBrace) {
             // :as チェック
             if let Some(Token::Keyword(k)) = self.current() {
-                if k == "as" {
+                if &**k == "as" {
                     self.advance(); // :as
                                     // 次は変数名
                     match self.current() {
@@ -988,7 +988,7 @@ impl Parser {
         let expr = self.parse_expr()?;
         Ok(Expr::Call {
             func: Box::new(Expr::Symbol {
-                name: "quote".to_string(),
+                name: crate::intern::intern_symbol("quote"),
                 span: start_span,
             }),
             args: vec![expr],
@@ -1010,7 +1010,7 @@ impl Parser {
             let pattern = self.parse_pattern()?;
 
             // ガード条件のチェック
-            let guard = if matches!(self.current(), Some(Token::Symbol(s)) if s == "when") {
+            let guard = if matches!(self.current(), Some(Token::Symbol(s)) if &**s == "when") {
                 self.advance();
                 Some(Box::new(self.parse_expr()?))
             } else {
@@ -1270,7 +1270,7 @@ impl Parser {
 
         while self.current() != Some(&Token::RBracket) {
             match self.current() {
-                Some(Token::Symbol(s)) if s == "&" => {
+                Some(Token::Symbol(s)) if &**s == "&" => {
                     is_variadic = true;
                     self.advance();
                     // 次のシンボルが可変引数名
@@ -1316,7 +1316,7 @@ impl Parser {
             // (flow |> fn1 |> fn2) → (fn [__flow_x] (__flow_x |> fn1 |> fn2))
             let var_name = "__flow_x".to_string();
             let expr = Expr::Symbol {
-                name: var_name.clone(),
+                name: var_name.clone().into(),
                 span: start_span,
             };
 
@@ -1327,7 +1327,7 @@ impl Parser {
 
             // ラムダでラップ
             Ok(Expr::Fn {
-                params: vec![crate::value::Pattern::Var(var_name)],
+                params: vec![crate::value::Pattern::Var(var_name.into())],
                 body: Box::new(expr),
                 is_variadic: false,
                 span: start_span,
@@ -1391,7 +1391,7 @@ impl Parser {
                     let right = self.parse_primary()?;
                     expr = Expr::Call {
                         func: Box::new(Expr::Symbol {
-                            name: "_railway-pipe".to_string(),
+                            name: crate::intern::intern_symbol("_railway-pipe"),
                             span: pipe_span,
                         }),
                         args: vec![right, expr],
@@ -1404,7 +1404,7 @@ impl Parser {
                     let right = self.parse_primary()?;
                     expr = Expr::Call {
                         func: Box::new(Expr::Symbol {
-                            name: "pmap".to_string(),
+                            name: crate::intern::intern_symbol("pmap"),
                             span: pipe_span,
                         }),
                         args: vec![right, expr],
@@ -1457,7 +1457,7 @@ impl Parser {
         let expr = self.parse_primary()?;
         Ok(Expr::Call {
             func: Box::new(Expr::Symbol {
-                name: "deref".to_string(),
+                name: crate::intern::intern_symbol("deref"),
                 span: start_span,
             }),
             args: vec![expr],
@@ -1486,7 +1486,7 @@ impl Parser {
 
     fn parse_single_pattern(&mut self) -> Result<Pattern, String> {
         match self.current() {
-            Some(Token::Symbol(s)) if s == "_" => {
+            Some(Token::Symbol(s)) if &**s == "_" => {
                 self.advance();
                 Ok(Pattern::Wildcard)
             }
@@ -1555,7 +1555,7 @@ impl Parser {
                     }
                     _ => return Err(self.error_with_line(MsgKey::RestNeedsVar, &[])),
                 }
-            } else if matches!(self.current(), Some(Token::Symbol(s)) if s == "&") {
+            } else if matches!(self.current(), Some(Token::Symbol(s)) if &**s == "&") {
                 // & rest パターン
                 self.advance(); // &
                                 // 次は変数名でなければならない
@@ -1594,7 +1594,7 @@ impl Parser {
         while self.current() != Some(&Token::RBrace) {
             // :as チェック
             if let Some(Token::Keyword(k)) = self.current() {
-                if k == "as" {
+                if &**k == "as" {
                     self.advance(); // :as
                                     // 次は変数名
                     match self.current() {
@@ -1652,14 +1652,14 @@ impl Parser {
 
         let name = match self.current() {
             Some(Token::Symbol(_)) => self.take_symbol().expect("token should be a symbol"),
-            Some(Token::String(_)) => self.take_string().expect("token should be a string"),
+            Some(Token::String(_)) => self.take_string().expect("token should be a string").into(),
             _ => return Err(self.error_with_line(MsgKey::ModuleNeedsName, &[])),
         };
 
         self.expect(Token::RParen)?;
 
         Ok(Expr::Module {
-            name,
+            name: name.to_string(),
             span: start_span,
         })
     }
@@ -1674,7 +1674,11 @@ impl Parser {
         while self.current() != Some(&Token::RParen) {
             match self.current() {
                 Some(Token::Symbol(_)) => {
-                    symbols.push(self.take_symbol().expect("token should be a symbol"));
+                    symbols.push(
+                        self.take_symbol()
+                            .expect("token should be a symbol")
+                            .to_string(),
+                    );
                 }
                 _ => return Err(self.error_with_line(MsgKey::ExportNeedsSymbols, &[])),
             }
@@ -1696,13 +1700,13 @@ impl Parser {
         // モジュール名（シンボルまたは文字列）
         let module = match self.current() {
             Some(Token::Symbol(_)) => self.take_symbol().expect("token should be a symbol"),
-            Some(Token::String(_)) => self.take_string().expect("token should be a string"),
+            Some(Token::String(_)) => self.take_string().expect("token should be a string").into(),
             _ => return Err(self.error_with_line(MsgKey::UseNeedsModuleName, &[])),
         };
 
         // モード指定
         let mode = match self.current() {
-            Some(Token::Keyword(k)) if k == "only" => {
+            Some(Token::Keyword(k)) if &**k == "only" => {
                 self.advance();
                 // [sym1 sym2 ...]
                 self.expect(Token::LBracket)?;
@@ -1711,7 +1715,11 @@ impl Parser {
                 while self.current() != Some(&Token::RBracket) {
                     match self.current() {
                         Some(Token::Symbol(_)) => {
-                            symbols.push(self.take_symbol().expect("token should be a symbol"));
+                            symbols.push(
+                                self.take_symbol()
+                                    .expect("token should be a symbol")
+                                    .to_string(),
+                            );
                         }
                         _ => {
                             return Err(self.error_with_line(MsgKey::ExpectedSymbolInOnlyList, &[]))
@@ -1721,17 +1729,17 @@ impl Parser {
                 self.expect(Token::RBracket)?;
                 UseMode::Only(symbols)
             }
-            Some(Token::Keyword(k)) if k == "as" => {
+            Some(Token::Keyword(k)) if &**k == "as" => {
                 self.advance();
                 match self.current() {
                     Some(Token::Symbol(_)) => {
                         let alias = self.take_symbol().expect("token should be a symbol");
-                        UseMode::As(alias)
+                        UseMode::As(alias.to_string())
                     }
                     _ => return Err(self.error_with_line(MsgKey::AsNeedsAlias, &[])),
                 }
             }
-            Some(Token::Keyword(k)) if k == "all" => {
+            Some(Token::Keyword(k)) if &**k == "all" => {
                 self.advance();
                 UseMode::All
             }
@@ -1741,7 +1749,7 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Use {
-            module,
+            module: module.to_string(),
             mode,
             span: start_span,
         })
@@ -1750,7 +1758,7 @@ impl Parser {
     /// 式の中に_プレースホルダーがあるかチェック
     fn has_placeholder(expr: &Expr) -> bool {
         match expr {
-            Expr::Symbol { name, .. } if name == "_" => true,
+            Expr::Symbol { name, .. } if &**name == "_" => true,
             Expr::Call { args, .. } => args.iter().any(Self::has_placeholder),
             Expr::Vector { items, .. } => items.iter().any(Self::has_placeholder),
             Expr::List { items, .. } => items.iter().any(Self::has_placeholder),
@@ -1796,7 +1804,7 @@ impl Parser {
     /// 式の中の_プレースホルダーを値で置き換え
     fn replace_placeholder(expr: Expr, value: Expr) -> Expr {
         match expr {
-            Expr::Symbol { name, .. } if name == "_" => value,
+            Expr::Symbol { name, .. } if name.as_ref() == "_" => value,
             Expr::Call { func, args, span } => {
                 let new_args = args
                     .into_iter()
@@ -2090,7 +2098,10 @@ mod tests {
         match parser.parse().unwrap() {
             Expr::Fn { params, .. } => {
                 assert_eq!(params.len(), 2);
-                assert_eq!(params[0], crate::value::Pattern::Var("x".to_string()));
+                assert_eq!(
+                    params[0],
+                    crate::value::Pattern::Var(crate::intern::intern_symbol("x"))
+                );
                 assert_eq!(params[1], crate::value::Pattern::Var("y".to_string()));
             }
             _ => panic!("Expected Fn"),

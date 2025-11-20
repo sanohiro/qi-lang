@@ -415,7 +415,8 @@ impl Module {
             }
             Some(list) => {
                 // exportリストがある = 明示的export
-                list.contains(&name.to_string())
+                // to_string() を避けて直接比較（ヒープ確保削減）
+                list.iter().any(|s| s == name)
             }
         }
     }
@@ -660,11 +661,11 @@ pub enum Expr {
         span: Span,
     },
     Symbol {
-        name: String,
+        name: std::sync::Arc<str>,
         span: Span,
     },
     Keyword {
-        name: String,
+        name: std::sync::Arc<str>,
         span: Span,
     },
 
@@ -684,7 +685,7 @@ pub enum Expr {
 
     // 特殊形式
     Def {
-        name: String,
+        name: std::sync::Arc<str>,
         value: Box<Expr>,
         is_private: bool,
         span: Span,
@@ -724,7 +725,7 @@ pub enum Expr {
         span: Span,
     },
     Loop {
-        bindings: Vec<(String, Expr)>,
+        bindings: Vec<(std::sync::Arc<str>, Expr)>,
         body: Box<Expr>,
         span: Span,
     },
@@ -748,13 +749,13 @@ pub enum Expr {
         span: Span,
     },
     WhileSome {
-        binding: String,
+        binding: std::sync::Arc<str>,
         expr: Box<Expr>,
         body: Vec<Expr>,
         span: Span,
     },
     UntilError {
-        binding: String,
+        binding: std::sync::Arc<str>,
         expr: Box<Expr>,
         body: Vec<Expr>,
         span: Span,
@@ -762,8 +763,8 @@ pub enum Expr {
 
     // マクロ
     Mac {
-        name: String,
-        params: Vec<String>,
+        name: std::sync::Arc<str>,
+        params: Vec<std::sync::Arc<str>>,
         is_variadic: bool,
         body: Box<Expr>,
         span: Span,
@@ -853,8 +854,9 @@ impl Expr {
 
     /// シンボルを簡単に作成（ダミーSpan付き）
     pub fn symbol_dummy(name: impl Into<String>) -> Self {
+        let name_str = name.into();
         Expr::Symbol {
-            name: name.into(),
+            name: crate::intern::intern_symbol(&name_str),
             span: Self::dummy_span(),
         }
     }
@@ -903,10 +905,10 @@ pub enum Pattern {
     /// 文字列リテラル - match専用
     String(String),
     /// キーワードリテラル - match専用
-    Keyword(String),
+    Keyword(std::sync::Arc<str>),
 
     /// 変換 var => expr (束縛後に変換を適用) - match専用
-    Transform(String, Box<Expr>),
+    Transform(std::sync::Arc<str>, Box<Expr>),
 
     /// Orパターン (p1 | p2 | p3) - match専用
     Or(Vec<Pattern>),
@@ -915,7 +917,7 @@ pub enum Pattern {
     // 共通機能（let/fn/matchすべてで使用可能）
     // ========================================
     /// 変数（バインディング）
-    Var(String),
+    Var(std::sync::Arc<str>),
 
     /// リストパターン (x & rest)
     /// 例: (let [[x & rest] '(1 2 3)] ...) => x=1, rest='(2 3)
@@ -929,11 +931,14 @@ pub enum Pattern {
     /// マップパターン {:key val} or {:key val :as m}
     /// 例: (let [{:x a :y b :as m} {:x 10 :y 20}] ...) => a=10, b=20, m={:x 10 :y 20}
     /// FnParamから統合：:asパラメータ追加
-    Map(Vec<(String, Pattern)>, Option<String>), // (キー・パターン対, :as変数)
+    Map(
+        Vec<(std::sync::Arc<str>, Pattern)>,
+        Option<std::sync::Arc<str>>,
+    ), // (キー・パターン対, :as変数)
 
     /// As束縛 pattern :as var
     /// 例: (match [1 2] [x y :as all] -> all) => [1 2]
-    As(Box<Pattern>, String),
+    As(Box<Pattern>, std::sync::Arc<str>),
 }
 
 impl fmt::Display for Value {
