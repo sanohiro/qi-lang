@@ -565,8 +565,10 @@ impl Env {
     }
 
     /// ローカルバインディングのみを取得（親環境にあるものを除外）
-    pub fn local_bindings(&self) -> Vec<(Arc<str>, Binding)> {
-        let mut result = Vec::new();
+    ///
+    /// SmallVec を使用してスタック上での処理を最適化（通常8個以下）
+    pub fn local_bindings(&self) -> smallvec::SmallVec<[(Arc<str>, Binding); 8]> {
+        let mut result = smallvec::SmallVec::new();
         for (name, binding) in &self.bindings {
             // 親環境にも存在するキーはスキップ（グローバル変数/関数）
             let is_local = if let Some(ref parent) = self.parent {
