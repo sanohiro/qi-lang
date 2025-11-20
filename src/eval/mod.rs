@@ -51,7 +51,6 @@ pub mod hof_keys {
 // エラーヘルパー関数
 // ========================================
 
-#[derive(Clone)]
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
     defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
@@ -62,6 +61,24 @@ pub struct Evaluator {
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
     source_name: Arc<RwLock<Option<String>>>,           // ソースファイル名または入力名
     source_code: Arc<RwLock<Option<String>>>,           // ソースコード全体
+}
+
+impl Clone for Evaluator {
+    fn clone(&self) -> Self {
+        Self {
+            // グローバル状態は共有
+            global_env: Arc::clone(&self.global_env),
+            modules: Arc::clone(&self.modules),
+
+            // 評価コンテキストは独立（新しいインスタンスを作成）
+            defer_stack: Arc::new(RwLock::new(SmallVec::new())),
+            loading_modules: Arc::new(RwLock::new(Vec::new())),
+            current_module: Arc::new(RwLock::new(None)),
+            call_stack: Arc::new(RwLock::new(Vec::new())),
+            source_name: Arc::new(RwLock::new(None)),
+            source_code: Arc::new(RwLock::new(None)),
+        }
+    }
 }
 
 impl Default for Evaluator {
