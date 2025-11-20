@@ -345,9 +345,9 @@ impl PartialEq for Function {
 /// マクロの定義
 #[derive(Debug, Clone)]
 pub struct Macro {
-    pub name: String,
-    pub params: Vec<String>,
-    pub body: Expr,
+    pub name: Arc<str>,
+    pub params: Vec<Arc<str>>,
+    pub body: Arc<Expr>,
     pub env: Arc<RwLock<Env>>,
     pub is_variadic: bool,
 }

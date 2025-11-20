@@ -1,5 +1,5 @@
 use crate::builtins;
-use crate::constants::keywords::{ERROR_KEY, OK_KEY};
+use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
 use crate::value::{Env, Expr, Function, Module, NativeFunc, Value};
@@ -545,7 +545,7 @@ impl Evaluator {
 
                 // モジュールを登録または更新
                 let module = Module {
-                    name: module_name.clone().into(),
+                    name: module_name.clone(),
                     file_path: None,
                     env: Arc::clone(&env),
                     exports: Some(symbols.iter().cloned().collect()), // VecからHashSetに変換

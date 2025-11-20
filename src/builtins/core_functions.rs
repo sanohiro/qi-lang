@@ -26,7 +26,9 @@ pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
         params: vec![crate::value::Pattern::Var(crate::intern::intern_symbol(
             "_",
         ))],
-        body: Arc::new(crate::value::Expr::symbol_dummy(crate::eval::hof_keys::CONSTANTLY_VALUE)),
+        body: Arc::new(crate::value::Expr::symbol_dummy(
+            crate::eval::hof_keys::CONSTANTLY_VALUE,
+        )),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::CONSTANTLY_VALUE, value);
@@ -53,7 +55,9 @@ pub fn native_partial(args: &[Value]) -> Result<Value, String> {
         params: vec![crate::value::Pattern::Var(crate::intern::intern_symbol(
             "&rest",
         ))],
-        body: Arc::new(crate::value::Expr::symbol_dummy(crate::eval::hof_keys::PARTIAL_PLACEHOLDER)),
+        body: Arc::new(crate::value::Expr::symbol_dummy(
+            crate::eval::hof_keys::PARTIAL_PLACEHOLDER,
+        )),
         env: {
             let mut env = crate::value::Env::new();
             env.set(crate::eval::hof_keys::PARTIAL_FUNC, func);

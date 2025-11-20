@@ -3,7 +3,6 @@
 //! このモジュールは `auth-jwt` feature でコンパイルされます。
 
 use crate::builtins::util::to_map_key;
-use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};

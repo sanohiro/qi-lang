@@ -144,9 +144,9 @@ impl Evaluator {
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
         let mac = Macro {
-            name: name.to_string(),
-            params: params.iter().map(|s| s.to_string()).collect(),
-            body: body.clone(),
+            name: Arc::from(name),
+            params: params.to_vec(),
+            body: Arc::new(body.clone()),
             env: Arc::clone(&env),
             is_variadic,
         };
