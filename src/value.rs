@@ -386,16 +386,16 @@ impl fmt::Debug for NativeFunc {
 /// モジュール
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub name: String,
+    pub name: Arc<str>,
     pub file_path: Option<String>,
     pub env: Arc<RwLock<Env>>,
     pub exports: Option<crate::HashSet<Arc<str>>>, // Noneの場合は全公開、Some([])の場合は明示的export（O(1)高速検索）
 }
 
 impl Module {
-    pub fn new(name: String, file_path: Option<String>) -> Self {
+    pub fn new(name: impl Into<Arc<str>>, file_path: Option<String>) -> Self {
         Module {
-            name,
+            name: name.into(),
             file_path,
             env: Arc::new(RwLock::new(Env::new())),
             exports: None, // デフォルトは全公開
@@ -784,7 +784,7 @@ pub enum Expr {
 
     // モジュール
     Module {
-        name: String,
+        name: Arc<str>,
         span: Span,
     },
     Export {
@@ -792,7 +792,7 @@ pub enum Expr {
         span: Span,
     },
     Use {
-        module: String,
+        module: Arc<str>,
         mode: UseMode,
         span: Span,
     },

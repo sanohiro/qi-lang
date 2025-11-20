@@ -56,8 +56,8 @@ pub mod hof_keys {
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
     defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
-    modules: Arc<RwLock<HashMap<String, Arc<Module>>>>, // ロード済みモジュール
-    current_module: Arc<RwLock<Option<String>>>,        // 現在評価中のモジュール名
+    modules: Arc<RwLock<HashMap<Arc<str>, Arc<Module>>>>, // ロード済みモジュール（Arc<str>で統一）
+    current_module: Arc<RwLock<Option<Arc<str>>>>,      // 現在評価中のモジュール名
     loading_modules: Arc<RwLock<Vec<Arc<str>>>>,        // 循環参照検出用（Arc<str>で統一）
     #[allow(dead_code)]
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
@@ -545,7 +545,7 @@ impl Evaluator {
 
                 // モジュールを登録または更新
                 let module = Module {
-                    name: module_name.clone(),
+                    name: module_name.clone().into(),
                     file_path: None,
                     env: Arc::clone(&env),
                     exports: Some(symbols.iter().cloned().collect()), // VecからHashSetに変換

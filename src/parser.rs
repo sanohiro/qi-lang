@@ -1659,7 +1659,7 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Module {
-            name: name.to_string(),
+            name,
             span: start_span,
         })
     }
@@ -1741,7 +1741,7 @@ impl Parser {
         self.expect(Token::RParen)?;
 
         Ok(Expr::Use {
-            module: module.to_string(),
+            module,
             mode,
             span: start_span,
         })
@@ -1977,6 +1977,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[test]
     fn test_parse_integer() {
@@ -2105,7 +2106,7 @@ mod tests {
         let mut parser = Parser::new("(module http)").unwrap();
         match parser.parse().unwrap() {
             Expr::Module { name, .. } => {
-                assert_eq!(name, "http");
+                assert_eq!(name, Arc::from("http"));
             }
             _ => panic!("Expected Module"),
         }
@@ -2128,7 +2129,7 @@ mod tests {
         let mut parser = Parser::new("(use http :only [get post])").unwrap();
         match parser.parse().unwrap() {
             Expr::Use { module, mode, .. } => {
-                assert_eq!(module, "http");
+                assert_eq!(module, Arc::from("http"));
                 assert_eq!(mode, UseMode::Only(vec!["get".into(), "post".into()]));
             }
             _ => panic!("Expected Use"),
@@ -2140,7 +2141,7 @@ mod tests {
         let mut parser = Parser::new("(use http :as h)").unwrap();
         match parser.parse().unwrap() {
             Expr::Use { module, mode, .. } => {
-                assert_eq!(module, "http");
+                assert_eq!(module, Arc::from("http"));
                 assert_eq!(mode, UseMode::As("h".into()));
             }
             _ => panic!("Expected Use"),
@@ -2152,7 +2153,7 @@ mod tests {
         let mut parser = Parser::new("(use http :all)").unwrap();
         match parser.parse().unwrap() {
             Expr::Use { module, mode, .. } => {
-                assert_eq!(module, "http");
+                assert_eq!(module, Arc::from("http"));
                 assert_eq!(mode, UseMode::All);
             }
             _ => panic!("Expected Use"),

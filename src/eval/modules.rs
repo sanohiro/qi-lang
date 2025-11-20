@@ -328,17 +328,17 @@ impl Evaluator {
                 m
             } else {
                 // exportがない場合は全公開モジュールとして登録
-                let module_name = self.current_module.read().clone().unwrap_or_else(|| {
+                let module_name: Arc<str> = self.current_module.read().clone().unwrap_or_else(|| {
                     // モジュール名が設定されていない場合はファイル名から取得
                     std::path::Path::new(name)
                         .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or(name)
-                        .to_string()
+                        .into()
                 });
 
                 let module = Arc::new(Module {
-                    name: module_name.clone(),
+                    name: module_name.into(),
                     file_path: found_path,
                     env: module_env.clone(),
                     exports: None, // None = 全公開（defn-以外）
@@ -346,7 +346,7 @@ impl Evaluator {
 
                 self.modules
                     .write()
-                    .insert(name.to_string(), module.clone());
+                    .insert(Arc::from(name), module.clone());
                 module
             }
         };
