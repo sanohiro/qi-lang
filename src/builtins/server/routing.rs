@@ -10,6 +10,10 @@ use super::static_files::serve_static_file;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+use std::sync::LazyLock;
+
+/// グローバルEvaluatorインスタンス（高速化：リクエストごとにclone）
+static GLOBAL_EVALUATOR: LazyLock<Evaluator> = LazyLock::new(Evaluator::new);
 
 // HTTPヘッダー定数
 const HEADER_CACHE_CONTROL: &str = "Cache-Control";
@@ -97,8 +101,8 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
                                     || (pattern_normalized == "/" && !path.is_empty())
                                     || path.starts_with(&format!("{}/", pattern_normalized))
                                 {
-                                    // 静的ファイルハンドラーを実行
-                                    let eval = Evaluator::new();
+                                    // 静的ファイルハンドラーを実行（グローバルEvaluatorをclone）
+                                    let eval = GLOBAL_EVALUATOR.clone();
                                     return apply_middleware(handler, req, &eval);
                                 }
                                 continue;
@@ -120,8 +124,8 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
                                 )),
                             );
 
-                            // ミドルウェアを適用してハンドラーを実行
-                            let eval = Evaluator::new();
+                            // ミドルウェアを適用してハンドラーを実行（グローバルEvaluatorをclone）
+                            let eval = GLOBAL_EVALUATOR.clone();
                             return apply_middleware(handler, &Value::Map(req_with_params), &eval);
                         }
                     }
