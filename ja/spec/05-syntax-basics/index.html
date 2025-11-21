@@ -3309,6 +3309,7 @@
 </span></code></pre></div>
 <h3 id="mac-"><code>mac</code> - マクロ定義<a class="headerlink" href="#mac-" title="Permanent link">&para;</a></h3>
 <p>マクロはコード生成を行う特殊な関数です。quasiquote (<code>`</code>)、unquote (<code>,</code>)、unquote-splice (<code>,@</code>) を使ってコードテンプレートを作成します。</p>
+<p><strong>Qiのマクロは衛生的（hygienic）です</strong>: マクロ定義時のスコープのみを使用し、呼び出し位置のローカル変数は自動的には参照できません。これにより変数捕獲（variable capture）を防ぎ、より安全で予測可能な動作を実現します。</p>
 <h4 id="quasiquote-unquote">Quasiquote / Unquote の基本<a class="headerlink" href="#quasiquote-unquote" title="Permanent link">&para;</a></h4>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>;; quasiquote (`) - テンプレート作成
 </span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>`(+ 1 2)         ;; =&gt; (+ 1 2) リストとして返す

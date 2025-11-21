@@ -3309,6 +3309,7 @@
 </span></code></pre></div>
 <h3 id="mac-macro-definition"><code>mac</code> - Macro Definition<a class="headerlink" href="#mac-macro-definition" title="Permanent link">&para;</a></h3>
 <p>Macros are special functions for code generation. Use quasiquote (<code>`</code>), unquote (<code>,</code>), and unquote-splice (<code>,@</code>) to create code templates.</p>
+<p><strong>Qi macros are hygienic</strong>: They only use the scope at macro definition time and cannot automatically reference local variables at the call site. This prevents variable capture and ensures safer, more predictable behavior.</p>
 <h4 id="quasiquote-unquote-basics">Quasiquote / Unquote Basics<a class="headerlink" href="#quasiquote-unquote-basics" title="Permanent link">&para;</a></h4>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>;; quasiquote (`) - Create template
 </span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>`(+ 1 2)         ;; =&gt; (+ 1 2) Returns as list
