@@ -478,6 +478,17 @@ impl fmt::Debug for NativeFunc {
     }
 }
 
+/// モジュールの状態（ロード中 or ロード完了）
+///
+/// スレッド間の循環参照検出に使用します。
+#[derive(Debug, Clone)]
+pub enum ModuleState {
+    /// ロード中（循環参照検出用）
+    Loading,
+    /// ロード完了
+    Loaded(Arc<Module>),
+}
+
 /// モジュール
 #[derive(Debug, Clone)]
 pub struct Module {

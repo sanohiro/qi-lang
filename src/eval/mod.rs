@@ -54,13 +54,14 @@ pub mod hof_keys {
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
     defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
-    modules: Arc<RwLock<HashMap<Arc<str>, Arc<Module>>>>, // ロード済みモジュール（Arc<str>で統一）
-    current_module: Arc<RwLock<Option<Arc<str>>>>,      // 現在評価中のモジュール名
-    loading_modules: Arc<RwLock<Vec<Arc<str>>>>,        // 循環参照検出用（Arc<str>で統一）
+    modules: Arc<RwLock<HashMap<Arc<str>, Arc<Module>>>>, // ロード済みモジュール（Arc<str>で統一、後方互換性のため残す）
+    module_states: Arc<RwLock<HashMap<Arc<str>, crate::value::ModuleState>>>, // モジュール状態管理（スレッド間の循環検出用）
+    current_module: Arc<RwLock<Option<Arc<str>>>>, // 現在評価中のモジュール名
+    loading_modules: Arc<RwLock<Vec<Arc<str>>>>,   // exportキー用スタック（スレッドローカル）
     #[allow(dead_code)]
     call_stack: Arc<RwLock<Vec<String>>>, // 関数呼び出しスタック（スタックトレース用）
-    source_name: Arc<RwLock<Option<String>>>,           // ソースファイル名または入力名
-    source_code: Arc<RwLock<Option<String>>>,           // ソースコード全体
+    source_name: Arc<RwLock<Option<String>>>,      // ソースファイル名または入力名
+    source_code: Arc<RwLock<Option<String>>>,      // ソースコード全体
 }
 
 impl Clone for Evaluator {
@@ -69,10 +70,11 @@ impl Clone for Evaluator {
             // グローバル状態は共有
             global_env: Arc::clone(&self.global_env),
             modules: Arc::clone(&self.modules),
+            module_states: Arc::clone(&self.module_states), // スレッド間の循環検出用（共有）
 
             // 評価コンテキストは独立（新しいインスタンスを作成）
             defer_stack: Arc::new(RwLock::new(SmallVec::new())),
-            loading_modules: Arc::new(RwLock::new(Vec::new())),
+            loading_modules: Arc::new(RwLock::new(Vec::new())), // exportキー用（独立）
             current_module: Arc::new(RwLock::new(None)),
             call_stack: Arc::new(RwLock::new(Vec::new())),
             source_name: Arc::new(RwLock::new(None)),
@@ -152,6 +154,7 @@ impl Evaluator {
             global_env: env_rc.clone(),
             defer_stack: Arc::new(RwLock::new(SmallVec::new())),
             modules: Arc::new(RwLock::new(HashMap::new())),
+            module_states: Arc::new(RwLock::new(HashMap::new())),
             current_module: Arc::new(RwLock::new(None)),
             loading_modules: Arc::new(RwLock::new(Vec::new())),
             call_stack: Arc::new(RwLock::new(Vec::new())),

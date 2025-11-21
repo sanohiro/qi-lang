@@ -261,29 +261,48 @@ impl Evaluator {
     ///
     /// モジュールをロードしてキャッシュに保存します。
     /// 既にロード済みの場合はキャッシュから返します。
-    /// 循環参照の検出も行います。
+    /// 循環参照の検出も行います（スレッド間でも動作）。
     pub(super) fn load_module(&self, name: &str) -> Result<Arc<Module>, String> {
-        // 既にロード済みならキャッシュから返す
-        if let Some(module) = self.modules.read().get(name) {
-            return Ok(module.clone());
-        }
+        use crate::value::ModuleState;
 
-        // 循環参照チェック
         let name_arc: Arc<str> = Arc::from(name);
+
+        // module_statesで状態確認（スレッド間で共有）
         {
-            let loading = self.loading_modules.read();
-            if loading.iter().any(|m| &**m == name) {
-                // エラーメッセージ用にパスを構築
-                let path = loading
-                    .iter()
-                    .map(|s| s.as_ref())
-                    .collect::<Vec<_>>()
-                    .join(" -> ");
-                return Err(fmt_msg(MsgKey::CircularDependency, &[&path]));
+            let states = self.module_states.read();
+            match states.get(&name_arc) {
+                Some(ModuleState::Loaded(module)) => {
+                    // 既にロード完了している
+                    return Ok(module.clone());
+                }
+                Some(ModuleState::Loading) => {
+                    // 他のスレッドまたは自スレッドがロード中 → 循環参照
+                    // エラーメッセージ用にローカルスタックからパスを構築
+                    let loading = self.loading_modules.read();
+                    let path = loading
+                        .iter()
+                        .map(|s| s.as_ref())
+                        .collect::<Vec<_>>()
+                        .join(" -> ");
+                    let full_path = if path.is_empty() {
+                        name.to_string()
+                    } else {
+                        format!("{} -> {}", path, name)
+                    };
+                    return Err(fmt_msg(MsgKey::CircularDependency, &[&full_path]));
+                }
+                None => {
+                    // まだロードされていない → 続行
+                }
             }
         }
 
-        // ロード中のモジュールリストに追加
+        // ロード開始をマーク（スレッド間で共有）
+        self.module_states
+            .write()
+            .insert(name_arc.clone(), ModuleState::Loading);
+
+        // ロード中のモジュールリストに追加（exportキー用、スレッドローカル）
         self.loading_modules.write().push(name_arc.clone());
 
         // 現在のモジュール名を保存（評価後に復元）
@@ -388,6 +407,20 @@ impl Evaluator {
             );
         }
         *self.current_module.write() = prev_module;
+
+        // module_statesの状態を更新
+        match &result {
+            Ok(module) => {
+                // 成功 → Loaded状態に更新
+                self.module_states
+                    .write()
+                    .insert(name_arc, ModuleState::Loaded(module.clone()));
+            }
+            Err(_) => {
+                // エラー → Loading状態を削除（再試行可能にする）
+                self.module_states.write().remove(&name_arc);
+            }
+        }
 
         result
     }
