@@ -267,40 +267,38 @@ impl Evaluator {
 
         let name_arc: Arc<str> = Arc::from(name);
 
-        // module_statesで状態確認（スレッド間で共有）
-        {
-            let states = self.module_states.read();
-            match states.get(&name_arc) {
-                Some(ModuleState::Loaded(module)) => {
-                    // 既にロード完了している
-                    return Ok(module.clone());
-                }
-                Some(ModuleState::Loading) => {
-                    // 他のスレッドまたは自スレッドがロード中 → 循環参照
-                    // エラーメッセージ用にローカルスタックからパスを構築
-                    let loading = self.loading_modules.read();
-                    let path = loading
-                        .iter()
-                        .map(|s| s.as_ref())
-                        .collect::<Vec<_>>()
-                        .join(" -> ");
-                    let full_path = if path.is_empty() {
-                        name.to_string()
-                    } else {
-                        format!("{} -> {}", path, name)
-                    };
-                    return Err(fmt_msg(MsgKey::CircularDependency, &[&full_path]));
-                }
-                None => {
-                    // まだロードされていない → 続行
+        // module_statesで状態確認・マーク（アトミック操作）
+        use dashmap::mapref::entry::Entry;
+        match self.module_states.entry(name_arc.clone()) {
+            Entry::Occupied(entry) => {
+                match entry.get() {
+                    ModuleState::Loaded(module) => {
+                        // 既にロード完了している
+                        return Ok(module.clone());
+                    }
+                    ModuleState::Loading => {
+                        // 他のスレッドまたは自スレッドがロード中 → 循環参照
+                        // エラーメッセージ用にローカルスタックからパスを構築
+                        let loading = self.loading_modules.read();
+                        let path = loading
+                            .iter()
+                            .map(|s| s.as_ref())
+                            .collect::<Vec<_>>()
+                            .join(" -> ");
+                        let full_path = if path.is_empty() {
+                            name.to_string()
+                        } else {
+                            format!("{} -> {}", path, name)
+                        };
+                        return Err(fmt_msg(MsgKey::CircularDependency, &[&full_path]));
+                    }
                 }
             }
+            Entry::Vacant(entry) => {
+                // まだロードされていない → Loading状態をマーク（アトミック）
+                entry.insert(ModuleState::Loading);
+            }
         }
-
-        // ロード開始をマーク（スレッド間で共有）
-        self.module_states
-            .write()
-            .insert(name_arc.clone(), ModuleState::Loading);
 
         // ロード中のモジュールリストに追加（exportキー用、スレッドローカル）
         self.loading_modules.write().push(name_arc.clone());
@@ -413,12 +411,11 @@ impl Evaluator {
             Ok(module) => {
                 // 成功 → Loaded状態に更新
                 self.module_states
-                    .write()
                     .insert(name_arc, ModuleState::Loaded(module.clone()));
             }
             Err(_) => {
                 // エラー → Loading状態を削除（再試行可能にする）
-                self.module_states.write().remove(&name_arc);
+                self.module_states.remove(&name_arc);
             }
         }
 

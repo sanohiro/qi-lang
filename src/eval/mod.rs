@@ -55,7 +55,7 @@ pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
     defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
     modules: Arc<RwLock<HashMap<Arc<str>, Arc<Module>>>>, // ロード済みモジュール（Arc<str>で統一、後方互換性のため残す）
-    module_states: Arc<RwLock<HashMap<Arc<str>, crate::value::ModuleState>>>, // モジュール状態管理（スレッド間の循環検出用）
+    module_states: Arc<dashmap::DashMap<Arc<str>, crate::value::ModuleState>>, // モジュール状態管理（スレッド間の循環検出、アトミック操作）
     current_module: Arc<RwLock<Option<Arc<str>>>>, // 現在評価中のモジュール名
     loading_modules: Arc<RwLock<Vec<Arc<str>>>>,   // exportキー用スタック（スレッドローカル）
     #[allow(dead_code)]
@@ -154,7 +154,7 @@ impl Evaluator {
             global_env: env_rc.clone(),
             defer_stack: Arc::new(RwLock::new(SmallVec::new())),
             modules: Arc::new(RwLock::new(HashMap::new())),
-            module_states: Arc::new(RwLock::new(HashMap::new())),
+            module_states: Arc::new(dashmap::DashMap::new()),
             current_module: Arc::new(RwLock::new(None)),
             loading_modules: Arc::new(RwLock::new(Vec::new())),
             call_stack: Arc::new(RwLock::new(Vec::new())),
@@ -406,9 +406,10 @@ impl Evaluator {
             }))),
 
             Expr::Let { bindings, body, .. } => {
-                // let環境を一度だけArc<RwLock<Env>>として作成（cloneとヒープ確保を削減）
+                // let*セマンティクス: 順次束縛（各束縛が前の束縛を参照できる）
                 let new_env = Arc::new(RwLock::new(Env::with_parent(Arc::clone(&env))));
                 for (pattern, expr) in bindings {
+                    // 現在の環境で評価（既に追加された束縛が見える）
                     let value = self.eval_with_env(expr, new_env.clone())?;
                     self.bind_fn_param(pattern, &value, &mut new_env.write())?;
                 }
