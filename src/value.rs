@@ -54,7 +54,14 @@ impl From<&str> for MapKey {
 
 impl From<String> for MapKey {
     fn from(s: String) -> Self {
-        MapKey::from(s.as_str())
+        // 直接Arc<str>に変換（二重コピー回避）
+        if let Some(keyword) = s.strip_prefix(':') {
+            MapKey::Keyword(Arc::from(keyword))
+        } else if s.starts_with('"') && s.ends_with('"') {
+            MapKey::String(s[1..s.len() - 1].to_string())
+        } else {
+            MapKey::String(s)
+        }
     }
 }
 

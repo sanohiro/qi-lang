@@ -16,21 +16,20 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 
     match collection {
         Value::List(items) => {
-            // Vec一時利用でwith_capacity最適化→im::Vectorへ変換
-            let mut results = Vec::with_capacity(items.len());
-            for item in items {
-                let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
-                results.push(result);
-            }
-            Ok(Value::List(results.into()))
+            // 直接im::Vectorに集約（二重アロケーション回避）
+            let results: im::Vector<_> = items
+                .iter()
+                .map(|item| evaluator.apply_function(func, std::slice::from_ref(item)))
+                .collect::<Result<_, _>>()?;
+            Ok(Value::List(results))
         }
         Value::Vector(items) => {
-            let mut results = Vec::with_capacity(items.len());
-            for item in items {
-                let result = evaluator.apply_function(func, std::slice::from_ref(item))?;
-                results.push(result);
-            }
-            Ok(Value::Vector(results.into()))
+            // 直接im::Vectorに集約（二重アロケーション回避）
+            let results: im::Vector<_> = items
+                .iter()
+                .map(|item| evaluator.apply_function(func, std::slice::from_ref(item)))
+                .collect::<Result<_, _>>()?;
+            Ok(Value::Vector(results))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,

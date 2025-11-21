@@ -73,12 +73,12 @@ impl Clone for Evaluator {
             module_states: Arc::clone(&self.module_states), // スレッド間の循環検出用（共有）
 
             // 評価コンテキストは独立（新しいインスタンスを作成）
-            defer_stack: Arc::new(RwLock::new(SmallVec::new())),
-            loading_modules: Arc::new(RwLock::new(Vec::new())), // exportキー用（独立）
-            current_module: Arc::new(RwLock::new(None)),
-            call_stack: Arc::new(RwLock::new(Vec::new())),
-            source_name: Arc::new(RwLock::new(None)),
-            source_code: Arc::new(RwLock::new(None)),
+            defer_stack: Arc::new(RwLock::new(Default::default())),
+            loading_modules: Arc::new(RwLock::new(Default::default())), // exportキー用（独立）
+            current_module: Arc::new(RwLock::new(Default::default())),
+            call_stack: Arc::new(RwLock::new(Default::default())),
+            source_name: Arc::new(RwLock::new(Default::default())),
+            source_code: Arc::new(RwLock::new(Default::default())),
         }
     }
 }
