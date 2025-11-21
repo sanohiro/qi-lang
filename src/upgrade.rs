@@ -145,8 +145,9 @@ fn extract_binary_from_targz(archive_data: &[u8]) -> Result<Vec<u8>, String> {
             .path()
             .map_err(|e| format!("Failed to get entry path: {}", e))?;
 
-        // バイナリファイルを検索（"qi"または最後が"qi"で終わるファイル）
-        if path.file_name().and_then(|n| n.to_str()) == Some("qi") {
+        // バイナリファイルを検索（ファイル名が"qi"で、ディレクトリではないもの）
+        if path.file_name().and_then(|n| n.to_str()) == Some("qi")
+            && entry.header().entry_type().is_file() {
             let mut binary = Vec::new();
             entry
                 .read_to_end(&mut binary)
