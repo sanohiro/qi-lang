@@ -53,7 +53,7 @@ pub mod hof_keys {
 
 pub struct Evaluator {
     global_env: Arc<RwLock<Env>>,
-    defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 4]>>>, // スコープごとのdeferスタック（LIFO、最大4層まで）
+    defer_stack: Arc<RwLock<SmallVec<[Vec<Expr>; 1]>>>, // スコープごとのdeferスタック（ほとんど0～1個）
     modules: Arc<RwLock<HashMap<Arc<str>, Arc<Module>>>>, // ロード済みモジュール（Arc<str>で統一、後方互換性のため残す）
     module_states: Arc<dashmap::DashMap<Arc<str>, crate::value::ModuleState>>, // モジュール状態管理（スレッド間の循環検出、アトミック操作）
     current_module: Arc<RwLock<Option<Arc<str>>>>, // 現在評価中のモジュール名

@@ -185,12 +185,11 @@ impl Evaluator {
         // ループ用の環境を作成
         let mut loop_env = Env::with_parent(Arc::clone(&env));
 
-        // 初期値で環境を設定
-        let mut current_values = Vec::with_capacity(bindings.len());
-        for (_name, expr) in bindings {
-            let value = self.eval_with_env(expr, Arc::clone(&env))?;
-            current_values.push(value);
-        }
+        // 初期値で環境を設定（Iterator で一度に評価）
+        let current_values: Vec<Value> = bindings
+            .iter()
+            .map(|(_name, expr)| self.eval_with_env(expr, Arc::clone(&env)))
+            .collect::<Result<_, _>>()?;
 
         // 環境に設定
         for ((name, _), value) in bindings.iter().zip(current_values.iter()) {
