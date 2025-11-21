@@ -5,7 +5,6 @@
 use crate::i18n::{fmt_msg, MsgKey};
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
 
 const GITHUB_REPO: &str = "sanohiro/qi-lang";
@@ -124,39 +123,39 @@ fn download_binary(url: &str) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("Failed to read response: {}", e))
 }
 
-/// tar.gzアーカイブからバイナリを展開
+/// tar.gzアーカイブを展開してqiディレクトリを取得
 #[cfg(feature = "http-client")]
-fn extract_binary_from_targz(archive_data: &[u8]) -> Result<Vec<u8>, String> {
+fn extract_qi_directory_from_targz(archive_data: &[u8]) -> Result<PathBuf, String> {
     use flate2::read::GzDecoder;
-    use std::io::Read;
     use tar::Archive;
 
-    // gzip解凍
+    // 一時ディレクトリを作成
+    let temp_dir = std::env::temp_dir().join(format!("qi-upgrade-{}", std::process::id()));
+    fs::create_dir_all(&temp_dir).map_err(|e| format!("Failed to create temp directory: {}", e))?;
+
+    // gzip解凍してtar展開
     let tar_decoder = GzDecoder::new(archive_data);
     let mut archive = Archive::new(tar_decoder);
+    archive
+        .unpack(&temp_dir)
+        .map_err(|e| format!("Failed to unpack archive: {}", e))?;
 
-    // アーカイブ内のバイナリファイルを検索（通常は"qi"という名前）
-    for entry in archive
-        .entries()
-        .map_err(|e| format!("Failed to read archive: {}", e))?
+    // アーカイブ内のqiディレクトリを検索（qi-vX.X.X-platform/qi/ のような構造を想定）
+    for entry in
+        fs::read_dir(&temp_dir).map_err(|e| format!("Failed to read temp directory: {}", e))?
     {
-        let mut entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
-        let path = entry
-            .path()
-            .map_err(|e| format!("Failed to get entry path: {}", e))?;
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
 
-        // バイナリファイルを検索（ファイル名が"qi"で、ディレクトリではないもの）
-        if path.file_name().and_then(|n| n.to_str()) == Some("qi")
-            && entry.header().entry_type().is_file() {
-            let mut binary = Vec::new();
-            entry
-                .read_to_end(&mut binary)
-                .map_err(|e| format!("Failed to read binary: {}", e))?;
-            return Ok(binary);
+        if path.is_dir() {
+            let qi_dir = path.join("qi");
+            if qi_dir.is_dir() && qi_dir.join("qi").exists() {
+                return Ok(qi_dir);
+            }
         }
     }
 
-    Err("Binary file 'qi' not found in archive".to_string())
+    Err("qi directory not found in archive".to_string())
 }
 
 /// 現在の実行ファイルパスを取得
@@ -164,45 +163,73 @@ fn get_current_exe() -> Result<PathBuf, String> {
     env::current_exe().map_err(|e| format!("Failed to get current exe path: {}", e))
 }
 
-/// バイナリを置き換え
-fn replace_binary(new_binary: &[u8]) -> Result<(), String> {
+/// qiディレクトリを置き換え
+fn replace_qi_directory(new_qi_dir: &std::path::Path) -> Result<(), String> {
     let current_exe = get_current_exe()?;
 
-    // 一時ファイルに書き込み
-    let temp_path = current_exe.with_extension("tmp");
+    // 現在のバイナリの親ディレクトリを取得（これがqiディレクトリであるべき）
+    let qi_install_dir = current_exe
+        .parent()
+        .ok_or_else(|| "Failed to get parent directory of current executable".to_string())?;
 
-    {
-        let mut file = fs::File::create(&temp_path)
-            .map_err(|e| format!("Failed to create temp file: {}", e))?;
-
-        file.write_all(new_binary)
-            .map_err(|e| format!("Failed to write binary: {}", e))?;
+    // qiディレクトリであることを確認（stdディレクトリが存在するか）
+    let std_dir = qi_install_dir.join("std");
+    if !std_dir.exists() {
+        return Err(format!(
+            "Current installation directory does not look like a qi directory: {}",
+            qi_install_dir.display()
+        ));
     }
+
+    // 古いディレクトリをバックアップ
+    let backup_dir = qi_install_dir.with_extension("old");
+    if backup_dir.exists() {
+        fs::remove_dir_all(&backup_dir)
+            .map_err(|e| format!("Failed to remove old backup: {}", e))?;
+    }
+
+    // 現在のqiディレクトリを.oldにリネーム
+    fs::rename(qi_install_dir, &backup_dir)
+        .map_err(|e| format!("Failed to backup current qi directory: {}", e))?;
+
+    // 新しいqiディレクトリをコピー
+    copy_directory(new_qi_dir, qi_install_dir)?;
 
     // 実行権限を設定（Unix系）
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&temp_path)
+        let new_binary = qi_install_dir.join("qi");
+        let mut perms = fs::metadata(&new_binary)
             .map_err(|e| format!("Failed to get metadata: {}", e))?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&temp_path, perms)
+        fs::set_permissions(&new_binary, perms)
             .map_err(|e| format!("Failed to set permissions: {}", e))?;
     }
 
-    // 古いバイナリをバックアップ
-    let backup_path = current_exe.with_extension("old");
-    if backup_path.exists() {
-        fs::remove_file(&backup_path).map_err(|e| format!("Failed to remove old backup: {}", e))?;
+    Ok(())
+}
+
+/// ディレクトリを再帰的にコピー
+fn copy_directory(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
+    fs::create_dir_all(dst)
+        .map_err(|e| format!("Failed to create directory {}: {}", dst.display(), e))?;
+
+    for entry in fs::read_dir(src)
+        .map_err(|e| format!("Failed to read directory {}: {}", src.display(), e))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_directory(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)
+                .map_err(|e| format!("Failed to copy {}: {}", src_path.display(), e))?;
+        }
     }
-
-    fs::rename(&current_exe, &backup_path)
-        .map_err(|e| format!("Failed to backup current binary: {}", e))?;
-
-    // 新しいバイナリを配置
-    fs::rename(&temp_path, &current_exe)
-        .map_err(|e| format!("Failed to install new binary: {}", e))?;
 
     Ok(())
 }
@@ -243,11 +270,18 @@ pub fn upgrade() -> Result<(), String> {
 
     // tar.gzから展開（Windowsの場合はzip対応が必要だが、今はLinux/macOSのみ対応）
     println!("{}", fmt_msg(MsgKey::ExtractingBinary, &[]));
-    let binary_data = extract_binary_from_targz(&archive_data)?;
+    let qi_dir = extract_qi_directory_from_targz(&archive_data)?;
 
-    // バイナリを置き換え
+    // qiディレクトリを置き換え
     println!("{}", fmt_msg(MsgKey::InstallingUpdate, &[]));
-    replace_binary(&binary_data)?;
+    replace_qi_directory(&qi_dir)?;
+
+    // 一時ディレクトリをクリーンアップ
+    if let Some(temp_parent) = qi_dir.parent() {
+        if let Some(temp_root) = temp_parent.parent() {
+            let _ = fs::remove_dir_all(temp_root);
+        }
+    }
 
     println!("{}", fmt_msg(MsgKey::UpgradeSuccess, &[latest_version]));
     println!("{}", fmt_msg(MsgKey::RestartRequired, &[]));
