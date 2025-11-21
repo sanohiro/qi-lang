@@ -152,7 +152,7 @@
 
 ### map
 
-  - select-keys, assoc-in, dissoc-in, update-keys, update-vals
+  - select-keys, assoc-in, dissoc-in, update-keys, update-vals, filter-vals, group-by, deep-merge
 
 ### markdown
 

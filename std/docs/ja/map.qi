@@ -1,5 +1,5 @@
 ;; 標準ライブラリドキュメント - マップ高度操作
-;; Map Advanced Functions (5 functions - map/*)
+;; Map Advanced Functions (8 functions - map/*)
 ;; 基本的なマップ操作(get, keys, vals, assoc, dissoc, merge, get-in)はcore.qiを参照
 
 (def __doc__map/select-keys
@@ -38,3 +38,27 @@
             {:name "f" :type "function" :desc "値に適用する関数"}]
    :returns {:type "map" :desc "値が変換されたマップ"}
    :examples ["(map/update-vals {:a 1 :b 2} (fn [x] (* x 2))) ;=> {:a 2 :b 4}"]})
+
+(def __doc__map/filter-vals
+  {:desc "述語関数が真を返す値のみを含む新しいマップを作成します。"
+   :params [{:name "pred" :type "function" :desc "値を判定する述語関数"}
+            {:name "m" :type "map" :desc "元のマップ"}]
+   :returns {:type "map" :desc "フィルタリングされたマップ"}
+   :examples ["(map/filter-vals (fn [v] (> v 18)) {:alice 25 :bob 17 :charlie 30}) ;=> {:alice 25 :charlie 30}"
+              "(map/filter-vals string? {:a \"hello\" :b 42 :c \"world\"}) ;=> {:a \"hello\" :c \"world\"}"]})
+
+(def __doc__map/group-by
+  {:desc "コレクションの各要素にキー関数を適用し、同じキーを持つ要素をグループ化します。"
+   :params [{:name "key-fn" :type "function" :desc "要素からグルーピングキーを生成する関数"}
+            {:name "coll" :type "list|vector" :desc "グループ化するコレクション"}]
+   :returns {:type "map" :desc "キーごとにグループ化されたマップ（値はリスト）"}
+   :examples ["(map/group-by (fn [x] (% x 10)) [1 2 3 11 12 13 21 22 23]) ;=> {1 [1 11 21] 2 [2 12 22] 3 [3 13 23]}"
+              "(map/group-by :type [{:type \"A\" :val 1} {:type \"A\" :val 2} {:type \"B\" :val 3}]) ;=> {\"A\" [{:type \"A\" :val 1} {:type \"A\" :val 2}] \"B\" [{:type \"B\" :val 3}]}"]})
+
+(def __doc__map/deep-merge
+  {:desc "複数のマップをネストした構造を保持しながら再帰的にマージします。通常のmergeと異なり、ネストしたマップも再帰的にマージされます。"
+   :params [{:name "maps" :type "map..." :desc "マージするマップ（可変長引数）"}]
+   :returns {:type "map" :desc "再帰的にマージされたマップ"}
+   :examples ["(map/deep-merge {:a {:b 1}} {:a {:c 2}}) ;=> {:a {:b 1 :c 2}}"
+              "(map/deep-merge {:db {:host \"localhost\" :port 5432}} {:db {:port 3306 :user \"admin\"}}) ;=> {:db {:host \"localhost\" :port 3306 :user \"admin\"}}"
+              "(map/deep-merge {:a {:b 1}} {:a {:b 2 :c 3}} {:a {:d 4}}) ;=> {:a {:b 2 :c 3 :d 4}}"]})
