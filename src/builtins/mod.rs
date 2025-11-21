@@ -348,6 +348,26 @@ pub fn comp(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_functions::native_comp(args, evaluator)
 }
 
+/// map/update-keys - マップのすべてのキーに関数を適用
+pub fn map_update_keys(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_update_keys(args, evaluator)
+}
+
+/// map/update-vals - マップのすべての値に関数を適用
+pub fn map_update_vals(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_update_vals(args, evaluator)
+}
+
+/// map/filter-vals - 述語関数で値をフィルタリング
+pub fn map_filter_vals(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_filter_vals(args, evaluator)
+}
+
+/// map/group-by - キー関数でコレクションをグループ化
+pub fn map_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    map::native_group_by(args, evaluator)
+}
+
 /// apply - リストを引数として関数適用
 pub fn apply(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_functions::native_apply(args, evaluator)

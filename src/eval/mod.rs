@@ -1045,24 +1045,46 @@ impl Evaluator {
 
     fn eval_update_keys(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["update-keys"]));
+            return Err(qerr(MsgKey::Need2Args, &["map/update-keys"]));
         }
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
-        builtins::update_keys(&vals, self)
+        builtins::map_update_keys(&vals, self)
     }
 
     fn eval_update_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["update-vals"]));
+            return Err(qerr(MsgKey::Need2Args, &["map/update-vals"]));
         }
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
             .collect::<Result<Vec<_>, _>>()?;
-        builtins::update_vals(&vals, self)
+        builtins::map_update_vals(&vals, self)
+    }
+
+    fn eval_map_filter_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err(qerr(MsgKey::Need2Args, &["map/filter-vals"]));
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::map_filter_vals(&vals, self)
+    }
+
+    fn eval_map_group_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        if args.len() != 2 {
+            return Err(qerr(MsgKey::Need2Args, &["map/group-by"]));
+        }
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|e| self.eval_with_env(e, Arc::clone(&env)))
+            .collect::<Result<Vec<_>, _>>()?;
+        builtins::map_group_by(&vals, self)
     }
 
     fn eval_partition_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {

@@ -67,6 +67,8 @@ impl Evaluator {
                 "map" => Some(self.eval_map(args, env)),
                 "map/update-keys" => Some(self.eval_update_keys(args, env)),
                 "map/update-vals" => Some(self.eval_update_vals(args, env)),
+                "map/filter-vals" => Some(self.eval_map_filter_vals(args, env)),
+                "map/group-by" => Some(self.eval_map_group_by(args, env)),
                 "or" => Some(self.eval_or(args, env)),
                 "go/pipeline-filter" => Some(self.eval_pipeline_filter(args, env)),
                 "go/pipeline-map" => Some(self.eval_pipeline_map(args, env)),
