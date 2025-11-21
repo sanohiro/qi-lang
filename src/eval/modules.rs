@@ -5,10 +5,18 @@
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Env, Module, Value};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::sync::{Arc, LazyLock};
 
 use super::helpers::qerr;
 use super::Evaluator;
+
+/// 実行ファイルのディレクトリをキャッシュ（高速化）
+static EXE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
+});
 
 impl Evaluator {
     /// useモジュールの評価
@@ -169,16 +177,14 @@ impl Evaluator {
             // 1. カレントディレクトリの./std/配下を検索
             paths.push(format!("./std/{}.qi", relative_path));
 
-            // 2. Qi実行ファイルと同じディレクトリのstd/配下を検索
-            if let Ok(exe_path) = std::env::current_exe() {
-                if let Some(exe_dir) = exe_path.parent() {
-                    let std_path = exe_dir
-                        .join("std")
-                        .join(format!("{}.qi", relative_path))
-                        .to_string_lossy()
-                        .to_string();
-                    paths.push(std_path);
-                }
+            // 2. Qi実行ファイルと同じディレクトリのstd/配下を検索（キャッシュ使用）
+            if let Some(exe_dir) = EXE_DIR.as_ref() {
+                let std_path = exe_dir
+                    .join("std")
+                    .join(format!("{}.qi", relative_path))
+                    .to_string_lossy()
+                    .to_string();
+                paths.push(std_path);
             }
         } else {
             // stdで始まらない場合は標準ライブラリ拡張(std/lib/)とパッケージを検索
@@ -200,17 +206,15 @@ impl Evaluator {
             // 1. 標準ライブラリ拡張: ./std/lib/{name}.qi
             paths.push(format!("./std/lib/{}.qi", name));
 
-            // 2. 標準ライブラリ拡張（Qi実行ファイル基準）
-            if let Ok(exe_path) = std::env::current_exe() {
-                if let Some(exe_dir) = exe_path.parent() {
-                    let std_lib_path = exe_dir
-                        .join("std")
-                        .join("lib")
-                        .join(format!("{}.qi", name))
-                        .to_string_lossy()
-                        .to_string();
-                    paths.push(std_lib_path);
-                }
+            // 2. 標準ライブラリ拡張（Qi実行ファイル基準、キャッシュ使用）
+            if let Some(exe_dir) = EXE_DIR.as_ref() {
+                let std_lib_path = exe_dir
+                    .join("std")
+                    .join("lib")
+                    .join(format!("{}.qi", name))
+                    .to_string_lossy()
+                    .to_string();
+                paths.push(std_lib_path);
             }
 
             // 3. プロジェクトローカル: ./qi_packages/{name}/mod.qi

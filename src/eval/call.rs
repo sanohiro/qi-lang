@@ -332,12 +332,13 @@ impl Evaluator {
 
                     // juxt特殊処理 - 実行前にチェック
                     if let Some(Value::List(juxt_funcs)) = juxt_funcs {
-                        let mut results = Vec::with_capacity(juxt_funcs.len());
+                        let mut results: SmallVec<[Value; 4]> =
+                            SmallVec::with_capacity(juxt_funcs.len());
                         for jfunc in &juxt_funcs {
                             let result = self.apply_func(jfunc, args.clone())?;
                             results.push(result);
                         }
-                        return Ok(Value::Vector(results.into()));
+                        return Ok(Value::Vector(results.into_iter().collect()));
                     }
 
                     // tap>特殊処理 - 副作用を実行してから値を返す
@@ -413,7 +414,7 @@ impl Evaluator {
 
                     // 残りの引数を可変長引数にバインド
                     let variadic_param = &f.params[fixed_param_count];
-                    let remaining_args: Vec<Value> =
+                    let remaining_args: SmallVec<[Value; 4]> =
                         args.iter().skip(fixed_param_count).cloned().collect();
 
                     if let crate::value::Pattern::Var(name) = variadic_param {
