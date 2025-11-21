@@ -41,21 +41,23 @@ static SPECIAL_FORMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     ])
 });
 
-pub struct Parser {
-    tokens: Vec<LocatedToken>,
-    pos: usize,
+pub struct Parser<'a> {
+    lexer: std::iter::Peekable<Lexer<'a>>,
+    current: Option<LocatedToken>,
     source_name: Option<String>,
 }
 
-impl Parser {
-    pub fn new(input: &str) -> Result<Self, String> {
-        let mut lexer = Lexer::new(input);
-        let tokens = lexer.tokenize()?;
-        Ok(Parser {
-            tokens,
-            pos: 0,
+impl<'a> Parser<'a> {
+    pub fn new(input: &'a str) -> Result<Self, String> {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser {
+            lexer: lexer.peekable(),
+            current: None,
             source_name: None,
-        })
+        };
+        // 最初のトークンを読み込む
+        parser.advance_internal()?;
+        Ok(parser)
     }
 
     /// ソース名を設定（エラーメッセージに使用）
@@ -63,24 +65,33 @@ impl Parser {
         self.source_name = Some(name);
     }
 
-    fn current(&self) -> Option<&Token> {
-        if self.pos < self.tokens.len() {
-            Some(&self.tokens[self.pos].token)
-        } else {
-            None
+    /// 内部的にトークンを進める（エラーハンドリング付き）
+    fn advance_internal(&mut self) -> Result<(), String> {
+        match self.lexer.next() {
+            Some(Ok(token)) if token.token != Token::Eof => {
+                self.current = Some(token);
+                Ok(())
+            }
+            Some(Ok(_)) => {
+                // EOF
+                self.current = None;
+                Ok(())
+            }
+            Some(Err(e)) => Err(e),
+            None => {
+                self.current = None;
+                Ok(())
+            }
         }
+    }
+
+    fn current(&self) -> Option<&Token> {
+        self.current.as_ref().map(|t| &t.token)
     }
 
     /// 現在のトークンのSpanを取得
     fn current_span(&self) -> Option<&crate::lexer::Span> {
-        if self.pos < self.tokens.len() {
-            Some(&self.tokens[self.pos].span)
-        } else if !self.tokens.is_empty() {
-            // EOF時は最後のトークンのspanを返す
-            Some(&self.tokens[self.tokens.len() - 1].span)
-        } else {
-            None
-        }
+        self.current.as_ref().map(|t| &t.span)
     }
 
     /// 行番号付きエラーメッセージを生成
@@ -102,17 +113,17 @@ impl Parser {
     }
 
     fn advance(&mut self) {
-        self.pos += 1;
+        // エラーは無視（parse_*メソッドで適切にハンドリング）
+        let _ = self.advance_internal();
     }
 
     /// 現在のトークンがStringの場合、所有権を取得して前進
     /// クローンを避けるための最適化
     #[inline]
     fn take_string(&mut self) -> Option<String> {
-        if self.pos < self.tokens.len() {
-            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
-            self.pos += 1;
-            match token {
+        if let Some(token) = self.current.take() {
+            self.advance();
+            match token.token {
                 Token::String(s) => Some(s),
                 _ => None,
             }
@@ -125,10 +136,9 @@ impl Parser {
     /// インターン化されたArc<str>を返す
     #[inline]
     fn take_symbol(&mut self) -> Option<std::sync::Arc<str>> {
-        if self.pos < self.tokens.len() {
-            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
-            self.pos += 1;
-            match token {
+        if let Some(token) = self.current.take() {
+            self.advance();
+            match token.token {
                 Token::Symbol(s) => Some(s),
                 _ => None,
             }
@@ -141,10 +151,9 @@ impl Parser {
     /// インターン化されたArc<str>を返す
     #[inline]
     fn take_keyword(&mut self) -> Option<std::sync::Arc<str>> {
-        if self.pos < self.tokens.len() {
-            let token = std::mem::replace(&mut self.tokens[self.pos].token, Token::Eof);
-            self.pos += 1;
-            match token {
+        if let Some(token) = self.current.take() {
+            self.advance();
+            match token.token {
                 Token::Keyword(k) => Some(k),
                 _ => None,
             }
@@ -174,10 +183,7 @@ impl Parser {
     }
 
     pub fn parse_all(&mut self) -> Result<Vec<Expr>, String> {
-        // トークン数 / 8: トークン5個で1式（関数呼び出しの平均）、
-        // さらにネストを考慮すると約1/8が妥当
-        let estimated_exprs = (self.tokens.len() / 8).max(4);
-        let mut exprs = Vec::with_capacity(estimated_exprs);
+        let mut exprs = Vec::new();
         while self.current().is_some() {
             exprs.push(self.parse_expr()?);
         }

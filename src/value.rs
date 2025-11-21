@@ -624,18 +624,23 @@ impl Env {
 
     #[inline]
     pub fn get(&self, name: &str) -> Option<Value> {
-        self.bindings
-            .get(name)
-            .map(|b| b.value.clone())
-            .or_else(|| self.parent.as_ref().and_then(|p| p.read().get(name)))
+        // ローカルバインディングをチェック（ロック不要、高速パス）
+        if let Some(b) = self.bindings.get(name) {
+            return Some(b.value.clone());
+        }
+        // 親環境をチェック（ロックが必要、低速パス）
+        self.parent.as_ref().and_then(|p| p.read().get(name))
     }
 
     pub fn get_binding(&self, name: &str) -> Option<Binding> {
-        self.bindings.get(name).cloned().or_else(|| {
-            self.parent
-                .as_ref()
-                .and_then(|p| p.read().get_binding(name))
-        })
+        // ローカルバインディングをチェック（ロック不要、高速パス）
+        if let Some(b) = self.bindings.get(name) {
+            return Some(b.clone());
+        }
+        // 親環境をチェック（ロックが必要、低速パス）
+        self.parent
+            .as_ref()
+            .and_then(|p| p.read().get_binding(name))
     }
 
     pub fn set(&mut self, name: impl Into<Arc<str>>, value: Value) {
