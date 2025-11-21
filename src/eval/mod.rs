@@ -549,20 +549,22 @@ impl Evaluator {
             }
 
             Expr::Export { symbols, .. } => {
-                // 現在ロード中のファイル名を取得（モジュールマップのキーとして使用）
-                let module_key = self
+                // 現在ロード中のファイル名を取得（フォールバック用）
+                let file_path = self
                     .loading_modules
                     .read()
                     .last()
                     .cloned()
                     .ok_or_else(|| msg(MsgKey::ExportOnlyInModule).to_string())?;
 
-                // current_moduleはModule構造体のnameフィールドとして使用（表示名）
-                let module_display_name = self
+                // モジュール名をキーとして優先、なければファイルパスを使用
+                let module_key = self
                     .current_module
                     .read()
                     .clone()
-                    .unwrap_or_else(|| module_key.clone());
+                    .unwrap_or_else(|| file_path.clone());
+
+                let module_display_name = module_key.clone();
 
                 // シンボルの存在確認
                 for symbol in symbols {
@@ -595,7 +597,7 @@ impl Evaluator {
                     // 新規モジュールの場合
                     let module = Module {
                         name: module_display_name,
-                        file_path: None,
+                        file_path: Some(file_path.to_string()),
                         env: Arc::clone(&env),
                         exports: Some(symbols.iter().cloned().collect()),
                     };

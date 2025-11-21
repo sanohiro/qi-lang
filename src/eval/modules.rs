@@ -286,7 +286,8 @@ impl Evaluator {
                             .collect::<Vec<_>>()
                             .join(" -> ");
                         let full_path = if path.is_empty() {
-                            name.to_string()
+                            // loading_modulesが空の場合は、別スレッドでロード中の可能性
+                            format!("{} (detected via cross-thread dependency check)", name)
                         } else {
                             format!("{} -> {}", path, name)
                         };
@@ -380,13 +381,19 @@ impl Evaluator {
                         });
 
                     let module = Arc::new(Module {
-                        name: module_name,
+                        name: module_name.clone(),
                         file_path: found_path,
                         env: module_env.clone(),
                         exports: None, // None = 全公開（defn-以外）
                     });
 
-                    self.modules.write().insert(Arc::from(name), module.clone());
+                    let mut modules_write = self.modules.write();
+                    modules_write.insert(Arc::from(name), module.clone());
+                    // モジュール名でも登録（(module foo.bar)と(use "./foo")の両方でアクセス可能にする）
+                    if module_name.as_ref() != name {
+                        modules_write.insert(module_name, module.clone());
+                    }
+                    std::mem::drop(modules_write);
                     module
                 }
             };
@@ -411,7 +418,14 @@ impl Evaluator {
             Ok(module) => {
                 // 成功 → Loaded状態に更新
                 self.module_states
-                    .insert(name_arc, ModuleState::Loaded(module.clone()));
+                    .insert(name_arc.clone(), ModuleState::Loaded(module.clone()));
+
+                // モジュール名が設定されていて、useで指定された名前と異なる場合は、
+                // モジュール名でも登録（(module foo.bar)と(use "./foo")の両方でアクセス可能にする）
+                if module.name.as_ref() != name {
+                    self.module_states
+                        .insert(module.name.clone(), ModuleState::Loaded(module.clone()));
+                }
             }
             Err(_) => {
                 // エラー → Loading状態を削除（再試行可能にする）
