@@ -162,6 +162,51 @@ features = ["db-sqlite", "db-postgres", "db-mysql"]
 
 ---
 
+### db/query-one - クエリ実行（1行のみ）
+
+**SELECTクエリを実行し、最初の1行のみを返します。結果がない場合はnilを返します。**
+
+```qi
+(db/query-one conn sql params)
+```
+
+#### 引数
+
+- `conn`: 接続ID（`db/connect`の戻り値）またはトランザクションID（`db/begin`の戻り値）
+- `sql`: SQL文字列
+- `params`: パラメータのベクタ
+
+#### 戻り値
+
+- 1行のマップ（結果がない場合はnil）
+- エラーの場合: `{:error "message"}`
+
+#### 使用例
+
+```qi
+;; IDでユーザーを1件取得
+(db/query-one db-conn "SELECT * FROM users WHERE id = $1" [1])
+;; => {:id 1 :name "Alice" :email "alice@example.com"}
+
+;; 結果がない場合
+(db/query-one db-conn "SELECT * FROM users WHERE id = $1" [999])
+;; => nil
+
+;; トランザクション内での使用
+(def tx (db/begin db-conn))
+(db/query-one tx "SELECT * FROM users WHERE id = $1" [1])
+;; => {:id 1 :name "Alice" :email "alice@example.com"}
+(db/commit tx)
+
+;; パイプラインで使用
+(db-conn
+ |> (db/query-one "SELECT name FROM users WHERE id = $1" [1])
+ |> (get "name"))
+;; => "Alice"
+```
+
+---
+
 ### db/exec - コマンド実行
 
 **INSERT/UPDATE/DELETEを実行し、影響を受けた行数を返します。**

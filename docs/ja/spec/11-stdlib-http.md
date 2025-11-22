@@ -207,6 +207,92 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 ;; => "The Octocat" (成功時) または {:error ...} (失敗時)
 ```
 
+### ストリーミングAPI
+
+大きなファイルやリアルタイムデータを効率的に処理するために、レスポンスボディを遅延読み込みするストリーミングAPIを提供しています。
+
+#### http/get-stream - GETリクエスト（ストリーミング版）
+
+```qi
+;; テキストモード（行ごとに読み込み）
+(def stream (http/get-stream "https://example.com/large-file.txt"))
+(stream/realize stream 10)  ;; 最初の10行を取得
+
+;; バイナリモード（バイトチャンクごとに読み込み）
+(def stream (http/get-stream "https://example.com/large-file.bin" :bytes))
+(stream/realize stream 100)  ;; 最初の100チャンクを取得
+```
+
+#### http/post-stream - POSTリクエスト（ストリーミング版）
+
+```qi
+;; テキストモード
+(def stream (http/post-stream "https://api.example.com/data" {"query" "results"}))
+(stream/realize stream 50)
+
+;; バイナリモード
+(def stream (http/post-stream "https://api.example.com/upload" data :bytes))
+```
+
+#### http/request-stream - 詳細設定（ストリーミング版）
+
+ヘッダー、認証、タイムアウトなどを指定してストリーミングリクエストを送信できます。
+
+```qi
+;; ヘッダー付きストリーミング
+(http/request-stream {
+  :method :get
+  :url "https://api.example.com/stream"
+  :headers {"X-API-Key" "key123"}
+})
+
+;; Bearer Token認証
+(http/request-stream {
+  :method :get
+  :url "https://api.example.com/protected-stream"
+  :bearer-token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  :timeout 30000  ;; 30秒タイムアウト
+})
+
+;; Basic認証
+(http/request-stream {
+  :method :post
+  :url "https://api.example.com/stream"
+  :body {"query" "data"}
+  :basic-auth ["username" "password"]
+} :bytes)  ;; バイナリモード
+
+;; すべてのオプションを組み合わせ
+(http/request-stream {
+  :method :get
+  :url "https://api.example.com/large-dataset"
+  :headers {"X-Request-ID" "12345"}
+  :bearer-token "token"
+  :timeout 60000
+} :bytes)
+```
+
+**使用例**:
+```qi
+;; 大きなログファイルを行ごとに処理
+(def log-stream (http/get-stream "https://example.com/logs/app.log"))
+(log-stream
+ |> (stream/filter (fn [line] (string/includes? line "ERROR")))
+ |> (stream/take 100)
+ |> stream/to-vec)
+
+;; APIレスポンスをストリーミング処理
+(def api-stream (http/request-stream {
+  :method :get
+  :url "https://api.example.com/events"
+  :headers {"Authorization" "Bearer token"}
+}))
+(api-stream
+ |> (stream/map json/parse)
+ |> (stream/filter (fn [event] (= "important" (get event "priority"))))
+ |> stream/to-vec)
+```
+
 ---
 
 ## HTTPサーバー（server/）

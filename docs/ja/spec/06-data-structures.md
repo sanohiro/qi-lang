@@ -470,8 +470,11 @@ pub enum MapKey {
 ;; => {:user {:profile {:visits 11}}}
 
 ;; get-in - ネストした値を取得
+;; キーが存在しない場合はデフォルト値を返すが、値がnilの場合はnilを返す
 (get-in {:user {:name "Bob"}} [:user :name])    ;; => "Bob"
 (get-in {} [:user :name] "guest")               ;; => "guest"
+(get-in {:key nil} [:key] "default")            ;; => nil（値がnilの場合）
+(get-in {:other "val"} [:key] "default")        ;; => "default"（キーが存在しない場合）
 
 ;; map/assoc-in - ネストしたマップに値を設定
 (map/assoc-in {} [:user :profile :name] "Alice")
