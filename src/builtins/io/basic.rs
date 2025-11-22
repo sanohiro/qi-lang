@@ -55,6 +55,11 @@ pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     let bytes =
         fs::read(path).map_err(|e| fmt_msg(MsgKey::IoFileError, &[path, &e.to_string()]))?;
 
+    // :encoding :binary の場合はバイナリデータとして返す
+    if encoding_keyword == "binary" {
+        return Ok(Value::Bytes(std::sync::Arc::from(bytes)));
+    }
+
     // エンコーディングに応じてデコード
     #[cfg(feature = "encoding-extended")]
     let content = if encoding_keyword == "auto" {
@@ -112,12 +117,14 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["write-file"]));
     }
 
-    let content = match &args[0] {
-        Value::String(s) => s,
+    // バイナリデータと文字列の両方をサポート
+    let (is_binary, content_str, content_bytes) = match &args[0] {
+        Value::String(s) => (false, s.as_str(), &[][..]),
+        Value::Bytes(b) => (true, "", b.as_ref()),
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
-                &["write-file (1st arg - content)", "string"],
+                &["write-file (1st arg - content)", "string or bytes"],
             ))
         }
     };
@@ -193,22 +200,27 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
             }
             "append" => {
                 // 追記モード
-                #[cfg(feature = "encoding-extended")]
-                let bytes = {
-                    let add_bom = encoding_keyword == "utf-8-bom";
-                    let encoding = resolve_encoding(encoding_keyword)?;
-                    encode_string(content, encoding, add_bom)
-                };
-
-                #[cfg(not(feature = "encoding-extended"))]
-                let bytes = {
-                    if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-                        return Err(fmt_msg(
-                            MsgKey::IoEncodingNotSupportedInMinimalBuild,
-                            &[encoding_keyword],
-                        ));
+                let bytes = if is_binary {
+                    // バイナリデータの場合はそのまま書き込み
+                    content_bytes.to_vec()
+                } else {
+                    #[cfg(feature = "encoding-extended")]
+                    {
+                        let add_bom = encoding_keyword == "utf-8-bom";
+                        let encoding = resolve_encoding(encoding_keyword)?;
+                        encode_string(content_str, encoding, add_bom)
                     }
-                    content.as_bytes().to_vec()
+
+                    #[cfg(not(feature = "encoding-extended"))]
+                    {
+                        if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
+                            return Err(fmt_msg(
+                                MsgKey::IoEncodingNotSupportedInMinimalBuild,
+                                &[encoding_keyword],
+                            ));
+                        }
+                        content_str.as_bytes().to_vec()
+                    }
                 };
 
                 let mut file = fs::OpenOptions::new()
@@ -233,22 +245,27 @@ pub fn native_write_file(args: &[Value]) -> Result<Value, String> {
     }
 
     // エンコードして書き込み
-    #[cfg(feature = "encoding-extended")]
-    let bytes = {
-        let add_bom = encoding_keyword == "utf-8-bom";
-        let encoding = resolve_encoding(encoding_keyword)?;
-        encode_string(content, encoding, add_bom)
-    };
-
-    #[cfg(not(feature = "encoding-extended"))]
-    let bytes = {
-        if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
-            return Err(fmt_msg(
-                MsgKey::IoEncodingNotSupportedInMinimalBuild,
-                &[encoding_keyword],
-            ));
+    let bytes = if is_binary {
+        // バイナリデータの場合はそのまま書き込み
+        content_bytes.to_vec()
+    } else {
+        #[cfg(feature = "encoding-extended")]
+        {
+            let add_bom = encoding_keyword == "utf-8-bom";
+            let encoding = resolve_encoding(encoding_keyword)?;
+            encode_string(content_str, encoding, add_bom)
         }
-        content.as_bytes().to_vec()
+
+        #[cfg(not(feature = "encoding-extended"))]
+        {
+            if encoding_keyword != "utf-8" && encoding_keyword != "utf-8-bom" {
+                return Err(fmt_msg(
+                    MsgKey::IoEncodingNotSupportedInMinimalBuild,
+                    &[encoding_keyword],
+                ));
+            }
+            content_str.as_bytes().to_vec()
+        }
     };
 
     fs::write(path, bytes)

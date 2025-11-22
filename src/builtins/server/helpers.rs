@@ -124,7 +124,14 @@ pub(super) async fn request_to_value(
         body_bytes.to_vec()
     };
 
-    let body_str = String::from_utf8_lossy(&decompressed_bytes).to_string();
+    // UTF-8として解釈を試み、成功すれば文字列、失敗すればBytesとして返す
+    let (body_value, body_str) = match std::str::from_utf8(&decompressed_bytes) {
+        Ok(text) => (Value::String(text.to_string()), text.to_string()),
+        Err(_) => (
+            Value::Bytes(std::sync::Arc::from(decompressed_bytes.as_slice())),
+            String::new(), // バイナリの場合は空文字列（後方互換性）
+        ),
+    };
 
     // メソッド
     let method = parts.method.as_str().to_lowercase();
@@ -155,7 +162,7 @@ pub(super) async fn request_to_value(
     req_map.insert(kw("query"), Value::String(query));
     req_map.insert(kw("query-params"), Value::Map(query_params));
     req_map.insert(kw("headers"), Value::Map(headers));
-    req_map.insert(kw("body"), Value::String(body_str.clone()));
+    req_map.insert(kw("body"), body_value);
 
     Ok((Value::Map(req_map), body_str))
 }
