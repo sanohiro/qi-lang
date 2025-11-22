@@ -44,12 +44,12 @@ impl DbPool {
         }
 
         // 利用可能な接続がない場合、新規作成を試みる
+        // 競合状態を防ぐため、両方のカウントを1つのクリティカルセクションで取得
+        let available_count = available.len();
         drop(available); // ロックを解放
 
-        // デッドロック回避: available.len()を先に取得してからin_useをロック
-        let available_count = self.available.lock().len();
-        let in_use_count = *self.in_use_count.lock();
-        let total = in_use_count + available_count;
+        let mut in_use = self.in_use_count.lock();
+        let total = *in_use + available_count;
 
         if total >= self.max_connections {
             return Err(DbError::new(format!(
@@ -57,9 +57,13 @@ impl DbPool {
                 self.max_connections
             )));
         }
-        // ロックは自動的に解放される
 
-        // 新しい接続を作成
+        // in_useを先にインクリメント（競合状態を防ぐ）
+        // これにより、他のスレッドが同時にmax_connectionsを超えることを防ぐ
+        *in_use += 1;
+        drop(in_use);
+
+        // 新しい接続を作成（失敗したらin_useをデクリメント）
         let driver: Box<dyn DbDriver> = if self.url.starts_with("sqlite:") {
             #[cfg(feature = "db-sqlite")]
             {
@@ -88,13 +92,21 @@ impl DbPool {
                 return Err(DbError::new("MySQL driver not enabled"));
             }
         } else {
+            // サポートされていないURL
+            let mut in_use = self.in_use_count.lock();
+            *in_use = in_use.saturating_sub(1);
             return Err(DbError::new(format!("Unsupported URL: {}", self.url)));
         };
 
-        let conn = driver.connect(&self.url, &self.opts)?;
-        let mut in_use = self.in_use_count.lock();
-        *in_use += 1;
-        Ok(conn)
+        // 接続を作成（失敗した場合はin_useをデクリメント）
+        match driver.connect(&self.url, &self.opts) {
+            Ok(conn) => Ok(conn),
+            Err(e) => {
+                let mut in_use = self.in_use_count.lock();
+                *in_use = in_use.saturating_sub(1);
+                Err(e)
+            }
+        }
     }
 
     /// 接続をプールに返却
@@ -142,6 +154,6 @@ lazy_static::lazy_static! {
     pub(super) static ref POOLED_CONNECTIONS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
 
     /// トランザクション→プールマッピング（tx_id -> (pool_id, conn_id)）
-    /// トランザクション終了時に自動的にプールに戻すために使用
+    /// トランザクション中の接続がdb/pool-releaseで誤って返却されないようにするために使用
     pub(super) static ref TRANSACTION_POOLS: Mutex<HashMap<String, (String, String)>> = Mutex::new(HashMap::new());
 }
