@@ -14,7 +14,216 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
+#[cfg(feature = "repl")]
+use colored::Colorize;
+
+#[cfg(feature = "repl")]
+use comfy_table::{presets::UTF8_FULL, Table};
+
+#[cfg(feature = "repl")]
+use notify::{RecursiveMode, Watcher};
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// プロファイリング情報
+#[cfg(feature = "repl")]
+struct ProfileData {
+    enabled: bool,
+    evaluations: Vec<(std::time::Duration, usize)>, // (実行時間, 行番号)
+}
+
+#[cfg(feature = "repl")]
+impl ProfileData {
+    fn new() -> Self {
+        ProfileData {
+            enabled: false,
+            evaluations: Vec::new(),
+        }
+    }
+
+    fn start(&mut self) {
+        self.enabled = true;
+        self.evaluations.clear();
+    }
+
+    fn stop(&mut self) {
+        self.enabled = false;
+    }
+
+    fn record(&mut self, duration: std::time::Duration, line_number: usize) {
+        if self.enabled {
+            self.evaluations.push((duration, line_number));
+        }
+    }
+
+    fn report(&self) {
+        if self.evaluations.is_empty() {
+            println!("{}", "No profiling data available".yellow());
+            return;
+        }
+
+        let total: std::time::Duration = self.evaluations.iter().map(|(d, _)| *d).sum();
+        let count = self.evaluations.len();
+        let avg = total / count as u32;
+        let max = self.evaluations.iter().map(|(d, _)| *d).max().unwrap();
+        let min = self.evaluations.iter().map(|(d, _)| *d).min().unwrap();
+
+        println!("{}", "Profiling Report:".cyan().bold());
+        println!("  Total evaluations: {}", count);
+        println!("  Total time: {:?}", total);
+        println!("  Average time: {:?}", avg);
+        println!("  Min time: {:?}", min);
+        println!("  Max time: {:?}", max);
+
+        // 最も遅かった5つの評価を表示
+        let mut sorted = self.evaluations.clone();
+        sorted.sort_by(|a, b| b.0.cmp(&a.0));
+        println!("\n{}", "Slowest evaluations:".yellow());
+        for (i, (duration, line)) in sorted.iter().take(5).enumerate() {
+            println!("  {}. Line {} - {:?}", i + 1, line, duration);
+        }
+    }
+
+    fn clear(&mut self) {
+        self.evaluations.clear();
+    }
+}
+
+/// REPLマクロの管理
+#[cfg(feature = "repl")]
+struct ReplMacros {
+    macros: std::collections::HashMap<String, String>,
+    file_path: PathBuf,
+}
+
+#[cfg(feature = "repl")]
+impl ReplMacros {
+    fn new() -> Self {
+        let file_path = dirs::home_dir()
+            .map(|p| {
+                let qi_dir = p.join(".qi");
+                let _ = std::fs::create_dir_all(&qi_dir);
+                qi_dir.join("macros")
+            })
+            .unwrap_or_else(|| std::path::PathBuf::from(".qi/macros"));
+
+        let macros = if file_path.exists() {
+            std::fs::read_to_string(&file_path)
+                .ok()
+                .and_then(|content| serde_json::from_str(&content).ok())
+                .unwrap_or_default()
+        } else {
+            std::collections::HashMap::new()
+        };
+
+        ReplMacros { macros, file_path }
+    }
+
+    fn define(&mut self, name: String, command: String) {
+        self.macros.insert(name, command);
+        self.save();
+    }
+
+    fn delete(&mut self, name: &str) -> bool {
+        let removed = self.macros.remove(name).is_some();
+        if removed {
+            self.save();
+        }
+        removed
+    }
+
+    fn get(&self, name: &str) -> Option<&String> {
+        self.macros.get(name)
+    }
+
+    fn list(&self) -> Vec<(&String, &String)> {
+        let mut items: Vec<_> = self.macros.iter().collect();
+        items.sort_by_key(|(name, _)| *name);
+        items
+    }
+
+    fn save(&self) {
+        if let Ok(json) = serde_json::to_string_pretty(&self.macros) {
+            let _ = std::fs::write(&self.file_path, json);
+        }
+    }
+}
+
+/// エラーメッセージをカラー化して表示
+#[cfg(feature = "repl")]
+fn print_error(error_type: &str, message: &str) {
+    eprintln!("{}: {}", error_type.red().bold(), message);
+}
+
+/// エラーメッセージを通常表示（REPLなし）
+#[cfg(not(feature = "repl"))]
+fn print_error(error_type: &str, message: &str) {
+    eprintln!("{}: {}", error_type, message);
+}
+
+/// テーブル形式で表示可能かチェックし、可能ならテーブルとして表示
+#[cfg(feature = "repl")]
+fn try_display_as_table(value: &Value) -> Option<String> {
+    // Vectorの中身がすべてMapの場合、テーブル表示
+    if let Value::Vector(vec) = value {
+        if vec.is_empty() {
+            return None;
+        }
+
+        // すべての要素がMapかチェック
+        let all_maps = vec.iter().all(|v| matches!(v, Value::Map(_)));
+        if !all_maps {
+            return None;
+        }
+
+        // ヘッダーを収集（すべてのMapのキーの和集合）
+        let mut headers = std::collections::HashSet::new();
+        for item in vec.iter() {
+            if let Value::Map(m) = item {
+                for key in m.keys() {
+                    headers.insert(key.to_string());
+                }
+            }
+        }
+
+        if headers.is_empty() {
+            return None;
+        }
+
+        let mut header_list: Vec<String> = headers.into_iter().collect();
+        header_list.sort();
+
+        // テーブルを作成
+        let mut table = Table::new();
+        table.load_preset(UTF8_FULL);
+        table.set_header(&header_list);
+
+        // 各行を追加
+        for item in vec.iter() {
+            if let Value::Map(m) = item {
+                let row: Vec<String> = header_list
+                    .iter()
+                    .map(|header| {
+                        m.get(&MapKey::String(header.clone()))
+                            .map(|v| v.to_string())
+                            .unwrap_or_else(|| "".to_string())
+                    })
+                    .collect();
+                table.add_row(row);
+            }
+        }
+
+        Some(table.to_string())
+    } else {
+        None
+    }
+}
+
+/// テーブル形式で表示（REPLなし）
+#[cfg(not(feature = "repl"))]
+fn try_display_as_table(_value: &Value) -> Option<String> {
+    None
+}
 
 /// タブ補完のためのヘルパー
 struct QiHelper {
@@ -34,7 +243,111 @@ impl QiHelper {
         completions.insert(":clear".to_string());
         completions.insert(":load".to_string());
         completions.insert(":reload".to_string());
+        completions.insert(":watch".to_string());
+        completions.insert(":unwatch".to_string());
+        completions.insert(":macro".to_string());
+        completions.insert(":m".to_string());
+        completions.insert(":profile".to_string());
+        completions.insert(":threads".to_string());
         completions.insert(":quit".to_string());
+
+        // 特殊形式
+        let special_forms = [
+            "def",
+            "defn",
+            "defn-",
+            "fn",
+            "let",
+            "if",
+            "do",
+            "loop",
+            "recur",
+            "match",
+            "try",
+            "defer",
+            "quote",
+            "quasiquote",
+            "unquote",
+            "defmacro",
+            "and",
+            "or",
+            "not",
+            "cond",
+            "when",
+            "unless",
+        ];
+        for form in &special_forms {
+            completions.insert(form.to_string());
+        }
+
+        // パイプ演算子
+        completions.insert("|>".to_string());
+        completions.insert("|>?".to_string());
+        completions.insert("||>".to_string());
+        completions.insert("~>".to_string());
+        completions.insert("->".to_string());
+        completions.insert("=>".to_string());
+
+        // 基本的な組み込み関数（頻出するもの）
+        let common_functions = [
+            // コレクション操作
+            "map",
+            "filter",
+            "reduce",
+            "first",
+            "rest",
+            "cons",
+            "list",
+            "vector",
+            "count",
+            "nth",
+            "get",
+            "assoc",
+            "dissoc",
+            "conj",
+            "concat",
+            // 文字列
+            "str",
+            "str/split",
+            "str/join",
+            "str/trim",
+            "str/upper",
+            "str/lower",
+            // I/O
+            "print",
+            "println",
+            "read-file",
+            "write-file",
+            // 数値
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "abs",
+            "min",
+            "max",
+            // 比較
+            "=",
+            "!=",
+            "<",
+            ">",
+            "<=",
+            ">=",
+            // 論理
+            "and",
+            "or",
+            "not",
+            // その他
+            "type",
+            "nil?",
+            "some?",
+            "empty?",
+            "range",
+        ];
+        for func in &common_functions {
+            completions.insert(func.to_string());
+        }
 
         QiHelper { completions }
     }
@@ -82,11 +395,166 @@ impl Completer for QiHelper {
     }
 }
 
-impl Highlighter for QiHelper {}
+impl Highlighter for QiHelper {
+    fn highlight<'l>(&self, line: &'l str, _pos: usize) -> std::borrow::Cow<'l, str> {
+        use colored::Colorize;
+
+        // 特殊形式（キーワード）
+        let special_forms = [
+            "def",
+            "defn",
+            "defn-",
+            "fn",
+            "let",
+            "if",
+            "do",
+            "loop",
+            "recur",
+            "match",
+            "try",
+            "defer",
+            "quote",
+            "quasiquote",
+            "unquote",
+            "defmacro",
+            "and",
+            "or",
+            "not",
+            "cond",
+            "when",
+            "unless",
+        ];
+
+        let mut result = String::new();
+        let mut chars = line.chars().peekable();
+        let mut current_word = String::new();
+        let mut in_string = false;
+        let mut in_comment = false;
+        let mut escape_next = false;
+
+        while let Some(ch) = chars.next() {
+            // コメント処理
+            if !in_string && ch == ';' && chars.peek() == Some(&';') {
+                in_comment = true;
+                result.push_str(&format!("{}", ch.to_string().bright_black()));
+                continue;
+            }
+
+            if in_comment {
+                result.push_str(&format!("{}", ch.to_string().bright_black()));
+                continue;
+            }
+
+            // 文字列処理
+            if ch == '"' && !escape_next {
+                in_string = !in_string;
+                result.push_str(&format!("{}", ch.to_string().yellow()));
+                escape_next = false;
+                continue;
+            }
+
+            if in_string {
+                if ch == '\\' && !escape_next {
+                    escape_next = true;
+                } else {
+                    escape_next = false;
+                }
+                result.push_str(&format!("{}", ch.to_string().yellow()));
+                continue;
+            }
+
+            // 単語の区切り文字
+            if ch.is_whitespace()
+                || ch == '('
+                || ch == ')'
+                || ch == '['
+                || ch == ']'
+                || ch == '{'
+                || ch == '}'
+            {
+                // 蓄積された単語を処理
+                if !current_word.is_empty() {
+                    result.push_str(&highlight_word(&current_word, &special_forms));
+                    current_word.clear();
+                }
+                result.push(ch);
+            } else {
+                current_word.push(ch);
+            }
+        }
+
+        // 最後の単語を処理
+        if !current_word.is_empty() {
+            result.push_str(&highlight_word(&current_word, &special_forms));
+        }
+
+        std::borrow::Cow::Owned(result)
+    }
+
+    fn highlight_char(&self, _line: &str, _pos: usize, _forced: bool) -> bool {
+        true
+    }
+}
+
+/// 単語をハイライト
+fn highlight_word(word: &str, special_forms: &[&str]) -> String {
+    use colored::Colorize;
+
+    // キーワード（:で始まる）
+    if word.starts_with(':') {
+        return word.cyan().to_string();
+    }
+
+    // 数値
+    if word.parse::<i64>().is_ok() || word.parse::<f64>().is_ok() {
+        return word.bright_cyan().to_string();
+    }
+
+    // パイプ演算子
+    if matches!(word, "|>" | "|>?" | "||>" | "~>" | "->" | "=>") {
+        return word.bright_magenta().bold().to_string();
+    }
+
+    // 特殊形式
+    if special_forms.contains(&word) {
+        return word.blue().bold().to_string();
+    }
+
+    // その他（通常表示）
+    word.to_string()
+}
+
 impl Hinter for QiHelper {
     type Hint = String;
 }
-impl Validator for QiHelper {}
+
+impl Validator for QiHelper {
+    fn validate(
+        &self,
+        ctx: &mut rustyline::validate::ValidationContext,
+    ) -> rustyline::Result<rustyline::validate::ValidationResult> {
+        let input = ctx.input();
+
+        // 空行は常に有効
+        if input.trim().is_empty() {
+            return Ok(rustyline::validate::ValidationResult::Valid(None));
+        }
+
+        // REPLコマンド（:で始まる）は常に1行で完結
+        if input.trim_start().starts_with(':') {
+            return Ok(rustyline::validate::ValidationResult::Valid(None));
+        }
+
+        // 括弧のバランスをチェック
+        if is_balanced(input) {
+            Ok(rustyline::validate::ValidationResult::Valid(None))
+        } else {
+            // 不完全な入力は次の行を待つ
+            Ok(rustyline::validate::ValidationResult::Incomplete)
+        }
+    }
+}
+
 impl Helper for QiHelper {}
 
 fn main() {
@@ -467,20 +935,20 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                                print_error(&ui_msg(UiMsg::ErrorRuntime), &e);
                                 std::process::exit(1);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                    print_error(&ui_msg(UiMsg::ErrorParse), &e);
                     std::process::exit(1);
                 }
             }
         }
         Err(e) => {
-            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
+            print_error(&ui_msg(UiMsg::ErrorLexer), &e);
             std::process::exit(1);
         }
     }
@@ -517,6 +985,22 @@ fn repl(preload: Option<&str>, quiet: bool) {
 
     let mut last_loaded_file: Option<String> = None;
 
+    // ファイル監視用のチャンネル（ホットリロード）
+    #[cfg(feature = "repl")]
+    let (watch_tx, watch_rx) = std::sync::mpsc::channel::<String>();
+    #[cfg(feature = "repl")]
+    let watched_files = std::sync::Arc::new(parking_lot::Mutex::new(std::collections::HashSet::<
+        String,
+    >::new()));
+
+    // REPLマクロ
+    #[cfg(feature = "repl")]
+    let mut macros = ReplMacros::new();
+
+    // プロファイリングデータ
+    #[cfg(feature = "repl")]
+    let mut profile = ProfileData::new();
+
     // ファイルのプリロード
     if let Some(path) = preload {
         match std::fs::read_to_string(path) {
@@ -539,36 +1023,62 @@ fn repl(preload: Option<&str>, quiet: bool) {
     }
 
     let mut line_number = 1;
-    let mut accumulated_input = String::new();
+    let mut result_number = 1;
 
     loop {
-        let prompt = if accumulated_input.is_empty() {
-            format!("qi:{}> ", line_number)
-        } else {
-            "     ... ".to_string()
-        };
+        // ファイル変更通知をチェック（ホットリロード）
+        #[cfg(feature = "repl")]
+        if let Ok(changed_file) = watch_rx.try_recv() {
+            println!(
+                "{}",
+                format!("\n[File changed: {}]", changed_file).bright_black()
+            );
+            match std::fs::read_to_string(&changed_file) {
+                Ok(content) => {
+                    eval_repl_code(&evaluator, &content, Some(&changed_file));
+                    println!("{}", "[Reloaded]".green());
+                }
+                Err(e) => {
+                    eprintln!("{}: {}", "Failed to reload".red(), e);
+                }
+            }
+        }
+
+        let prompt = format!("qi:{}> ", line_number);
 
         let readline = rl.readline(&prompt);
 
         match readline {
-            Ok(line) => {
-                let line = line.trim();
+            Ok(input) => {
+                let input = input.trim();
 
-                if line.is_empty() {
+                if input.is_empty() {
                     continue;
                 }
 
                 // REPLコマンドの処理
-                if line.starts_with(':') && accumulated_input.is_empty() {
-                    rl.add_history_entry(line).ok();
-                    handle_repl_command(line, &evaluator, &mut last_loaded_file);
+                if input.starts_with(':') {
+                    rl.add_history_entry(input).ok();
+                    handle_repl_command(
+                        input,
+                        &evaluator,
+                        &mut last_loaded_file,
+                        #[cfg(feature = "repl")]
+                        &mut macros,
+                        #[cfg(feature = "repl")]
+                        &watch_tx,
+                        #[cfg(feature = "repl")]
+                        &watched_files,
+                        #[cfg(feature = "repl")]
+                        &mut profile,
+                    );
 
                     // :clear の場合は evaluator と helper をリセット
-                    if line == ":clear" {
+                    if input == ":clear" {
                         evaluator = Evaluator::new();
                         helper = QiHelper::new();
                         rl.set_helper(Some(helper));
-                    } else if line == ":quit" {
+                    } else if input == ":quit" {
                         break;
                     } else {
                         // 補完候補を更新
@@ -579,43 +1089,70 @@ fn repl(preload: Option<&str>, quiet: bool) {
                     continue;
                 }
 
-                // 複数行入力の処理
-                if !accumulated_input.is_empty() {
-                    accumulated_input.push('\n');
-                }
-                accumulated_input.push_str(line);
+                // 通常の式を評価
+                rl.add_history_entry(input).ok();
 
-                // 括弧のバランスチェック
-                if !is_balanced(&accumulated_input) {
-                    continue;
-                }
-
-                rl.add_history_entry(&accumulated_input).ok();
-
-                match Parser::new(&accumulated_input) {
+                match Parser::new(input) {
                     Ok(mut parser) => match parser.parse() {
-                        Ok(expr) => match evaluator.eval(&expr) {
-                            Ok(value) => {
-                                println!("{}", value);
-                                line_number += 1;
+                        Ok(expr) => {
+                            // 評価時間を測定
+                            let start = std::time::Instant::now();
+                            let eval_result = evaluator.eval(&expr);
+                            let elapsed = start.elapsed();
 
-                                // 補完候補を更新
-                                if let Some(h) = rl.helper_mut() {
-                                    h.update_completions(&evaluator);
+                            match eval_result {
+                                Ok(value) => {
+                                    // 結果ラベル
+                                    let result_label = format!("${}", result_number);
+
+                                    // テーブル表示を試みる
+                                    if let Some(table) = try_display_as_table(&value) {
+                                        println!("{} =>", result_label.green().bold());
+                                        println!("{}", table);
+                                    } else {
+                                        println!("{} => {}", result_label.green().bold(), value);
+                                    }
+
+                                    // 評価時間を表示（1ms以上の場合のみ）
+                                    if elapsed.as_millis() > 0 {
+                                        println!(
+                                            "{}",
+                                            format!("({}ms)", elapsed.as_millis()).bright_black()
+                                        );
+                                    } else if elapsed.as_micros() > 100 {
+                                        println!(
+                                            "{}",
+                                            format!("({}µs)", elapsed.as_micros()).bright_black()
+                                        );
+                                    }
+
+                                    // 結果を環境に登録
+                                    if let Some(env) = evaluator.get_env() {
+                                        env.write().set(result_label.as_str(), value.clone());
+                                    }
+
+                                    // プロファイリングに記録
+                                    #[cfg(feature = "repl")]
+                                    profile.record(elapsed, line_number);
+
+                                    line_number += 1;
+                                    result_number += 1;
+
+                                    // 補完候補を更新
+                                    if let Some(h) = rl.helper_mut() {
+                                        h.update_completions(&evaluator);
+                                    }
                                 }
+                                Err(e) => print_error(&ui_msg(UiMsg::ErrorRuntime), &e),
                             }
-                            Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e),
-                        },
-                        Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e),
+                        }
+                        Err(e) => print_error(&ui_msg(UiMsg::ErrorParse), &e),
                     },
-                    Err(e) => eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e),
+                    Err(e) => print_error(&ui_msg(UiMsg::ErrorLexer), &e),
                 }
-
-                accumulated_input.clear();
             }
             Err(ReadlineError::Interrupted) => {
                 println!("^C");
-                accumulated_input.clear();
             }
             Err(ReadlineError::Eof) => {
                 break;
@@ -761,7 +1298,17 @@ fn load_docs_from_paths(evaluator: &Evaluator, paths: &DocPaths) {
 }
 
 /// REPLコマンドの処理
-fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut Option<String>) {
+fn handle_repl_command(
+    cmd: &str,
+    evaluator: &Evaluator,
+    last_loaded_file: &mut Option<String>,
+    #[cfg(feature = "repl")] macros: &mut ReplMacros,
+    #[cfg(feature = "repl")] watch_tx: &std::sync::mpsc::Sender<String>,
+    #[cfg(feature = "repl")] watched_files: &std::sync::Arc<
+        parking_lot::Mutex<std::collections::HashSet<String>>,
+    >,
+    #[cfg(feature = "repl")] profile: &mut ProfileData,
+) {
     let parts: Vec<&str> = cmd.split_whitespace().collect();
     let command = parts[0];
 
@@ -860,48 +1407,120 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
 
                 match doc {
                     Some(Value::String(s)) => {
-                        println!("\n{}: {}\n", name, s);
+                        println!("\n{}: {}\n", name.green().bold(), s);
                     }
                     Some(Value::Map(m)) => {
                         // 構造化ドキュメント
-                        println!("\n{}:", name);
+                        println!("\n{}:", name.green().bold());
+
+                        // Description
                         if let Some(Value::String(desc)) =
                             m.get(&MapKey::String("desc".to_string()))
                         {
                             println!("  {}", desc);
                         }
+
+                        // Parameters
                         if let Some(Value::Vector(params)) =
                             m.get(&MapKey::String("params".to_string()))
                         {
-                            println!("{}", ui_msg(UiMsg::ReplDocParameters));
+                            println!("\n{}", ui_msg(UiMsg::ReplDocParameters).cyan());
                             for param in params {
                                 if let Value::Map(pm) = param {
-                                    if let (
-                                        Some(Value::String(pname)),
-                                        Some(Value::String(pdesc)),
-                                    ) = (
-                                        pm.get(&MapKey::String("name".to_string())),
-                                        pm.get(&MapKey::String("desc".to_string())),
-                                    ) {
-                                        println!("  {} - {}", pname, pdesc);
+                                    let pname = pm.get(&MapKey::String("name".to_string()));
+                                    let ptype = pm.get(&MapKey::String("type".to_string()));
+                                    let pdesc = pm.get(&MapKey::String("desc".to_string()));
+
+                                    if let Some(Value::String(name_str)) = pname {
+                                        print!("  {}", name_str.yellow());
+                                        if let Some(Value::String(type_str)) = ptype {
+                                            print!(" ({})", type_str.bright_black());
+                                        }
+                                        if let Some(Value::String(desc_str)) = pdesc {
+                                            print!(" - {}", desc_str);
+                                        }
+                                        println!();
                                     }
                                 }
                             }
                         }
+
+                        // Returns
+                        if let Some(returns) = m.get(&MapKey::String("returns".to_string())) {
+                            println!("\n{}", "Returns:".cyan());
+                            match returns {
+                                Value::String(s) => println!("  {}", s),
+                                Value::Map(rm) => {
+                                    if let Some(Value::String(rtype)) =
+                                        rm.get(&MapKey::String("type".to_string()))
+                                    {
+                                        print!("  {}", rtype.yellow());
+                                    }
+                                    if let Some(Value::String(rdesc)) =
+                                        rm.get(&MapKey::String("desc".to_string()))
+                                    {
+                                        print!(" - {}", rdesc);
+                                    }
+                                    println!();
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        // Examples
                         if let Some(Value::Vector(examples)) =
                             m.get(&MapKey::String("examples".to_string()))
                         {
-                            println!("{}", ui_msg(UiMsg::ReplDocExamples));
+                            println!("\n{}", ui_msg(UiMsg::ReplDocExamples).cyan());
                             for ex in examples {
                                 if let Value::String(s) = ex {
-                                    println!("  {}", s);
+                                    println!("  {}", s.bright_black());
                                 }
                             }
                         }
+
+                        // Related functions
+                        if let Some(Value::Vector(related)) =
+                            m.get(&MapKey::String("related".to_string()))
+                        {
+                            println!("\n{}", "Related:".cyan());
+                            let related_names: Vec<String> = related
+                                .iter()
+                                .filter_map(|v| {
+                                    if let Value::String(s) = v {
+                                        Some(s.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            println!("  {}", related_names.join(", ").bright_black());
+                        }
+
                         println!();
                     }
                     _ => {
-                        println!("\n{}: {}\n", name, ui_msg(UiMsg::ReplDocNoDoc));
+                        println!("\n{}: {}", name, ui_msg(UiMsg::ReplDocNoDoc));
+
+                        // 類似の関数名を提案
+                        let mut similar: Vec<String> = env
+                            .bindings()
+                            .map(|(n, _)| n.to_string())
+                            .filter(|n| {
+                                // 編集距離が2以下、または前方一致
+                                strsim::damerau_levenshtein(name, n) <= 2 || n.starts_with(name)
+                            })
+                            .take(5)
+                            .collect();
+
+                        if !similar.is_empty() {
+                            similar.sort();
+                            println!("\n{}", "Did you mean:".bright_black());
+                            for s in similar {
+                                println!("  {}", s.yellow());
+                            }
+                        }
+                        println!();
                     }
                 }
             }
@@ -991,6 +1610,247 @@ fn handle_repl_command(cmd: &str, evaluator: &Evaluator, last_loaded_file: &mut 
                 eprintln!("{}", ui_msg(UiMsg::ReplNoFileLoaded));
             }
         }
+        ":watch" => {
+            #[cfg(feature = "repl")]
+            {
+                if parts.len() < 2 {
+                    eprintln!("Usage: :watch <file>");
+                    return;
+                }
+
+                let file_path = parts[1];
+                let abs_path = std::fs::canonicalize(file_path)
+                    .unwrap_or_else(|_| std::path::PathBuf::from(file_path));
+                let path_str = abs_path.to_string_lossy().to_string();
+
+                // 既に監視中かチェック
+                if watched_files.lock().contains(&path_str) {
+                    println!("{}", format!("Already watching: {}", file_path).yellow());
+                    return;
+                }
+
+                // ファイル監視を開始
+                let tx = watch_tx.clone();
+                let watch_path = abs_path.clone();
+
+                std::thread::spawn(move || {
+                    let (tx_event, rx_event) = std::sync::mpsc::channel();
+                    let mut watcher = notify::recommended_watcher(
+                        move |res: Result<notify::Event, notify::Error>| {
+                            if let Ok(event) = res {
+                                if matches!(event.kind, notify::EventKind::Modify(_)) {
+                                    let _ = tx_event.send(());
+                                }
+                            }
+                        },
+                    )
+                    .expect("Failed to create watcher");
+
+                    watcher
+                        .watch(&watch_path, RecursiveMode::NonRecursive)
+                        .expect("Failed to watch file");
+
+                    // イベントを受信したらメインスレッドに通知
+                    while rx_event.recv().is_ok() {
+                        let _ = tx.send(watch_path.to_string_lossy().to_string());
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        // デバウンス
+                    }
+                });
+
+                watched_files.lock().insert(path_str.clone());
+                println!("{}", format!("Watching: {}", file_path).green());
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Watch feature is not available");
+            }
+        }
+        ":unwatch" => {
+            #[cfg(feature = "repl")]
+            {
+                if parts.len() < 2 {
+                    // 全ての監視を停止
+                    let count = watched_files.lock().len();
+                    watched_files.lock().clear();
+                    println!("{}", format!("Stopped watching {} file(s)", count).yellow());
+                } else {
+                    let file_path = parts[1];
+                    let abs_path = std::fs::canonicalize(file_path)
+                        .unwrap_or_else(|_| std::path::PathBuf::from(file_path));
+                    let path_str = abs_path.to_string_lossy().to_string();
+
+                    if watched_files.lock().remove(&path_str) {
+                        println!("{}", format!("Stopped watching: {}", file_path).yellow());
+                    } else {
+                        eprintln!("{}", format!("Not watching: {}", file_path).red());
+                    }
+                }
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Watch feature is not available");
+            }
+        }
+        ":threads" => {
+            // Rayon thread pool情報を表示
+            println!("Rayon Thread Pool:");
+            println!("  Available parallelism: {}", rayon::current_num_threads());
+
+            // チャンネル型の変数を探してステータス表示
+            if let Some(env) = evaluator.get_env() {
+                let env = env.read();
+                let channels: Vec<_> = env
+                    .bindings()
+                    .filter(|(_, v)| matches!(v, Value::Channel(_)))
+                    .collect();
+
+                if !channels.is_empty() {
+                    println!("\nActive Channels:");
+                    for (name, value) in channels {
+                        if let Value::Channel(ch) = value {
+                            println!(
+                                "  {} - len: {}, is_empty: {}",
+                                name,
+                                ch.receiver.len(),
+                                ch.receiver.is_empty()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        ":macro" => {
+            #[cfg(feature = "repl")]
+            {
+                if parts.len() < 2 {
+                    // マクロ一覧を表示
+                    let list = macros.list();
+                    if list.is_empty() {
+                        println!("{}", "No macros defined".yellow());
+                    } else {
+                        println!("{}", "Defined macros:".cyan());
+                        for (name, cmd) in list {
+                            println!("  {} => {}", name.green(), cmd.bright_black());
+                        }
+                    }
+                    return;
+                }
+
+                let subcommand = parts[1];
+                match subcommand {
+                    "define" | "def" => {
+                        if parts.len() < 4 {
+                            eprintln!("Usage: :macro define <name> <command>");
+                            return;
+                        }
+                        let name = parts[2].to_string();
+                        let command = parts[3..].join(" ");
+                        macros.define(name.clone(), command.clone());
+                        println!(
+                            "{}",
+                            format!("Macro '{}' defined: {}", name, command).green()
+                        );
+                    }
+                    "delete" | "del" => {
+                        if parts.len() < 3 {
+                            eprintln!("Usage: :macro delete <name>");
+                            return;
+                        }
+                        let name = parts[2];
+                        if macros.delete(name) {
+                            println!("{}", format!("Macro '{}' deleted", name).yellow());
+                        } else {
+                            eprintln!("{}", format!("Macro '{}' not found", name).red());
+                        }
+                    }
+                    "list" => {
+                        let list = macros.list();
+                        if list.is_empty() {
+                            println!("{}", "No macros defined".yellow());
+                        } else {
+                            println!("{}", "Defined macros:".cyan());
+                            for (name, cmd) in list {
+                                println!("  {} => {}", name.green(), cmd.bright_black());
+                            }
+                        }
+                    }
+                    _ => {
+                        eprintln!("Unknown macro subcommand: {}", subcommand);
+                        eprintln!("Available: define, delete, list");
+                    }
+                }
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Macro feature is not available");
+            }
+        }
+        ":m" => {
+            // マクロ実行（短縮コマンド）
+            #[cfg(feature = "repl")]
+            {
+                if parts.len() < 2 {
+                    eprintln!("Usage: :m <macro-name>");
+                    return;
+                }
+                let macro_name = parts[1];
+                if let Some(command) = macros.get(macro_name) {
+                    println!(
+                        "{}",
+                        format!("[Running macro '{}': {}]", macro_name, command).bright_black()
+                    );
+                    // TODO: マクロコマンドを実行
+                    // ここでは単純に表示のみ（実行は別途実装が必要）
+                    println!(
+                        "{}",
+                        format!("Note: Macro execution not yet implemented",).yellow()
+                    );
+                } else {
+                    eprintln!("{}", format!("Macro '{}' not found", macro_name).red());
+                }
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Macro feature is not available");
+            }
+        }
+        ":profile" => {
+            #[cfg(feature = "repl")]
+            {
+                if parts.len() < 2 {
+                    eprintln!("Usage: :profile <start|stop|report|clear>");
+                    return;
+                }
+
+                let subcommand = parts[1];
+                match subcommand {
+                    "start" => {
+                        profile.start();
+                        println!("{}", "Profiling started".green());
+                    }
+                    "stop" => {
+                        profile.stop();
+                        println!("{}", "Profiling stopped".yellow());
+                    }
+                    "report" => {
+                        profile.report();
+                    }
+                    "clear" => {
+                        profile.clear();
+                        println!("{}", "Profiling data cleared".yellow());
+                    }
+                    _ => {
+                        eprintln!("Unknown profile subcommand: {}", subcommand);
+                        eprintln!("Available: start, stop, report, clear");
+                    }
+                }
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Profile feature is not available");
+            }
+        }
         ":quit" => {
             // handled in main loop
         }
@@ -1016,18 +1876,18 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
                         match evaluator.eval(expr) {
                             Ok(_) => {}
                             Err(e) => {
-                                eprintln!("{}: {}", ui_msg(UiMsg::ErrorRuntime), e);
+                                print_error(&ui_msg(UiMsg::ErrorRuntime), &e);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("{}: {}", ui_msg(UiMsg::ErrorParse), e);
+                    print_error(&ui_msg(UiMsg::ErrorParse), &e);
                 }
             }
         }
         Err(e) => {
-            eprintln!("{}: {}", ui_msg(UiMsg::ErrorLexer), e);
+            print_error(&ui_msg(UiMsg::ErrorLexer), &e);
         }
     }
 }

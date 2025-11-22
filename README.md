@@ -146,16 +146,39 @@ qi template info http-server
 
 ### REPL (Interactive Environment)
 
+The Qi REPL provides a powerful interactive development environment with advanced features:
+
 ```bash
 qi
 
-# Inside REPL
+# Inside REPL - with syntax highlighting and result labels
 qi:1> (+ 1 2 3)
-6
+$1 => 6
 
 qi:2> ([1 2 3 4 5] |> (map (fn [x] (* x 2))))
-Vector([Integer(2), Integer(4), Integer(6), Integer(8), Integer(10)])
+$2 => [2 4 6 8 10]
+
+# Reference previous results
+qi:3> (+ $1 $2)
+$3 => 36
+
+# Auto-display execution time for slow operations
+qi:4> (range 1000000 |> (reduce + 0))
+$4 => 499999500000
+(125ms)
 ```
+
+**REPL Features:**
+- 🎨 **Syntax highlighting** - Color-coded keywords, operators, strings, numbers, and comments
+- 📝 **Tab completion** - Functions, variables, REPL commands, special forms, and pipe operators
+- 📚 **Enhanced documentation** - `:doc` shows parameters, return values, examples, and related functions
+- 🔄 **Hot reload** - `:watch` monitors files and auto-reloads on changes
+- ⚡ **Macros** - Define shortcuts for frequently used commands
+- 📊 **Profiling** - Measure and analyze code performance
+- 🧵 **Concurrency debugging** - Inspect thread pools and channels
+- 📋 **Result history** - Access previous results with `$1`, `$2`, etc.
+- 📊 **Auto table display** - Vector of maps automatically rendered as tables
+- ⏱️ **Execution timing** - Shows evaluation time for operations
 
 ### Other Commands
 

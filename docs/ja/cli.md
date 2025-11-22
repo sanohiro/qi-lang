@@ -177,8 +177,10 @@ qi
 ```
 
 **REPLコマンド:**
+
+**基本コマンド:**
 - `:help` - ヘルプを表示
-- `:doc <name>` - 関数のドキュメントを表示
+- `:doc <name>` - 関数のドキュメントを表示（カラー表示、戻り値、関連関数、類似関数の提案）
 - `:vars` - 定義されている変数を表示
 - `:funcs` - 定義されている関数を表示
 - `:builtins [filter]` - 組み込み関数を表示（フィルタ可能）
@@ -187,10 +189,35 @@ qi
 - `:reload` - 最後に読み込んだファイルを再読み込み
 - `:quit` - REPLを終了
 
+**ホットリロード（ファイル監視）:**
+- `:watch <file>` - ファイルを監視して変更時に自動再読み込み
+- `:unwatch [file]` - ファイル監視を停止（引数なしで全停止）
+
+**マクロ（頻繁な操作の自動化）:**
+- `:macro` - マクロ一覧を表示
+- `:macro define <name> <command>` - マクロを定義（`~/.qi/macros`に保存）
+- `:macro list` - マクロ一覧を表示
+- `:macro delete <name>` - マクロを削除
+- `:m <name>` - マクロを実行（短縮コマンド）
+
+**プロファイリング:**
+- `:profile start` - プロファイリングを開始
+- `:profile stop` - プロファイリングを停止
+- `:profile report` - 統計レポートを表示（合計、平均、最大、最小時間、最も遅い評価）
+- `:profile clear` - プロファイリングデータをクリア
+
+**並行処理デバッグ:**
+- `:threads` - Rayonスレッドプール情報とアクティブなチャンネルのステータスを表示
+
 **機能:**
-- タブ補完（関数名、変数名、REPLコマンド）
-- 履歴（`~/.qi_history` に保存）
+- タブ補完（関数名、変数名、REPLコマンド、特殊形式、パイプ演算子）
+- シンタックスハイライト（特殊形式、演算子、文字列、数値、コメントを色分け）
+- 履歴（`~/.qi/history` に永続化）
 - 複数行入力（括弧のバランスを自動判定）
+- 結果のラベル表示（`$1`, `$2`で過去の結果を参照可能）
+- 評価時間の自動表示（ミリ秒/マイクロ秒）
+- テーブル形式での自動表示（`Vector<Map>`を検出）
+- エラーメッセージのカラー表示
 - Ctrl+C で入力キャンセル
 - Ctrl+D または `:quit` で終了
 
@@ -371,13 +398,58 @@ qi -l src/lib.qi
 
 # REPL内で関数をテスト
 qi:1> (greet "World")
-こんにちは、Worldさん！
+$1 => こんにちは、Worldさん！
 
-# ドキュメントを確認
-qi:2> :doc map
+# 過去の結果を参照
+qi:2> $1
+$2 => こんにちは、Worldさん！
+
+# ドキュメントを確認（カラー表示、戻り値、関連関数も表示）
+qi:3> :doc map
 
 # 組み込み関数を検索
-qi:3> :builtins str
+qi:4> :builtins str
+
+# ファイルをホットリロード（開発中に便利）
+qi:5> :watch src/lib.qi
+Watching: src/lib.qi
+# => ファイルを編集すると自動的に再読み込みされる
+
+# よく使うコマンドをマクロに登録
+qi:6> :macro define test (run-tests)
+Macro 'test' defined: (run-tests)
+
+qi:7> :m test
+[Running macro 'test': (run-tests)]
+
+# プロファイリングで性能を測定
+qi:8> :profile start
+Profiling started
+
+qi:9> (heavy-computation 1000)
+$3 => 42
+(15ms)
+
+qi:10> :profile report
+Profiling Report:
+  Total evaluations: 5
+  Total time: 23ms
+  Average time: 4.6ms
+  Min time: 100µs
+  Max time: 15ms
+
+Slowest evaluations:
+  1. Line 9 - 15ms
+  2. Line 8 - 5ms
+  ...
+
+# 並行処理のデバッグ
+qi:11> :threads
+Rayon Thread Pool:
+  Available parallelism: 8
+
+Active Channels:
+  ch - len: 0, is_empty: true
 ```
 
 ---

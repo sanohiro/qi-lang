@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### REPL Enhancements (Phase 1-3)
+
+**Phase 1: Foundation Improvements**
+- History persistence to `~/.qi/history`
+- Multi-line editing with automatic parenthesis balance detection (`Validator` trait)
+- Colored stack traces and error messages
+- Auto table display for `Vector<Map>` results
+- `:threads` command for concurrency debugging (Rayon thread pool info and channel status)
+
+**Phase 2: Usability Improvements**
+- Syntax highlighting (special forms, operators, strings, numbers, comments)
+- Enhanced tab completion (special forms, pipe operators, 40+ common built-in functions)
+- Result labels (`$1`, `$2`, `$3`...) to reference previous results
+- Automatic execution time display (milliseconds/microseconds)
+- Enhanced `:doc` command with:
+  - Colored output
+  - Return value display
+  - Related functions
+  - Similar function suggestions (edit distance-based)
+
+**Phase 3: Advanced Features**
+- Hot reload with `:watch <file>` and `:unwatch` commands (file monitoring and auto-reload)
+- REPL macros:
+  - `:macro define <name> <command>` - Define shortcuts
+  - `:macro list` - List all macros
+  - `:macro delete <name>` - Delete macros
+  - `:m <name>` - Execute macros
+  - Macros persisted to `~/.qi/macros` (JSON format)
+- Profiling:
+  - `:profile start/stop` - Control profiling
+  - `:profile report` - Display statistics (total, avg, max, min, slowest evaluations)
+  - `:profile clear` - Clear data
+
+**New Dependencies**
+- `notify` (6.1) - File watching for hot reload
+- `comfy-table` (7.1) - Table formatting
+- `colored` (2.1) - Terminal colors
+- `serde_json` (via `format-json`) - Macro persistence
+
 ## [0.1.0] - 2025-01-20
 
 ### Added

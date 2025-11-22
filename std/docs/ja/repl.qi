@@ -1,0 +1,217 @@
+;; REPL (対話的実行環境) ドキュメント
+;;
+;; このファイルはREPLコマンドと機能のドキュメントを提供します。
+
+;; ===================================
+;; 基本コマンド
+;; ===================================
+
+(def __doc__:help
+  {:desc "ヘルプメッセージを表示します"
+   :usage ":help"
+   :examples [":help"]
+   :category "REPL"})
+
+(def __doc__:doc
+  {:desc "関数のドキュメントを表示します（カラー表示、戻り値、関連関数、類似関数の提案付き）"
+   :usage ":doc <関数名>"
+   :params [{:name "関数名" :type "string" :desc "ドキュメントを表示する関数の名前"}]
+   :examples [":doc map"
+              ":doc str/split"
+              ":doc http/get"]
+   :category "REPL"})
+
+(def __doc__:vars
+  {:desc "定義されている変数の一覧を表示します"
+   :usage ":vars"
+   :examples [":vars"]
+   :category "REPL"})
+
+(def __doc__:funcs
+  {:desc "定義されている関数の一覧を表示します"
+   :usage ":funcs"
+   :examples [":funcs"]
+   :category "REPL"})
+
+(def __doc__:builtins
+  {:desc "組み込み関数の一覧を表示します（フィルタ可能）"
+   :usage ":builtins [フィルタ]"
+   :params [{:name "フィルタ" :type "string" :desc "関数名の一部（省略可）"}]
+   :examples [":builtins"
+              ":builtins str"
+              ":builtins http"]
+   :category "REPL"})
+
+(def __doc__:clear
+  {:desc "環境をクリアします（すべての変数と関数を削除）"
+   :usage ":clear"
+   :examples [":clear"]
+   :category "REPL"})
+
+(def __doc__:load
+  {:desc "ファイルを読み込んで評価します"
+   :usage ":load <ファイルパス>"
+   :params [{:name "ファイルパス" :type "string" :desc "読み込むQiスクリプトファイルのパス"}]
+   :examples [":load src/lib.qi"
+              ":load utils.qi"]
+   :category "REPL"})
+
+(def __doc__:reload
+  {:desc "最後に読み込んだファイルを再読み込みします"
+   :usage ":reload"
+   :examples [":reload"]
+   :category "REPL"})
+
+(def __doc__:quit
+  {:desc "REPLを終了します"
+   :usage ":quit"
+   :examples [":quit"]
+   :category "REPL"})
+
+;; ===================================
+;; ホットリロード（ファイル監視）
+;; ===================================
+
+(def __doc__:watch
+  {:desc "ファイルを監視して、変更時に自動的に再読み込みします"
+   :usage ":watch <ファイルパス>"
+   :params [{:name "ファイルパス" :type "string" :desc "監視するQiスクリプトファイルのパス"}]
+   :examples [":watch src/lib.qi"
+              ":watch utils.qi"]
+   :notes "開発中のファイルを監視すると、保存するたびに自動的に再読み込みされます"
+   :category "REPL"})
+
+(def __doc__:unwatch
+  {:desc "ファイルの監視を停止します"
+   :usage ":unwatch [ファイルパス]"
+   :params [{:name "ファイルパス" :type "string" :desc "監視を停止するファイルのパス（省略で全停止）"}]
+   :examples [":unwatch src/lib.qi"
+              ":unwatch"]
+   :category "REPL"})
+
+;; ===================================
+;; マクロ（頻繁な操作の自動化）
+;; ===================================
+
+(def __doc__:macro
+  {:desc "マクロの一覧を表示、または定義・削除します"
+   :usage ":macro [サブコマンド] [引数...]"
+   :subcommands [{:name "（引数なし）" :desc "マクロ一覧を表示"}
+                 {:name "define <名前> <コマンド>" :desc "マクロを定義"}
+                 {:name "list" :desc "マクロ一覧を表示"}
+                 {:name "delete <名前>" :desc "マクロを削除"}]
+   :examples [":macro"
+              ":macro define test (run-tests)"
+              ":macro define build (cmd/exec \"cargo\" \"build\")"
+              ":macro list"
+              ":macro delete test"]
+   :notes "マクロは ~/.qi/macros に JSON形式で永続化されます"
+   :category "REPL"})
+
+(def __doc__:m
+  {:desc "マクロを実行します（短縮コマンド）"
+   :usage ":m <マクロ名>"
+   :params [{:name "マクロ名" :type "string" :desc "実行するマクロの名前"}]
+   :examples [":m test"
+              ":m build"]
+   :category "REPL"})
+
+;; ===================================
+;; プロファイリング
+;; ===================================
+
+(def __doc__:profile
+  {:desc "プロファイリングを制御し、パフォーマンス統計を表示します"
+   :usage ":profile <サブコマンド>"
+   :subcommands [{:name "start" :desc "プロファイリングを開始"}
+                 {:name "stop" :desc "プロファイリングを停止"}
+                 {:name "report" :desc "統計レポートを表示"}
+                 {:name "clear" :desc "プロファイリングデータをクリア"}]
+   :examples [":profile start"
+              "(heavy-computation 1000)"
+              ":profile report"
+              ":profile clear"]
+   :returns {:desc "reportサブコマンドは、合計時間、平均時間、最大・最小時間、最も遅い5つの評価を表示します"}
+   :category "REPL"})
+
+;; ===================================
+;; 並行処理デバッグ
+;; ===================================
+
+(def __doc__:threads
+  {:desc "Rayonスレッドプール情報とアクティブなチャンネルのステータスを表示します"
+   :usage ":threads"
+   :examples [":threads"]
+   :returns {:desc "スレッド数とチャンネルの状態（長さ、空状態）を表示します"}
+   :category "REPL"})
+
+;; ===================================
+;; REPL機能
+;; ===================================
+
+(def __doc__repl-features
+  {:title "REPL機能"
+   :features [
+     {:name "シンタックスハイライト"
+      :desc "特殊形式、演算子、文字列、数値、コメントを色分け表示"}
+
+     {:name "タブ補完"
+      :desc "関数名、変数名、REPLコマンド、特殊形式、パイプ演算子の補完"}
+
+     {:name "履歴の永続化"
+      :desc "コマンド履歴を ~/.qi/history に保存（上下キーで履歴を辿る）"}
+
+     {:name "マルチライン入力"
+      :desc "括弧のバランスを自動判定し、複数行の式を入力可能"}
+
+     {:name "結果のラベル表示"
+      :desc "評価結果に $1, $2, $3... というラベルを付与し、後で参照可能"}
+
+     {:name "実行時間の自動表示"
+      :desc "1ms以上の評価には自動的に実行時間を表示（ミリ秒/マイクロ秒）"}
+
+     {:name "テーブル形式の自動表示"
+      :desc "Vector<Map>を検出して自動的にテーブル形式で表示"}
+
+     {:name "エラーメッセージのカラー表示"
+      :desc "エラーの種類と内容を色分けして見やすく表示"}
+   ]
+   :examples [
+     "# 結果のラベル表示"
+     "qi:1> (+ 1 2 3)"
+     "$1 => 6"
+     ""
+     "qi:2> (* $1 10)"
+     "$2 => 60"
+     ""
+     "# 実行時間の表示"
+     "qi:3> (range 1000000 |> (reduce + 0))"
+     "$3 => 499999500000"
+     "(125ms)"
+     ""
+     "# テーブル形式の表示"
+     "qi:4> [{:name \"Alice\" :age 30} {:name \"Bob\" :age 25}]"
+     "$4 =>"
+     "┌───────┬─────┐"
+     "│ name  │ age │"
+     "├───────┼─────┤"
+     "│ Alice │ 30  │"
+     "│ Bob   │ 25  │"
+     "└───────┴─────┘"
+   ]
+   :category "REPL"})
+
+;; ===================================
+;; キーボードショートカット
+;; ===================================
+
+(def __doc__repl-shortcuts
+  {:title "キーボードショートカット"
+   :shortcuts [
+     {:key "Tab" :desc "補完"}
+     {:key "↑/↓" :desc "履歴を辿る"}
+     {:key "Ctrl+C" :desc "入力をキャンセル"}
+     {:key "Ctrl+D" :desc "REPLを終了"}
+     {:key "Enter" :desc "式を評価（括弧のバランスが取れている場合）"}
+   ]
+   :category "REPL"})

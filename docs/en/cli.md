@@ -177,8 +177,10 @@ qi
 ```
 
 **REPL Commands:**
+
+**Basic Commands:**
 - `:help` - Display help
-- `:doc <name>` - Display function documentation
+- `:doc <name>` - Display function documentation (with colors, return values, related functions, and suggestions)
 - `:vars` - Display defined variables
 - `:funcs` - Display defined functions
 - `:builtins [filter]` - Display built-in functions (filterable)
@@ -187,10 +189,35 @@ qi
 - `:reload` - Reload the last loaded file
 - `:quit` - Exit REPL
 
+**Hot Reload (File Watching):**
+- `:watch <file>` - Watch a file and auto-reload on changes
+- `:unwatch [file]` - Stop watching file(s) (no args to stop all)
+
+**Macros (Automate Frequent Operations):**
+- `:macro` - List all macros
+- `:macro define <name> <command>` - Define a macro (saved to `~/.qi/macros`)
+- `:macro list` - List all macros
+- `:macro delete <name>` - Delete a macro
+- `:m <name>` - Execute a macro (shortcut)
+
+**Profiling:**
+- `:profile start` - Start profiling
+- `:profile stop` - Stop profiling
+- `:profile report` - Display statistics (total, average, max, min time, slowest evaluations)
+- `:profile clear` - Clear profiling data
+
+**Concurrency Debugging:**
+- `:threads` - Display Rayon thread pool info and active channel status
+
 **Features:**
-- Tab completion (function names, variable names, REPL commands)
-- History (saved in `~/.qi_history`)
+- Tab completion (functions, variables, REPL commands, special forms, pipe operators)
+- Syntax highlighting (special forms, operators, strings, numbers, comments color-coded)
+- History (persisted in `~/.qi/history`)
 - Multi-line input (automatic parenthesis balance detection)
+- Result labels (`$1`, `$2` to reference previous results)
+- Auto execution timing (milliseconds/microseconds)
+- Auto table display (detects `Vector<Map>`)
+- Colored error messages
 - Ctrl+C to cancel input
 - Ctrl+D or `:quit` to exit
 
@@ -371,13 +398,58 @@ qi -l src/lib.qi
 
 # Test functions in REPL
 qi:1> (greet "World")
-Hello, World!
+$1 => Hello, World!
 
-# Check documentation
-qi:2> :doc map
+# Reference previous results
+qi:2> $1
+$2 => Hello, World!
+
+# Check documentation (with colors, return values, and related functions)
+qi:3> :doc map
 
 # Search built-in functions
-qi:3> :builtins str
+qi:4> :builtins str
+
+# Hot reload files during development
+qi:5> :watch src/lib.qi
+Watching: src/lib.qi
+# => File automatically reloads when edited
+
+# Create macros for frequently used commands
+qi:6> :macro define test (run-tests)
+Macro 'test' defined: (run-tests)
+
+qi:7> :m test
+[Running macro 'test': (run-tests)]
+
+# Profile performance
+qi:8> :profile start
+Profiling started
+
+qi:9> (heavy-computation 1000)
+$3 => 42
+(15ms)
+
+qi:10> :profile report
+Profiling Report:
+  Total evaluations: 5
+  Total time: 23ms
+  Average time: 4.6ms
+  Min time: 100µs
+  Max time: 15ms
+
+Slowest evaluations:
+  1. Line 9 - 15ms
+  2. Line 8 - 5ms
+  ...
+
+# Debug concurrency
+qi:11> :threads
+Rayon Thread Pool:
+  Available parallelism: 8
+
+Active Channels:
+  ch - len: 0, is_empty: true
 ```
 
 ---

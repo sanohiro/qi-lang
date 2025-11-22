@@ -1,0 +1,217 @@
+;; REPL (Interactive Environment) Documentation
+;;
+;; This file provides documentation for REPL commands and features.
+
+;; ===================================
+;; Basic Commands
+;; ===================================
+
+(def __doc__:help
+  {:desc "Display help message"
+   :usage ":help"
+   :examples [":help"]
+   :category "REPL"})
+
+(def __doc__:doc
+  {:desc "Display function documentation (with colors, return values, related functions, and similar function suggestions)"
+   :usage ":doc <function-name>"
+   :params [{:name "function-name" :type "string" :desc "Name of the function to display documentation for"}]
+   :examples [":doc map"
+              ":doc str/split"
+              ":doc http/get"]
+   :category "REPL"})
+
+(def __doc__:vars
+  {:desc "Display a list of defined variables"
+   :usage ":vars"
+   :examples [":vars"]
+   :category "REPL"})
+
+(def __doc__:funcs
+  {:desc "Display a list of defined functions"
+   :usage ":funcs"
+   :examples [":funcs"]
+   :category "REPL"})
+
+(def __doc__:builtins
+  {:desc "Display a list of built-in functions (filterable)"
+   :usage ":builtins [filter]"
+   :params [{:name "filter" :type "string" :desc "Part of function name (optional)"}]
+   :examples [":builtins"
+              ":builtins str"
+              ":builtins http"]
+   :category "REPL"})
+
+(def __doc__:clear
+  {:desc "Clear the environment (remove all variables and functions)"
+   :usage ":clear"
+   :examples [":clear"]
+   :category "REPL"})
+
+(def __doc__:load
+  {:desc "Load and evaluate a file"
+   :usage ":load <file-path>"
+   :params [{:name "file-path" :type "string" :desc "Path to the Qi script file to load"}]
+   :examples [":load src/lib.qi"
+              ":load utils.qi"]
+   :category "REPL"})
+
+(def __doc__:reload
+  {:desc "Reload the last loaded file"
+   :usage ":reload"
+   :examples [":reload"]
+   :category "REPL"})
+
+(def __doc__:quit
+  {:desc "Exit the REPL"
+   :usage ":quit"
+   :examples [":quit"]
+   :category "REPL"})
+
+;; ===================================
+;; Hot Reload (File Watching)
+;; ===================================
+
+(def __doc__:watch
+  {:desc "Watch a file and automatically reload it when changes are detected"
+   :usage ":watch <file-path>"
+   :params [{:name "file-path" :type "string" :desc "Path to the Qi script file to watch"}]
+   :examples [":watch src/lib.qi"
+              ":watch utils.qi"]
+   :notes "When watching a file during development, it will be automatically reloaded each time you save it"
+   :category "REPL"})
+
+(def __doc__:unwatch
+  {:desc "Stop watching a file"
+   :usage ":unwatch [file-path]"
+   :params [{:name "file-path" :type "string" :desc "Path to the file to stop watching (omit to stop all)"}]
+   :examples [":unwatch src/lib.qi"
+              ":unwatch"]
+   :category "REPL"})
+
+;; ===================================
+;; Macros (Automate Frequent Operations)
+;; ===================================
+
+(def __doc__:macro
+  {:desc "List, define, or delete macros"
+   :usage ":macro [subcommand] [args...]"
+   :subcommands [{:name "(no arguments)" :desc "List all macros"}
+                 {:name "define <name> <command>" :desc "Define a macro"}
+                 {:name "list" :desc "List all macros"}
+                 {:name "delete <name>" :desc "Delete a macro"}]
+   :examples [":macro"
+              ":macro define test (run-tests)"
+              ":macro define build (cmd/exec \"cargo\" \"build\")"
+              ":macro list"
+              ":macro delete test"]
+   :notes "Macros are persisted to ~/.qi/macros in JSON format"
+   :category "REPL"})
+
+(def __doc__:m
+  {:desc "Execute a macro (shortcut command)"
+   :usage ":m <macro-name>"
+   :params [{:name "macro-name" :type "string" :desc "Name of the macro to execute"}]
+   :examples [":m test"
+              ":m build"]
+   :category "REPL"})
+
+;; ===================================
+;; Profiling
+;; ===================================
+
+(def __doc__:profile
+  {:desc "Control profiling and display performance statistics"
+   :usage ":profile <subcommand>"
+   :subcommands [{:name "start" :desc "Start profiling"}
+                 {:name "stop" :desc "Stop profiling"}
+                 {:name "report" :desc "Display statistics report"}
+                 {:name "clear" :desc "Clear profiling data"}]
+   :examples [":profile start"
+              "(heavy-computation 1000)"
+              ":profile report"
+              ":profile clear"]
+   :returns {:desc "The report subcommand displays total time, average time, max/min time, and the slowest 5 evaluations"}
+   :category "REPL"})
+
+;; ===================================
+;; Concurrency Debugging
+;; ===================================
+
+(def __doc__:threads
+  {:desc "Display Rayon thread pool info and active channel status"
+   :usage ":threads"
+   :examples [":threads"]
+   :returns {:desc "Displays thread count and channel state (length, empty status)"}
+   :category "REPL"})
+
+;; ===================================
+;; REPL Features
+;; ===================================
+
+(def __doc__repl-features
+  {:title "REPL Features"
+   :features [
+     {:name "Syntax Highlighting"
+      :desc "Color-coded display for special forms, operators, strings, numbers, and comments"}
+
+     {:name "Tab Completion"
+      :desc "Completion for function names, variable names, REPL commands, special forms, and pipe operators"}
+
+     {:name "Persistent History"
+      :desc "Command history is saved to ~/.qi/history (navigate with up/down arrows)"}
+
+     {:name "Multi-line Input"
+      :desc "Automatic parenthesis balance detection enables multi-line expression input"}
+
+     {:name "Result Labels"
+      :desc "Evaluation results are labeled as $1, $2, $3... for later reference"}
+
+     {:name "Automatic Execution Timing"
+      :desc "Evaluations taking 1ms or more automatically display execution time (milliseconds/microseconds)"}
+
+     {:name "Auto Table Display"
+      :desc "Automatically detects Vector<Map> and displays in table format"}
+
+     {:name "Colored Error Messages"
+      :desc "Error types and content are color-coded for easy reading"}
+   ]
+   :examples [
+     "# Result labels"
+     "qi:1> (+ 1 2 3)"
+     "$1 => 6"
+     ""
+     "qi:2> (* $1 10)"
+     "$2 => 60"
+     ""
+     "# Execution timing"
+     "qi:3> (range 1000000 |> (reduce + 0))"
+     "$3 => 499999500000"
+     "(125ms)"
+     ""
+     "# Table display"
+     "qi:4> [{:name \"Alice\" :age 30} {:name \"Bob\" :age 25}]"
+     "$4 =>"
+     "┌───────┬─────┐"
+     "│ name  │ age │"
+     "├───────┼─────┤"
+     "│ Alice │ 30  │"
+     "│ Bob   │ 25  │"
+     "└───────┴─────┘"
+   ]
+   :category "REPL"})
+
+;; ===================================
+;; Keyboard Shortcuts
+;; ===================================
+
+(def __doc__repl-shortcuts
+  {:title "Keyboard Shortcuts"
+   :shortcuts [
+     {:key "Tab" :desc "Completion"}
+     {:key "↑/↓" :desc "Navigate history"}
+     {:key "Ctrl+C" :desc "Cancel input"}
+     {:key "Ctrl+D" :desc "Exit REPL"}
+     {:key "Enter" :desc "Evaluate expression (when parentheses are balanced)"}
+   ]
+   :category "REPL"})
