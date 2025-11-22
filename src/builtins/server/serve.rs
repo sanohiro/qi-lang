@@ -197,7 +197,7 @@ async fn handle_request(
     req: Request<hyper::body::Incoming>,
     handler: Arc<Value>,
     timeout: Duration,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, Infallible> {
     // タイムアウト付きで処理
     let result = tokio::time::timeout(timeout, async {
         // リクエストをQi値に変換

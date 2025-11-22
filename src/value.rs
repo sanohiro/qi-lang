@@ -47,7 +47,8 @@ impl From<&str> for MapKey {
         } else if s.starts_with('"') && s.ends_with('"') {
             MapKey::String(s[1..s.len() - 1].to_string())
         } else {
-            MapKey::Symbol(Arc::from(s))
+            // From<String>と同じ動作：文字列キーとして扱う
+            MapKey::String(s.to_string())
         }
     }
 }

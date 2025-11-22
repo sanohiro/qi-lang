@@ -163,7 +163,7 @@ pub(super) async fn request_to_value(
 /// ファイルをストリーミングでレスポンスボディに変換
 pub(super) async fn create_file_stream_body(
     file_path: &str,
-) -> Result<BoxBody<Bytes, Infallible>, String> {
+) -> Result<BoxBody<Bytes, std::io::Error>, String> {
     // ファイルを非同期で開く
     let file = TokioFile::open(file_path)
         .await
@@ -172,18 +172,9 @@ pub(super) async fn create_file_stream_body(
     // ReaderStreamでチャンク単位に読み込み（デフォルト: 8KB chunks）
     let reader_stream = ReaderStream::new(file);
 
-    // StreamをResult<Frame<Bytes>, Infallible>に変換
-    let stream = reader_stream.map(|result| match result {
-        Ok(bytes) => {
-            // Bytes を Frame に変換し、Result でラップ
-            Ok::<_, Infallible>(Frame::data(bytes))
-        }
-        Err(e) => {
-            eprintln!("Stream read error: {}", e);
-            // エラー時は空フレームを返す
-            Ok::<_, Infallible>(Frame::data(Bytes::new()))
-        }
-    });
+    // StreamをResult<Frame<Bytes>, io::Error>に変換
+    // エラーはそのまま伝播させる（接続が中断される）
+    let stream = reader_stream.map(|result| result.map(Frame::data));
 
     // StreamBodyでBodyを作成
     let body = StreamBody::new(stream);
@@ -195,7 +186,7 @@ pub(super) async fn create_file_stream_body(
 /// Qi値をHTTPレスポンスに変換
 pub(super) async fn value_to_response(
     value: Value,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, String> {
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, String> {
     match value {
         Value::Map(m) => {
             // {:status 200, :headers {...}, :body "..." or :body-file "/path"}
@@ -227,7 +218,7 @@ pub(super) async fn value_to_response(
             }
 
             // ボディの生成: :body-file が優先
-            let body: BoxBody<Bytes, Infallible> =
+            let body: BoxBody<Bytes, std::io::Error> =
                 if let Some(Value::String(file_path)) = m.get(&body_file_key) {
                     // ファイルストリーミング
                     create_file_stream_body(file_path).await?
@@ -236,20 +227,24 @@ pub(super) async fn value_to_response(
                     match m.get(&body_key) {
                         Some(Value::Bytes(data)) => {
                             // バイナリデータをそのまま送信
-                            BodyExt::boxed(Full::new(Bytes::from(data.as_ref().to_vec())))
+                            let body = Full::new(Bytes::from(data.as_ref().to_vec()));
+                            BodyExt::boxed(body.map_err(|e: Infallible| match e {}))
                         }
                         Some(Value::String(s)) => {
                             // UTF-8文字列として送信
-                            BodyExt::boxed(Full::new(Bytes::from(s.as_bytes().to_vec())))
+                            let body = Full::new(Bytes::from(s.as_bytes().to_vec()));
+                            BodyExt::boxed(body.map_err(|e: Infallible| match e {}))
                         }
                         Some(v) => {
                             // その他の型は文字列化
                             let body_str = format!("{}", v);
-                            BodyExt::boxed(Full::new(Bytes::from(body_str.as_bytes().to_vec())))
+                            let body = Full::new(Bytes::from(body_str.as_bytes().to_vec()));
+                            BodyExt::boxed(body.map_err(|e: Infallible| match e {}))
                         }
                         None => {
                             // ボディなし
-                            BodyExt::boxed(Full::new(Bytes::new()))
+                            let body = Full::new(Bytes::new());
+                            BodyExt::boxed(body.map_err(|e: Infallible| match e {}))
                         }
                     }
                 };
@@ -266,12 +261,16 @@ pub(super) async fn value_to_response(
 }
 
 /// エラーレスポンスを生成
-pub(super) fn error_response(status: u16, message: &str) -> Response<BoxBody<Bytes, Infallible>> {
+pub(super) fn error_response(
+    status: u16,
+    message: &str,
+) -> Response<BoxBody<Bytes, std::io::Error>> {
     // SAFETY: Response::builderは有効なステータスコードとヘッダーでは失敗しない
+    let body = Full::new(Bytes::from(message.to_string()));
     Response::builder()
         .status(status)
         .header("Content-Type", "text/plain; charset=utf-8")
-        .body(BodyExt::boxed(Full::new(Bytes::from(message.to_string()))))
+        .body(BodyExt::boxed(body.map_err(|e: Infallible| match e {})))
         .expect("Failed to build HTTP response")
 }
 

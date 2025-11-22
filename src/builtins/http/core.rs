@@ -212,8 +212,14 @@ pub(super) fn http_request_detailed(
                 })
                 .collect();
 
-            // ボディを取得
-            let body = response.text().unwrap_or_else(|_| String::new());
+            // ボディをバイナリとして取得
+            let body_bytes = response.bytes().unwrap_or_default();
+
+            // UTF-8として解釈を試み、成功すれば文字列、失敗すればBytesとして返す
+            let body_value = match std::str::from_utf8(&body_bytes) {
+                Ok(text) => Value::String(text.to_string()),
+                Err(_) => Value::Bytes(std::sync::Arc::from(body_bytes.as_ref())),
+            };
 
             // キーワードキーを生成
             let status_key = Value::Keyword(crate::intern::intern_keyword("status"))
@@ -230,7 +236,7 @@ pub(super) fn http_request_detailed(
                 [
                     (status_key, Value::Integer(status)),
                     (headers_key, Value::Map(headers)),
-                    (body_key, Value::String(body)),
+                    (body_key, body_value),
                 ]
                 .into_iter()
                 .collect(),
