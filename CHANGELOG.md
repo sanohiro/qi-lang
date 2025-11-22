@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2025-01-22
+
+### Added
+
+#### Binary Data Support (Bytes Type)
+- **New Type**: `Bytes` - Immutable binary data type backed by `Arc<[u8]>`
+- **Functions (3)**:
+  - `bytes` - Create Bytes from integer vector (0-255 range validation)
+  - `bytes/to-vec` - Convert Bytes to integer vector
+  - `bytes?` - Type predicate for Bytes
+- **I/O Integration**:
+  - File I/O: `:encoding :binary` option for `io/read-file` and `io/write-file`
+  - HTTP client: Automatic UTF-8 detection, returns Bytes for binary responses
+  - HTTP server: Binary request/response body support
+  - Database: BLOB support for PostgreSQL (BYTEA), MySQL (BLOB), SQLite (BLOB)
+  - JSON/YAML: Base64 encoding for serialization
+- **Documentation**:
+  - Added Bytes section to `docs/spec/06-data-structures.md` (ja/en)
+  - Example: `examples/24-binary-data.qi`, `examples/25-database-blob.qi`
+  - Updated `std/docs/{ja,en}/bytes.qi`, `http.qi`, `server.qi`
+
+#### Development Tools
+- **CI/CD Script**: `scripts/pre-commit-check.sh`
+  - Runs all CI checks locally before commit
+  - Prevents CI build failures (format, clippy, test, build)
+  - Added documentation to `CLAUDE.md`
+
+### Fixed
+
+#### Critical Security & Safety Fixes (21 issues)
+- **Binary Data Handling**:
+  - Fixed HTTP response body corruption (`.text()` → `.bytes()` with UTF-8 check)
+  - Fixed server request body corruption (`from_utf8_lossy` → UTF-8 check)
+  - Fixed file streaming silent failures (proper error propagation)
+  - Fixed MapKey consistency (`From<&str>` now creates String keys)
+- **Memory Safety & Type Safety**:
+  - Float→i64 conversion overflow protection
+  - Negative index safety improvements
+  - PostgreSQL connection resource leaks
+  - Channel error handling (producer/consumer independence)
+  - HTTP client lazy initialization race conditions
+  - Loop protection against infinite recursion
+- **Code Quality**:
+  - Fixed 11 Clippy warnings (CI/CD compliance)
+  - Fixed benchmark lifetime errors
+  - Fixed format consistency issues
+
+### Changed
+- **Bytes Comparison**: Added proper equality comparison for Bytes type
+- **Error Messages**: All error messages are i18n-compliant
+
 ## [0.1.9] - 2025-01-23
 
 ### Added
