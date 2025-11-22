@@ -1045,6 +1045,19 @@ fn load_init_file(evaluator: &Evaluator) {
     }
 }
 
+/// セッション変数を~/.qi/session.qiから復元
+#[cfg(feature = "repl")]
+fn load_session(evaluator: &Evaluator) {
+    if let Some(home_dir) = dirs::home_dir() {
+        let session_file = home_dir.join(".qi/session.qi");
+        if session_file.exists() {
+            if let Ok(content) = std::fs::read_to_string(&session_file) {
+                eval_repl_code(evaluator, &content, Some("<session>"));
+            }
+        }
+    }
+}
+
 fn run_code(code: &str) {
     let mut evaluator = Evaluator::new();
 
@@ -1140,6 +1153,10 @@ fn repl(preload: Option<&str>, quiet: bool) {
 
     // .qi/init.qi を読み込む
     load_init_file(&evaluator);
+
+    // セッション変数を復元
+    #[cfg(feature = "repl")]
+    load_session(&evaluator);
 
     let mut helper = QiHelper::new();
 
@@ -1380,8 +1397,76 @@ fn repl(preload: Option<&str>, quiet: bool) {
     }
 
     let _ = rl.save_history(&history_file);
+
+    // セッション変数を保存
+    save_session(&evaluator);
+
     if !quiet {
         println!("\n{}", ui_msg(UiMsg::ReplGoodbye));
+    }
+}
+
+/// セッション変数を~/.qi/session.qiに保存
+#[cfg(feature = "repl")]
+fn save_session(evaluator: &Evaluator) {
+    use std::io::Write;
+
+    if let Some(env) = evaluator.get_env() {
+        let env = env.read();
+
+        // ユーザー定義変数のみを抽出（組み込み関数や__doc__を除外）
+        let user_vars: Vec<(String, Value)> = env
+            .bindings()
+            .filter(|(name, val)| {
+                // 関数は除外（復元不可能）
+                if matches!(
+                    val,
+                    Value::NativeFunc(_) | Value::Function { .. } | Value::Macro { .. }
+                ) {
+                    return false;
+                }
+
+                // 除外パターン
+                !name.starts_with("__")  // ドキュメント等
+                && !name.starts_with("$")  // REPL結果変数
+                && !name.contains('/')  // 名前空間付き関数（str/, list/等）
+                && !matches!(name.as_ref(),
+                    "+" | "-" | "*" | "/" | "%" | "=" | "!=" | "<" | ">" | "<=" | ">=" |
+                    "and" | "or" | "not" | "nil" | "true" | "false" |
+                    "def" | "defn" | "fn" | "let" | "if" | "do" | "loop" | "recur" |
+                    "match" | "try" | "defer" | "use" | "export" | "quote" |
+                    "list" | "vector" | "map" | "set" | "first" | "rest" | "cons" |
+                    "count" | "nth" | "get" | "assoc" | "dissoc" | "keys" | "vals" |
+                    "filter" | "reduce" | "range" | "reverse" | "sort" |
+                    "print" | "println" | "read-line" | "slurp" | "spit" |
+                    "type" | "eval" | "apply" | "partial" | "comp" | "identity" |
+                    "macroexpand" | "gensym" | "source" | "stdin"
+                )
+            })
+            .map(|(name, val)| (name.to_string(), val.clone()))
+            .collect();
+
+        if user_vars.is_empty() {
+            return; // 保存する変数がない
+        }
+
+        // ~/.qi/session.qiに保存
+        if let Some(home) = dirs::home_dir() {
+            let qi_dir = home.join(".qi");
+            let session_file = qi_dir.join("session.qi");
+
+            // .qiディレクトリが存在しない場合は作成
+            let _ = std::fs::create_dir_all(&qi_dir);
+
+            if let Ok(mut file) = std::fs::File::create(&session_file) {
+                let _ = writeln!(file, ";; Qi REPL Session (自動生成 - 手動編集可)");
+                let _ = writeln!(file, ";; このファイルはREPL終了時に自動保存されます\n");
+
+                for (name, val) in user_vars {
+                    let _ = writeln!(file, "(def {} {})", name, val);
+                }
+            }
+        }
     }
 }
 
