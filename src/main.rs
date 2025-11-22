@@ -237,7 +237,7 @@ fn pretty_print_value(value: &Value, indent: usize, max_inline: usize) -> String
             }
 
             // 小さいVectorはインライン表示
-            if vec.len() <= max_inline && vec.iter().all(|v| is_simple_value(v)) {
+            if vec.len() <= max_inline && vec.iter().all(is_simple_value) {
                 let items: Vec<String> = vec.iter().map(|v| v.to_string()).collect();
                 return format!("[{}]", items.join(" "));
             }
@@ -266,7 +266,7 @@ fn pretty_print_value(value: &Value, indent: usize, max_inline: usize) -> String
             }
 
             // 小さいListはインライン表示
-            if vec.len() <= max_inline && vec.iter().all(|v| is_simple_value(v)) {
+            if vec.len() <= max_inline && vec.iter().all(is_simple_value) {
                 let items: Vec<String> = vec.iter().map(|v| v.to_string()).collect();
                 return format!("({})", items.join(" "));
             }
