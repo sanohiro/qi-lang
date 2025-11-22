@@ -2250,6 +2250,10 @@
 - <code>:load &lt;file&gt;</code> - ファイルを読み込む
 - <code>:reload</code> - 最後に読み込んだファイルを再読み込み
 - <code>:quit</code> - REPLを終了</p>
+<p><strong>テスト・デバッグ:</strong>
+- <code>:test [path]</code> - テストファイルを実行（引数なしで全テスト）
+- <code>:trace &lt;function&gt;</code> - 関数呼び出しをトレース（引数なしでトレース中の関数一覧を表示）
+- <code>:untrace [function]</code> - トレースを停止（引数なしで全停止）</p>
 <p><strong>ホットリロード（ファイル監視）:</strong>
 - <code>:watch &lt;file&gt;</code> - ファイルを監視して変更時に自動再読み込み
 - <code>:unwatch [file]</code> - ファイル監視を停止（引数なしで全停止）</p>
@@ -2463,6 +2467,39 @@
 </span><span id="__span-21-55"><a id="__codelineno-21-55" name="__codelineno-21-55" href="#__codelineno-21-55"></a>
 </span><span id="__span-21-56"><a id="__codelineno-21-56" name="__codelineno-21-56" href="#__codelineno-21-56"></a>Active<span class="w"> </span>Channels:
 </span><span id="__span-21-57"><a id="__codelineno-21-57" name="__codelineno-21-57" href="#__codelineno-21-57"></a><span class="w">  </span>ch<span class="w"> </span>-<span class="w"> </span>len:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span>is_empty:<span class="w"> </span><span class="nb">true</span>
+</span><span id="__span-21-58"><a id="__codelineno-21-58" name="__codelineno-21-58" href="#__codelineno-21-58"></a>
+</span><span id="__span-21-59"><a id="__codelineno-21-59" name="__codelineno-21-59" href="#__codelineno-21-59"></a><span class="c1"># テストファイルを実行</span>
+</span><span id="__span-21-60"><a id="__codelineno-21-60" name="__codelineno-21-60" href="#__codelineno-21-60"></a>qi:12&gt;<span class="w"> </span>:test<span class="w"> </span>tests/math_test.qi
+</span><span id="__span-21-61"><a id="__codelineno-21-61" name="__codelineno-21-61" href="#__codelineno-21-61"></a>Running<span class="w"> </span>tests<span class="w"> </span><span class="k">in</span><span class="w"> </span>tests/math_test.qi...
+</span><span id="__span-21-62"><a id="__codelineno-21-62" name="__codelineno-21-62" href="#__codelineno-21-62"></a>テスト結果:
+</span><span id="__span-21-63"><a id="__codelineno-21-63" name="__codelineno-21-63" href="#__codelineno-21-63"></a><span class="w">  </span>✓<span class="w"> </span>addition
+</span><span id="__span-21-64"><a id="__codelineno-21-64" name="__codelineno-21-64" href="#__codelineno-21-64"></a><span class="w">  </span>✓<span class="w"> </span>subtraction
+</span><span id="__span-21-65"><a id="__codelineno-21-65" name="__codelineno-21-65" href="#__codelineno-21-65"></a><span class="w">  </span>✓<span class="w"> </span>multiplication
+</span><span id="__span-21-66"><a id="__codelineno-21-66" name="__codelineno-21-66" href="#__codelineno-21-66"></a>
+</span><span id="__span-21-67"><a id="__codelineno-21-67" name="__codelineno-21-67" href="#__codelineno-21-67"></a><span class="c1"># 関数のトレース（デバッグ用）</span>
+</span><span id="__span-21-68"><a id="__codelineno-21-68" name="__codelineno-21-68" href="#__codelineno-21-68"></a>qi:13&gt;<span class="w"> </span><span class="o">(</span>defn<span class="w"> </span>factorial<span class="w"> </span><span class="o">[</span>n<span class="o">]</span><span class="w"> </span><span class="o">(</span><span class="k">if</span><span class="w"> </span><span class="o">(</span>&lt;<span class="o">=</span><span class="w"> </span>n<span class="w"> </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">(</span>*<span class="w"> </span>n<span class="w"> </span><span class="o">(</span>factorial<span class="w"> </span><span class="o">(</span>-<span class="w"> </span>n<span class="w"> </span><span class="m">1</span><span class="o">)))))</span>
+</span><span id="__span-21-69"><a id="__codelineno-21-69" name="__codelineno-21-69" href="#__codelineno-21-69"></a>qi:14&gt;<span class="w"> </span>:trace<span class="w"> </span>factorial
+</span><span id="__span-21-70"><a id="__codelineno-21-70" name="__codelineno-21-70" href="#__codelineno-21-70"></a>Tracing<span class="w"> </span><span class="k">function</span>:<span class="w"> </span>factorial
+</span><span id="__span-21-71"><a id="__codelineno-21-71" name="__codelineno-21-71" href="#__codelineno-21-71"></a>qi:15&gt;<span class="w"> </span><span class="o">(</span>factorial<span class="w"> </span><span class="m">3</span><span class="o">)</span>
+</span><span id="__span-21-72"><a id="__codelineno-21-72" name="__codelineno-21-72" href="#__codelineno-21-72"></a>→<span class="w"> </span>factorial<span class="o">(</span>Integer<span class="o">(</span><span class="m">3</span><span class="o">))</span>
+</span><span id="__span-21-73"><a id="__codelineno-21-73" name="__codelineno-21-73" href="#__codelineno-21-73"></a>→<span class="w"> </span>factorial<span class="o">(</span>Integer<span class="o">(</span><span class="m">2</span><span class="o">))</span>
+</span><span id="__span-21-74"><a id="__codelineno-21-74" name="__codelineno-21-74" href="#__codelineno-21-74"></a>→<span class="w"> </span>factorial<span class="o">(</span>Integer<span class="o">(</span><span class="m">1</span><span class="o">))</span>
+</span><span id="__span-21-75"><a id="__codelineno-21-75" name="__codelineno-21-75" href="#__codelineno-21-75"></a><span class="nv">$4</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="m">6</span>
+</span><span id="__span-21-76"><a id="__codelineno-21-76" name="__codelineno-21-76" href="#__codelineno-21-76"></a>
+</span><span id="__span-21-77"><a id="__codelineno-21-77" name="__codelineno-21-77" href="#__codelineno-21-77"></a>qi:16&gt;<span class="w"> </span>:untrace<span class="w"> </span>factorial
+</span><span id="__span-21-78"><a id="__codelineno-21-78" name="__codelineno-21-78" href="#__codelineno-21-78"></a>Stopped<span class="w"> </span>tracing:<span class="w"> </span>factorial
+</span><span id="__span-21-79"><a id="__codelineno-21-79" name="__codelineno-21-79" href="#__codelineno-21-79"></a>
+</span><span id="__span-21-80"><a id="__codelineno-21-80" name="__codelineno-21-80" href="#__codelineno-21-80"></a><span class="c1"># マクロ展開を確認</span>
+</span><span id="__span-21-81"><a id="__codelineno-21-81" name="__codelineno-21-81" href="#__codelineno-21-81"></a>qi:17&gt;<span class="w"> </span><span class="o">(</span>macroexpand<span class="w"> </span><span class="s1">&#39;(defn add [a b] (+ a b)))</span>
+</span><span id="__span-21-82"><a id="__codelineno-21-82" name="__codelineno-21-82" href="#__codelineno-21-82"></a><span class="s1">$5 =&gt; (def add (fn [a b] (+ a b)))</span>
+</span><span id="__span-21-83"><a id="__codelineno-21-83" name="__codelineno-21-83" href="#__codelineno-21-83"></a>
+</span><span id="__span-21-84"><a id="__codelineno-21-84" name="__codelineno-21-84" href="#__codelineno-21-84"></a><span class="s1"># 関数のソースコードを表示</span>
+</span><span id="__span-21-85"><a id="__codelineno-21-85" name="__codelineno-21-85" href="#__codelineno-21-85"></a><span class="s1">qi:18&gt; (source &#39;</span>+<span class="o">)</span>
+</span><span id="__span-21-86"><a id="__codelineno-21-86" name="__codelineno-21-86" href="#__codelineno-21-86"></a><span class="nv">$6</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span>Native<span class="w"> </span><span class="k">function</span>:<span class="w"> </span>+
+</span><span id="__span-21-87"><a id="__codelineno-21-87" name="__codelineno-21-87" href="#__codelineno-21-87"></a>Implemented<span class="w"> </span><span class="k">in</span>:<span class="w"> </span>src/builtins/
+</span><span id="__span-21-88"><a id="__codelineno-21-88" name="__codelineno-21-88" href="#__codelineno-21-88"></a>
+</span><span id="__span-21-89"><a id="__codelineno-21-89" name="__codelineno-21-89" href="#__codelineno-21-89"></a>This<span class="w"> </span>is<span class="w"> </span>a<span class="w"> </span>built-in<span class="w"> </span><span class="k">function</span><span class="w"> </span>implemented<span class="w"> </span><span class="k">in</span><span class="w"> </span>Rust.
+</span><span id="__span-21-90"><a id="__codelineno-21-90" name="__codelineno-21-90" href="#__codelineno-21-90"></a>Use<span class="w"> </span>:doc<span class="w"> </span>+<span class="w"> </span>to<span class="w"> </span>see<span class="w"> </span>documentation.
 </span></code></pre></div>
 <hr />
 <h2 id="_13">関連ドキュメント<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h2>
