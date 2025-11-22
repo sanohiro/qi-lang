@@ -1,5 +1,23 @@
 use super::*;
 
+/// list-dir - ディレクトリ内のファイル一覧を取得
+///
+/// 指定されたディレクトリ内のファイルとディレクトリを列挙します。
+/// グロブパターンでフィルタリングできます。
+///
+/// # 引数
+/// - `path: string` - 列挙するディレクトリのパス
+/// - `:pattern string` - グロブパターン（オプション、デフォルト: *）
+/// - `:recursive bool` - サブディレクトリも検索するか（オプション、デフォルト: false）
+///
+/// # 戻り値
+/// `list` - マッチしたファイルパスの配列
+///
+/// # 使用例
+/// ```qi
+/// (io/list-dir "./src" :pattern "*.rs")
+/// (io/list-dir "./src" :recursive true)
+/// ```
 pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
     // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {

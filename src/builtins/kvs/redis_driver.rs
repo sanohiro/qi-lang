@@ -317,7 +317,7 @@ impl KvsDriver for RedisDriver {
                 if m.contains_key(&crate::constants::keywords::error_mapkey()) {
                     return Err(m
                         .get(&crate::constants::keywords::error_mapkey())
-                        .unwrap()
+                        .expect("checked by contains_key above")
                         .to_string());
                 }
                 let mut pairs = Vec::new();

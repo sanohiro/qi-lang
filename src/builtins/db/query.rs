@@ -2,6 +2,21 @@ use super::*;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// SQLクエリを実行してすべての結果行を取得する
+///
+/// # 引数
+/// - `conn_id` (DbConnection | DbTransaction): 接続またはトランザクション
+/// - `sql` (string): SQL文
+/// - `params` (vector, optional): バインドパラメータ
+/// - `options` (map, optional): クエリオプション
+///
+/// # 戻り値
+/// - (vector): 結果行のベクトル (各行はマップ)
+///
+/// # 例
+/// ```qi
+/// (let rows (db/query conn "SELECT * FROM users WHERE age > ?" [18]))
+/// ```
 pub fn native_query(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 4 {
         return Err(fmt_msg(

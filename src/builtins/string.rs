@@ -451,7 +451,9 @@ pub fn native_pad_left(args: &[Value]) -> Result<Value, String> {
         (Value::String(s), Value::Integer(width)) => {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
-                    Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
+                    Value::String(ch) if ch.chars().count() == 1 => {
+                        ch.chars().next().expect("checked by count == 1 above")
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::TypeOnly,
@@ -494,7 +496,9 @@ pub fn native_pad_right(args: &[Value]) -> Result<Value, String> {
         (Value::String(s), Value::Integer(width)) => {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
-                    Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
+                    Value::String(ch) if ch.chars().count() == 1 => {
+                        ch.chars().next().expect("checked by count == 1 above")
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::TypeOnly,
@@ -537,7 +541,9 @@ pub fn native_pad(args: &[Value]) -> Result<Value, String> {
         (Value::String(s), Value::Integer(width)) => {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
-                    Value::String(ch) if ch.chars().count() == 1 => ch.chars().next().unwrap(),
+                    Value::String(ch) if ch.chars().count() == 1 => {
+                        ch.chars().next().expect("checked by count == 1 above")
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::TypeOnly,
@@ -1072,7 +1078,12 @@ pub fn native_word_count(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// to-base64 - Base64エンコード
+/// str/to-base64 - 文字列をBase64エンコード
+///
+/// 引数:
+/// - s: エンコード対象の文字列
+///
+/// 戻り値: Base64エンコード済み文字列
 #[cfg(feature = "string-encoding")]
 pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "to-base64");
@@ -1085,7 +1096,12 @@ pub fn native_to_base64(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// from-base64 - Base64デコード
+/// str/from-base64 - Base64デコード
+///
+/// 引数:
+/// - s: デコード対象のBase64文字列
+///
+/// 戻り値: デコード済み文字列
 #[cfg(feature = "string-encoding")]
 pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "from-base64");
@@ -1107,7 +1123,12 @@ pub fn native_from_base64(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// url-encode - URLエンコード
+/// str/url-encode - URLエンコード
+///
+/// 引数:
+/// - s: エンコード対象の文字列
+///
+/// 戻り値: URLエンコード済み文字列
 #[cfg(feature = "string-encoding")]
 pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "url-encode");
@@ -1117,7 +1138,12 @@ pub fn native_url_encode(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// url-decode - URLデコード
+/// str/url-decode - URLデコード
+///
+/// 引数:
+/// - s: デコード対象のURL文字列
+///
+/// 戻り値: デコード済み文字列
 #[cfg(feature = "string-encoding")]
 pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "url-decode");
@@ -1133,7 +1159,12 @@ pub fn native_url_decode(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// html-encode - HTMLエンコード
+/// str/html-encode - HTMLエンコード
+///
+/// 引数:
+/// - s: エンコード対象の文字列
+///
+/// 戻り値: HTMLエンコード済み文字列（&lt; &gt; &quot; &#39; &amp; など）
 #[cfg(feature = "string-encoding")]
 pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "html-encode");
@@ -1143,7 +1174,12 @@ pub fn native_html_encode(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// html-decode - HTMLデコード
+/// str/html-decode - HTMLデコード
+///
+/// 引数:
+/// - s: デコード対象のHTML文字列
+///
+/// 戻り値: デコード済み文字列（HTMLエンティティを解析）
 #[cfg(feature = "string-encoding")]
 pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "html-decode");
@@ -1155,7 +1191,13 @@ pub fn native_html_decode(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// hash - ハッシュ生成
+/// str/hash - 文字列のハッシュ値を生成
+///
+/// 引数:
+/// - s: ハッシュ対象の文字列
+/// - algo: アルゴリズム（オプション、デフォルト: :sha256）
+///
+/// 戻り値: ハッシュ値の16進文字列
 #[cfg(feature = "string-crypto")]
 pub fn native_hash(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
@@ -1186,7 +1228,12 @@ pub fn native_hash(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// uuid - UUID生成
+/// str/uuid - UUID（汎用一意識別子）を生成
+///
+/// 引数:
+/// - version: UUIDバージョン（オプション、デフォルト: :v4）
+///
+/// 戻り値: UUID文字列
 #[cfg(feature = "string-crypto")]
 pub fn native_uuid(args: &[Value]) -> Result<Value, String> {
     if args.len() > 1 {

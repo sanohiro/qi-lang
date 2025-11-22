@@ -5,6 +5,14 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
 
+/// kvs/redis-sadd - セットにメンバーを追加
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - key: キー名
+/// - member: 追加するメンバー
+///
+/// 戻り値: 追加されたメンバー数 or {:error message}
 pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-sadd", "3"]));

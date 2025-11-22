@@ -5,6 +5,14 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
 
+/// kvs/redis-lpush - リスト左端に要素を追加
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - key: キー名
+/// - value: 追加する値
+///
+/// 戻り値: リスト長 or {:error message}
 pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
     if args.len() != 3 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lpush", "3"]));

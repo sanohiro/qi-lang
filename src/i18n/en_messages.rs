@@ -1,11 +1,11 @@
 use super::msg_key::MsgKey;
+use super::msg_key::MsgKey::*;
 use super::ui_msg::UiMsg;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
 /// 英語エラーメッセージ
 pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
-    use MsgKey::*;
     HashMap::from([
         // パーサーエラー
         (UnexpectedToken, "unexpected token: {0}"),
@@ -533,6 +533,43 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         ),
         // ZIPエラー
         (ZipPathDoesNotExist, "{0}: path '{1}' does not exist"),
+        (
+            ZipCreateFileFailed,
+            "{0}: failed to create zip file '{1}': {2}",
+        ),
+        (ZipFinishFailed, "{0}: failed to finish: {1}"),
+        (ZipStartFileFailed, "{0}: failed to start file: {1}"),
+        (ZipOpenFileFailed, "{0}: failed to open '{1}': {2}"),
+        (ZipReadFileFailed, "{0}: failed to read '{1}': {2}"),
+        (ZipWriteFailed, "{0}: failed to write: {1}"),
+        (
+            ZipReadDirFailed,
+            "{0}: failed to read directory '{1}': {2}",
+        ),
+        (ZipReadEntryFailed, "{0}: failed to read entry {1}: {2}"),
+        (
+            ZipCreateDirFailed,
+            "{0}: failed to create directory '{1}': {2}",
+        ),
+        (
+            ZipCreateParentDirFailed,
+            "{0}: failed to create parent directory: {1}",
+        ),
+        (ZipExtractFailed, "{0}: failed to extract: {1}"),
+        (
+            ZipCreateTempFailed,
+            "{0}: failed to create temporary file: {1}",
+        ),
+        (
+            ZipRemoveOriginalFailed,
+            "{0}: failed to remove original: {1}",
+        ),
+        (
+            ZipRenameTempFailed,
+            "{0}: failed to rename temporary file: {1}",
+        ),
+        (ZipCompressFailed, "{0}: failed to compress: {1}"),
+        (ZipDecompressFailed, "{0}: failed to decompress: {1}"),
         // データベースエラー
         (
             DbUnsupportedUrl,
@@ -661,6 +698,87 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (RestartRequired, "Please restart qi to use the new version"),
         (UnsupportedPlatform, "Unsupported platform: {0}-{1}"),
         (HttpClientNotEnabled, "HTTP client not enabled (feature 'http-client' required)"),
+        (UpgradeFetchFailed, "Failed to fetch release info: {0}"),
+        (UpgradeGitHubApiError, "GitHub API error: {0}"),
+        (UpgradeJsonParseFailed, "Failed to parse JSON: {0}"),
+        (UpgradeDownloadFailed, "Download failed: {0}"),
+        (UpgradeDownloadError, "Download error: {0}"),
+        (UpgradeReadResponseFailed, "Failed to read response: {0}"),
+        (UpgradeCreateTempDirFailed, "Failed to create temp directory: {0}"),
+        (UpgradeUnpackArchiveFailed, "Failed to unpack archive: {0}"),
+        (UpgradeReadTempDirFailed, "Failed to read temp directory: {0}"),
+        (UpgradeReadEntryFailed, "Failed to read entry: {0}"),
+        (UpgradeQiDirNotFound, "qi directory not found in archive"),
+        (UpgradeGetExePathFailed, "Failed to get current exe path: {0}"),
+        (UpgradeGetParentDirFailed, "Failed to get parent directory of current executable"),
+        (UpgradeNotQiDirectory, "Current installation directory does not look like a qi directory: {0}"),
+        (UpgradeRemoveBackupFailed, "Failed to remove old backup: {0}"),
+        (UpgradeBackupFailed, "Failed to backup current qi directory: {0}"),
+        (UpgradeGetMetadataFailed, "Failed to get metadata: {0}"),
+        (UpgradeSetPermissionsFailed, "Failed to set permissions: {0}"),
+        (UpgradeCreateDirFailed, "Failed to create directory {0}: {1}"),
+        (UpgradeReadDirFailed, "Failed to read directory {0}: {1}"),
+        (UpgradeCopyFileFailed, "Failed to copy {0}: {1}"),
+        (UpgradeNoBinaryForPlatform, "No binary found for platform pattern: {0}"),
+
+        // WebSocketエラー
+        (WsFailedToSend, "Failed to send WebSocket message: {0}"),
+        (WsConnectionClosed, "WebSocket connection is closed"),
+        (WsUnexpectedFrame, "Received unexpected frame"),
+        (WsFailedToClose, "Failed to close WebSocket connection: {0}"),
+        (
+            WsConnectionAlreadyClosed,
+            "WebSocket connection is already closed",
+        ),
+        (
+            WsFailedToConnect,
+            "Failed to connect to WebSocket server: {0}",
+        ),
+        (WsConnectionNotFound, "WebSocket connection not found"),
+
+        // HTTP詳細エラー
+        (HttpUnexpectedErrorFormat, "Unexpected error format"),
+        (HttpMissingStatus, "Missing status in response"),
+        (HttpMissingBody, "Missing body in response"),
+        (HttpErrorWithBody, "HTTP error {0}: {1}"),
+        (HttpUnexpectedResponse, "Unexpected response format"),
+
+        // 静的ファイルエラー
+        (StaticFileInvalidPath, "Invalid path: {0}"),
+        (StaticFileNotFound, "File not found: {0}"),
+        (
+            StaticFileMetadataFailed,
+            "Failed to read file metadata: {0}",
+        ),
+        (StaticFileInvalidUrlEncoding, "Invalid URL encoding"),
+        (StaticFileInvalidPathTraversal, "Invalid path"),
+        (StaticFileInvalidBaseDir, "Invalid base directory"),
+        (StaticFileInvalidFileName, "Invalid file name"),
+        (StaticFileBaseDirNotExist, "Base directory does not exist"),
+        (StaticFilePathTraversal, "Path traversal detected"),
+        (
+            StaticFileFailedToGetCwd,
+            "Failed to get current directory: {0}",
+        ),
+        (StaticFileInvalidFilePath, "Invalid file path: {0}"),
+        (StaticFileInvalidEncoding, "Invalid file path encoding"),
+        (
+            StaticFileFailedToCanonicalize,
+            "Failed to canonicalize directory: {0}",
+        ),
+
+        // DAPサーバーエラー
+        (DapUnknownCommand, "Unknown command: {0}"),
+        (DapNoProgramSpecified, "No program specified"),
+        (DapInvalidLaunchArgs, "Invalid launch arguments"),
+        (DapInvalidArguments, "Invalid arguments"),
+        (DapMissingExpression, "Missing 'expression' argument"),
+        (DapFailedToWriteStdin, "Failed to write to stdin: {0}"),
+        (DapFailedToReadFile, "Failed to read file: {0}"),
+        (DapFailedToRedirectStdio, "Failed to redirect stdio: {0}"),
+        (DapParserInitError, "Parser error: {0}"),
+        (DapRuntimeError, "Runtime error: {0}"),
+        (DapTaskJoinError, "Task join error: {0}"),
     ])
 });
 

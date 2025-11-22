@@ -1,5 +1,26 @@
 use super::*;
 
+/// file-stream - ファイルからストリームを作成
+///
+/// ファイルを遅延評価するストリームとして開きます。
+/// テキストモード（デフォルト）では行ごとに読み込み、
+/// バイナリモードでは4KBチャンク単位で読み込みます。
+///
+/// # 引数
+/// - `path: string` - 読み込むファイルのパス
+/// - `:bytes keyword` - バイナリモード指定（オプション）
+///
+/// # 戻り値
+/// `stream` - ファイルを読み込むストリーム
+///
+/// # 使用例
+/// ```qi
+/// ;; テキストモード（行ごと）
+/// (io/file-stream "input.txt" |> stream/take 10)
+///
+/// ;; バイナリモード（4KBチャンク）
+/// (io/file-stream "data.bin" :bytes)
+/// ```
 pub fn native_file_stream(args: &[Value]) -> Result<Value, String> {
     // 可変引数（1 or 2）のため、最小1つの引数が必要
     if args.is_empty() {

@@ -51,7 +51,14 @@ impl DbDriver for PostgresDriver {
 
         // 接続ハンドラーをバックグラウンドで実行
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    eprintln!("Fatal error: Failed to create PostgreSQL runtime: {}", e);
+                    eprintln!("This is a critical initialization error for PostgreSQL connection.");
+                    return;
+                }
+            };
             rt.block_on(async {
                 if let Err(e) = connection.await {
                     eprintln!("PostgreSQL connection error: {}", e);

@@ -22,7 +22,7 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
 
     // セキュリティチェック（パストラバーサル攻撃を防止）
     let file_path = validate_safe_path(std::path::Path::new(dir_path), path)
-        .map_err(|e| format!("Invalid path: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::StaticFileInvalidPath, &[&e]))?;
 
     // index.htmlの自動配信（ディレクトリの場合）
     let file_path = if file_path.is_dir() {
@@ -34,9 +34,9 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
     // ファイルの存在確認（メタデータ取得）
     std::fs::metadata(&file_path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            return format!("File not found: {}", path);
+            return fmt_msg(MsgKey::StaticFileNotFound, &[path]);
         }
-        format!("Failed to read file metadata: {}", e)
+        fmt_msg(MsgKey::StaticFileMetadataFailed, &[&e.to_string()])
     })?;
 
     // ストリーミングレスポンスを生成（:body-file を使用）
@@ -104,8 +104,8 @@ pub(super) fn validate_safe_path(
     requested_path: &str,
 ) -> Result<std::path::PathBuf, String> {
     // URLデコード（%2e%2e などの攻撃を防ぐ）
-    let decoded_path =
-        urlencoding::decode(requested_path).map_err(|_| "Invalid URL encoding".to_string())?;
+    let decoded_path = urlencoding::decode(requested_path)
+        .map_err(|_| fmt_msg(MsgKey::StaticFileInvalidUrlEncoding, &[]))?;
 
     // 相対パスの正規化（先頭の / を除去）
     let requested = std::path::Path::new(decoded_path.trim_start_matches('/'));
@@ -120,13 +120,13 @@ pub(super) fn validate_safe_path(
             // ファイルが存在しない場合、親ディレクトリまで正規化
             let parent = full_path
                 .parent()
-                .ok_or_else(|| "Invalid path".to_string())?;
+                .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidPathTraversal, &[]))?;
             let parent_canonical = parent
                 .canonicalize()
-                .map_err(|_| "Invalid base directory".to_string())?;
+                .map_err(|_| fmt_msg(MsgKey::StaticFileInvalidBaseDir, &[]))?;
             let file_name = full_path
                 .file_name()
-                .ok_or_else(|| "Invalid file name".to_string())?;
+                .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidFileName, &[]))?;
             parent_canonical.join(file_name)
         }
     };
@@ -134,11 +134,11 @@ pub(super) fn validate_safe_path(
     // ベースディレクトリの正規化
     let base_canonical = base_dir
         .canonicalize()
-        .map_err(|_| "Base directory does not exist".to_string())?;
+        .map_err(|_| fmt_msg(MsgKey::StaticFileBaseDirNotExist, &[]))?;
 
     // ベースディレクトリ外へのアクセスを防止
     if !canonical.starts_with(&base_canonical) {
-        return Err("Path traversal detected".to_string());
+        return Err(fmt_msg(MsgKey::StaticFilePathTraversal, &[]));
     }
 
     Ok(canonical)
@@ -161,10 +161,10 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     };
 
     // セキュリティチェック（絶対パスの場合はカレントディレクトリから検証）
-    let base_dir =
-        std::env::current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
+    let base_dir = std::env::current_dir()
+        .map_err(|e| fmt_msg(MsgKey::StaticFileFailedToGetCwd, &[&e.to_string()]))?;
     let file_path = validate_safe_path(&base_dir, file_path_str)
-        .map_err(|e| format!("Invalid file path: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::StaticFileInvalidFilePath, &[&e]))?;
 
     // ファイルの存在確認
     std::fs::metadata(&file_path)
@@ -180,7 +180,7 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
         Value::String(
             file_path
                 .to_str()
-                .ok_or_else(|| "Invalid file path encoding".to_string())?
+                .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidEncoding, &[]))?
                 .to_string(),
         ),
     );
@@ -225,10 +225,10 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
     // 正規化されたディレクトリパスを取得（シンボリックリンク解決）
     let canonical_dir = dir_path
         .canonicalize()
-        .map_err(|e| format!("Failed to canonicalize directory: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::StaticFileFailedToCanonicalize, &[&e.to_string()]))?;
     let canonical_dir_str = canonical_dir
         .to_str()
-        .ok_or_else(|| "Invalid directory path encoding".to_string())?
+        .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidEncoding, &[]))?
         .to_string();
 
     // 静的ファイルハンドラーマーカー（ミドルウェアと同じパターン）

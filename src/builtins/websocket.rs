@@ -64,10 +64,10 @@ impl WebSocketConnection {
             stream
                 .send(Message::Text(data.to_string()))
                 .await
-                .map_err(|e| format!("Failed to send WebSocket message: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::WsFailedToSend, &[&e.to_string()]))?;
             Ok(())
         } else {
-            Err("WebSocket connection is closed".to_string())
+            Err(fmt_msg(MsgKey::WsConnectionClosed, &[]))
         }
     }
 
@@ -133,7 +133,7 @@ impl WebSocketConnection {
                     }
                     Some(Ok(Message::Frame(_))) => {
                         // Frameは通常ユーザーが直接扱わない
-                        return Err("Received unexpected frame".to_string());
+                        return Err(fmt_msg(MsgKey::WsUnexpectedFrame, &[]));
                     }
                     Some(Err(e)) => {
                         let mut result = crate::new_hashmap();
@@ -157,7 +157,7 @@ impl WebSocketConnection {
                     }
                 }
             } else {
-                return Err("WebSocket connection is closed".to_string());
+                return Err(fmt_msg(MsgKey::WsConnectionClosed, &[]));
             }
         }
     }
@@ -169,10 +169,10 @@ impl WebSocketConnection {
             stream
                 .close(None)
                 .await
-                .map_err(|e| format!("Failed to close WebSocket connection: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::WsFailedToClose, &[&e.to_string()]))?;
             Ok(())
         } else {
-            Err("WebSocket connection is already closed".to_string())
+            Err(fmt_msg(MsgKey::WsConnectionAlreadyClosed, &[]))
         }
     }
 }
@@ -208,7 +208,7 @@ pub fn native_ws_connect(args: &[Value]) -> Result<Value, String> {
     let connection = runtime.block_on(async move {
         let (ws_stream, _) = connect_async(&url_clone)
             .await
-            .map_err(|e| format!("Failed to connect to WebSocket server: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::WsFailedToConnect, &[&e.to_string()]))?;
         Ok::<_, String>(Arc::new(WebSocketConnection::new(ws_stream)))
     })?;
 
@@ -238,7 +238,7 @@ pub fn native_ws_send(args: &[Value]) -> Result<Value, String> {
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)
-        .ok_or_else(|| "WebSocket connection not found".to_string())?;
+        .ok_or_else(|| fmt_msg(MsgKey::WsConnectionNotFound, &[]))?;
 
     let message = match &args[1] {
         Value::String(s) => s.clone(),
@@ -272,7 +272,7 @@ pub fn native_ws_receive(args: &[Value]) -> Result<Value, String> {
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)
-        .ok_or_else(|| "WebSocket connection not found".to_string())?;
+        .ok_or_else(|| fmt_msg(MsgKey::WsConnectionNotFound, &[]))?;
 
     // 非同期実行
     let runtime = tokio::runtime::Runtime::new()
@@ -299,7 +299,7 @@ pub fn native_ws_close(args: &[Value]) -> Result<Value, String> {
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)
-        .ok_or_else(|| "WebSocket connection not found".to_string())?;
+        .ok_or_else(|| fmt_msg(MsgKey::WsConnectionNotFound, &[]))?;
 
     // 非同期実行
     let runtime = tokio::runtime::Runtime::new()

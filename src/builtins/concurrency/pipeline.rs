@@ -6,6 +6,19 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};
 use crossbeam_channel::{bounded, unbounded};
 use std::sync::Arc;
+/// タスクを非同期実行してPromiseを返す
+///
+/// 引数:
+/// - expr: 実行する式または関数
+///
+/// 戻り値:
+/// - 結果を受信可能なPromise（チャネル）
+///
+/// 例:
+/// ```qi
+/// (def p (go/run (fn [] (http/get "https://example.com"))))
+/// (def result (go/await p))
+/// ```
 pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));

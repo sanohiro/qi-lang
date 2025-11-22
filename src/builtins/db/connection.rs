@@ -10,6 +10,20 @@ use crate::builtins::postgres::PostgresDriver;
 #[cfg(feature = "db-sqlite")]
 use crate::builtins::sqlite::SqliteDriver;
 
+/// データベースに接続する
+///
+/// # 引数
+/// - `url` (string): 接続URL (sqlite:, postgres://, mysql://)
+/// - `options` (map, optional): 接続オプション (:timeout, :pool-size など)
+///
+/// # 戻り値
+/// - (DbConnection): データベース接続オブジェクト
+///
+/// # 例
+/// ```qi
+/// (let conn (db/connect "sqlite:test.db"))
+/// (let conn (db/connect "postgresql://user:pass@localhost/dbname"))
+/// ```
 pub fn native_connect(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["db/connect"]));

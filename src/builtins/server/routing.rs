@@ -25,6 +25,12 @@ const CACHE_DIRECTIVE_NO_STORE: &str = "no-store";
 const CACHE_DIRECTIVE_MUST_REVALIDATE: &str = "must-revalidate";
 const CACHE_DIRECTIVE_IMMUTABLE: &str = "immutable";
 
+/// server/router - HTTPルーターを作成
+///
+/// 引数:
+/// - routes: ルート定義（[[path {:get handler, :post handler}], ...] の形式）
+///
+/// 戻り値: ルーター定義
 pub fn native_server_router(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/router", "1"]));

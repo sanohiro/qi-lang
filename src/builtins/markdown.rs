@@ -338,14 +338,18 @@ pub fn native_markdown_image(args: &[Value]) -> Result<Value, String> {
 }
 
 // 正規表現パターン（遅延初期化）
-static CODE_BLOCK_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"```([^\n]*)\n([\s\S]*?)```").unwrap());
+static CODE_BLOCK_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"```([^\n]*)\n([\s\S]*?)```").expect("hardcoded regex should compile")
+});
 
-static HEADER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+)$").unwrap());
+static HEADER_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+)$").expect("hardcoded regex should compile"));
 
-static LIST_ITEM_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[-*+]\s+(.+)$").unwrap());
+static LIST_ITEM_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[-*+]\s+(.+)$").expect("hardcoded regex should compile"));
 
-static ORDERED_LIST_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d+\.\s+(.+)$").unwrap());
+static ORDERED_LIST_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\d+\.\s+(.+)$").expect("hardcoded regex should compile"));
 
 /// extract-code-blocks - Markdownからコードブロックを抽出
 /// 引数: (text) - Markdown文字列

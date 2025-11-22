@@ -82,20 +82,23 @@ fn fetch_latest_release() -> Result<Release, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("qi-lang")
         .build()
-        .map_err(|e| format!("HTTP client error: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
 
     let response = client
         .get(&url)
         .send()
-        .map_err(|e| format!("Failed to fetch release info: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::UpgradeFetchFailed, &[&e.to_string()]))?;
 
     if !response.status().is_success() {
-        return Err(format!("GitHub API error: {}", response.status()));
+        return Err(fmt_msg(
+            MsgKey::UpgradeGitHubApiError,
+            &[&response.status().to_string()],
+        ));
     }
 
     response
         .json::<Release>()
-        .map_err(|e| format!("Failed to parse JSON: {}", e))
+        .map_err(|e| fmt_msg(MsgKey::UpgradeJsonParseFailed, &[&e.to_string()]))
 }
 
 /// バイナリをダウンロード
@@ -106,21 +109,24 @@ fn download_binary(url: &str) -> Result<Vec<u8>, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("qi-lang")
         .build()
-        .map_err(|e| format!("HTTP client error: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
 
     let response = client
         .get(url)
         .send()
-        .map_err(|e| format!("Download failed: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::UpgradeDownloadFailed, &[&e.to_string()]))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download error: {}", response.status()));
+        return Err(fmt_msg(
+            MsgKey::UpgradeDownloadError,
+            &[&response.status().to_string()],
+        ));
     }
 
     response
         .bytes()
         .map(|b| b.to_vec())
-        .map_err(|e| format!("Failed to read response: {}", e))
+        .map_err(|e| fmt_msg(MsgKey::UpgradeReadResponseFailed, &[&e.to_string()]))
 }
 
 /// tar.gzアーカイブを展開してqiディレクトリを取得
@@ -131,20 +137,22 @@ fn extract_qi_directory_from_targz(archive_data: &[u8]) -> Result<PathBuf, Strin
 
     // 一時ディレクトリを作成
     let temp_dir = std::env::temp_dir().join(format!("qi-upgrade-{}", std::process::id()));
-    fs::create_dir_all(&temp_dir).map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    fs::create_dir_all(&temp_dir)
+        .map_err(|e| fmt_msg(MsgKey::UpgradeCreateTempDirFailed, &[&e.to_string()]))?;
 
     // gzip解凍してtar展開
     let tar_decoder = GzDecoder::new(archive_data);
     let mut archive = Archive::new(tar_decoder);
     archive
         .unpack(&temp_dir)
-        .map_err(|e| format!("Failed to unpack archive: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::UpgradeUnpackArchiveFailed, &[&e.to_string()]))?;
 
     // アーカイブ内のqiディレクトリを検索（qi-vX.X.X-platform/qi/ のような構造を想定）
-    for entry in
-        fs::read_dir(&temp_dir).map_err(|e| format!("Failed to read temp directory: {}", e))?
+    for entry in fs::read_dir(&temp_dir)
+        .map_err(|e| fmt_msg(MsgKey::UpgradeReadTempDirFailed, &[&e.to_string()]))?
     {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let entry =
+            entry.map_err(|e| fmt_msg(MsgKey::UpgradeReadEntryFailed, &[&e.to_string()]))?;
         let path = entry.path();
 
         if path.is_dir() {
@@ -155,12 +163,12 @@ fn extract_qi_directory_from_targz(archive_data: &[u8]) -> Result<PathBuf, Strin
         }
     }
 
-    Err("qi directory not found in archive".to_string())
+    Err(fmt_msg(MsgKey::UpgradeQiDirNotFound, &[]))
 }
 
 /// 現在の実行ファイルパスを取得
 fn get_current_exe() -> Result<PathBuf, String> {
-    env::current_exe().map_err(|e| format!("Failed to get current exe path: {}", e))
+    env::current_exe().map_err(|e| fmt_msg(MsgKey::UpgradeGetExePathFailed, &[&e.to_string()]))
 }
 
 /// qiディレクトリを置き換え
@@ -170,14 +178,14 @@ fn replace_qi_directory(new_qi_dir: &std::path::Path) -> Result<(), String> {
     // 現在のバイナリの親ディレクトリを取得（これがqiディレクトリであるべき）
     let qi_install_dir = current_exe
         .parent()
-        .ok_or_else(|| "Failed to get parent directory of current executable".to_string())?;
+        .ok_or_else(|| fmt_msg(MsgKey::UpgradeGetParentDirFailed, &[]))?;
 
     // qiディレクトリであることを確認（stdディレクトリが存在するか）
     let std_dir = qi_install_dir.join("std");
     if !std_dir.exists() {
-        return Err(format!(
-            "Current installation directory does not look like a qi directory: {}",
-            qi_install_dir.display()
+        return Err(fmt_msg(
+            MsgKey::UpgradeNotQiDirectory,
+            &[&qi_install_dir.display().to_string()],
         ));
     }
 
@@ -185,12 +193,12 @@ fn replace_qi_directory(new_qi_dir: &std::path::Path) -> Result<(), String> {
     let backup_dir = qi_install_dir.with_extension("old");
     if backup_dir.exists() {
         fs::remove_dir_all(&backup_dir)
-            .map_err(|e| format!("Failed to remove old backup: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::UpgradeRemoveBackupFailed, &[&e.to_string()]))?;
     }
 
     // 現在のqiディレクトリを.oldにリネーム
     fs::rename(qi_install_dir, &backup_dir)
-        .map_err(|e| format!("Failed to backup current qi directory: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::UpgradeBackupFailed, &[&e.to_string()]))?;
 
     // 新しいqiディレクトリをコピー
     copy_directory(new_qi_dir, qi_install_dir)?;
@@ -201,11 +209,11 @@ fn replace_qi_directory(new_qi_dir: &std::path::Path) -> Result<(), String> {
         use std::os::unix::fs::PermissionsExt;
         let new_binary = qi_install_dir.join("qi");
         let mut perms = fs::metadata(&new_binary)
-            .map_err(|e| format!("Failed to get metadata: {}", e))?
+            .map_err(|e| fmt_msg(MsgKey::UpgradeGetMetadataFailed, &[&e.to_string()]))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&new_binary, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::UpgradeSetPermissionsFailed, &[&e.to_string()]))?;
     }
 
     Ok(())
@@ -213,21 +221,33 @@ fn replace_qi_directory(new_qi_dir: &std::path::Path) -> Result<(), String> {
 
 /// ディレクトリを再帰的にコピー
 fn copy_directory(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
-    fs::create_dir_all(dst)
-        .map_err(|e| format!("Failed to create directory {}: {}", dst.display(), e))?;
+    fs::create_dir_all(dst).map_err(|e| {
+        fmt_msg(
+            MsgKey::UpgradeCreateDirFailed,
+            &[&dst.display().to_string(), &e.to_string()],
+        )
+    })?;
 
-    for entry in fs::read_dir(src)
-        .map_err(|e| format!("Failed to read directory {}: {}", src.display(), e))?
-    {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+    for entry in fs::read_dir(src).map_err(|e| {
+        fmt_msg(
+            MsgKey::UpgradeReadDirFailed,
+            &[&src.display().to_string(), &e.to_string()],
+        )
+    })? {
+        let entry =
+            entry.map_err(|e| fmt_msg(MsgKey::UpgradeReadEntryFailed, &[&e.to_string()]))?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
 
         if src_path.is_dir() {
             copy_directory(&src_path, &dst_path)?;
         } else {
-            fs::copy(&src_path, &dst_path)
-                .map_err(|e| format!("Failed to copy {}: {}", src_path.display(), e))?;
+            fs::copy(&src_path, &dst_path).map_err(|e| {
+                fmt_msg(
+                    MsgKey::UpgradeCopyFileFailed,
+                    &[&src_path.display().to_string(), &e.to_string()],
+                )
+            })?;
         }
     }
 
@@ -263,7 +283,7 @@ pub fn upgrade() -> Result<(), String> {
         .assets
         .iter()
         .find(|a| a.name.ends_with(&asset_pattern))
-        .ok_or_else(|| format!("No binary found for platform pattern: {}", asset_pattern))?;
+        .ok_or_else(|| fmt_msg(MsgKey::UpgradeNoBinaryForPlatform, &[&asset_pattern]))?;
 
     // アーカイブをダウンロード
     let archive_data = download_binary(&asset.browser_download_url)?;

@@ -5,6 +5,13 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
 
+/// kvs/redis-mget - 複数のキーの値を一括取得
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - keys: キーのベクタ
+///
+/// 戻り値: 値のベクタ（存在しないキーはnil） or {:error message}
 pub fn native_redis_mget(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-mget", "2"]));

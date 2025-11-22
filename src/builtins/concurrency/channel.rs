@@ -4,6 +4,19 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};
 use crossbeam_channel::{bounded, unbounded};
 use std::sync::Arc;
+/// チャネルを作成
+///
+/// 引数:
+/// - capacity (optional): チャネルの容量（指定されない場合は無制限）
+///
+/// 戻り値:
+/// - 新しいチャネル
+///
+/// 例:
+/// ```qi
+/// (def ch (go/chan))      ;; 無制限チャネル
+/// (def ch (go/chan 10))   ;; 容量10のチャネル
+/// ```
 pub fn native_chan(args: &[Value]) -> Result<Value, String> {
     let capacity = if args.is_empty() {
         None

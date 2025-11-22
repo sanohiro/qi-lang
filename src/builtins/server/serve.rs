@@ -17,6 +17,16 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
+/// server/serve - HTTPサーバーを起動
+///
+/// 引数:
+/// - handler: リクエストハンドラー（関数またはルーター定義）
+/// - opts: オプション（マップ、省略可）
+///   - :host - バインドホスト（デフォルト: "127.0.0.1"）
+///   - :port - バインドポート（デフォルト: 3000）
+///   - :timeout - タイムアウト（秒、デフォルト: 30、最小: 1、最大: 300）
+///
+/// 戻り値: nil（サーバー起動後は戻らない）
 pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     // タイムアウト制限
     const MIN_TIMEOUT_SECS: u64 = 1;

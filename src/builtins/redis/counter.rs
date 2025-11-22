@@ -5,6 +5,13 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
 
+/// kvs/redis-incr - キーの値をインクリメント
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - key: キー名
+///
+/// 戻り値: インクリメント後の値 or {:error message}
 pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-incr", "2"]));

@@ -18,7 +18,11 @@ pub mod http_client {
             .brotli(true)
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .expect("Failed to create HTTP client")
+            .unwrap_or_else(|e| {
+                eprintln!("Fatal error: Failed to create HTTP client: {}", e);
+                eprintln!("This is a critical initialization error. The program cannot continue.");
+                std::process::exit(1);
+            })
     });
 }
 
@@ -37,7 +41,13 @@ pub mod http_server {
                 .worker_threads(4)
                 .thread_name("qi-server")
                 .build()
-                .expect("Failed to create server runtime")
+                .unwrap_or_else(|e| {
+                    eprintln!("Fatal error: Failed to create server runtime: {}", e);
+                    eprintln!(
+                        "This is a critical initialization error. The program cannot continue."
+                    );
+                    std::process::exit(1);
+                })
         })
     }
 }

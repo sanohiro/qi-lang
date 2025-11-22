@@ -1,5 +1,24 @@
 use super::*;
 
+/// read-file - ファイル全体を文字列として読み込む
+///
+/// 指定されたファイルをエンコーディングに応じてデコードして読み込みます。
+/// デフォルトはUTF-8です。
+///
+/// # 引数
+/// - `path: string` - 読み込むファイルのパス
+/// - `:encoding keyword` - エンコーディング指定（オプション、デフォルト: :utf-8）
+///   - `:utf-8` - UTF-8（BOM除去）
+///   - `:utf-8-bom` - UTF-8 with BOM
+///   - `:sjis` - Shift_JIS
+///   - `:euc-jp` - EUC-JP
+///   - `:auto` - 自動判定
+///
+/// # 戻り値
+/// `string` - ファイルの内容
+///
+/// # パイプライン対応
+/// `(io/read-file "path.txt" :encoding :sjis)`
 pub fn native_read_file(args: &[Value]) -> Result<Value, String> {
     // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {

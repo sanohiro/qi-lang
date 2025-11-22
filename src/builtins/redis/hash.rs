@@ -5,6 +5,15 @@ use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
 
+/// kvs/redis-hset - ハッシュのフィールドに値を設定
+///
+/// 引数:
+/// - url: 接続URL（例: "redis://localhost:6379"）
+/// - key: キー名
+/// - field: フィールド名
+/// - value: 値
+///
+/// 戻り値: true（新規）or false（更新）or {:error message}
 pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
     if args.len() != 4 {
         return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hset", "4"]));

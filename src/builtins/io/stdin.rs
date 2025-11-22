@@ -1,5 +1,21 @@
 use super::*;
 
+/// stdin-read-line - 標準入力から1行を読み込む
+///
+/// 標準入力から1行を読み込みます。改行文字は自動的に削除されます。
+/// EOF（ファイル終了）に達した場合はnilを返します。
+///
+/// # 引数
+/// なし
+///
+/// # 戻り値
+/// `string | nil` - 読み込んだ行、またはEOFの場合はnil
+///
+/// # 使用例
+/// ```qi
+/// (io/stdin-read-line)
+/// (io/read-prompt "Enter name: " |> io/stdin-read-line)
+/// ```
 pub fn native_stdin_read_line(_args: &[Value]) -> Result<Value, String> {
     // DAPモードの場合、標準入力待ちの通知を出力
     #[cfg(feature = "dap-server")]

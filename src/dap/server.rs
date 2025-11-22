@@ -3,6 +3,7 @@
 use super::stdio_redirect;
 use super::types::*;
 use crate::constants::dap::*;
+use crate::i18n::{fmt_msg, MsgKey};
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Write};
 use std::sync::Arc;
@@ -269,7 +270,7 @@ impl DapServer {
             _ => self.create_error_response(
                 request.seq,
                 &request.command,
-                format!("Unknown command: {}", request.command),
+                fmt_msg(MsgKey::DapUnknownCommand, &[&request.command]),
             ),
         }
     }
@@ -330,7 +331,7 @@ impl DapServer {
                     return self.create_error_response(
                         request.seq,
                         COMMAND_LAUNCH,
-                        "No program specified".to_string(),
+                        fmt_msg(MsgKey::DapNoProgramSpecified, &[]),
                     );
                 }
             }
@@ -339,7 +340,7 @@ impl DapServer {
         self.create_error_response(
             request.seq,
             COMMAND_LAUNCH,
-            "Invalid launch arguments".to_string(),
+            fmt_msg(MsgKey::DapInvalidLaunchArgs, &[]),
         )
     }
 
@@ -354,7 +355,7 @@ impl DapServer {
                     return self.create_error_response(
                         request.seq,
                         COMMAND_LAUNCH,
-                        "No program specified".to_string(),
+                        fmt_msg(MsgKey::DapNoProgramSpecified, &[]),
                     );
                 }
             }
@@ -477,7 +478,7 @@ impl DapServer {
         self.create_error_response(
             request.seq,
             COMMAND_SET_BREAKPOINTS,
-            "Invalid arguments".to_string(),
+            fmt_msg(MsgKey::DapInvalidArguments, &[]),
         )
     }
 
@@ -870,7 +871,7 @@ impl DapServer {
             return self.create_error_response(
                 request.seq,
                 COMMAND_EVALUATE,
-                "Missing 'expression' argument".to_string(),
+                fmt_msg(MsgKey::DapMissingExpression, &[]),
             );
         };
 
@@ -908,7 +909,7 @@ impl DapServer {
             Err(e) => self.create_error_response(
                 request.seq,
                 COMMAND_EVALUATE,
-                format!("Failed to write to stdin: {}", e),
+                fmt_msg(MsgKey::DapFailedToWriteStdin, &[&e.to_string()]),
             ),
         }
     }
@@ -1046,13 +1047,13 @@ impl DapServer {
                 Err(e) => self.create_error_response(
                     request.seq,
                     "writeStdin",
-                    format!("Failed to write to stdin: {}", e),
+                    fmt_msg(MsgKey::DapFailedToWriteStdin, &[&e.to_string()]),
                 ),
             },
             None => self.create_error_response(
                 request.seq,
                 "writeStdin",
-                "Missing 'text' argument".to_string(),
+                fmt_msg(MsgKey::DapMissingExpression, &[]),
             ),
         }
     }
@@ -1643,13 +1644,13 @@ async fn run_qi_program_async(
     // ファイル読み込み
     let content = tokio::fs::read_to_string(program_path)
         .await
-        .map_err(|e| format!("Failed to read file: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::DapFailedToReadFile, &[&e.to_string()]))?;
 
     let program_path_owned = program_path.to_string();
 
     // stdout/stderrをリダイレクト
     let redirect = stdio_redirect::StdioRedirect::new()
-        .map_err(|e| format!("Failed to redirect stdio: {}", e))?;
+        .map_err(|e| fmt_msg(MsgKey::DapFailedToRedirectStdio, &[&e.to_string()]))?;
 
     // パイプから読み取るタスクを起動（stdout用とstderr用）
     let stdout_handle = redirect.spawn_stdout_reader(event_tx.clone(), seq_base);
@@ -1661,23 +1662,24 @@ async fn run_qi_program_async(
         evaluator.set_source(program_path_owned.clone(), content.clone());
 
         // パース
-        let mut parser = Parser::new(&content).map_err(|e| format!("Parser error: {}", e))?;
+        let mut parser =
+            Parser::new(&content).map_err(|e| fmt_msg(MsgKey::DapParserInitError, &[&e]))?;
         parser.set_source_name(program_path_owned.clone());
         let exprs = parser
             .parse_all()
-            .map_err(|e| format!("Parse error: {}", e))?;
+            .map_err(|e| fmt_msg(MsgKey::DapParseError, &[&e]))?;
 
         // 評価
         for expr in exprs.iter() {
             evaluator
                 .eval(expr)
-                .map_err(|e| format!("Runtime error: {}", e))?;
+                .map_err(|e| fmt_msg(MsgKey::DapRuntimeError, &[&e]))?;
         }
 
         Ok(())
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?;
+    .map_err(|e| fmt_msg(MsgKey::DapTaskJoinError, &[&e.to_string()]))?;
 
     // stdio を元に戻す
     drop(redirect);

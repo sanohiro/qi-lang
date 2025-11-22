@@ -108,7 +108,25 @@ pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// rand - 0.0以上1.0未満の乱数
+/// rand - 0.0以上1.0未満の乱数を生成
+///
+/// cryptographicallyセキュアな乱数生成器を使用して、
+/// 0.0以上1.0未満の浮動小数点数を生成します。
+///
+/// # 引数
+/// なし
+///
+/// # 戻り値
+/// `float` - 0.0 <= n < 1.0 の乱数
+///
+/// # 使用例
+/// ```qi
+/// (math/rand)  ;=> 0.7234...
+/// (math/rand |> (* 100) |> math/floor)  ;=> 0～99の整数
+/// ```
+///
+/// # 必須feature
+/// `std-math`
 #[cfg(feature = "std-math")]
 pub fn native_rand(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
@@ -119,7 +137,26 @@ pub fn native_rand(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Float(rng.random::<f64>()))
 }
 
-/// rand-int - 0以上n未満の整数乱数
+/// rand-int - 0以上n未満の整数乱数を生成
+///
+/// 0以上指定された値未満の整数乱数を生成します。
+/// 上限値は1以上である必要があります。
+///
+/// # 引数
+/// - `n: integer` - 上限値（n > 0）
+///
+/// # 戻り値
+/// `integer` - 0 <= result < n の整数乱数
+///
+/// # 使用例
+/// ```qi
+/// (math/rand-int 10)     ;=> 0～9の乱数
+/// (math/rand-int 100)    ;=> 0～99の乱数
+/// (stream/range 10 |> map (fn [_] (math/rand-int 6)))  ;=> サイコロ10回
+/// ```
+///
+/// # 必須feature
+/// `std-math`
 #[cfg(feature = "std-math")]
 pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "rand-int");
@@ -139,7 +176,27 @@ pub fn native_rand_int(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// random-range - min以上max未満の整数乱数
+/// random-range - min以上max未満の整数乱数を生成
+///
+/// 指定された範囲[min, max)内の整数乱数を生成します。
+/// minはmaxより小さい必要があります。
+///
+/// # 引数
+/// - `min: integer` - 最小値（含む）
+/// - `max: integer` - 最大値（含まない）
+///
+/// # 戻り値
+/// `integer` - min <= result < max の整数乱数
+///
+/// # 使用例
+/// ```qi
+/// (math/random-range 1 10)    ;=> 1～9の乱数
+/// (math/random-range -10 10)  ;=> -10～9の乱数
+/// (stream/range 5 |> map (fn [_] (math/random-range 100 200)))
+/// ```
+///
+/// # 必須feature
+/// `std-math`
 #[cfg(feature = "std-math")]
 pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "random-range");
@@ -156,7 +213,30 @@ pub fn native_random_range(args: &[Value]) -> Result<Value, String> {
     }
 }
 
-/// shuffle - リストをシャッフル
+/// shuffle - リスト/ベクトルをランダムにシャッフル
+///
+/// Fisher-Yatesアルゴリズムを使用して、リストまたはベクトルの要素を
+/// ランダムにシャッフルします。元の値は変更されず、シャッフルされた
+/// コピーが返されます。
+///
+/// # 引数
+/// - `coll: list | vector` - シャッフルするコレクション
+///
+/// # 戻り値
+/// `list | vector` - シャッフルされたコレクション（元の型を保持）
+///
+/// # 使用例
+/// ```qi
+/// (math/shuffle [1 2 3 4 5])     ;=> [3 1 4 5 2] （例）
+/// (math/shuffle '(a b c d e))    ;=> (c a d e b) （例）
+///
+/// ;; ゲームのカード処理
+/// (def cards ["A" "2" "3" "4" "5" "6" "7" "8" "9" "10" "J" "Q" "K"])
+/// (math/shuffle cards)            ;=> シャッフルされたカード
+/// ```
+///
+/// # 必須feature
+/// `std-math`
 #[cfg(feature = "std-math")]
 pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
     use rand::seq::SliceRandom;

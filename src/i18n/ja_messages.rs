@@ -1,11 +1,11 @@
 use super::msg_key::MsgKey;
+use super::msg_key::MsgKey::*;
 use super::ui_msg::UiMsg;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
 /// 日本語エラーメッセージ
 pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
-    use MsgKey::*;
     HashMap::from([
         // パーサーエラー
         (UnexpectedToken, "予期しないトークン: {0}"),
@@ -377,6 +377,22 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (TimeParseFailedToParse, "time/parse: '{0}'をフォーマット'{1}'でパース失敗"),
         // ZIPエラー
         (ZipPathDoesNotExist, "{0}: パス'{1}'は存在しません"),
+        (ZipCreateFileFailed, "{0}: ZIPファイル'{1}'の作成に失敗: {2}"),
+        (ZipFinishFailed, "{0}: 完了処理に失敗: {1}"),
+        (ZipStartFileFailed, "{0}: ファイル開始に失敗: {1}"),
+        (ZipOpenFileFailed, "{0}: '{1}'を開くのに失敗: {2}"),
+        (ZipReadFileFailed, "{0}: '{1}'の読み込みに失敗: {2}"),
+        (ZipWriteFailed, "{0}: 書き込みに失敗: {1}"),
+        (ZipReadDirFailed, "{0}: ディレクトリ'{1}'の読み込みに失敗: {2}"),
+        (ZipReadEntryFailed, "{0}: エントリ{1}の読み込みに失敗: {2}"),
+        (ZipCreateDirFailed, "{0}: ディレクトリ'{1}'の作成に失敗: {2}"),
+        (ZipCreateParentDirFailed, "{0}: 親ディレクトリの作成に失敗: {1}"),
+        (ZipExtractFailed, "{0}: 抽出に失敗: {1}"),
+        (ZipCreateTempFailed, "{0}: 一時ファイルの作成に失敗: {1}"),
+        (ZipRemoveOriginalFailed, "{0}: 元のファイルの削除に失敗: {1}"),
+        (ZipRenameTempFailed, "{0}: 一時ファイルのリネームに失敗: {1}"),
+        (ZipCompressFailed, "{0}: 圧縮に失敗: {1}"),
+        (ZipDecompressFailed, "{0}: 解凍に失敗: {1}"),
         // データベースエラー
         (DbUnsupportedUrl, "サポートされていないデータベースURL: {0}。サポート: sqlite:"),
         (DbNeed2To4Args, "{0}には2-4個の引数が必要です、実際: {1}"),
@@ -475,6 +491,105 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (RestartRequired, "新しいバージョンを使用するには qi を再起動してください"),
         (UnsupportedPlatform, "サポートされていないプラットフォーム: {0}-{1}"),
         (HttpClientNotEnabled, "HTTP client が有効になっていません (feature 'http-client' が必要です)"),
+        (UpgradeFetchFailed, "リリース情報の取得に失敗しました: {0}"),
+        (UpgradeGitHubApiError, "GitHub API エラー: {0}"),
+        (UpgradeJsonParseFailed, "JSON のパースに失敗しました: {0}"),
+        (UpgradeDownloadFailed, "ダウンロードに失敗しました: {0}"),
+        (UpgradeDownloadError, "ダウンロードエラー: {0}"),
+        (UpgradeReadResponseFailed, "レスポンスの読み込みに失敗しました: {0}"),
+        (UpgradeCreateTempDirFailed, "一時ディレクトリの作成に失敗しました: {0}"),
+        (UpgradeUnpackArchiveFailed, "アーカイブの展開に失敗しました: {0}"),
+        (UpgradeReadTempDirFailed, "一時ディレクトリの読み込みに失敗しました: {0}"),
+        (UpgradeReadEntryFailed, "エントリの読み込みに失敗しました: {0}"),
+        (UpgradeQiDirNotFound, "アーカイブ内に qi ディレクトリが見つかりません"),
+        (UpgradeGetExePathFailed, "実行ファイルのパス取得に失敗しました: {0}"),
+        (UpgradeGetParentDirFailed, "実行ファイルの親ディレクトリの取得に失敗しました"),
+        (UpgradeNotQiDirectory, "現在のインストールディレクトリは qi ディレクトリではありません: {0}"),
+        (UpgradeRemoveBackupFailed, "古いバックアップの削除に失敗しました: {0}"),
+        (UpgradeBackupFailed, "現在の qi ディレクトリのバックアップに失敗しました: {0}"),
+        (UpgradeGetMetadataFailed, "メタデータの取得に失敗しました: {0}"),
+        (UpgradeSetPermissionsFailed, "パーミッションの設定に失敗しました: {0}"),
+        (UpgradeCreateDirFailed, "ディレクトリ {0} の作成に失敗しました: {1}"),
+        (UpgradeReadDirFailed, "ディレクトリ {0} の読み込みに失敗しました: {1}"),
+        (UpgradeCopyFileFailed, "{0} のコピーに失敗しました: {1}"),
+        (UpgradeNoBinaryForPlatform, "プラットフォームパターン {0} に対応するバイナリが見つかりません"),
+
+        // WebSocketエラー
+        (
+            WsFailedToSend,
+            "WebSocketメッセージの送信に失敗しました: {0}",
+        ),
+        (WsConnectionClosed, "WebSocket接続はクローズされています"),
+        (WsUnexpectedFrame, "予期しないフレームを受信しました"),
+        (
+            WsFailedToClose,
+            "WebSocket接続のクローズに失敗しました: {0}",
+        ),
+        (
+            WsConnectionAlreadyClosed,
+            "WebSocket接続は既にクローズされています",
+        ),
+        (
+            WsFailedToConnect,
+            "WebSocketサーバーへの接続に失敗しました: {0}",
+        ),
+        (WsConnectionNotFound, "WebSocket接続が見つかりません"),
+
+        // HTTP詳細エラー
+        (HttpUnexpectedErrorFormat, "予期しないエラー形式"),
+        (HttpMissingStatus, "レスポンスにステータスがありません"),
+        (HttpMissingBody, "レスポンスにボディがありません"),
+        (HttpErrorWithBody, "HTTPエラー {0}: {1}"),
+        (HttpUnexpectedResponse, "予期しないレスポンス形式"),
+
+        // 静的ファイルエラー
+        (StaticFileInvalidPath, "無効なパス: {0}"),
+        (StaticFileNotFound, "ファイルが見つかりません: {0}"),
+        (
+            StaticFileMetadataFailed,
+            "ファイルのメタデータ読み込みに失敗しました: {0}",
+        ),
+        (StaticFileInvalidUrlEncoding, "無効なURLエンコーディング"),
+        (StaticFileInvalidPathTraversal, "無効なパス"),
+        (StaticFileInvalidBaseDir, "無効なベースディレクトリ"),
+        (StaticFileInvalidFileName, "無効なファイル名"),
+        (
+            StaticFileBaseDirNotExist,
+            "ベースディレクトリが存在しません",
+        ),
+        (StaticFilePathTraversal, "パストラバーサルが検出されました"),
+        (
+            StaticFileFailedToGetCwd,
+            "カレントディレクトリの取得に失敗しました: {0}",
+        ),
+        (StaticFileInvalidFilePath, "無効なファイルパス: {0}"),
+        (
+            StaticFileInvalidEncoding,
+            "無効なファイルパスエンコーディング",
+        ),
+        (
+            StaticFileFailedToCanonicalize,
+            "ディレクトリの正規化に失敗しました: {0}",
+        ),
+
+        // DAPサーバーエラー
+        (DapUnknownCommand, "不明なコマンド: {0}"),
+        (DapNoProgramSpecified, "プログラムが指定されていません"),
+        (DapInvalidLaunchArgs, "無効なlaunch引数"),
+        (DapInvalidArguments, "無効な引数"),
+        (DapMissingExpression, "'expression' 引数が不足しています"),
+        (
+            DapFailedToWriteStdin,
+            "標準入力への書き込みに失敗しました: {0}",
+        ),
+        (DapFailedToReadFile, "ファイルの読み込みに失敗しました: {0}"),
+        (
+            DapFailedToRedirectStdio,
+            "標準入出力のリダイレクトに失敗しました: {0}",
+        ),
+        (DapParserInitError, "パーサーエラー: {0}"),
+        (DapRuntimeError, "実行時エラー: {0}"),
+        (DapTaskJoinError, "タスク結合エラー: {0}"),
     ])
 });
 

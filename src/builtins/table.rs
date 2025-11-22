@@ -174,7 +174,10 @@ impl Table {
     fn to_value(&self) -> Value {
         match self.format {
             TableFormat::MapList => {
-                let headers = self.headers.as_ref().unwrap();
+                let headers = self
+                    .headers
+                    .as_ref()
+                    .expect("TableFormat::MapList requires headers");
                 let maps: Vec<Value> = self
                     .rows
                     .iter()
@@ -291,7 +294,10 @@ pub fn native_table_where(args: &[Value], eval: &Evaluator) -> Result<Value, Str
         let row_value = match &table.format {
             TableFormat::MapList => {
                 // MapList形式はMapとして渡す（キーは":key"形式）
-                let headers = table.headers.as_ref().unwrap();
+                let headers = table
+                    .headers
+                    .as_ref()
+                    .expect("TableFormat::MapList requires headers");
                 let mut map = new_hashmap();
                 for (i, header) in headers.iter().enumerate() {
                     map.insert(

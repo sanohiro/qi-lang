@@ -3,6 +3,15 @@ use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// ストアドプロシージャまたはストアドファンクションを呼び出す
+///
+/// # 引数
+/// - `conn_id` (DbConnection): データベース接続
+/// - `name` (string): プロシージャ/ファンクション名
+/// - `params` (vector, optional): パラメータのベクトル
+///
+/// # 戻り値
+/// - (vector | map): プロシージャ/ファンクションの実行結果
 pub fn native_call(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
         return Err(fmt_msg(MsgKey::Need2Or3Args, &["db/call"]));

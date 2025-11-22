@@ -2,6 +2,19 @@ use super::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// データベース内のテーブル一覧を取得する
+///
+/// # 引数
+/// - `conn_id` (DbConnection): データベース接続
+///
+/// # 戻り値
+/// - (vector): テーブル名の文字列ベクトル
+///
+/// # 例
+/// ```qi
+/// (let tables (db/tables conn))
+/// ;; => ["users" "posts" "comments"]
+/// ```
 pub fn native_tables(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["db/tables"]));

@@ -3,6 +3,20 @@ use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// データベース接続プールを作成する
+///
+/// # 引数
+/// - `url` (string): 接続URL
+/// - `options` (map, optional): 接続オプション
+/// - `max-connections` (integer, optional): プール内の最大接続数 (デフォルト: 10)
+///
+/// # 戻り値
+/// - (DbPool): データベース接続プール
+///
+/// # 例
+/// ```qi
+/// (let pool (db/create-pool "postgresql://localhost/mydb" {} 20))
+/// ```
 pub fn native_create_pool(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 3 {
         return Err(fmt_msg(

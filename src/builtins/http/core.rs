@@ -34,7 +34,7 @@ pub(super) fn http_request(
                 if let Some(Value::String(msg)) = err_map.get(&message_key) {
                     return Err(msg.clone());
                 }
-                return Err("Unexpected error format".to_string());
+                return Err(fmt_msg(MsgKey::HttpUnexpectedErrorFormat, &[]));
             }
 
             // statusキーとbodyキーを取得
@@ -44,11 +44,11 @@ pub(super) fn http_request(
                     Value::Integer(i) => Some(*i),
                     _ => None,
                 })
-                .ok_or_else(|| "Missing status in response".to_string())?;
+                .ok_or_else(|| fmt_msg(MsgKey::HttpMissingStatus, &[]))?;
 
             let body_val = m
                 .get(&body_key)
-                .ok_or_else(|| "Missing body in response".to_string())?;
+                .ok_or_else(|| fmt_msg(MsgKey::HttpMissingBody, &[]))?;
 
             // ステータスコードをチェック（2xx = 200-299）
             if (200..300).contains(&status) {
@@ -71,11 +71,14 @@ pub(super) fn http_request(
                 if body_preview.is_empty() {
                     Err(fmt_msg(MsgKey::HttpErrorStatus, &[&status.to_string()]))
                 } else {
-                    Err(format!("HTTP error {}: {}", status, body_preview))
+                    Err(fmt_msg(
+                        MsgKey::HttpErrorWithBody,
+                        &[&status.to_string(), &body_preview],
+                    ))
                 }
             }
         }
-        _ => Err("Unexpected response format".to_string()),
+        _ => Err(fmt_msg(MsgKey::HttpUnexpectedResponse, &[])),
     }
 }
 

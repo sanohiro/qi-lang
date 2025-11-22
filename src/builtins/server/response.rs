@@ -4,6 +4,12 @@ use super::helpers::kw;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
+/// server/ok - 200 OKレスポンスを作成
+///
+/// 引数:
+/// - body: レスポンスボディ（文字列またはその他のValue）
+///
+/// 戻り値: HTTPレスポンスマップ
 pub fn native_server_ok(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/ok", "1"]));

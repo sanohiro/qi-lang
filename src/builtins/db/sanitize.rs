@@ -1,6 +1,17 @@
 use super::*;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// 文字列値をサニタイズしてSQLインジェクションを防ぐ
+///
+/// # 引数
+/// - `conn_id` (DbConnection): データベース接続
+/// - `value` (string): サニタイズする文字列
+///
+/// # 戻り値
+/// - (string): サニタイズされた文字列
+///
+/// # 注
+/// バインドパラメータを使う方が推奨されます。この関数は必要に応じてのみ使用してください。
 pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err(fmt_msg(MsgKey::Need2Args, &["db/sanitize"]));

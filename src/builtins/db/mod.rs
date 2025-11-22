@@ -61,9 +61,10 @@ pub(super) fn gen_conn_id() -> String {
 pub(super) fn extract_conn_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
     match value {
-        Value::String(s) if s.starts_with("DbConnection:") => {
-            Ok(s.strip_prefix("DbConnection:").unwrap().to_string())
-        }
+        Value::String(s) if s.starts_with("DbConnection:") => Ok(s
+            .strip_prefix("DbConnection:")
+            .expect("checked by starts_with above")
+            .to_string()),
         _ => Err(fmt_msg(
             MsgKey::DbExpectedConnection,
             &[&format!("{:?}", value)],
@@ -83,9 +84,10 @@ pub(super) fn gen_tx_id() -> String {
 pub(super) fn extract_tx_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
     match value {
-        Value::String(s) if s.starts_with("DbTransaction:") => {
-            Ok(s.strip_prefix("DbTransaction:").unwrap().to_string())
-        }
+        Value::String(s) if s.starts_with("DbTransaction:") => Ok(s
+            .strip_prefix("DbTransaction:")
+            .expect("checked by starts_with above")
+            .to_string()),
         _ => Err(fmt_msg(
             MsgKey::DbExpectedTransaction,
             &[&format!("{:?}", value)],
@@ -105,9 +107,10 @@ pub(super) fn gen_pool_id() -> String {
 pub(super) fn extract_pool_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
     match value {
-        Value::String(s) if s.starts_with("DbPool:") => {
-            Ok(s.strip_prefix("DbPool:").unwrap().to_string())
-        }
+        Value::String(s) if s.starts_with("DbPool:") => Ok(s
+            .strip_prefix("DbPool:")
+            .expect("checked by starts_with above")
+            .to_string()),
         _ => Err(fmt_msg(MsgKey::DbExpectedPool, &[&format!("{:?}", value)])),
     }
 }
@@ -123,10 +126,14 @@ pub(super) fn extract_conn_or_tx(value: &Value) -> Result<ConnOrTx, String> {
     use crate::i18n::{fmt_msg, MsgKey};
     match value {
         Value::String(s) if s.starts_with("DbConnection:") => Ok(ConnOrTx::Conn(
-            s.strip_prefix("DbConnection:").unwrap().to_string(),
+            s.strip_prefix("DbConnection:")
+                .expect("checked by starts_with above")
+                .to_string(),
         )),
         Value::String(s) if s.starts_with("DbTransaction:") => Ok(ConnOrTx::Tx(
-            s.strip_prefix("DbTransaction:").unwrap().to_string(),
+            s.strip_prefix("DbTransaction:")
+                .expect("checked by starts_with above")
+                .to_string(),
         )),
         _ => Err(fmt_msg(
             MsgKey::DbExpectedConnectionOrTransaction,

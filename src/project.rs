@@ -272,7 +272,9 @@ fn copy_dir_recursive(
         // .templateサフィックスを除去
         let dest_file_name = if let Some(name) = file_name.to_str() {
             if name.ends_with(".template") {
-                name.strip_suffix(".template").unwrap()
+                // ends_with()でチェック済みなので、strip_suffixは成功するはずだが、
+                // より安全にするためunwrap_or()を使用
+                name.strip_suffix(".template").unwrap_or(name)
             } else {
                 name
             }

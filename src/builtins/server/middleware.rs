@@ -169,6 +169,8 @@ pub(super) fn apply_compression_middleware(resp: &Value, min_size: usize) -> Val
     Value::Map(new_resp)
 }
 
+/// server/with-logging - ロギングミドルウェア
+/// リクエストとレスポンスのログを出力
 pub fn native_server_with_logging(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::Need1Arg, &["server/with-logging"]));

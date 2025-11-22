@@ -6,6 +6,19 @@ use crate::value::{Channel, Scope, Value};
 use crossbeam_channel::unbounded;
 use parking_lot::RwLock;
 use std::sync::Arc;
+/// キャンセル可能なスコープを作成
+///
+/// 引数: なし
+///
+/// 戻り値:
+/// - 新しいスコープオブジェクト
+///
+/// 例:
+/// ```qi
+/// (def ctx (go/make-scope))
+/// (go/scope-go ctx (fn [] (println "task")))
+/// (go/cancel! ctx)  ;; スコープをキャンセル
+/// ```
 pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
     if !args.is_empty() {
         return Err(fmt_msg(MsgKey::Need0Args, &["make-scope"]));

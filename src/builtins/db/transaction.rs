@@ -2,6 +2,21 @@ use super::*;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
 
+/// トランザクションを開始する
+///
+/// # 引数
+/// - `conn_id` (DbConnection): データベース接続
+/// - `options` (map, optional): トランザクションオプション (:isolation-level, :read-only など)
+///
+/// # 戻り値
+/// - (DbTransaction): トランザクション
+///
+/// # 例
+/// ```qi
+/// (let tx (db/begin conn))
+/// (db/query tx "INSERT INTO users (name) VALUES (?)" ["Alice"])
+/// (db/commit tx)
+/// ```
 pub fn native_begin(args: &[Value]) -> Result<Value, String> {
     if args.is_empty() || args.len() > 2 {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["db/begin"]));

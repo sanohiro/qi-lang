@@ -39,6 +39,19 @@ where
 
     Value::Channel(channel)
 }
+/// Promiseの完了を待機して結果を取得（ブロッキング）
+///
+/// 引数:
+/// - promise: 待機するPromise（チャネル）
+///
+/// 戻り値:
+/// - Promiseの結果値
+///
+/// 例:
+/// ```qi
+/// (def p (go/run (fn [] (* 5 6))))
+/// (go/await p)  ;; => 30
+/// ```
 pub fn native_await(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err(fmt_msg(MsgKey::Need1Arg, &["await"]));
