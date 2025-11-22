@@ -86,30 +86,10 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
     // 成功したのでマップから削除
     TRANSACTIONS.lock().remove(&tx_id);
 
-    // プール接続の場合、プールに戻す
-    if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
-        // CONNECTIONSから接続を削除（pool_ops::native_pool_releaseと同じ）
-        let conn = {
-            let mut connections = CONNECTIONS.lock();
-            connections.remove(&conn_id)
-        };
-
-        // POOLED_CONNECTIONSから削除（プール/接続の存在に関わらず常に実行）
-        POOLED_CONNECTIONS.lock().remove(&conn_id);
-
-        // プールと接続が両方存在する場合のみ、プールに戻す
-        if let Some(conn) = conn {
-            let pool = {
-                let pools = super::pool::POOLS.lock();
-                pools.get(&pool_id).cloned()
-            };
-
-            if let Some(pool) = pool {
-                pool.release(conn);
-            }
-            // プールが存在しない場合、接続はdropされて自動的にクローズされる
-        }
-    }
+    // トランザクション→プールマッピングから削除
+    // 注意: 接続はCONNECTIONS/POOLED_CONNECTIONSに残し、
+    // ユーザーがdb/pool-releaseで明示的に返却できるようにする
+    TRANSACTION_POOLS.lock().remove(&tx_id);
 
     Ok(Value::Nil)
 }
@@ -137,30 +117,10 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
     // 成功したのでマップから削除
     TRANSACTIONS.lock().remove(&tx_id);
 
-    // プール接続の場合、プールに戻す
-    if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
-        // CONNECTIONSから接続を削除（pool_ops::native_pool_releaseと同じ）
-        let conn = {
-            let mut connections = CONNECTIONS.lock();
-            connections.remove(&conn_id)
-        };
-
-        // POOLED_CONNECTIONSから削除（プール/接続の存在に関わらず常に実行）
-        POOLED_CONNECTIONS.lock().remove(&conn_id);
-
-        // プールと接続が両方存在する場合のみ、プールに戻す
-        if let Some(conn) = conn {
-            let pool = {
-                let pools = super::pool::POOLS.lock();
-                pools.get(&pool_id).cloned()
-            };
-
-            if let Some(pool) = pool {
-                pool.release(conn);
-            }
-            // プールが存在しない場合、接続はdropされて自動的にクローズされる
-        }
-    }
+    // トランザクション→プールマッピングから削除
+    // 注意: 接続はCONNECTIONS/POOLED_CONNECTIONSに残し、
+    // ユーザーがdb/pool-releaseで明示的に返却できるようにする
+    TRANSACTION_POOLS.lock().remove(&tx_id);
 
     Ok(Value::Nil)
 }
