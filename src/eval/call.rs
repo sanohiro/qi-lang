@@ -166,9 +166,9 @@ impl Evaluator {
                     _ => Err(qerr(MsgKey::TypeOnly, &["string fn", "maps"])),
                 }
             }
-            _ => Err(fmt_msg(
-                MsgKey::TypeMismatch,
-                &["function", func_val.type_name(), &format!("{}", func_val)],
+            _ => Err(format!(
+                "{} は呼び出し可能ではありません",
+                func_val.type_name()
             )),
         }
     }
@@ -565,10 +565,7 @@ impl Evaluator {
                     }
                 }
             }
-            _ => Err(fmt_msg(
-                MsgKey::TypeMismatch,
-                &["function", func.type_name(), &format!("{}", func)],
-            )),
+            _ => Err(format!("{} は呼び出し可能ではありません", func.type_name())),
         }
     }
 }
