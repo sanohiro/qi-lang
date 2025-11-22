@@ -206,3 +206,99 @@
      "(db/driver-info conn)"
      ";; => {\"name\" \"PostgreSQL\" \"version\" \"0.1.0\" \"database_version\" \"15.3\"}"
    ]})
+
+(def __doc__call
+  {:desc "ストアドプロシージャ/ファンクションを呼び出す"
+   :params [{:name "conn" :type "string" :desc "接続IDまたはトランザクションID"}
+            {:name "name" :type "string" :desc "プロシージャ/ファンクション名"}
+            {:name "params" :type "vector" :desc "パラメータ（省略可）"}]
+   :returns {:type "any" :desc "プロシージャ/ファンクションの戻り値"}
+   :examples [
+     "(db/call conn \"calculate_total\" [100 0.08])"
+     ";; => 108.0"
+     "(def tx (db/begin conn))"
+     "(db/call tx \"update_inventory\" [product-id -1])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__tables
+  {:desc "データベース内のテーブル一覧を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}]
+   :returns {:type "vector" :desc "テーブル名のベクタ"}
+   :examples [
+     "(db/tables conn)"
+     ";; => [\"users\" \"posts\" \"comments\"]"
+   ]})
+
+(def __doc__columns
+  {:desc "テーブルのカラム情報を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "カラム情報のベクタ"}
+   :examples [
+     "(db/columns conn \"users\")"
+     ";; => [{\"name\" \"id\" \"type\" \"integer\" \"nullable\" false ...}]"
+   ]})
+
+(def __doc__indexes
+  {:desc "テーブルのインデックス一覧を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "インデックス情報のベクタ"}
+   :examples [
+     "(db/indexes conn \"users\")"
+     ";; => [{\"name\" \"users_email_idx\" \"unique\" true ...}]"
+   ]})
+
+(def __doc__foreign-keys
+  {:desc "テーブルの外部キー一覧を取得"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "table" :type "string" :desc "テーブル名"}]
+   :returns {:type "vector" :desc "外部キー情報のベクタ"}
+   :examples [
+     "(db/foreign-keys conn \"posts\")"
+     ";; => [{\"name\" \"posts_user_id_fkey\" \"referenced_table\" \"users\" ...}]"
+   ]})
+
+(def __doc__sanitize
+  {:desc "文字列値をサニタイズしてSQLインジェクションを防ぐ"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "value" :type "string" :desc "サニタイズする文字列"}]
+   :returns {:type "string" :desc "サニタイズされた文字列"}
+   :note "バインドパラメータを使う方が推奨されます"
+   :examples [
+     "(db/sanitize conn \"O'Reilly\")"
+     ";; PostgreSQL => \"O''Reilly\""
+   ]})
+
+(def __doc__sanitize-identifier
+  {:desc "識別子（テーブル名/カラム名）をサニタイズする"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "identifier" :type "string" :desc "識別子"}]
+   :returns {:type "string" :desc "サニタイズされた識別子"}
+   :examples [
+     "(db/sanitize-identifier conn \"user name\")"
+     ";; PostgreSQL => \"\\\"user name\\\"\""
+   ]})
+
+(def __doc__supports?
+  {:desc "データベースが特定の機能をサポートしているか確認"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "feature" :type "string" :desc "機能名"}]
+   :returns {:type "boolean" :desc "サポートしている場合true"}
+   :examples [
+     "(db/supports? conn \"transactions\")"
+     ";; => true"
+     "(db/supports? conn \"stored_procedures\")"
+     ";; PostgreSQL/MySQL => true, SQLite => false"
+   ]})
+
+(def __doc__query-info
+  {:desc "クエリのメタデータ（カラム情報等）を取得（実行なし）"
+   :params [{:name "conn" :type "string" :desc "接続ID"}
+            {:name "sql" :type "string" :desc "SQL文"}]
+   :returns {:type "map" :desc "クエリ情報（columnsとparameter_count）"}
+   :examples [
+     "(db/query-info conn \"SELECT id, name FROM users WHERE age > $1\")"
+     ";; => {\"columns\" [...] \"parameter_count\" 1}"
+   ]})

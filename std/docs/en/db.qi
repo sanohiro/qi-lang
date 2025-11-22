@@ -206,3 +206,99 @@
      "(db/driver-info conn)"
      ";; => {\"name\" \"PostgreSQL\" \"version\" \"0.1.0\" \"database_version\" \"15.3\"}"
    ]})
+
+(def __doc__call
+  {:desc "Call stored procedure/function"
+   :params [{:name "conn" :type "string" :desc "Connection ID or transaction ID"}
+            {:name "name" :type "string" :desc "Procedure/function name"}
+            {:name "params" :type "vector" :desc "Parameters (optional)"}]
+   :returns {:type "any" :desc "Return value from procedure/function"}
+   :examples [
+     "(db/call conn \"calculate_total\" [100 0.08])"
+     ";; => 108.0"
+     "(def tx (db/begin conn))"
+     "(db/call tx \"update_inventory\" [product-id -1])"
+     "(db/commit tx)"
+   ]})
+
+(def __doc__tables
+  {:desc "Get list of tables in the database"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}]
+   :returns {:type "vector" :desc "Vector of table names"}
+   :examples [
+     "(db/tables conn)"
+     ";; => [\"users\" \"posts\" \"comments\"]"
+   ]})
+
+(def __doc__columns
+  {:desc "Get column information for a table"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "vector" :desc "Vector of column information"}
+   :examples [
+     "(db/columns conn \"users\")"
+     ";; => [{\"name\" \"id\" \"type\" \"integer\" \"nullable\" false ...}]"
+   ]})
+
+(def __doc__indexes
+  {:desc "Get list of indexes for a table"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "vector" :desc "Vector of index information"}
+   :examples [
+     "(db/indexes conn \"users\")"
+     ";; => [{\"name\" \"users_email_idx\" \"unique\" true ...}]"
+   ]})
+
+(def __doc__foreign-keys
+  {:desc "Get list of foreign keys for a table"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "table" :type "string" :desc "Table name"}]
+   :returns {:type "vector" :desc "Vector of foreign key information"}
+   :examples [
+     "(db/foreign-keys conn \"posts\")"
+     ";; => [{\"name\" \"posts_user_id_fkey\" \"referenced_table\" \"users\" ...}]"
+   ]})
+
+(def __doc__sanitize
+  {:desc "Sanitize string value to prevent SQL injection"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "value" :type "string" :desc "String to sanitize"}]
+   :returns {:type "string" :desc "Sanitized string"}
+   :note "Using bind parameters is recommended"
+   :examples [
+     "(db/sanitize conn \"O'Reilly\")"
+     ";; PostgreSQL => \"O''Reilly\""
+   ]})
+
+(def __doc__sanitize-identifier
+  {:desc "Sanitize identifier (table/column name)"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "identifier" :type "string" :desc "Identifier"}]
+   :returns {:type "string" :desc "Sanitized identifier"}
+   :examples [
+     "(db/sanitize-identifier conn \"user name\")"
+     ";; PostgreSQL => \"\\\"user name\\\"\""
+   ]})
+
+(def __doc__supports?
+  {:desc "Check if database supports a specific feature"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "feature" :type "string" :desc "Feature name"}]
+   :returns {:type "boolean" :desc "true if supported"}
+   :examples [
+     "(db/supports? conn \"transactions\")"
+     ";; => true"
+     "(db/supports? conn \"stored_procedures\")"
+     ";; PostgreSQL/MySQL => true, SQLite => false"
+   ]})
+
+(def __doc__query-info
+  {:desc "Get query metadata (column info, etc.) without execution"
+   :params [{:name "conn" :type "string" :desc "Connection ID"}
+            {:name "sql" :type "string" :desc "SQL statement"}]
+   :returns {:type "map" :desc "Query information (columns and parameter_count)"}
+   :examples [
+     "(db/query-info conn \"SELECT id, name FROM users WHERE age > $1\")"
+     ";; => {\"columns\" [...] \"parameter_count\" 1}"
+   ]})

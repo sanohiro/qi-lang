@@ -555,6 +555,337 @@ rt.block_on(async {
 
 ---
 
+## Advanced Features
+
+### db/call - Call Stored Procedures/Functions
+
+```qi
+(db/call conn name params)
+```
+
+#### Arguments
+
+- `conn`: Connection ID (`db/connect`) or transaction ID (`db/begin`)
+- `name`: Procedure/function name (string)
+- `params`: Parameter vector (optional)
+
+#### Returns
+
+- For single return value: The value
+- For result set: Vector of rows
+- For multiple result sets: Vector of vectors
+
+#### Examples
+
+```qi
+;; PostgreSQL - Call stored function
+(db/call conn "calculate_total" [100 0.08])
+;; => 108.0
+
+;; MySQL - Call stored procedure
+(db/call conn "get_user_orders" [user-id])
+;; => [{:order_id 1 :total 100} {:order_id 2 :total 200}]
+
+;; Use within transaction
+(def tx (db/begin conn))
+(db/call tx "update_inventory" [product-id -1])
+(db/commit tx)
+```
+
+#### Notes
+
+- SQLite does not support stored procedures
+- PostgreSQL automatically detects function (SELECT) vs procedure (CALL)
+- MySQL executes via CALL statement
+
+---
+
+### db/tables - Get Table List
+
+```qi
+(db/tables conn)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+
+#### Returns
+
+- Vector of table names (strings)
+
+#### Examples
+
+```qi
+(db/tables conn)
+;; => ["users" "posts" "comments"]
+```
+
+---
+
+### db/columns - Get Column Information
+
+```qi
+(db/columns conn table-name)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `table-name`: Table name (string)
+
+#### Returns
+
+- Vector of column information maps
+  - `:name` - Column name
+  - `:type` - Data type
+  - `:nullable` - NULL allowed (true/false)
+  - `:default` - Default value (nil if none)
+  - `:primary_key` - Primary key (true/false)
+
+#### Examples
+
+```qi
+(db/columns conn "users")
+;; => [{:name "id" :type "integer" :nullable false :default nil :primary_key true}
+;;     {:name "name" :type "text" :nullable false :default nil :primary_key false}
+;;     {:name "email" :type "text" :nullable true :default nil :primary_key false}]
+```
+
+---
+
+### db/indexes - Get Index List
+
+```qi
+(db/indexes conn table-name)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `table-name`: Table name (string)
+
+#### Returns
+
+- Vector of index information maps
+  - `:name` - Index name
+  - `:table` - Table name
+  - `:columns` - Vector of column names
+  - `:unique` - Unique index (true/false)
+
+#### Examples
+
+```qi
+(db/indexes conn "users")
+;; => [{:name "users_email_idx" :table "users" :columns ["email"] :unique true}]
+```
+
+---
+
+### db/foreign-keys - Get Foreign Key List
+
+```qi
+(db/foreign-keys conn table-name)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `table-name`: Table name (string)
+
+#### Returns
+
+- Vector of foreign key information maps
+  - `:name` - Foreign key name
+  - `:table` - Table name
+  - `:columns` - Vector of column names
+  - `:referenced_table` - Referenced table name
+  - `:referenced_columns` - Vector of referenced column names
+
+#### Examples
+
+```qi
+(db/foreign-keys conn "posts")
+;; => [{:name "posts_user_id_fkey"
+;;      :table "posts"
+;;      :columns ["user_id"]
+;;      :referenced_table "users"
+;;      :referenced_columns ["id"]}]
+```
+
+---
+
+### db/sanitize - Sanitize Values
+
+```qi
+(db/sanitize conn value)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `value`: String to sanitize
+
+#### Returns
+
+- Sanitized string
+
+#### Examples
+
+```qi
+(db/sanitize conn "O'Reilly")
+;; PostgreSQL => "O''Reilly"
+;; MySQL => "O\'Reilly"
+```
+
+#### Notes
+
+**Using bind parameters is recommended.** Use this function only when building dynamic SQL.
+
+---
+
+### db/sanitize-identifier - Sanitize Identifiers
+
+```qi
+(db/sanitize-identifier conn identifier)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `identifier`: Table/column name to sanitize
+
+#### Returns
+
+- Sanitized identifier
+
+#### Examples
+
+```qi
+(db/sanitize-identifier conn "user name")
+;; PostgreSQL => "\"user name\""
+;; MySQL => "`user name`"
+```
+
+---
+
+### db/escape-like - Escape LIKE Patterns
+
+```qi
+(db/escape-like conn pattern)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `pattern`: LIKE pattern string
+
+#### Returns
+
+- Escaped pattern string
+
+#### Examples
+
+```qi
+(db/escape-like conn "50%_off")
+;; => "50\\%\\_off" (PostgreSQL/MySQL)
+
+;; Usage in LIKE search
+(def pattern (db/escape-like conn user-input))
+(db/query conn "SELECT * FROM products WHERE name LIKE ?" [(str pattern "%")])
+```
+
+---
+
+### db/supports? - Check Feature Support
+
+```qi
+(db/supports? conn feature)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `feature`: Feature name (string)
+
+#### Returns
+
+- If supported: `true`
+- If not supported: `false`
+
+#### Examples
+
+```qi
+(db/supports? conn "transactions")
+;; => true
+
+(db/supports? conn "stored_procedures")
+;; PostgreSQL/MySQL => true
+;; SQLite => false
+```
+
+---
+
+### db/driver-info - Get Driver Information
+
+```qi
+(db/driver-info conn)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+
+#### Returns
+
+- Driver information map
+  - `:name` - Driver name ("PostgreSQL", "MySQL", "SQLite")
+  - `:version` - Driver version
+  - `:database_version` - Database version
+
+#### Examples
+
+```qi
+(db/driver-info conn)
+;; => {:name "PostgreSQL"
+;;     :version "0.19.0"
+;;     :database_version "PostgreSQL 15.3"}
+```
+
+---
+
+### db/query-info - Get Query Metadata
+
+```qi
+(db/query-info conn sql)
+```
+
+#### Arguments
+
+- `conn`: Connection ID
+- `sql`: SQL string
+
+#### Returns
+
+- Query information map
+  - `:columns` - Vector of column information (same format as `db/columns`)
+  - `:parameter_count` - Parameter count
+
+#### Examples
+
+```qi
+(db/query-info conn "SELECT id, name FROM users WHERE age > $1")
+;; => {:columns [{:name "id" :type "integer" ...}
+;;               {:name "name" :type "text" ...}]
+;;     :parameter_count 1}
+```
+
+#### Notes
+
+The query is not executed. Only metadata is retrieved.
+
+---
+
 ## Roadmap
 
 ### Future Features

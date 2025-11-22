@@ -600,6 +600,337 @@ rt.block_on(async {
 
 ---
 
+## 高度な機能
+
+### db/call - ストアドプロシージャ/ファンクション呼び出し
+
+```qi
+(db/call conn name params)
+```
+
+#### 引数
+
+- `conn`: 接続ID（`db/connect`）またはトランザクションID（`db/begin`）
+- `name`: プロシージャ/ファンクション名（文字列）
+- `params`: パラメータのベクタ（省略可）
+
+#### 戻り値
+
+- 単一の戻り値の場合: その値
+- 結果セットの場合: 行のベクタ
+- 複数の結果セットの場合: ベクタのベクタ
+
+#### 使用例
+
+```qi
+;; PostgreSQL - ストアドファンクション呼び出し
+(db/call conn "calculate_total" [100 0.08])
+;; => 108.0
+
+;; MySQL - ストアドプロシージャ呼び出し
+(db/call conn "get_user_orders" [user-id])
+;; => [{:order_id 1 :total 100} {:order_id 2 :total 200}]
+
+;; トランザクション内での使用
+(def tx (db/begin conn))
+(db/call tx "update_inventory" [product-id -1])
+(db/commit tx)
+```
+
+#### 注意
+
+- SQLiteはストアドプロシージャをサポートしていません
+- PostgreSQLでは関数（SELECT）とプロシージャ（CALL）を自動判別します
+- MySQLではCALL文で実行します
+
+---
+
+### db/tables - テーブル一覧取得
+
+```qi
+(db/tables conn)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+
+#### 戻り値
+
+- テーブル名の文字列ベクタ
+
+#### 使用例
+
+```qi
+(db/tables conn)
+;; => ["users" "posts" "comments"]
+```
+
+---
+
+### db/columns - カラム情報取得
+
+```qi
+(db/columns conn table-name)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `table-name`: テーブル名（文字列）
+
+#### 戻り値
+
+- カラム情報のマップのベクタ
+  - `:name` - カラム名
+  - `:type` - データ型
+  - `:nullable` - NULL許可（true/false）
+  - `:default` - デフォルト値（ない場合はnil）
+  - `:primary_key` - 主キーか（true/false）
+
+#### 使用例
+
+```qi
+(db/columns conn "users")
+;; => [{:name "id" :type "integer" :nullable false :default nil :primary_key true}
+;;     {:name "name" :type "text" :nullable false :default nil :primary_key false}
+;;     {:name "email" :type "text" :nullable true :default nil :primary_key false}]
+```
+
+---
+
+### db/indexes - インデックス一覧取得
+
+```qi
+(db/indexes conn table-name)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `table-name`: テーブル名（文字列）
+
+#### 戻り値
+
+- インデックス情報のマップのベクタ
+  - `:name` - インデックス名
+  - `:table` - テーブル名
+  - `:columns` - カラム名のベクタ
+  - `:unique` - ユニークインデックスか（true/false）
+
+#### 使用例
+
+```qi
+(db/indexes conn "users")
+;; => [{:name "users_email_idx" :table "users" :columns ["email"] :unique true}]
+```
+
+---
+
+### db/foreign-keys - 外部キー一覧取得
+
+```qi
+(db/foreign-keys conn table-name)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `table-name`: テーブル名（文字列）
+
+#### 戻り値
+
+- 外部キー情報のマップのベクタ
+  - `:name` - 外部キー名
+  - `:table` - テーブル名
+  - `:columns` - カラム名のベクタ
+  - `:referenced_table` - 参照先テーブル名
+  - `:referenced_columns` - 参照先カラム名のベクタ
+
+#### 使用例
+
+```qi
+(db/foreign-keys conn "posts")
+;; => [{:name "posts_user_id_fkey"
+;;      :table "posts"
+;;      :columns ["user_id"]
+;;      :referenced_table "users"
+;;      :referenced_columns ["id"]}]
+```
+
+---
+
+### db/sanitize - 値のサニタイズ
+
+```qi
+(db/sanitize conn value)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `value`: サニタイズする文字列
+
+#### 戻り値
+
+- サニタイズされた文字列
+
+#### 使用例
+
+```qi
+(db/sanitize conn "O'Reilly")
+;; PostgreSQL => "O''Reilly"
+;; MySQL => "O\'Reilly"
+```
+
+#### 注意
+
+**バインドパラメータを使う方が推奨されます。** この関数は動的SQLを構築する場合のみ使用してください。
+
+---
+
+### db/sanitize-identifier - 識別子のサニタイズ
+
+```qi
+(db/sanitize-identifier conn identifier)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `identifier`: サニタイズするテーブル名/カラム名
+
+#### 戻り値
+
+- サニタイズされた識別子
+
+#### 使用例
+
+```qi
+(db/sanitize-identifier conn "user name")
+;; PostgreSQL => "\"user name\""
+;; MySQL => "`user name`"
+```
+
+---
+
+### db/escape-like - LIKE句のエスケープ
+
+```qi
+(db/escape-like conn pattern)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `pattern`: LIKE句のパターン文字列
+
+#### 戻り値
+
+- エスケープされたパターン文字列
+
+#### 使用例
+
+```qi
+(db/escape-like conn "50%_off")
+;; => "50\\%\\_off" (PostgreSQL/MySQL)
+
+;; LIKE検索での使用
+(def pattern (db/escape-like conn user-input))
+(db/query conn "SELECT * FROM products WHERE name LIKE ?" [(str pattern "%")])
+```
+
+---
+
+### db/supports? - 機能サポート確認
+
+```qi
+(db/supports? conn feature)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `feature`: 機能名（文字列）
+
+#### 戻り値
+
+- サポートされている場合: `true`
+- サポートされていない場合: `false`
+
+#### 使用例
+
+```qi
+(db/supports? conn "transactions")
+;; => true
+
+(db/supports? conn "stored_procedures")
+;; PostgreSQL/MySQL => true
+;; SQLite => false
+```
+
+---
+
+### db/driver-info - ドライバー情報取得
+
+```qi
+(db/driver-info conn)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+
+#### 戻り値
+
+- ドライバー情報のマップ
+  - `:name` - ドライバー名（"PostgreSQL", "MySQL", "SQLite"）
+  - `:version` - ドライバーバージョン
+  - `:database_version` - データベースバージョン
+
+#### 使用例
+
+```qi
+(db/driver-info conn)
+;; => {:name "PostgreSQL"
+;;     :version "0.19.0"
+;;     :database_version "PostgreSQL 15.3"}
+```
+
+---
+
+### db/query-info - クエリメタデータ取得
+
+```qi
+(db/query-info conn sql)
+```
+
+#### 引数
+
+- `conn`: 接続ID
+- `sql`: SQL文字列
+
+#### 戻り値
+
+- クエリ情報のマップ
+  - `:columns` - カラム情報のベクタ（`db/columns`と同じ形式）
+  - `:parameter_count` - パラメータ数
+
+#### 使用例
+
+```qi
+(db/query-info conn "SELECT id, name FROM users WHERE age > $1")
+;; => {:columns [{:name "id" :type "integer" ...}
+;;               {:name "name" :type "text" ...}]
+;;     :parameter_count 1}
+```
+
+#### 注意
+
+クエリは実行されません。メタデータのみを取得します。
+
+---
+
 ## ロードマップ
 
 ### 将来的に実装予定の機能
