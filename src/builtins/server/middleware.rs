@@ -18,21 +18,23 @@ pub(super) fn apply_json_body_middleware(req: &Value) -> Value {
         return req.clone();
     }
 
-    let Ok(Value::Map(result)) =
-        crate::builtins::json::native_parse(&[Value::String(body.clone())])
-    else {
-        return req.clone();
-    };
-
-    let ok_key = kw("ok");
-    let Some(json_value) = result.get(&ok_key) else {
-        return req.clone();
+    // json/parseは値を直接返す（{:ok}ラップなし）
+    let json_value = match crate::builtins::json::native_parse(&[Value::String(body.clone())]) {
+        Ok(val) => {
+            // エラーマップ（{:error ...}）の場合はパース失敗として扱う
+            if matches!(val, Value::Map(ref m) if m.contains_key(&kw("error"))) {
+                return req.clone();
+            }
+            val
+        }
+        Err(_) => return req.clone(),
     };
 
     // JSON解析成功 → 変更が必要なのでclone
+    // すべてのJSON型をサポート（オブジェクト、配列、プリミティブ等）
     let mut new_req = req_map.clone();
     let json_key = kw("json");
-    new_req.insert(json_key, json_value.clone());
+    new_req.insert(json_key, json_value);
     Value::Map(new_req)
 }
 

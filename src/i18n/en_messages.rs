@@ -333,6 +333,8 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpUnsupportedMethod, "Unsupported HTTP method: {0}"),
         (HttpStreamError, "http stream: HTTP {0}"),
         (HttpErrorStatus, "HTTP error {0}"),
+        (HttpFailedToReadBody, "Failed to read response body: {0}"),
+        (HttpJsonSerializationError, "JSON serialization error: {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
         (

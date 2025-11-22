@@ -315,6 +315,8 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpUnsupportedMethod, "サポートされていないHTTPメソッド: {0}"),
         (HttpStreamError, "http stream: HTTP {0}"),
         (HttpErrorStatus, "HTTPエラー {0}"),
+        (HttpFailedToReadBody, "レスポンスボディの読み取りに失敗しました: {0}"),
+        (HttpJsonSerializationError, "JSONシリアライズエラー: {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
         (IoFailedToDecodeUtf8, "{0}: UTF-8としてデコード失敗 (不正なバイト列)"),

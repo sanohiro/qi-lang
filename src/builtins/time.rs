@@ -270,15 +270,28 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    match DateTime::parse_from_str(
-        &format!("{} +0000", date_str),
-        &format!("{} %z", format_str),
-    ) {
-        Ok(dt) => Ok(Value::Integer(dt.timestamp())),
-        Err(_) => Err(fmt_msg(
-            MsgKey::TimeParseFailedToParse,
-            &[date_str, format_str],
-        )),
+    // フォーマット文字列に%zが含まれているかチェック
+    if format_str.contains("%z") || format_str.contains("%:z") || format_str.contains("%Z") {
+        // タイムゾーン情報あり: そのままパース
+        match DateTime::parse_from_str(date_str, format_str) {
+            Ok(dt) => Ok(Value::Integer(dt.timestamp())),
+            Err(_) => Err(fmt_msg(
+                MsgKey::TimeParseFailedToParse,
+                &[date_str, format_str],
+            )),
+        }
+    } else {
+        // タイムゾーン情報なし: UTC（+0000）として扱う
+        match DateTime::parse_from_str(
+            &format!("{} +0000", date_str),
+            &format!("{} %z", format_str),
+        ) {
+            Ok(dt) => Ok(Value::Integer(dt.timestamp())),
+            Err(_) => Err(fmt_msg(
+                MsgKey::TimeParseFailedToParse,
+                &[date_str, format_str],
+            )),
+        }
     }
 }
 

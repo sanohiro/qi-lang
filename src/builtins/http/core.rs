@@ -175,20 +175,48 @@ pub(super) fn http_request_detailed(
                 // JSON自動変換
                 let json_str = crate::builtins::json::native_stringify(std::slice::from_ref(b))?;
                 // 新仕様: json/stringifyは値を直接返す（{:ok}ラップなし）
-                if let Value::String(s) = json_str {
-                    if should_compress {
-                        // JSON を圧縮して送信
-                        let compressed = helpers::compress_gzip(s.as_bytes()).map_err(|e| {
-                            fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
-                        })?;
-                        request = request
-                            .header("Content-Type", "application/json")
-                            .header("Content-Encoding", "gzip")
-                            .body(compressed);
-                    } else {
-                        request = request
-                            .header("Content-Type", "application/json")
-                            .body(s.clone());
+                // エラーの場合は{:error ...}マップが返される
+                match json_str {
+                    Value::String(s) => {
+                        if should_compress {
+                            // JSON を圧縮して送信
+                            let compressed = helpers::compress_gzip(s.as_bytes()).map_err(|e| {
+                                fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
+                            })?;
+                            request = request
+                                .header("Content-Type", "application/json")
+                                .header("Content-Encoding", "gzip")
+                                .body(compressed);
+                        } else {
+                            request = request
+                                .header("Content-Type", "application/json")
+                                .body(s.clone());
+                        }
+                    }
+                    Value::Map(ref m) if m.contains_key(&crate::value::MapKey::Keyword(
+                        crate::intern::intern_keyword("error")
+                    )) => {
+                        // JSON serialization失敗（NaN/Inf/再帰構造等）
+                        if let Some(Value::String(err_msg)) = m.get(&crate::value::MapKey::Keyword(
+                            crate::intern::intern_keyword("error")
+                        )) {
+                            return Err(fmt_msg(
+                                MsgKey::HttpJsonSerializationError,
+                                &[err_msg],
+                            ));
+                        } else {
+                            return Err(fmt_msg(
+                                MsgKey::HttpJsonSerializationError,
+                                &["Unknown error"],
+                            ));
+                        }
+                    }
+                    _ => {
+                        // 予期しない戻り値
+                        return Err(fmt_msg(
+                            MsgKey::HttpJsonSerializationError,
+                            &["Unexpected return value from json/stringify"],
+                        ));
                     }
                 }
             }
@@ -213,7 +241,12 @@ pub(super) fn http_request_detailed(
                 .collect();
 
             // ボディをバイナリとして取得
-            let body_bytes = response.bytes().unwrap_or_default();
+            let body_bytes = response.bytes().map_err(|e| {
+                fmt_msg(
+                    MsgKey::HttpFailedToReadBody,
+                    &[&e.to_string()],
+                )
+            })?;
 
             // UTF-8として解釈を試み、成功すれば文字列、失敗すればBytesとして返す
             let body_value = match std::str::from_utf8(&body_bytes) {
