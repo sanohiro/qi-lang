@@ -72,7 +72,6 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
         ));
     }
 
-    let conn_id = extract_conn_id(&args[0])?;
     let sql = match &args[1] {
         Value::String(s) => s,
         _ => {
@@ -95,12 +94,23 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
         QueryOptions::default()
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
-
-    let row = conn.query_one(sql, &params, &opts).map_err(|e| e.message)?;
+    // 接続かトランザクションかを判別
+    let row = match extract_conn_or_tx(&args[0])? {
+        ConnOrTx::Conn(conn_id) => {
+            let connections = CONNECTIONS.lock();
+            let conn = connections
+                .get(&conn_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+            conn.query_one(sql, &params, &opts).map_err(|e| e.message)?
+        }
+        ConnOrTx::Tx(tx_id) => {
+            let transactions = TRANSACTIONS.lock();
+            let tx = transactions
+                .get(&tx_id)
+                .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
+            tx.query_one(sql, &params, &opts).map_err(|e| e.message)?
+        }
+    };
 
     Ok(row.map(row_to_value).unwrap_or(Value::Nil))
 }

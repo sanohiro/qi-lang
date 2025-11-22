@@ -15,7 +15,7 @@ pub fn native_get_stream(args: &[Value]) -> Result<Value, String> {
 
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream("GET", &url, None, is_bytes)
+    core::http_stream("GET", &url, None, None, None, None, None, is_bytes)
 }
 
 /// HTTP POST（ストリーミング版）- レスポンスボディを行ごとに遅延読み込み
@@ -31,7 +31,7 @@ pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
 
     let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream("POST", &url, Some(&args[1]), is_bytes)
+    core::http_stream("POST", &url, Some(&args[1]), None, None, None, None, is_bytes)
 }
 
 /// HTTP Request（ストリーミング版）- 詳細な設定でストリーミング受信
@@ -62,6 +62,18 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
     let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
         .to_map_key()
         .expect("body keyword should be valid");
+    let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
+        .to_map_key()
+        .expect("headers keyword should be valid");
+    let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
+        .to_map_key()
+        .expect("timeout keyword should be valid");
+    let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
+        .to_map_key()
+        .expect("basic-auth keyword should be valid");
+    let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
+        .to_map_key()
+        .expect("bearer-token keyword should be valid");
 
     // メソッドを取得（文字列またはキーワード）し、大文字に正規化
     let method = match config.get(&method_key) {
@@ -77,7 +89,38 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let body = config.get(&body_key);
 
+    // 追加オプションを取得
+    let headers = config.get(&headers_key).and_then(|v| match v {
+        Value::Map(m) => Some(m),
+        _ => None,
+    });
+
+    let timeout_ms = config.get(&timeout_key).and_then(|v| match v {
+        Value::Integer(i) => Some(*i as u64),
+        _ => None,
+    });
+
+    let basic_auth = config.get(&basic_auth_key).and_then(|v| match v {
+        Value::Vector(v) if v.len() == 2 => {
+            let user = match &v[0] {
+                Value::String(s) => Some(s.clone()),
+                _ => None,
+            }?;
+            let pass = match &v[1] {
+                Value::String(s) => Some(s.clone()),
+                _ => None,
+            }?;
+            Some((user, pass))
+        }
+        _ => None,
+    });
+
+    let bearer_token = config.get(&bearer_token_key).and_then(|v| match v {
+        Value::String(s) => Some(s.clone()),
+        _ => None,
+    });
+
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream(&method, &url, body, is_bytes)
+    core::http_stream(&method, &url, body, headers, timeout_ms, basic_auth, bearer_token, is_bytes)
 }

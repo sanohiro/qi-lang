@@ -118,16 +118,27 @@ pub(super) fn http_request_detailed(
         _ => return Err(fmt_msg(MsgKey::HttpUnsupportedMethod, &[method])),
     };
 
-    // 圧縮が必要かチェック
+    // 圧縮が必要かチェック（大文字小文字を区別しない）
     let should_compress = headers
         .and_then(|h| {
-            h.get(&crate::value::MapKey::String(
-                "content-encoding".to_string(),
-            ))
-        })
-        .and_then(|v| match v {
-            Value::String(s) => Some(s.to_lowercase()),
-            _ => None,
+            // すべてのヘッダーキーを小文字に正規化して検索
+            h.iter().find_map(|(k, v)| {
+                let key_str = match k {
+                    crate::value::MapKey::String(s) => s.to_lowercase(),
+                    crate::value::MapKey::Symbol(s) => s.to_lowercase(),
+                    crate::value::MapKey::Keyword(s) => s.to_lowercase(),
+                    _ => return None,
+                };
+
+                if key_str == "content-encoding" {
+                    match v {
+                        Value::String(s) => Some(s.to_lowercase()),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
         })
         .map(|s| s == "gzip")
         .unwrap_or(false);
@@ -320,10 +331,22 @@ pub(super) fn http_stream(
     method: &str,
     url: &str,
     body: Option<&Value>,
+    headers: Option<&crate::HashMap<crate::value::MapKey, Value>>,
+    timeout_ms: Option<u64>,
+    basic_auth: Option<(String, String)>,
+    bearer_token: Option<String>,
     is_bytes: bool,
 ) -> Result<Value, String> {
-    // 共有Clientを使用（デフォルトで30秒タイムアウト設定済み）
-    let client = crate::builtins::lazy_init::http_client::get_client()?;
+    // タイムアウト設定を考慮したClientを取得
+    let client = if let Some(timeout) = timeout_ms {
+        let timeout_duration = std::time::Duration::from_millis(timeout);
+        reqwest::blocking::Client::builder()
+            .timeout(timeout_duration)
+            .build()
+            .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?
+    } else {
+        crate::builtins::lazy_init::http_client::get_client()?.clone()
+    };
 
     let mut request = match method {
         "GET" => client.get(url),
@@ -335,6 +358,32 @@ pub(super) fn http_stream(
         "OPTIONS" => client.request(Method::OPTIONS, url),
         _ => return Err(fmt_msg(MsgKey::HttpUnsupportedMethod, &[method])),
     };
+
+    // ヘッダー追加
+    if let Some(h) = headers {
+        for (k, v) in h.iter() {
+            if let Value::String(val) = v {
+                let key = match k {
+                    crate::value::MapKey::String(s) => s.trim_matches('"'),
+                    crate::value::MapKey::Symbol(s) => s.as_ref(),
+                    crate::value::MapKey::Keyword(s) => s.as_ref(),
+                    crate::value::MapKey::Integer(i) => &i.to_string(),
+                };
+                let value = val.trim_matches('"');
+                request = request.header(key, value);
+            }
+        }
+    }
+
+    // Basic認証
+    if let Some((user, pass)) = basic_auth {
+        request = request.basic_auth(user, Some(pass));
+    }
+
+    // Bearer Token
+    if let Some(token) = bearer_token {
+        request = request.bearer_auth(token);
+    }
 
     // ボディ追加
     if let Some(b) = body {

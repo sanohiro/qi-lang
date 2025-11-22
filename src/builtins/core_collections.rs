@@ -538,9 +538,11 @@ pub fn native_get_in(args: &[Value]) -> Result<Value, String> {
 
         match current {
             Value::Map(m) => {
-                current = m.get(&key).cloned().unwrap_or(Value::Nil);
-                if matches!(current, Value::Nil) {
-                    return Ok(default);
+                // キーが存在しない場合のみデフォルト値を返す
+                // 値がnilの場合は、それが実際の値なのでそのまま返す
+                match m.get(&key) {
+                    Some(val) => current = val.clone(),
+                    None => return Ok(default),
                 }
             }
             _ => return Ok(default),
