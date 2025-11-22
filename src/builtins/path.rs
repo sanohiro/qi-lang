@@ -161,7 +161,10 @@ pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
                     }
                     Component::ParentDir => {
                         // .. は1つ上のディレクトリに戻る
-                        normalized.pop();
+                        // ただし、相対パスで戻れない場合は .. を保持
+                        if !normalized.pop() && path.is_relative() {
+                            normalized.push(Component::ParentDir);
+                        }
                     }
                     _ => {
                         normalized.push(component);

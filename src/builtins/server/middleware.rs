@@ -165,7 +165,7 @@ pub(super) fn apply_compression_middleware(resp: &Value, min_size: usize) -> Val
         Value::String("gzip".to_string()),
     );
     new_resp.insert(headers_key.clone(), Value::Map(headers));
-    new_resp.insert(body_key, Value::String(compressed));
+    new_resp.insert(body_key, Value::Bytes(compressed.into()));
     Value::Map(new_resp)
 }
 

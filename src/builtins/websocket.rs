@@ -41,6 +41,15 @@ use tokio_tungstenite::{
 };
 
 // ========================================
+// グローバルTokioランタイム
+// ========================================
+
+#[cfg(feature = "websocket")]
+static TOKIO_RT: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Runtime::new().expect("Failed to create tokio runtime for WebSocket")
+});
+
+// ========================================
 // WebSocket接続の管理
 // ========================================
 
@@ -200,12 +209,9 @@ pub fn native_ws_connect(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["ws/connect", "a string"])),
     };
 
-    // 非同期実行
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToCreateRuntime, &[&e.to_string()]))?;
-
+    // グローバルランタイムで非同期実行
     let url_clone = url.clone();
-    let connection = runtime.block_on(async move {
+    let connection = TOKIO_RT.block_on(async move {
         let (ws_stream, _) = connect_async(&url_clone)
             .await
             .map_err(|e| fmt_msg(MsgKey::WsFailedToConnect, &[&e.to_string()]))?;
@@ -245,11 +251,8 @@ pub fn native_ws_send(args: &[Value]) -> Result<Value, String> {
         v => format!("{}", v),
     };
 
-    // 非同期実行
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToCreateRuntime, &[&e.to_string()]))?;
-
-    runtime.block_on(async move { connection.send(&message).await })?;
+    // グローバルランタイムで非同期実行
+    TOKIO_RT.block_on(async move { connection.send(&message).await })?;
 
     Ok(Value::Nil)
 }
@@ -274,11 +277,8 @@ pub fn native_ws_receive(args: &[Value]) -> Result<Value, String> {
         .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::WsConnectionNotFound, &[]))?;
 
-    // 非同期実行
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToCreateRuntime, &[&e.to_string()]))?;
-
-    runtime.block_on(async move { connection.receive().await })
+    // グローバルランタイムで非同期実行
+    TOKIO_RT.block_on(async move { connection.receive().await })
 }
 
 /// ws/close - WebSocket接続をクローズ
@@ -301,11 +301,8 @@ pub fn native_ws_close(args: &[Value]) -> Result<Value, String> {
         .get(&conn_id)
         .ok_or_else(|| fmt_msg(MsgKey::WsConnectionNotFound, &[]))?;
 
-    // 非同期実行
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToCreateRuntime, &[&e.to_string()]))?;
-
-    runtime.block_on(async move { connection.close().await })?;
+    // グローバルランタイムで非同期実行
+    TOKIO_RT.block_on(async move { connection.close().await })?;
 
     // マップから削除
     WS_CONNECTIONS.remove(&conn_id);

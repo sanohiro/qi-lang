@@ -28,8 +28,8 @@ pub(super) fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
 }
 
 /// gzip圧縮ヘルパー関数（レスポンス用）
-/// UTF-8文字列を圧縮し、圧縮されたバイナリデータをバイト列として表現したStringとして返す
-pub(super) fn compress_gzip_response(body: &str) -> Result<String, std::io::Error> {
+/// UTF-8文字列を圧縮し、圧縮されたバイナリデータを返す
+pub(super) fn compress_gzip_response(body: &str) -> Result<Vec<u8>, std::io::Error> {
     use flate2::write::GzEncoder;
     use flate2::Compression;
     use std::io::Write;
@@ -42,8 +42,8 @@ pub(super) fn compress_gzip_response(body: &str) -> Result<String, std::io::Erro
     encoder.write_all(bytes)?;
     let compressed = encoder.finish()?;
 
-    // 圧縮されたバイト列をバイト列表現のStringに変換
-    Ok(compressed.iter().map(|&b| b as char).collect())
+    // バイナリデータをそのまま返す
+    Ok(compressed)
 }
 
 // ========================================

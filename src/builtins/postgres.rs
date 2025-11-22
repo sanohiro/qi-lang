@@ -78,7 +78,7 @@ impl PostgresConnection {
         match value {
             Value::Nil => Box::new(None::<String>),
             Value::Bool(b) => Box::new(*b),
-            Value::Integer(i) => Box::new(*i as i32), // PostgreSQL INTEGER型はi32
+            Value::Integer(i) => Box::new(*i), // i64のまま送る（PostgreSQL BIGINT型）
             Value::Float(f) => Box::new(*f),
             Value::String(s) => Box::new(s.clone()),
             Value::Bytes(b) => Box::new(b.as_ref().to_vec()), // BYTEA型として送信
