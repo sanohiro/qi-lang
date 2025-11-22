@@ -256,6 +256,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (CmdFirstArgMustBeString, "コマンドリストの最初の要素は文字列である必要があります"),
         (CmdArgsMustBeStrings, "すべてのコマンド引数は文字列である必要があります"),
         (CmdInvalidArgument, "不正なコマンド引数: 文字列またはリストが必要です"),
+        (CmdDangerousCharacters, "コマンドに危険なシェルメタ文字が含まれています: {0}。シェルインジェクションを避けるため、配列形式 [\"cmd\" \"arg1\" \"arg2\"] を使用してください。"),
         (CmdExecutionFailed, "コマンド実行失敗: {0}"),
         (CmdWriteFailed, "コマンド標準入力への書き込み失敗: {0}"),
         (CmdWaitFailed, "コマンドの待機失敗: {0}"),

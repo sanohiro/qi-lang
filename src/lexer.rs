@@ -479,8 +479,10 @@ impl<'a> Lexer<'a> {
                 // { や } のエスケープは特殊処理
                 if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
                     self.advance(); // \ をスキップ
-                                    // SAFETY: peek(1)で次の文字の存在を確認済み
-                    let special_ch = self.current().expect("character after backslash");
+                                    // Note: peek(1)で次の文字の存在を確認済み
+                    let special_ch = self
+                        .current()
+                        .ok_or_else(|| self.error(MsgKey::UnexpectedEof, &[]))?;
                     current_text.push(special_ch);
                     self.advance();
                 } else {
@@ -594,8 +596,10 @@ impl<'a> Lexer<'a> {
                 // { や } のエスケープは特殊処理
                 if self.peek(1) == Some('{') || self.peek(1) == Some('}') {
                     self.advance(); // \ をスキップ
-                                    // SAFETY: peek(1)で次の文字の存在を確認済み
-                    let special_ch = self.current().expect("character after backslash");
+                                    // Note: peek(1)で次の文字の存在を確認済み
+                    let special_ch = self
+                        .current()
+                        .ok_or_else(|| self.error(MsgKey::UnexpectedEof, &[]))?;
                     current_text.push(special_ch);
                     self.advance();
                 } else {

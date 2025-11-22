@@ -247,6 +247,10 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             CmdInvalidArgument,
             "Invalid command argument: expected string or list",
         ),
+        (
+            CmdDangerousCharacters,
+            "Command contains dangerous shell metacharacters: {0}. Use array format [\"cmd\" \"arg1\" \"arg2\"] to avoid shell injection.",
+        ),
         (CmdExecutionFailed, "Command execution failed: {0}"),
         (CmdWriteFailed, "Failed to write to command stdin: {0}"),
         (CmdWaitFailed, "Failed to wait for command: {0}"),

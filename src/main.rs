@@ -1894,10 +1894,7 @@ fn handle_repl_command(
                 qi_lang::builtins::debug::TRACED_FUNCTIONS
                     .write()
                     .insert(func_name.to_string());
-                println!(
-                    "{}",
-                    format!("Tracing function: {}", func_name).green()
-                );
+                println!("{}", format!("Tracing function: {}", func_name).green());
             }
         }
         ":untrace" => {
@@ -1912,15 +1909,9 @@ fn handle_repl_command(
                     .write()
                     .remove(func_name);
                 if removed {
-                    println!(
-                        "{}",
-                        format!("Stopped tracing: {}", func_name).yellow()
-                    );
+                    println!("{}", format!("Stopped tracing: {}", func_name).yellow());
                 } else {
-                    println!(
-                        "{}",
-                        format!("Function not traced: {}", func_name).red()
-                    );
+                    println!("{}", format!("Function not traced: {}", func_name).red());
                 }
             }
         }

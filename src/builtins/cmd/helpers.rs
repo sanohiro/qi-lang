@@ -15,8 +15,8 @@ pub(super) static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 /// シェルメタ文字をチェック
 ///
 /// コマンドインジェクション攻撃に利用される可能性のある文字を検出する。
-/// 検出された場合は警告を表示する。
-pub(super) fn check_shell_metacharacters(cmd: &str) {
+/// 検出された場合はエラーを返す。
+pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
     const DANGEROUS_CHARS: &[&str] = &[
         ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\"", "'", "\\",
     ];
@@ -28,15 +28,13 @@ pub(super) fn check_shell_metacharacters(cmd: &str) {
         .collect();
 
     if !found_chars.is_empty() {
-        eprintln!(
-            "⚠️  Warning: Command contains shell metacharacters. This may be a security risk."
-        );
-        eprintln!("   Found: {}", found_chars.join(", "));
-        eprintln!("   Command: {}", cmd);
-        eprintln!(
-            "   Hint: Use array format [\"cmd\" \"arg1\" \"arg2\"] to avoid shell injection."
-        );
+        return Err(fmt_msg(
+            MsgKey::CmdDangerousCharacters,
+            &[&found_chars.join(", ")],
+        ));
     }
+
+    Ok(())
 }
 
 /// コマンド実行結果をMapに変換

@@ -224,11 +224,20 @@ impl DbConnection for SqliteConnection {
         Ok(())
     }
 
+    /// # Security Warning
+    ///
+    /// This method only escapes single quotes. **Always use prepared statements** (placeholders: `?`)
+    /// for user input to prevent SQL injection. Only use this method for dynamic table/column names
+    /// where placeholders cannot be used.
     fn sanitize(&self, value: &str) -> String {
         // SQLiteのルール: シングルクォートをダブル化
         value.replace('\'', "''")
     }
 
+    /// # Security Warning
+    ///
+    /// This method escapes identifiers (table/column names). Use this ONLY for dynamic schema
+    /// operations. For values, use prepared statements instead.
     fn sanitize_identifier(&self, name: &str) -> String {
         // SQLiteのルール: ダブルクォートで囲む
         format!("\"{}\"", name.replace('"', "\"\""))

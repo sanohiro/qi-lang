@@ -34,8 +34,8 @@ pub fn native_stream_lines(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let child = if cmd_args.is_empty() {
-        // シェル経由（セキュリティ警告を表示）
-        check_shell_metacharacters(&cmd);
+        // シェル経由（危険な文字が含まれる場合はエラー）
+        check_shell_metacharacters(&cmd)?;
 
         #[cfg(unix)]
         let child = Command::new("sh")
@@ -122,8 +122,8 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由（セキュリティ警告を表示）
-        check_shell_metacharacters(&cmd);
+        // シェル経由（危険な文字が含まれる場合はエラー）
+        check_shell_metacharacters(&cmd)?;
 
         #[cfg(unix)]
         let child = Command::new("sh")

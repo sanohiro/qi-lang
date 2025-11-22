@@ -409,7 +409,13 @@ impl<'a> Parser<'a> {
                     "module" => self.parse_module(),
                     "export" => self.parse_export(),
                     "use" => self.parse_use(),
-                    _ => unreachable!("All special forms should be handled"),
+                    _ => {
+                        // SPECIAL_FORMSに登録されているが、マッチケースがない場合
+                        Err(self.error_with_line(
+                            MsgKey::UnexpectedError,
+                            &[&format!("Unhandled special form: {}", name_str)],
+                        ))
+                    }
                 };
             }
         }

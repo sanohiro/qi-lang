@@ -61,12 +61,9 @@ where
 
     // エラーの場合、再接続して再試行
     if let Err(ref e) = result {
-        let err_str = e.to_string();
-        if err_str.contains("broken pipe")
-            || err_str.contains("Connection")
-            || err_str.contains("terminated")
-        {
-            // 再接続
+        // エラー種別で判定（文字列比較より堅牢）
+        if matches!(e.kind(), redis::ErrorKind::IoError) {
+            // I/Oエラー（broken pipe, 接続切断等）の場合は再接続
             if let Ok(new_conn) = reconnect(url).await {
                 return operation(new_conn).await;
             }

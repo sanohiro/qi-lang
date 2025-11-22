@@ -57,8 +57,8 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由（セキュリティ警告を表示）
-        check_shell_metacharacters(&cmd);
+        // シェル経由（危険な文字が含まれる場合はエラー）
+        check_shell_metacharacters(&cmd)?;
 
         #[cfg(unix)]
         let child = Command::new("sh")
@@ -199,8 +199,8 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
     };
 
     let child = if cmd_args.is_empty() {
-        // シェル経由（セキュリティ警告を表示）
-        check_shell_metacharacters(&cmd);
+        // シェル経由（危険な文字が含まれる場合はエラー）
+        check_shell_metacharacters(&cmd)?;
 
         #[cfg(unix)]
         let child = Command::new("sh")

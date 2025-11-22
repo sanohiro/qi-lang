@@ -403,9 +403,13 @@ impl Hash for Value {
             | Value::Scope(_)
             | Value::Stream(_)
             | Value::Uvar(_) => {
-                // panicではなく、固定値をハッシュ化（呼び出し元でチェックする）
-                // 集合演算では事前に型チェックするため、ここには到達しない想定
-                0u8.hash(state);
+                // ハッシュ化不可能な型：panicする
+                // 集合演算では事前に型チェックするため、通常はここには到達しない
+                // 到達した場合はバグなので、開発者に気づかせるためpanic
+                panic!(
+                    "Cannot hash {}: this type is not hashable",
+                    self.type_name()
+                );
             }
         }
     }

@@ -70,11 +70,15 @@ impl Clone for Evaluator {
             // グローバル状態は共有
             global_env: Arc::clone(&self.global_env),
             modules: Arc::clone(&self.modules),
+            // 循環検出の仕組み:
+            // - module_states: スレッド間で共有され、アトミックな状態管理（Loaded/Loading）
+            // - loading_modules: スレッドローカルで、各スレッドの依存パスを追跡
+            // この設計により、スレッド間の循環検出とエラーメッセージ構築が両立する
             module_states: Arc::clone(&self.module_states), // スレッド間の循環検出用（共有）
 
             // 評価コンテキストは独立（新しいインスタンスを作成）
             defer_stack: Arc::new(RwLock::new(Default::default())),
-            loading_modules: Arc::new(RwLock::new(Default::default())), // exportキー用（独立）
+            loading_modules: Arc::new(RwLock::new(Default::default())), // スレッドローカル（意図的）
             current_module: Arc::new(RwLock::new(Default::default())),
             call_stack: Arc::new(RwLock::new(Default::default())),
             source_name: Arc::new(RwLock::new(Default::default())),

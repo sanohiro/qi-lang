@@ -114,22 +114,10 @@ pub(super) fn validate_safe_path(
     let full_path = base_dir.join(requested);
 
     // 正規化（シンボリックリンク解決、.. 解決）
-    let canonical = match full_path.canonicalize() {
-        Ok(p) => p,
-        Err(_) => {
-            // ファイルが存在しない場合、親ディレクトリまで正規化
-            let parent = full_path
-                .parent()
-                .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidPathTraversal, &[]))?;
-            let parent_canonical = parent
-                .canonicalize()
-                .map_err(|_| fmt_msg(MsgKey::StaticFileInvalidBaseDir, &[]))?;
-            let file_name = full_path
-                .file_name()
-                .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidFileName, &[]))?;
-            parent_canonical.join(file_name)
-        }
-    };
+    // ファイルが存在しない場合は404エラーを返す（セキュリティ対策）
+    let canonical = full_path
+        .canonicalize()
+        .map_err(|_| fmt_msg(MsgKey::StaticFileNotFound, &[requested_path]))?;
 
     // ベースディレクトリの正規化
     let base_canonical = base_dir

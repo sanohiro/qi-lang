@@ -187,6 +187,7 @@ pub enum MsgKey {
     CmdFirstArgMustBeString, // First element of command list must be a string
     CmdArgsMustBeStrings,    // All command arguments must be strings
     CmdInvalidArgument,      // Invalid command argument: expected string or list
+    CmdDangerousCharacters,  // Command contains dangerous shell metacharacters: {0}
     CmdExecutionFailed,      // Command execution failed: {0}
     CmdWriteFailed,          // Failed to write to command stdin: {0}
     CmdWaitFailed,           // Failed to wait for command: {0}

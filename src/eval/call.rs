@@ -311,18 +311,27 @@ impl Evaluator {
         args: SmallVec<[Value; 4]>,
     ) -> Result<Value, String> {
         // トレース機能: 関数呼び出しをログ出力
-        let traced_funcs = crate::builtins::debug::TRACED_FUNCTIONS.read();
-        if !traced_funcs.is_empty() {
-            // トレース対象がある場合のみ関数名を取得（パフォーマンス最適化）
+        // デッドロック防止: 関数名取得前にロックを解放
+        let should_trace = {
+            let traced_funcs = crate::builtins::debug::TRACED_FUNCTIONS.read();
+            !traced_funcs.is_empty()
+        };
+
+        if should_trace {
+            // 関数名を取得（global_envのロックを取得）
             if let Some(func_name) = self.get_function_name(func) {
+                // 再度ロックを取得してチェック
+                let traced_funcs = crate::builtins::debug::TRACED_FUNCTIONS.read();
                 if traced_funcs.contains(&func_name) {
                     use colored::Colorize;
                     let args_str: Vec<String> = args.iter().map(|a| format!("{:?}", a)).collect();
-                    eprintln!("{}", format!("→ {}({})", func_name, args_str.join(", ")).cyan());
+                    eprintln!(
+                        "{}",
+                        format!("→ {}({})", func_name, args_str.join(", ")).cyan()
+                    );
                 }
             }
         }
-        drop(traced_funcs); // ロック解放
 
         // 関数を実行
         match func {
