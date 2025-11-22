@@ -29,7 +29,10 @@ pub fn native_args_get(args: &[Value]) -> Result<Value, String> {
     }
 
     let index = match &args[0] {
-        Value::Integer(i) => *i as usize,
+        Value::Integer(i) if *i >= 0 => *i as usize,
+        Value::Integer(_) => {
+            return Err(fmt_msg(MsgKey::MustBeNonNegative, &["args/get", "index"]))
+        }
         _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["args/get", "index"])),
     };
 

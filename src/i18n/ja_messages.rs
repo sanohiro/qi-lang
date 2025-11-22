@@ -231,6 +231,8 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (CannotConvertToInt, "{0}: {1}を整数に変換できません"),
         (CannotParseAsFloat, "{0}: '{1}'を浮動小数点数としてパースできません"),
         (CannotConvertToFloat, "{0}: {1}を浮動小数点数に変換できません"),
+        (FloatOutOfI64Range, "{0}: 浮動小数点数値{1}はi64の範囲外です（-9223372036854775808から9223372036854775807）"),
+        (FloatIsNanOrInfinity, "{0}: NaNまたは無限大を整数に変換できません"),
         (CannotConvertToJson, "{0}をJSONに変換できません"),
         (InvalidRegex, "{0}: 不正な正規表現: {1}"),
         // JWT エラー

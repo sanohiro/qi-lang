@@ -14,7 +14,10 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
     }
 
     let index = match &args[0] {
-        Value::Integer(n) => *n as usize,
+        Value::Integer(n) if *n >= 0 => *n as usize,
+        Value::Integer(_) => {
+            return Err(fmt_msg(MsgKey::MustBeNonNegative, &["split-at", "index"]))
+        }
         _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["split-at", "index"])),
     };
 

@@ -21,7 +21,20 @@ pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::Integer(i) => Ok(Value::Integer(*i)),
-        Value::Float(f) => Ok(Value::Integer(*f as i64)),
+        Value::Float(f) => {
+            // NaNまたは無限大チェック
+            if f.is_nan() || f.is_infinite() {
+                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["to-int"]));
+            }
+            // i64範囲チェック
+            if *f < i64::MIN as f64 || *f > i64::MAX as f64 {
+                return Err(fmt_msg(
+                    MsgKey::FloatOutOfI64Range,
+                    &["to-int", &f.to_string()],
+                ));
+            }
+            Ok(Value::Integer(*f as i64))
+        }
         Value::String(s) => s
             .parse::<i64>()
             .map(Value::Integer)

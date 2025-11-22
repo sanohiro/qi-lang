@@ -51,7 +51,19 @@ pub fn native_round(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => Ok(Value::Integer(n.round() as i64)),
+        Value::Float(n) => {
+            let rounded = n.round();
+            if rounded.is_nan() || rounded.is_infinite() {
+                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["round"]));
+            }
+            if rounded < i64::MIN as f64 || rounded > i64::MAX as f64 {
+                return Err(fmt_msg(
+                    MsgKey::FloatOutOfI64Range,
+                    &["round", &rounded.to_string()],
+                ));
+            }
+            Ok(Value::Integer(rounded as i64))
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["round", "numbers"])),
     }
 }
@@ -62,7 +74,19 @@ pub fn native_floor(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => Ok(Value::Integer(n.floor() as i64)),
+        Value::Float(n) => {
+            let floored = n.floor();
+            if floored.is_nan() || floored.is_infinite() {
+                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["floor"]));
+            }
+            if floored < i64::MIN as f64 || floored > i64::MAX as f64 {
+                return Err(fmt_msg(
+                    MsgKey::FloatOutOfI64Range,
+                    &["floor", &floored.to_string()],
+                ));
+            }
+            Ok(Value::Integer(floored as i64))
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["floor", "numbers"])),
     }
 }
@@ -73,7 +97,19 @@ pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => Ok(Value::Integer(n.ceil() as i64)),
+        Value::Float(n) => {
+            let ceiled = n.ceil();
+            if ceiled.is_nan() || ceiled.is_infinite() {
+                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["ceil"]));
+            }
+            if ceiled < i64::MIN as f64 || ceiled > i64::MAX as f64 {
+                return Err(fmt_msg(
+                    MsgKey::FloatOutOfI64Range,
+                    &["ceil", &ceiled.to_string()],
+                ));
+            }
+            Ok(Value::Integer(ceiled as i64))
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["ceil", "numbers"])),
     }
 }

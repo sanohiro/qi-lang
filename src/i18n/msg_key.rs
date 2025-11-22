@@ -144,6 +144,8 @@ pub enum MsgKey {
     CannotConvertToInt,     // {0}: cannot convert {1} to integer
     CannotParseAsFloat,     // {0}: cannot parse '{1}' as float
     CannotConvertToFloat,   // {0}: cannot convert {1} to float
+    FloatOutOfI64Range,     // {0}: float value {1} is out of i64 range
+    FloatIsNanOrInfinity,   // {0}: cannot convert NaN or Infinity to integer
     CannotConvertToJson,    // Cannot convert {0} to JSON
     InvalidRegex,           // {0}: invalid regex: {1}
 

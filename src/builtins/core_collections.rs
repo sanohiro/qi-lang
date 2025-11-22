@@ -67,7 +67,8 @@ pub fn native_nth(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["nth"]));
     }
     let index = match &args[1] {
-        Value::Integer(n) => *n as usize,
+        Value::Integer(n) if *n >= 0 => *n as usize,
+        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["nth", "index"])),
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["nth", "an integer"])),
     };
     match &args[0] {
@@ -269,7 +270,8 @@ pub fn native_take(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["take"]));
     }
     let n = match &args[0] {
-        Value::Integer(i) => *i as usize,
+        Value::Integer(i) if *i >= 0 => *i as usize,
+        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["take", "count"])),
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["take", "an integer"])),
     };
     match &args[1] {
@@ -285,7 +287,8 @@ pub fn native_drop(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need2Args, &["drop"]));
     }
     let n = match &args[0] {
-        Value::Integer(i) => *i as usize,
+        Value::Integer(i) if *i >= 0 => *i as usize,
+        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["drop", "count"])),
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["drop", "an integer"])),
     };
     match &args[1] {
