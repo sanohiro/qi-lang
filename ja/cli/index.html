@@ -2270,15 +2270,29 @@
 - <code>:profile clear</code> - プロファイリングデータをクリア</p>
 <p><strong>並行処理デバッグ:</strong>
 - <code>:threads</code> - Rayonスレッドプール情報とアクティブなチャンネルのステータスを表示</p>
-<p><strong>機能:</strong>
-- タブ補完（関数名、変数名、REPLコマンド、特殊形式、パイプ演算子）
-- シンタックスハイライト（特殊形式、演算子、文字列、数値、コメントを色分け）
-- 履歴（<code>~/.qi/history</code> に永続化）
+<p><strong>機能:</strong></p>
+<p><strong>入力支援:</strong>
+- <strong>Inline Hints</strong> - 履歴から候補を自動表示（薄いグレー、→キーで補完）
+- <strong>タブ補完</strong> - 関数名、変数名、REPLコマンド、特殊形式、パイプ演算子
+- <strong>Bracketed Paste</strong> - 大量のコードを安全にコピペ</p>
+<p><strong>シンタックスハイライト:</strong>
+- 特殊形式、演算子、文字列、数値、コメントを色分け
+- <strong>Rainbow Parentheses</strong> - 括弧のネストレベルごとに色を変更（6色のレインボー）</p>
+<p><strong>履歴管理:</strong>
+- 履歴の永続化（<code>~/.qi/history</code>）
+- 重複履歴の自動除外
+- <strong>Ctrl+R</strong> - インクリメンタル履歴検索
+- <strong>Alt+N / Alt+P</strong> - 履歴の前後移動</p>
+<p><strong>編集機能:</strong>
 - 複数行入力（括弧のバランスを自動判定）
+- <strong>Ctrl+_</strong> - Undo
+- <strong>Alt+F / Alt+B</strong> - 単語単位でのカーソル移動</p>
+<p><strong>表示機能:</strong>
 - 結果のラベル表示（<code>$1</code>, <code>$2</code>で過去の結果を参照可能）
 - 評価時間の自動表示（ミリ秒/マイクロ秒）
 - テーブル形式での自動表示（<code>Vector&lt;Map&gt;</code>を検出）
-- エラーメッセージのカラー表示
+- エラーメッセージのカラー表示</p>
+<p><strong>その他:</strong>
 - Ctrl+C で入力キャンセル
 - Ctrl+D または <code>:quit</code> で終了</p>
 <hr />

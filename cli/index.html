@@ -2270,15 +2270,29 @@
 - <code>:profile clear</code> - Clear profiling data</p>
 <p><strong>Concurrency Debugging:</strong>
 - <code>:threads</code> - Display Rayon thread pool info and active channel status</p>
-<p><strong>Features:</strong>
-- Tab completion (functions, variables, REPL commands, special forms, pipe operators)
-- Syntax highlighting (special forms, operators, strings, numbers, comments color-coded)
-- History (persisted in <code>~/.qi/history</code>)
+<p><strong>Features:</strong></p>
+<p><strong>Input Assistance:</strong>
+- <strong>Inline Hints</strong> - Auto-suggest from history (shown in light gray, press → to complete)
+- <strong>Tab Completion</strong> - Functions, variables, REPL commands, special forms, pipe operators
+- <strong>Bracketed Paste</strong> - Safely paste large blocks of code</p>
+<p><strong>Syntax Highlighting:</strong>
+- Color-coded special forms, operators, strings, numbers, comments
+- <strong>Rainbow Parentheses</strong> - Color changes by nesting level (6-color rainbow)</p>
+<p><strong>History Management:</strong>
+- History persistence (<code>~/.qi/history</code>)
+- Auto-ignore duplicate entries
+- <strong>Ctrl+R</strong> - Incremental history search
+- <strong>Alt+N / Alt+P</strong> - Navigate through history</p>
+<p><strong>Editing Features:</strong>
 - Multi-line input (automatic parenthesis balance detection)
+- <strong>Ctrl+_</strong> - Undo
+- <strong>Alt+F / Alt+B</strong> - Word-level cursor movement</p>
+<p><strong>Display Features:</strong>
 - Result labels (<code>$1</code>, <code>$2</code> to reference previous results)
 - Auto execution timing (milliseconds/microseconds)
 - Auto table display (detects <code>Vector&lt;Map&gt;</code>)
-- Colored error messages
+- Colored error messages</p>
+<p><strong>Other:</strong>
 - Ctrl+C to cancel input
 - Ctrl+D or <code>:quit</code> to exit</p>
 <hr />
