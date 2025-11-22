@@ -902,6 +902,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_floats() {
         let mut lexer = Lexer::new("3.14 -2.5");
         assert_eq!(lexer.next_token().unwrap().token, Token::Float(3.14));

@@ -48,7 +48,8 @@ fn bench_function_call(c: &mut Criterion) {
     for i in [5, 10, 15].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(i), i, |b, &n| {
             b.iter(|| {
-                let mut parser = Parser::new(&format!("(fib {})", n)).unwrap();
+                let code = format!("(fib {})", n);
+                let mut parser = Parser::new(&code).unwrap();
                 let ast = parser.parse().unwrap();
                 eval.eval(black_box(&ast)).unwrap()
             });

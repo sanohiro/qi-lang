@@ -1803,7 +1803,9 @@ fn handle_repl_command(
                     // ここでは単純に表示のみ（実行は別途実装が必要）
                     println!(
                         "{}",
-                        "Note: Macro execution not yet implemented".to_string().yellow()
+                        "Note: Macro execution not yet implemented"
+                            .to_string()
+                            .yellow()
                     );
                 } else {
                     eprintln!("{}", format!("Macro '{}' not found", macro_name).red());
