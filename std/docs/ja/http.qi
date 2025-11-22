@@ -154,8 +154,30 @@
               "(go/await p)"]})
 
 (def __doc__http/get-stream
-  {:desc "ストリーミングHTTP GETリクエストを送信します。"
-   :params [{:name "url" :type "string" :desc "URL"}]
+  {:desc "ストリーミングHTTP GETリクエストを送信します。レスポンスボディを行ごと（テキストモード）またはバイトチャンクごと（バイナリモード）に遅延読み込みします。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "mode" :type "keyword" :desc "オプション: :bytes でバイナリモード（省略時はテキストモード）"}]
    :returns {:type "stream" :desc "レスポンスストリーム"}
    :examples ["(def stream (http/get-stream \"https://example.com/large-file\"))"
+              "(http/get-stream url :bytes) ;; バイナリモード"
               "(stream/realize stream 10)"]})
+
+(def __doc__http/post-stream
+  {:desc "ストリーミングHTTP POSTリクエストを送信します。レスポンスボディを行ごと（テキストモード）またはバイトチャンクごと（バイナリモード）に遅延読み込みします。"
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
+            {:name "mode" :type "keyword" :desc "オプション: :bytes でバイナリモード（省略時はテキストモード）"}]
+   :returns {:type "stream" :desc "レスポンスストリーム"}
+   :examples ["(http/post-stream url data)"
+              "(http/post-stream url data :bytes) ;; バイナリモード"
+              "(stream/realize (http/post-stream url {:action \"create\"}) 100)"]})
+
+(def __doc__http/request-stream
+  {:desc "詳細な設定でストリーミングHTTPリクエストを送信します。ヘッダー、認証、タイムアウト等を指定可能。レスポンスボディを遅延読み込みします。"
+   :params [{:name "options" :type "map" :desc "リクエストオプション（:method, :url, :body, :headers, :timeout, :basic-auth, :bearer-token）"}
+            {:name "mode" :type "keyword" :desc "オプション: :bytes でバイナリモード（省略時はテキストモード）"}]
+   :returns {:type "stream" :desc "レスポンスストリーム"}
+   :examples ["(http/request-stream {:method :get :url \"https://example.com/large-file\"})"
+              "(http/request-stream {:method :post :url url :body data :headers {:X-API-Key \"key123\"}})"
+              "(http/request-stream {:method :get :url url :bearer-token \"token\" :timeout 10000})"
+              "(http/request-stream {:method :get :url url :basic-auth [\"user\" \"pass\"]} :bytes)"]})

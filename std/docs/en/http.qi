@@ -154,8 +154,30 @@
               "(go/await p)"]})
 
 (def __doc__http/get-stream
-  {:desc "Sends a streaming HTTP GET request."
-   :params [{:name "url" :type "string" :desc "URL"}]
+  {:desc "Sends a streaming HTTP GET request. Response body is lazily loaded line-by-line (text mode) or chunk-by-chunk (binary mode)."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "mode" :type "keyword" :desc "Optional: :bytes for binary mode (default: text mode)"}]
    :returns {:type "stream" :desc "Response stream"}
    :examples ["(def stream (http/get-stream \"https://example.com/large-file\"))"
+              "(http/get-stream url :bytes) ;; Binary mode"
               "(stream/realize stream 10)"]})
+
+(def __doc__http/post-stream
+  {:desc "Sends a streaming HTTP POST request. Response body is lazily loaded line-by-line (text mode) or chunk-by-chunk (binary mode)."
+   :params [{:name "url" :type "string" :desc "URL"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
+            {:name "mode" :type "keyword" :desc "Optional: :bytes for binary mode (default: text mode)"}]
+   :returns {:type "stream" :desc "Response stream"}
+   :examples ["(http/post-stream url data)"
+              "(http/post-stream url data :bytes) ;; Binary mode"
+              "(stream/realize (http/post-stream url {:action \"create\"}) 100)"]})
+
+(def __doc__http/request-stream
+  {:desc "Sends a streaming HTTP request with detailed configuration. Supports headers, authentication, timeout, etc. Response body is lazily loaded."
+   :params [{:name "options" :type "map" :desc "Request options (:method, :url, :body, :headers, :timeout, :basic-auth, :bearer-token)"}
+            {:name "mode" :type "keyword" :desc "Optional: :bytes for binary mode (default: text mode)"}]
+   :returns {:type "stream" :desc "Response stream"}
+   :examples ["(http/request-stream {:method :get :url \"https://example.com/large-file\"})"
+              "(http/request-stream {:method :post :url url :body data :headers {:X-API-Key \"key123\"}})"
+              "(http/request-stream {:method :get :url url :bearer-token \"token\" :timeout 10000})"
+              "(http/request-stream {:method :get :url url :basic-auth [\"user\" \"pass\"]} :bytes)"]})

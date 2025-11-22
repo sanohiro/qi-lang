@@ -330,13 +330,15 @@
               "(merge {:a 1} {:a 999 :b 2}) ;=> {:a 999 :b 2}"]})
 
 (def __doc__get-in
-  {:desc "ネストしたマップから値を取得します。"
+  {:desc "ネストしたマップから値を取得します。キーが存在しない場合はデフォルト値を返しますが、値がnilの場合はnilを返します。"
    :params [{:name "map" :type "map" :desc "マップ"}
             {:name "path" :type "vector" :desc "キーのパス"}
-            {:name "default" :type "any" :desc "デフォルト値（省略可）"}]
-   :returns {:type "any" :desc "値（存在しない場合はnilまたはデフォルト値）"}
+            {:name "default" :type "any" :desc "デフォルト値（省略可、デフォルト: nil）"}]
+   :returns {:type "any" :desc "値（キーが存在しない場合のみデフォルト値）"}
    :examples ["(get-in {:a {:b {:c 42}}} [:a :b :c]) ;=> 42"
-              "(get-in {:x {:y 1}} [:x :z] 999) ;=> 999"]})
+              "(get-in {:x {:y 1}} [:x :z] 999) ;=> 999"
+              "(get-in {:key nil} [:key] \"default\") ;=> nil  ;; 値がnilの場合はnilを返す"
+              "(get-in {:other \"val\"} [:key] \"default\") ;=> \"default\"  ;; キーが存在しない場合はデフォルト値"]})
 
 ;; ========================================
 ;; 述語関数（24関数）

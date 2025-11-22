@@ -330,13 +330,15 @@
               "(merge {:a 1} {:a 999 :b 2}) ;=> {:a 999 :b 2}"]})
 
 (def __doc__get-in
-  {:desc "Gets a value from a nested map."
+  {:desc "Gets a value from a nested map. Returns default value only if key doesn't exist, but returns nil if the value is nil."
    :params [{:name "map" :type "map" :desc "Map"}
             {:name "path" :type "vector" :desc "Path of keys"}
-            {:name "default" :type "any" :desc "Default value (optional)"}]
-   :returns {:type "any" :desc "Value (nil or default if not found)"}
+            {:name "default" :type "any" :desc "Default value (optional, default: nil)"}]
+   :returns {:type "any" :desc "Value (default value only when key doesn't exist)"}
    :examples ["(get-in {:a {:b {:c 42}}} [:a :b :c]) ;=> 42"
-              "(get-in {:x {:y 1}} [:x :z] 999) ;=> 999"]})
+              "(get-in {:x {:y 1}} [:x :z] 999) ;=> 999"
+              "(get-in {:key nil} [:key] \"default\") ;=> nil  ;; Returns nil if value is nil"
+              "(get-in {:other \"val\"} [:key] \"default\") ;=> \"default\"  ;; Returns default if key doesn't exist"]})
 
 ;; ========================================
 ;; Predicate Functions (24 functions)

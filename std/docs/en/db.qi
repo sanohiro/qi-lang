@@ -41,7 +41,7 @@
 
 (def __doc__query
   {:desc "Execute a SELECT query and return result rows"
-   :params [{:name "conn" :type "string" :desc "Connection ID"}
+   :params [{:name "conn" :type "string" :desc "Connection ID (or Transaction ID)"}
             {:name "sql" :type "string" :desc "SQL query"}
             {:name "params" :type "vector" :desc "Parameters (optional)"}]
    :returns {:type "vector" :desc "Vector of result rows (each row is a map)"}
@@ -54,10 +54,39 @@
      "(db/query conn \"SELECT * FROM users WHERE id = $1\" [42])"
      "(db/query conn \"SELECT * FROM users WHERE id = ?\" [42])"
      ""
+     ";; Transaction usage"
+     "(def tx (db/begin conn))"
+     "(db/query tx \"SELECT * FROM users\" [])"
+     ""
      ";; Pipeline usage"
      "(conn"
      " |> (db/query \"SELECT name FROM users\" [])"
      " |> (map (fn [row] (get row \"name\"))))"
+   ]})
+
+(def __doc__query-one
+  {:desc "Execute a SELECT query and return only the first row (returns nil if no results)"
+   :params [{:name "conn" :type "string" :desc "Connection ID (or Transaction ID)"}
+            {:name "sql" :type "string" :desc "SQL query"}
+            {:name "params" :type "vector" :desc "Parameters (optional)"}]
+   :returns {:type "map|nil" :desc "Single row as map (nil if no results)"}
+   :examples [
+     ";; Basic query"
+     "(db/query-one conn \"SELECT * FROM users WHERE id = $1\" [42])"
+     ";; => {\"id\" 42 \"name\" \"Alice\"}"
+     ""
+     ";; No results"
+     "(db/query-one conn \"SELECT * FROM users WHERE id = $1\" [999])"
+     ";; => nil"
+     ""
+     ";; Transaction usage"
+     "(def tx (db/begin conn))"
+     "(db/query-one tx \"SELECT * FROM users WHERE id = $1\" [1])"
+     ""
+     ";; Pipeline usage"
+     "(conn"
+     " |> (db/query-one \"SELECT name FROM users WHERE id = $1\" [1])"
+     " |> (get \"name\"))"
    ]})
 
 (def __doc__exec
