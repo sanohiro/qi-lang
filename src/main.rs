@@ -1345,16 +1345,11 @@ fn repl(preload: Option<&str>, quiet: bool) {
                                         println!("{} => {}", result_label.green().bold(), value);
                                     }
 
-                                    // 評価時間を表示（1ms以上の場合のみ）
-                                    if elapsed.as_millis() > 0 {
+                                    // 評価時間を表示（100ms以上の場合のみ）
+                                    if elapsed.as_millis() >= 100 {
                                         println!(
                                             "{}",
                                             format!("({}ms)", elapsed.as_millis()).bright_black()
-                                        );
-                                    } else if elapsed.as_micros() > 100 {
-                                        println!(
-                                            "{}",
-                                            format!("({}µs)", elapsed.as_micros()).bright_black()
                                         );
                                     }
 

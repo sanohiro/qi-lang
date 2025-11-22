@@ -680,6 +680,7 @@ impl<'a> Lexer<'a> {
                         | '&'
                         | '.'
                         | ':'
+                        | '$'
                 )
             {
                 result.push(ch);
@@ -846,7 +847,18 @@ impl<'a> Lexer<'a> {
                     if ch.is_alphabetic()
                         || matches!(
                             ch,
-                            '+' | '-' | '*' | '/' | '%' | '<' | '>' | '=' | '!' | '?' | '_' | '&'
+                            '+' | '-'
+                                | '*'
+                                | '/'
+                                | '%'
+                                | '<'
+                                | '>'
+                                | '='
+                                | '!'
+                                | '?'
+                                | '_'
+                                | '&'
+                                | '$'
                         ) =>
                 {
                     return self.read_symbol_or_keyword(start_span);
