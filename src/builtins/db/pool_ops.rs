@@ -122,10 +122,7 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
                 ));
             }
             None => {
-                return Err(format!(
-                    "Connection {} is not a pooled connection",
-                    conn_id
-                ));
+                return Err(format!("Connection {} is not a pooled connection", conn_id));
             }
         }
     }
