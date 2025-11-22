@@ -1,10 +1,10 @@
 //! Core述語・型判定関数
 //!
-//! 型チェック（12個）: nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, stream?
+//! 型チェック（13個）: nil?, list?, vector?, map?, string?, bytes?, integer?, float?, number?, keyword?, function?, atom?, stream?
 //! コレクション（3個）: coll?, sequential?, empty?
 //! 状態（4個）: some?, true?, false?, error?
 //! 数値（5個）: even?, odd?, positive?, negative?, zero?
-//! 合計24個のCore関数
+//! 合計25個のCore関数
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -51,6 +51,14 @@ pub fn native_string_q(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["string?"]));
     }
     Ok(Value::Bool(matches!(args[0], Value::String(_))))
+}
+
+/// bytes? - バイナリデータかどうか判定
+pub fn native_bytes_q(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err(fmt_msg(MsgKey::Need1Arg, &["bytes?"]));
+    }
+    Ok(Value::Bool(matches!(args[0], Value::Bytes(_))))
 }
 
 /// integer? - 整数かどうか判定
@@ -262,7 +270,7 @@ pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
 
 /// 登録すべき関数のリスト
 /// @qi-doc:category core/predicates
-/// @qi-doc:functions nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, coll?, sequential?, empty?, some?, true?, false?, error?, even?, odd?, positive?, negative?, zero?
+/// @qi-doc:functions nil?, list?, vector?, map?, string?, bytes?, integer?, float?, number?, keyword?, function?, atom?, stream?, coll?, sequential?, empty?, some?, true?, false?, error?, even?, odd?, positive?, negative?, zero?
 pub const FUNCTIONS: super::NativeFunctions = &[
     // 型チェック
     ("nil?", native_nil),
@@ -270,6 +278,7 @@ pub const FUNCTIONS: super::NativeFunctions = &[
     ("vector?", native_vector_q),
     ("map?", native_map_q),
     ("string?", native_string_q),
+    ("bytes?", native_bytes_q),
     ("integer?", native_integer_q),
     ("float?", native_float_q),
     ("number?", native_number_q),

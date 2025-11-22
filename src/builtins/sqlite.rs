@@ -10,7 +10,6 @@
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
-use base64::Engine;
 use parking_lot::Mutex;
 use rusqlite::{params_from_iter, Connection as SqliteConn, Row as SqliteRow};
 use std::sync::Arc;
@@ -96,7 +95,7 @@ impl SqliteConnection {
             Value::Integer(i) => ToSqlOutput::Owned(rusqlite::types::Value::Integer(*i)),
             Value::Float(f) => ToSqlOutput::Owned(rusqlite::types::Value::Real(*f)),
             Value::String(s) => ToSqlOutput::Borrowed(ValueRef::Text(s.as_bytes())),
-            // バイナリデータは今後の実装で対応
+            Value::Bytes(b) => ToSqlOutput::Borrowed(ValueRef::Blob(b.as_ref())), // BLOB型として送信
             _ => ToSqlOutput::Owned(rusqlite::types::Value::Text(value.to_string())),
         }
     }
@@ -126,8 +125,8 @@ impl SqliteConnection {
                     Value::String(String::from_utf8_lossy(t).to_string())
                 }
                 Ok(rusqlite::types::ValueRef::Blob(b)) => {
-                    // バイナリデータは今後の実装で対応（今はbase64エンコードした文字列として返す）
-                    Value::String(base64::engine::general_purpose::STANDARD.encode(b))
+                    // BLOB型 → Bytes
+                    Value::Bytes(Arc::from(b))
                 }
                 Err(e) => {
                     return Err(DbError::new(fmt_msg(

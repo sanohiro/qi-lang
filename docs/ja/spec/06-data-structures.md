@@ -271,6 +271,92 @@ Qiでは、コレクション操作関数は以下のルールに従って戻り
 
 ---
 
+## バイナリデータ（Bytes）
+
+Qiはバイナリデータを扱うための専用の`Bytes`型を提供します。画像ファイル、暗号化データ、ネットワークプロトコルなど、バイト列を直接扱う必要がある場面で使用します。
+
+### 基本
+
+```qi
+;; 整数のベクターからBytesを生成（各要素は0-255）
+(bytes [255 254 253])          ;; => #bytes[FF FE FD]
+(bytes [0 1 2 3])              ;; => #bytes[00 01 02 03]
+(bytes [72 101 108 108 111])   ;; => #bytes[48 65 6C 6C 6F] ;; "Hello"のASCII
+
+;; Bytesを整数のベクターに変換
+(bytes/to-vec #bytes[FF FE FD]) ;; => [255 254 253]
+```
+
+### 型チェック
+
+```qi
+;; bytes? - Bytes型かどうかを判定
+(bytes? (bytes [1 2 3]))  ;; => true
+(bytes? "string")         ;; => false
+(bytes? [1 2 3])          ;; => false
+```
+
+### 比較
+
+Bytes型は値として比較されます（ポインタ比較ではありません）。
+
+```qi
+(def b1 (bytes [1 2 3]))
+(def b2 (bytes [1 2 3]))
+(= b1 b2)  ;; => true（内容が同じなら等しい）
+```
+
+### データベースでの利用
+
+Bytes型はデータベースのBLOB型として保存・取得できます（PostgreSQL、MySQL、SQLite）。
+
+```qi
+;; SQLiteの例
+(def conn (db/connect "sqlite:///data.db" {}))
+(def binary-data (bytes [137 80 78 71]))  ;; PNGヘッダー
+
+;; BLOBとして保存
+(db/exec conn "INSERT INTO files (data) VALUES (?)" [binary-data])
+
+;; BLOBとして取得
+(def rows (db/query conn "SELECT data FROM files" []))
+(def retrieved (get (first rows) "data"))
+(bytes? retrieved)  ;; => true
+```
+
+### HTTPでの利用
+
+HTTPリクエスト/レスポンスのボディとしてBytes型を使用できます。
+
+```qi
+;; バイナリデータを送信
+(http/post "https://api.example.com/upload"
+  {:body (bytes [1 2 3])
+   :headers {"Content-Type" "application/octet-stream"}})
+
+;; バイナリレスポンスを受信
+(def response (http/get "https://example.com/image.png"))
+(bytes? (get response :body))  ;; => true（画像データ）
+```
+
+### JSON/YAMLでの利用
+
+Bytes型はJSON/YAMLに変換する際、自動的にBase64エンコードされます。
+
+```qi
+(def data {:name "test.png" :content (bytes [137 80 78 71])})
+
+;; JSON変換（Base64エンコード）
+(json/stringify data)
+;; => "{\"name\":\"test.png\",\"content\":\"iVBORw==\"}"
+
+;; YAML変換（Base64エンコード）
+(yaml/stringify data)
+;; => "name: test.png\ncontent: iVBORw=="
+```
+
+---
+
 ## マップ
 
 ### 基本

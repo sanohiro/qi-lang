@@ -109,6 +109,23 @@ fn value_to_json(value: &Value) -> serde_json::Value {
             .map(serde_json::Value::Number)
             .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s.clone()),
+        Value::Bytes(b) => {
+            // バイナリデータはBase64エンコードして文字列として出力
+            #[cfg(feature = "string-encoding")]
+            {
+                use base64::{engine::general_purpose, Engine as _};
+                serde_json::Value::String(general_purpose::STANDARD.encode(b.as_ref()))
+            }
+            #[cfg(not(feature = "string-encoding"))]
+            {
+                // Base64が利用できない場合は、バイト配列として出力
+                let arr: Vec<serde_json::Value> = b
+                    .iter()
+                    .map(|&byte| serde_json::Value::Number((byte as i64).into()))
+                    .collect();
+                serde_json::Value::Array(arr)
+            }
+        }
         Value::Keyword(s) => serde_json::Value::String(s.to_string()),
         Value::Vector(v) => {
             // サイズが分かっているので事前確保

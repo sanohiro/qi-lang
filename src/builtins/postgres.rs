@@ -81,6 +81,7 @@ impl PostgresConnection {
             Value::Integer(i) => Box::new(*i as i32), // PostgreSQL INTEGER型はi32
             Value::Float(f) => Box::new(*f),
             Value::String(s) => Box::new(s.clone()),
+            Value::Bytes(b) => Box::new(b.as_ref().to_vec()), // BYTEA型として送信
             _ => Box::new(value.to_string()),
         }
     }
@@ -93,7 +94,11 @@ impl PostgresConnection {
             let column_name = column.name().to_string();
 
             // 型に応じて値を取得
-            let value = if let Ok(v) = row.try_get::<_, Option<String>>(idx) {
+            let value = if let Ok(v) = row.try_get::<_, Option<Vec<u8>>>(idx) {
+                // BYTEA型 → Bytes
+                v.map(|bytes| Value::Bytes(Arc::from(bytes)))
+                    .unwrap_or(Value::Nil)
+            } else if let Ok(v) = row.try_get::<_, Option<String>>(idx) {
                 v.map(Value::String).unwrap_or(Value::Nil)
             } else if let Ok(v) = row.try_get::<_, Option<i32>>(idx) {
                 v.map(|i| Value::Integer(i as i64)).unwrap_or(Value::Nil)

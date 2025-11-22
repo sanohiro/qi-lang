@@ -509,4 +509,8 @@ pub enum MsgKey {
     DapParserInitError,       // Parser error: {0}
     DapRuntimeError,          // Runtime error: {0}
     DapTaskJoinError,         // Task join error: {0}
+
+    // バイナリデータエラー
+    ByteOutOfRange,      // Byte at index {0} out of range (0-255): {1}
+    BytesMustBeIntegers, // All elements must be integers, got {1} at index {0}
 }

@@ -125,6 +125,8 @@ pub enum Value {
     Float(f64),
     /// 文字列
     String(String),
+    /// バイナリデータ（不変、共有可能）
+    Bytes(Arc<[u8]>),
     /// シンボル（インターン化でメモリ削減）
     Symbol(Arc<str>),
     /// キーワード（インターン化でメモリ削減・比較高速化）
@@ -247,6 +249,7 @@ impl Value {
             Value::Integer(_) => "integer",
             Value::Float(_) => "float",
             Value::String(_) => "string",
+            Value::Bytes(_) => "bytes",
             Value::Symbol(_) => "symbol",
             Value::Keyword(_) => "keyword",
             Value::List(_) => "list",
@@ -342,6 +345,7 @@ impl PartialEq for Value {
             (Value::Integer(a), Value::Integer(b)) => a == b,
             (Value::Float(a), Value::Float(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
+            (Value::Bytes(a), Value::Bytes(b)) => a.as_ref() == b.as_ref(),
             (Value::Symbol(a), Value::Symbol(b)) => a == b,
             (Value::Keyword(a), Value::Keyword(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
@@ -378,6 +382,7 @@ impl Hash for Value {
             Value::Bool(b) => b.hash(state),
             Value::Integer(i) => i.hash(state),
             Value::String(s) => s.hash(state),
+            Value::Bytes(b) => b.as_ref().hash(state),
             Value::Symbol(s) => s.hash(state),
             Value::Keyword(k) => k.hash(state),
             Value::List(items) | Value::Vector(items) => {
@@ -1058,6 +1063,21 @@ impl fmt::Display for Value {
             Value::Integer(n) => write!(f, "{}", n),
             Value::Float(n) => write!(f, "{}", n),
             Value::String(s) => write!(f, "\"{}\"", s),
+            Value::Bytes(b) => {
+                // バイナリデータを16進数表現で表示（最大64バイトまで）
+                write!(f, "#bytes[")?;
+                let limit = b.len().min(64);
+                for (i, byte) in b.iter().take(limit).enumerate() {
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
+                    write!(f, "{:02X}", byte)?;
+                }
+                if b.len() > 64 {
+                    write!(f, " ... ({} bytes)", b.len())?;
+                }
+                write!(f, "]")
+            }
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Keyword(k) => write!(f, ":{}", k),
             Value::List(items) => {

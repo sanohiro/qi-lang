@@ -271,6 +271,92 @@ Explicit type conversion as needed.
 
 ---
 
+## Binary Data (Bytes)
+
+Qi provides a dedicated `Bytes` type for handling binary data. Use it for image files, encrypted data, network protocols, and any scenario where you need to work with raw byte sequences.
+
+### Basics
+
+```qi
+;; Create Bytes from a vector of integers (each element must be 0-255)
+(bytes [255 254 253])          ;; => #bytes[FF FE FD]
+(bytes [0 1 2 3])              ;; => #bytes[00 01 02 03]
+(bytes [72 101 108 108 111])   ;; => #bytes[48 65 6C 6C 6F] ;; ASCII for "Hello"
+
+;; Convert Bytes to a vector of integers
+(bytes/to-vec #bytes[FF FE FD]) ;; => [255 254 253]
+```
+
+### Type Checking
+
+```qi
+;; bytes? - Check if a value is of Bytes type
+(bytes? (bytes [1 2 3]))  ;; => true
+(bytes? "string")         ;; => false
+(bytes? [1 2 3])          ;; => false
+```
+
+### Comparison
+
+Bytes are compared by value (not by pointer).
+
+```qi
+(def b1 (bytes [1 2 3]))
+(def b2 (bytes [1 2 3]))
+(= b1 b2)  ;; => true (equal if contents are the same)
+```
+
+### Database Usage
+
+Bytes can be stored and retrieved as BLOB types in databases (PostgreSQL, MySQL, SQLite).
+
+```qi
+;; SQLite example
+(def conn (db/connect "sqlite:///data.db" {}))
+(def binary-data (bytes [137 80 78 71]))  ;; PNG header
+
+;; Store as BLOB
+(db/exec conn "INSERT INTO files (data) VALUES (?)" [binary-data])
+
+;; Retrieve as BLOB
+(def rows (db/query conn "SELECT data FROM files" []))
+(def retrieved (get (first rows) "data"))
+(bytes? retrieved)  ;; => true
+```
+
+### HTTP Usage
+
+Bytes can be used as HTTP request/response bodies.
+
+```qi
+;; Send binary data
+(http/post "https://api.example.com/upload"
+  {:body (bytes [1 2 3])
+   :headers {"Content-Type" "application/octet-stream"}})
+
+;; Receive binary response
+(def response (http/get "https://example.com/image.png"))
+(bytes? (get response :body))  ;; => true (image data)
+```
+
+### JSON/YAML Usage
+
+Bytes are automatically Base64-encoded when converting to JSON/YAML.
+
+```qi
+(def data {:name "test.png" :content (bytes [137 80 78 71])})
+
+;; JSON conversion (Base64 encoded)
+(json/stringify data)
+;; => "{\"name\":\"test.png\",\"content\":\"iVBORw==\"}"
+
+;; YAML conversion (Base64 encoded)
+(yaml/stringify data)
+;; => "name: test.png\ncontent: iVBORw=="
+```
+
+---
+
 ## Maps
 
 ### Basics

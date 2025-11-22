@@ -81,6 +81,7 @@ impl MysqlConnection {
             Value::Integer(i) => mysql_async::Value::Int(*i),
             Value::Float(f) => mysql_async::Value::Double(*f),
             Value::String(s) => mysql_async::Value::Bytes(s.as_bytes().to_vec()),
+            Value::Bytes(b) => mysql_async::Value::Bytes(b.as_ref().to_vec()), // BLOB型として送信
             _ => mysql_async::Value::Bytes(value.to_string().as_bytes().to_vec()),
         }
     }
@@ -89,7 +90,7 @@ impl MysqlConnection {
     ///
     /// カラムの型情報とValueを直接確認することで、試行錯誤なしに確実な型変換を実現
     fn row_to_hashmap(row: &MyRow) -> DbResult<Row> {
-        use base64::{engine::general_purpose, Engine as _};
+        use mysql_async::consts::ColumnType;
         use mysql_async::Value as MySqlValue;
 
         let mut map = crate::new_hashmap();
@@ -135,16 +136,22 @@ impl MysqlConnection {
                         } else {
                             Value::Nil
                         }
+                    } else if matches!(
+                        column_type,
+                        ColumnType::MYSQL_TYPE_TINY_BLOB
+                            | ColumnType::MYSQL_TYPE_MEDIUM_BLOB
+                            | ColumnType::MYSQL_TYPE_LONG_BLOB
+                            | ColumnType::MYSQL_TYPE_BLOB
+                    ) {
+                        // BLOB型 → Bytes（UTF-8変換を試行せず直接バイナリとして扱う）
+                        Value::Bytes(Arc::from(b.as_slice()))
                     } else {
                         // 文字列型またはバイナリデータ
                         String::from_utf8(b.clone())
                             .map(Value::String)
                             .unwrap_or_else(|_| {
-                                // UTF-8でない場合はbase64エンコード
-                                Value::String(format!(
-                                    "base64:{}",
-                                    general_purpose::STANDARD.encode(b)
-                                ))
+                                // UTF-8でない場合はBytesとして扱う
+                                Value::Bytes(Arc::from(b.as_slice()))
                             })
                     }
                 }

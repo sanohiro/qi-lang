@@ -15,18 +15,19 @@
 (def __doc__http/post
   {:desc "HTTP POSTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
               "(http/post url (json/stringify data) |> json/parse)"
               "(http/post url data {:bearer-token \"token\"})"
+              "(http/post url (bytes [0x48 0x65 0x6c 0x6c 0x6f]) ;; バイナリデータを送信"
               "(http/post url data {:headers {\"X-Request-ID\" \"123\"} :timeout 10000})"]})
 
 (def __doc__http/put
   {:desc "HTTP PUTリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"
@@ -43,7 +44,7 @@
 (def __doc__http/patch
   {:desc "HTTP PATCHリクエストを送信します（シンプル版）。レスポンスボディのみを文字列として返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "レスポンスボディ"}
    :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
@@ -79,7 +80,7 @@
 (def __doc__http/post!
   {:desc "HTTP POSTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ（文字列またはマップ）"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
@@ -89,7 +90,7 @@
 (def __doc__http/put!
   {:desc "HTTP PUTリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"
@@ -106,7 +107,7 @@
 (def __doc__http/patch!
   {:desc "HTTP PATCHリクエストを送信します（詳細版）。ステータスコード、ヘッダー、ボディを含むマップを返します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "opts" :type "map" :desc "オプション（省略可）: :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
@@ -147,7 +148,7 @@
 (def __doc__http/post-async
   {:desc "非同期HTTP POSTリクエストを送信します。"
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "リクエストボディ"}]
+            {:name "body" :type "any" :desc "リクエストボディ（文字列、マップ、またはバイナリデータ）"}]
    :returns {:type "channel" :desc "レスポンスのPromise"}
    :examples ["(def p (http/post-async url data))"
               "(go/await p)"]})

@@ -120,6 +120,19 @@ impl Evaluator {
                         Value::Nil => "nil".to_string(),
                         Value::Keyword(k) => format!(":{}", k),
                         Value::Symbol(s) => s.to_string(),
+                        Value::Bytes(b) => {
+                            // バイナリデータを16進数表現で表示（最大16バイトまで）
+                            let hex: Vec<String> = b
+                                .iter()
+                                .take(16)
+                                .map(|byte| format!("{:02X}", byte))
+                                .collect();
+                            if b.len() > 16 {
+                                format!("#bytes[{} ... ({} bytes)]", hex.join(" "), b.len())
+                            } else {
+                                format!("#bytes[{}]", hex.join(" "))
+                            }
+                        }
                         Value::List(items) => {
                             let strs: Vec<_> = items.iter().map(|v| format!("{}", v)).collect();
                             format!("({})", strs.join(" "))

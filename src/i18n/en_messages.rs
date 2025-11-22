@@ -795,6 +795,9 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (DapParserInitError, "Parser error: {0}"),
         (DapRuntimeError, "Runtime error: {0}"),
         (DapTaskJoinError, "Task join error: {0}"),
+        // Binary data errors
+        (ByteOutOfRange, "Byte at index {0} out of range (0-255): {1}"),
+        (BytesMustBeIntegers, "All elements must be integers, got {1} at index {0}"),
     ])
 });
 

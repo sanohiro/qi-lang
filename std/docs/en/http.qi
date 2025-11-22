@@ -15,18 +15,19 @@
 (def __doc__http/post
   {:desc "Sends an HTTP POST request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body (string or map)"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
    :examples ["(http/post \"https://api.example.com/users\" {:name \"Alice\"}) ;=> \"{\\\"id\\\": 123}\""
               "(http/post url (json/stringify data) |> json/parse)"
               "(http/post url data {:bearer-token \"token\"})"
+              "(http/post url (bytes [0x48 0x65 0x6c 0x6c 0x6f])) ;; Send binary data"
               "(http/post url data {:headers {\"X-Request-ID\" \"123\"} :timeout 10000})"]})
 
 (def __doc__http/put
   {:desc "Sends an HTTP PUT request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
    :examples ["(http/put \"https://api.example.com/users/1\" {:name \"Bob\"})"
@@ -43,7 +44,7 @@
 (def __doc__http/patch
   {:desc "Sends an HTTP PATCH request (simple version). Returns only the response body as a string."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "string" :desc "Response body"}
    :examples ["(http/patch \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
@@ -79,7 +80,7 @@
 (def __doc__http/post!
   {:desc "Sends an HTTP POST request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body (string or map)"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
    :examples ["(http/post! \"https://api.example.com/users\" {:name \"Alice\"}) ;=> {:status 201 :body \"...\"}"
@@ -89,7 +90,7 @@
 (def __doc__http/put!
   {:desc "Sends an HTTP PUT request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
    :examples ["(http/put! \"https://api.example.com/users/1\" {:name \"Bob\"})"
@@ -106,7 +107,7 @@
 (def __doc__http/patch!
   {:desc "Sends an HTTP PATCH request (detailed version). Returns a map containing status code, headers, and body."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}
             {:name "opts" :type "map" :desc "Optional (omittable): :headers, :timeout, :basic-auth, :bearer-token"}]
    :returns {:type "map" :desc "Response map"}
    :examples ["(http/patch! \"https://api.example.com/users/1\" {:email \"new@example.com\"})"
@@ -147,7 +148,7 @@
 (def __doc__http/post-async
   {:desc "Sends an asynchronous HTTP POST request."
    :params [{:name "url" :type "string" :desc "URL"}
-            {:name "body" :type "any" :desc "Request body"}]
+            {:name "body" :type "any" :desc "Request body (string, map, or binary data)"}]
    :returns {:type "channel" :desc "Promise of response"}
    :examples ["(def p (http/post-async url data))"
               "(go/await p)"]})

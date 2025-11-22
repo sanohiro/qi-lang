@@ -603,6 +603,9 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (DapParserInitError, "パーサーエラー: {0}"),
         (DapRuntimeError, "実行時エラー: {0}"),
         (DapTaskJoinError, "タスク結合エラー: {0}"),
+        // バイナリデータエラー
+        (ByteOutOfRange, "インデックス{0}のバイト値が範囲外です (0-255): {1}"),
+        (BytesMustBeIntegers, "すべての要素は整数である必要があります。インデックス{0}で{1}が見つかりました"),
     ])
 });
 

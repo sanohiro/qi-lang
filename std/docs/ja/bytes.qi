@@ -1,0 +1,28 @@
+;; 標準ライブラリドキュメント - バイナリデータ操作
+;; Binary Data Functions (3 functions)
+
+(def __doc__bytes
+  {:desc "整数のベクターからバイナリデータ（Bytes型）を生成します。各整数は0-255の範囲である必要があります。"
+   :params [{:name "vector" :type "vector" :desc "整数のベクター（各要素は0-255）"}]
+   :returns {:type "bytes" :desc "バイナリデータ（Bytes型）"}
+   :examples ["(bytes [255 254 253]) ;=> #bytes[FF FE FD]"
+              "(bytes [0 1 2 3]) ;=> #bytes[00 01 02 03]"
+              "(bytes [72 101 108 108 111]) ;=> #bytes[48 65 6C 6C 6F] ;; \"Hello\"のASCII"]
+   :errors [{:case "範囲外の値" :desc "整数が0-255の範囲外の場合、エラーが発生します"}
+            {:case "整数以外の要素" :desc "ベクターに整数以外の要素が含まれている場合、エラーが発生します"}]})
+
+(def __doc__bytes?
+  {:desc "値がバイナリデータ（Bytes型）かどうかを判定します。"
+   :params [{:name "value" :type "any" :desc "判定する値"}]
+   :returns {:type "boolean" :desc "Bytes型ならtrue、そうでなければfalse"}
+   :examples ["(bytes? (bytes [1 2 3])) ;=> true"
+              "(bytes? \"string\") ;=> false"
+              "(bytes? [1 2 3]) ;=> false"]})
+
+(def __doc__bytes/to-vec
+  {:desc "バイナリデータ（Bytes型）を整数のベクターに変換します。各バイトは0-255の整数に変換されます。"
+   :params [{:name "bytes" :type "bytes" :desc "バイナリデータ"}]
+   :returns {:type "vector" :desc "整数のベクター（各要素は0-255）"}
+   :examples ["(bytes/to-vec #bytes[FF FE FD]) ;=> [255 254 253]"
+              "(bytes/to-vec #bytes[00 01 02 03]) ;=> [0 1 2 3]"
+              "(bytes/to-vec (bytes [72 101 108 108 111])) ;=> [72 101 108 108 111]"]})

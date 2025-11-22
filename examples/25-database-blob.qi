@@ -1,0 +1,48 @@
+;; 25-database-blob.qi - データベースのBLOB型操作
+;;
+;; SQLiteでバイナリデータを保存・取得する例
+;; 実行: qi examples/25-database-blob.qi
+
+(println "=== データベースBLOB操作の例 ===\n")
+
+;; テスト用のデータベースに接続
+(def conn (db/connect "sqlite:///:memory:" {}))
+
+;; テーブル作成
+(db/exec conn "CREATE TABLE files (id INTEGER PRIMARY KEY, name TEXT, data BLOB)" [])
+(println "テーブル作成完了")
+
+;; バイナリデータを作成（PNGヘッダーの一部: 0x89 0x50 0x4E 0x47）
+(def binary-data (bytes [137 80 78 71]))
+(println f"バイナリデータ: {binary-data}")
+
+;; バイナリデータをINSERT
+(db/exec conn "INSERT INTO files (name, data) VALUES (?, ?)"
+         ["test.png" binary-data])
+(println "バイナリデータを挿入しました")
+
+;; データを取得
+(def rows (db/query conn "SELECT id, name, data FROM files" []))
+(println f"\n取得した行数: {(len rows)}")
+
+;; 取得したデータを表示
+(def row (first rows))
+(println f"ID: {(get row \"id\")}")
+(println f"Name: {(get row \"name\")}")
+
+(def retrieved-data (get row "data"))
+(println f"Data: {retrieved-data}")
+(println f"Data is Bytes type: {(bytes? retrieved-data)}")
+
+;; 元のデータと比較
+(println f"\n元のデータと一致: {(= binary-data retrieved-data)}")
+
+;; バイナリデータをベクターに変換して確認
+(def original-vec (bytes/to-vec binary-data))
+(def retrieved-vec (bytes/to-vec retrieved-data))
+(println f"元のベクター: {original-vec}")
+(println f"取得したベクター: {retrieved-vec}")
+
+;; 接続を閉じる
+(db/close conn)
+(println "\n✅ データベースBLOB操作完了")

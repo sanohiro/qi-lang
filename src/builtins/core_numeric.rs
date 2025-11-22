@@ -428,6 +428,7 @@ fn values_equal(a: &Value, b: &Value) -> bool {
         (Value::Integer(a), Value::Integer(b)) => a == b,
         (Value::Float(a), Value::Float(b)) => a == b,
         (Value::String(a), Value::String(b)) => a == b,
+        (Value::Bytes(a), Value::Bytes(b)) => a.as_ref() == b.as_ref(),
         (Value::Symbol(a), Value::Symbol(b)) => a == b,
         (Value::Keyword(a), Value::Keyword(b)) => a == b,
         // ListとVectorは内容が同じなら等しい（Lisp系言語の一般的な仕様）

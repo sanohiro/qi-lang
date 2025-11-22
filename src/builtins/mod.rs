@@ -56,6 +56,7 @@ pub mod core_string;
 pub mod core_util;
 
 // 専門モジュール
+pub mod bytes;
 pub mod hof;
 
 #[cfg(feature = "http-client")]
@@ -204,6 +205,7 @@ const CORE_MODULES: &[NativeFunctions] = &[
 
 /// 標準専門モジュール一覧（feature-gatedでないもの）
 const STANDARD_MODULES: &[NativeFunctions] = &[
+    bytes::FUNCTIONS,
     math::FUNCTIONS,
     csv::FUNCTIONS,
     table::FUNCTIONS,

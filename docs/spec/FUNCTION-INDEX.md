@@ -25,7 +25,7 @@
   - collections list, vector, map, filter, reduce, first, rest, cons, concat
   - io print, println
   - operators +, -, *, /, =, <, >, <=, >=, not=
-  - predicates number?, fn?, string?, list?, vector?, map?, nil?, empty?
+  - predicates number?, fn?, string?, bytes?, list?, vector?, map?, nil?, empty?
 
 ## Common Keywords
 
@@ -47,6 +47,10 @@
 ### auth/password
 
   - password/hash, password/verify
+
+### bytes
+
+  - bytes, bytes?, bytes/to-vec
 
 ### cmd
 
@@ -70,7 +74,7 @@
 
 ### core/predicates
 
-  - nil?, list?, vector?, map?, string?, integer?, float?, number?, keyword?, function?, atom?, coll?, sequential?, empty?, some?, true?, false?, error?, even?, odd?, positive?, negative?, zero?
+  - nil?, list?, vector?, map?, string?, bytes?, integer?, float?, number?, keyword?, function?, atom?, stream?, coll?, sequential?, empty?, some?, true?, false?, error?, even?, odd?, positive?, negative?, zero?
 
 ### core/state-meta
 

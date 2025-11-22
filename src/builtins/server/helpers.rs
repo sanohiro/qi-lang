@@ -232,18 +232,26 @@ pub(super) async fn value_to_response(
                     // ファイルストリーミング
                     create_file_stream_body(file_path).await?
                 } else {
-                    // 従来の :body 処理
-                    let body_str = match m.get(&body_key) {
-                        Some(Value::String(s)) => s.clone(),
-                        Some(v) => format!("{}", v),
-                        None => String::new(),
-                    };
-
-                    // UTF-8文字列をバイト列に変換
-                    // Value::Stringは常にUTF-8として扱う
-                    let body_bytes: Vec<u8> = body_str.as_bytes().to_vec();
-
-                    BodyExt::boxed(Full::new(Bytes::from(body_bytes)))
+                    // :body の型に応じて処理を分ける
+                    match m.get(&body_key) {
+                        Some(Value::Bytes(data)) => {
+                            // バイナリデータをそのまま送信
+                            BodyExt::boxed(Full::new(Bytes::from(data.as_ref().to_vec())))
+                        }
+                        Some(Value::String(s)) => {
+                            // UTF-8文字列として送信
+                            BodyExt::boxed(Full::new(Bytes::from(s.as_bytes().to_vec())))
+                        }
+                        Some(v) => {
+                            // その他の型は文字列化
+                            let body_str = format!("{}", v);
+                            BodyExt::boxed(Full::new(Bytes::from(body_str.as_bytes().to_vec())))
+                        }
+                        None => {
+                            // ボディなし
+                            BodyExt::boxed(Full::new(Bytes::new()))
+                        }
+                    }
                 };
 
             response

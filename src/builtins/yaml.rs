@@ -114,6 +114,23 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Integer(i) => serde_yaml::Value::Number((*i).into()),
         Value::Float(f) => serde_yaml::Value::Number(serde_yaml::Number::from(*f)),
         Value::String(s) => serde_yaml::Value::String(s.clone()),
+        Value::Bytes(b) => {
+            // バイナリデータはBase64エンコードして文字列として出力
+            #[cfg(feature = "string-encoding")]
+            {
+                use base64::{engine::general_purpose, Engine as _};
+                serde_yaml::Value::String(general_purpose::STANDARD.encode(b.as_ref()))
+            }
+            #[cfg(not(feature = "string-encoding"))]
+            {
+                // Base64が利用できない場合は、バイト配列として出力
+                let seq: Vec<serde_yaml::Value> = b
+                    .iter()
+                    .map(|&byte| serde_yaml::Value::Number((byte as i64).into()))
+                    .collect();
+                serde_yaml::Value::Sequence(seq)
+            }
+        }
         Value::Keyword(s) => serde_yaml::Value::String(s.to_string()),
         Value::Vector(v) => {
             // サイズが分かっているので事前確保

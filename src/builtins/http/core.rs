@@ -151,6 +151,16 @@ pub(super) fn http_request_detailed(
     // ボディ追加
     if let Some(b) = body {
         match b {
+            Value::Bytes(data) => {
+                // バイナリデータをそのまま送信
+                if should_compress {
+                    let compressed = helpers::compress_gzip(data.as_ref())
+                        .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
+                    request = request.header("Content-Encoding", "gzip").body(compressed);
+                } else {
+                    request = request.body(data.as_ref().to_vec());
+                }
+            }
             Value::String(s) => {
                 if should_compress {
                     // gzip圧縮して送信
@@ -287,6 +297,10 @@ pub(super) fn http_stream(
     // ボディ追加
     if let Some(b) = body {
         match b {
+            Value::Bytes(data) => {
+                // バイナリデータをそのまま送信
+                request = request.body(data.as_ref().to_vec());
+            }
             Value::String(s) => {
                 request = request.body(s.clone());
             }

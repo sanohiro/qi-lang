@@ -1,0 +1,28 @@
+;; Standard Library Documentation - Binary Data Operations
+;; Binary Data Functions (3 functions)
+
+(def __doc__bytes
+  {:desc "Creates binary data (Bytes type) from a vector of integers. Each integer must be in the range 0-255."
+   :params [{:name "vector" :type "vector" :desc "A vector of integers (each element must be 0-255)"}]
+   :returns {:type "bytes" :desc "Binary data (Bytes type)"}
+   :examples ["(bytes [255 254 253]) ;=> #bytes[FF FE FD]"
+              "(bytes [0 1 2 3]) ;=> #bytes[00 01 02 03]"
+              "(bytes [72 101 108 108 111]) ;=> #bytes[48 65 6C 6C 6F] ;; ASCII for \"Hello\""]
+   :errors [{:case "Out of range value" :desc "Error occurs if any integer is outside the range 0-255"}
+            {:case "Non-integer element" :desc "Error occurs if the vector contains non-integer elements"}]})
+
+(def __doc__bytes?
+  {:desc "Checks if a value is binary data (Bytes type)."
+   :params [{:name "value" :type "any" :desc "The value to check"}]
+   :returns {:type "boolean" :desc "true if the value is Bytes type, false otherwise"}
+   :examples ["(bytes? (bytes [1 2 3])) ;=> true"
+              "(bytes? \"string\") ;=> false"
+              "(bytes? [1 2 3]) ;=> false"]})
+
+(def __doc__bytes/to-vec
+  {:desc "Converts binary data (Bytes type) to a vector of integers. Each byte is converted to an integer in the range 0-255."
+   :params [{:name "bytes" :type "bytes" :desc "Binary data"}]
+   :returns {:type "vector" :desc "A vector of integers (each element is 0-255)"}
+   :examples ["(bytes/to-vec #bytes[FF FE FD]) ;=> [255 254 253]"
+              "(bytes/to-vec #bytes[00 01 02 03]) ;=> [0 1 2 3]"
+              "(bytes/to-vec (bytes [72 101 108 108 111])) ;=> [72 101 108 108 111]"]})

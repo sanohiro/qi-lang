@@ -17,11 +17,12 @@
 
 (def __doc__server/ok
   {:desc "Generates a 200 OK response."
-   :params [{:name "body" :type "any" :desc "Response body"}
+   :params [{:name "body" :type "any" :desc "Response body (string, map, or binary data)"}
             {:name "headers" :type "map" :desc "Headers (optional)"}]
    :returns {:type "map" :desc "Response map"}
    :examples ["(server/ok \"Hello World\")"
-              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"]})
+              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"
+              "(server/ok (bytes [0x48 0x65 0x6c 0x6c 0x6f]) {\"Content-Type\" \"application/octet-stream\"}) ;; Binary response"]})
 
 (def __doc__server/json
   {:desc "Generates a JSON response."

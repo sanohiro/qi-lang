@@ -17,11 +17,12 @@
 
 (def __doc__server/ok
   {:desc "200 OKレスポンスを生成します。"
-   :params [{:name "body" :type "any" :desc "レスポンスボディ"}
+   :params [{:name "body" :type "any" :desc "レスポンスボディ（文字列、マップ、またはバイナリデータ）"}
             {:name "headers" :type "map" :desc "ヘッダー（省略可）"}]
    :returns {:type "map" :desc "レスポンスマップ"}
    :examples ["(server/ok \"Hello World\")"
-              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"]})
+              "(server/ok \"OK\" {\"X-Custom-Header\" \"value\"})"
+              "(server/ok (bytes [0x48 0x65 0x6c 0x6c 0x6f]) {\"Content-Type\" \"application/octet-stream\"}) ;; バイナリレスポンス"]})
 
 (def __doc__server/json
   {:desc "JSONレスポンスを生成します。"
