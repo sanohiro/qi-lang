@@ -198,8 +198,19 @@ impl Evaluator {
 
         let loop_env_rc = Arc::new(RwLock::new(loop_env));
 
-        // ループ本体を繰り返し評価
+        // ループ本体を繰り返し評価（無限ループ保護付き）
+        let mut loop_count: usize = 0;
+        const MAX_LOOP_ITERATIONS: usize = 10_000_000; // 1000万回
+
         loop {
+            loop_count += 1;
+            if loop_count > MAX_LOOP_ITERATIONS {
+                return Err(fmt_msg(
+                    MsgKey::InfiniteLoopDetected,
+                    &[&loop_count.to_string()],
+                ));
+            }
+
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
                 Err(e) if e == RECUR_SENTINEL => {

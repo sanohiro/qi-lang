@@ -170,6 +170,10 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             RecurArgCountMismatch,
             "recur: 引数の数が一致しません（期待: {0}, 実際: {1}）",
         ),
+        (
+            InfiniteLoopDetected,
+            "無限ループが検出されました（反復回数: {0}）",
+        ),
         // 内部変換エラー
         (ValueCannotBeConverted, "この値は変換できません"),
         // モジュールロード詳細エラー

@@ -48,3 +48,25 @@ pub mod http_server {
         result.as_ref().map_err(|e| e.clone())
     }
 }
+
+/// PostgreSQLランタイムのLazy初期化
+#[cfg(feature = "db-postgres")]
+pub mod postgres_runtime {
+    use super::*;
+
+    pub static RUNTIME: OnceCell<Result<tokio::runtime::Runtime, String>> = OnceCell::new();
+
+    /// PostgreSQLランタイムを取得（初回のみ作成、エラーハンドリング付き）
+    pub fn get_runtime() -> Result<&'static tokio::runtime::Runtime, String> {
+        let result = RUNTIME.get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .worker_threads(2)
+                .thread_name("qi-postgres")
+                .build()
+                .map_err(|e| format!("Failed to create PostgreSQL runtime: {}", e))
+        });
+
+        result.as_ref().map_err(|e| e.clone())
+    }
+}

@@ -244,10 +244,17 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
 
             let mut info = crate::new_hashmap();
 
-            // サイズ
+            // サイズ（u64→i64オーバーフローチェック）
+            let size = metadata.len();
+            if size > i64::MAX as u64 {
+                return Err(fmt_msg(
+                    MsgKey::ValueTooLargeForI64,
+                    &["io/metadata", &size.to_string()],
+                ));
+            }
             info.insert(
                 crate::value::MapKey::String("size".to_string()),
-                Value::Integer(metadata.len() as i64),
+                Value::Integer(size as i64),
             );
 
             // ファイルタイプ
@@ -260,12 +267,19 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
                 Value::Bool(metadata.is_file()),
             );
 
-            // 更新日時
+            // 更新日時（u64→i64オーバーフローチェック）
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
+                    let secs = duration.as_secs();
+                    if secs > i64::MAX as u64 {
+                        return Err(fmt_msg(
+                            MsgKey::ValueTooLargeForI64,
+                            &["io/metadata timestamp", &secs.to_string()],
+                        ));
+                    }
                     info.insert(
                         crate::value::MapKey::String("modified".to_string()),
-                        Value::Integer(duration.as_secs() as i64),
+                        Value::Integer(secs as i64),
                     );
                 }
             }

@@ -134,6 +134,10 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             RecurArgCountMismatch,
             "recur: argument count mismatch (expected {0}, got {1})",
         ),
+        (
+            InfiniteLoopDetected,
+            "infinite loop detected (iterations: {0})",
+        ),
         // 内部変換エラー
         (ValueCannotBeConverted, "value cannot be converted"),
         // モジュールロード詳細エラー
