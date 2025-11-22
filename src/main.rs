@@ -504,6 +504,11 @@ impl Highlighter for QiHelper {
     fn highlight_char(&self, _line: &str, _pos: usize, _forced: bool) -> bool {
         true
     }
+
+    fn highlight_hint<'h>(&self, hint: &'h str) -> std::borrow::Cow<'h, str> {
+        // ヒントを薄いグレーで表示（ANSI: 90 = bright black）
+        std::borrow::Cow::Owned(format!("\x1b[90m{}\x1b[0m", hint))
+    }
 }
 
 /// 単語をハイライト
@@ -554,6 +559,26 @@ fn colorize_paren(ch: char, depth: usize) -> String {
 
 impl Hinter for QiHelper {
     type Hint = String;
+
+    fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
+        // 履歴から候補を検索
+        if line.is_empty() || pos < line.len() {
+            return None;
+        }
+
+        // 履歴を逆順で検索して、現在の入力で始まるものを見つける
+        let history = ctx.history();
+        for i in (0..history.len()).rev() {
+            if let Ok(Some(entry)) = history.get(i, rustyline::history::SearchDirection::Forward) {
+                let entry_str = entry.entry;
+                if entry_str.starts_with(line) && entry_str.len() > line.len() {
+                    // 残りの部分だけを返す
+                    return Some(entry_str[line.len()..].to_string());
+                }
+            }
+        }
+        None
+    }
 }
 
 impl Validator for QiHelper {
@@ -996,8 +1021,33 @@ fn repl(preload: Option<&str>, quiet: bool) {
     load_init_file(&evaluator);
 
     let mut helper = QiHelper::new();
-    let mut rl = Editor::new().unwrap();
+
+    // REPL設定
+    let config = rustyline::Config::builder()
+        .bracketed_paste(true)           // 括弧付きペーストモード（大量コピペ対応）
+        .edit_mode(rustyline::EditMode::Emacs)  // Emacsモード（デフォルト）
+        .auto_add_history(true)          // 自動履歴追加
+        .history_ignore_dups(true)       // 重複履歴を無視
+        .expect("Failed to set history_ignore_dups")
+        .build();
+
+    let mut rl = Editor::with_config(config).expect("Failed to create editor");
     rl.set_helper(Some(helper));
+
+    // キーバインド追加
+    rl.bind_sequence(
+        rustyline::KeyEvent::alt('n'),
+        rustyline::Cmd::HistorySearchForward,
+    );
+    rl.bind_sequence(
+        rustyline::KeyEvent::alt('p'),
+        rustyline::Cmd::HistorySearchBackward,
+    );
+
+    // Ctrl+R: 履歴検索（デフォルトで有効）
+    // Ctrl+_: Undo（デフォルトで有効）
+    // Alt+f: 次の単語へ移動（デフォルトで有効）
+    // Alt+b: 前の単語へ移動（デフォルトで有効）
 
     // .qi/history ファイルのパス
     let history_file = dirs::home_dir()
