@@ -88,24 +88,26 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
 
     // プール接続の場合、プールに戻す
     if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
-        // プールに接続を戻す（pool_ops::native_pool_releaseと同じ処理）
-        let pool = {
-            let pools = super::pool::POOLS.lock();
-            pools.get(&pool_id).cloned()
+        // CONNECTIONSから接続を削除（pool_ops::native_pool_releaseと同じ）
+        let conn = {
+            let mut connections = CONNECTIONS.lock();
+            connections.remove(&conn_id)
         };
 
-        if let Some(pool) = pool {
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections.get(&conn_id).cloned()
+        // POOLED_CONNECTIONSから削除（プール/接続の存在に関わらず常に実行）
+        POOLED_CONNECTIONS.lock().remove(&conn_id);
+
+        // プールと接続が両方存在する場合のみ、プールに戻す
+        if let Some(conn) = conn {
+            let pool = {
+                let pools = super::pool::POOLS.lock();
+                pools.get(&pool_id).cloned()
             };
 
-            if let Some(conn) = conn {
+            if let Some(pool) = pool {
                 pool.release(conn);
             }
-
-            // POOLED_CONNECTIONSから削除
-            POOLED_CONNECTIONS.lock().remove(&conn_id);
+            // プールが存在しない場合、接続はdropされて自動的にクローズされる
         }
     }
 
@@ -137,24 +139,26 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
 
     // プール接続の場合、プールに戻す
     if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
-        // プールに接続を戻す（pool_ops::native_pool_releaseと同じ処理）
-        let pool = {
-            let pools = super::pool::POOLS.lock();
-            pools.get(&pool_id).cloned()
+        // CONNECTIONSから接続を削除（pool_ops::native_pool_releaseと同じ）
+        let conn = {
+            let mut connections = CONNECTIONS.lock();
+            connections.remove(&conn_id)
         };
 
-        if let Some(pool) = pool {
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections.get(&conn_id).cloned()
+        // POOLED_CONNECTIONSから削除（プール/接続の存在に関わらず常に実行）
+        POOLED_CONNECTIONS.lock().remove(&conn_id);
+
+        // プールと接続が両方存在する場合のみ、プールに戻す
+        if let Some(conn) = conn {
+            let pool = {
+                let pools = super::pool::POOLS.lock();
+                pools.get(&pool_id).cloned()
             };
 
-            if let Some(conn) = conn {
+            if let Some(pool) = pool {
                 pool.release(conn);
             }
-
-            // POOLED_CONNECTIONSから削除
-            POOLED_CONNECTIONS.lock().remove(&conn_id);
+            // プールが存在しない場合、接続はdropされて自動的にクローズされる
         }
     }
 
