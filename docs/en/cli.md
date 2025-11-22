@@ -215,14 +215,34 @@ qi
 - `:threads` - Display Rayon thread pool info and active channel status
 
 **Features:**
-- Tab completion (functions, variables, REPL commands, special forms, pipe operators)
-- Syntax highlighting (special forms, operators, strings, numbers, comments color-coded)
-- History (persisted in `~/.qi/history`)
+
+**Input Assistance:**
+- **Inline Hints** - Auto-suggest from history (shown in light gray, press → to complete)
+- **Tab Completion** - Functions, variables, REPL commands, special forms, pipe operators
+- **Bracketed Paste** - Safely paste large blocks of code
+
+**Syntax Highlighting:**
+- Color-coded special forms, operators, strings, numbers, comments
+- **Rainbow Parentheses** - Color changes by nesting level (6-color rainbow)
+
+**History Management:**
+- History persistence (`~/.qi/history`)
+- Auto-ignore duplicate entries
+- **Ctrl+R** - Incremental history search
+- **Alt+N / Alt+P** - Navigate through history
+
+**Editing Features:**
 - Multi-line input (automatic parenthesis balance detection)
+- **Ctrl+_** - Undo
+- **Alt+F / Alt+B** - Word-level cursor movement
+
+**Display Features:**
 - Result labels (`$1`, `$2` to reference previous results)
 - Auto execution timing (milliseconds/microseconds)
 - Auto table display (detects `Vector<Map>`)
 - Colored error messages
+
+**Other:**
 - Ctrl+C to cancel input
 - Ctrl+D or `:quit` to exit
 

@@ -1024,10 +1024,10 @@ fn repl(preload: Option<&str>, quiet: bool) {
 
     // REPL設定
     let config = rustyline::Config::builder()
-        .bracketed_paste(true)           // 括弧付きペーストモード（大量コピペ対応）
-        .edit_mode(rustyline::EditMode::Emacs)  // Emacsモード（デフォルト）
-        .auto_add_history(true)          // 自動履歴追加
-        .history_ignore_dups(true)       // 重複履歴を無視
+        .bracketed_paste(true) // 括弧付きペーストモード（大量コピペ対応）
+        .edit_mode(rustyline::EditMode::Emacs) // Emacsモード（デフォルト）
+        .auto_add_history(true) // 自動履歴追加
+        .history_ignore_dups(true) // 重複履歴を無視
         .expect("Failed to set history_ignore_dups")
         .build();
 

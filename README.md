@@ -170,7 +170,13 @@ $4 => 499999500000
 
 **REPL Features:**
 - 🎨 **Syntax highlighting** - Color-coded keywords, operators, strings, numbers, and comments
+- 🌈 **Rainbow parentheses** - Nesting levels shown with different colors
+- 💡 **Inline hints** - Auto-suggest from history (press → to complete)
 - 📝 **Tab completion** - Functions, variables, REPL commands, special forms, and pipe operators
+- 📋 **Bracketed paste** - Safely paste large code blocks
+- 🔍 **History search** - Ctrl+R for incremental search, Alt+N/P for navigation
+- ↩️ **Undo/redo** - Ctrl+_ to undo edits
+- 🏃 **Word jump** - Alt+F/B for efficient cursor movement
 - 📚 **Enhanced documentation** - `:doc` shows parameters, return values, examples, and related functions
 - 🔄 **Hot reload** - `:watch` monitors files and auto-reloads on changes
 - ⚡ **Macros** - Define shortcuts for frequently used commands
