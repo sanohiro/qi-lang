@@ -173,6 +173,26 @@ pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
+    // チェックアウト中の接続がないか確認（CRITICAL）
+    // プールをクローズした後、これらの接続は返却もクローズもできなくなる
+    {
+        let pooled_conns = POOLED_CONNECTIONS.lock();
+        let outstanding: Vec<String> = pooled_conns
+            .iter()
+            .filter(|(_, pid)| *pid == &pool_id)
+            .map(|(cid, _)| cid.clone())
+            .collect();
+
+        if !outstanding.is_empty() {
+            return Err(format!(
+                "Pool {} has {} connection(s) still checked out: {}. Release all connections before closing pool.",
+                pool_id,
+                outstanding.len(),
+                outstanding.join(", ")
+            ));
+        }
+    }
+
     // プールを取り出してからミューテックスを解放
     let pool = {
         let mut pools = POOLS.lock();
