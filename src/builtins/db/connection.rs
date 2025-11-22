@@ -106,10 +106,13 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    let mut connections = CONNECTIONS.lock();
-    let conn = connections
-        .remove(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続を取り出してからミューテックスを解放
+    let conn = {
+        let mut connections = CONNECTIONS.lock();
+        connections
+            .remove(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+    };
 
     conn.close().map_err(|e| e.message)?;
 

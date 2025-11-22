@@ -564,6 +564,12 @@ impl DbTransaction for SqliteTransaction {
         Ok(affected as i64)
     }
 
+    fn call(&self, _name: &str, _params: &[Value]) -> DbResult<CallResult> {
+        Err(DbError::new(
+            "SQLite does not support stored procedures/functions",
+        ))
+    }
+
     fn commit(self: Arc<Self>) -> DbResult<()> {
         let mut committed = self.committed.lock();
         if *committed {

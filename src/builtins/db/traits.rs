@@ -81,6 +81,9 @@ pub trait DbTransaction: Send + Sync {
     /// SQL文を実行して影響を受けた行数を返す
     fn exec(&self, sql: &str, params: &[Value], opts: &QueryOptions) -> DbResult<i64>;
 
+    /// ストアドプロシージャ/ファンクションを呼び出す
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult>;
+
     /// トランザクションをコミット
     fn commit(self: Arc<Self>) -> DbResult<()>;
 

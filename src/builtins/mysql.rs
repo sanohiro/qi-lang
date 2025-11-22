@@ -619,6 +619,43 @@ impl DbTransaction for MysqlTransaction {
         Ok(affected as i64)
     }
 
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult> {
+        // MySQLではCALLでプロシージャを実行
+        let placeholders: Vec<String> = params.iter().map(|_| "?".to_string()).collect();
+        let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
+
+        let mut conn = self.conn.lock();
+        let runtime = self.runtime.lock();
+
+        // パラメータを変換
+        let mysql_params: Vec<mysql_async::Value> = params
+            .iter()
+            .map(MysqlConnection::value_to_mysql_value)
+            .collect();
+
+        // CALLを実行して結果を取得
+        let rows: Vec<MyRow> = runtime
+            .block_on(async { conn.exec(&call_sql, mysql_params).await })
+            .map_err(|e| DbError::new(format!("Failed to call procedure: {}", e)))?;
+
+        // 結果をHashMapに変換
+        let mut results = Vec::new();
+        for row in &rows {
+            results.push(MysqlConnection::row_to_hashmap(row)?);
+        }
+
+        if results.is_empty() {
+            Ok(CallResult::Value(Value::Nil))
+        } else if results.len() == 1 && results[0].len() == 1 {
+            // 単一の戻り値
+            let value = results[0].values().next().cloned().unwrap_or(Value::Nil);
+            Ok(CallResult::Value(value))
+        } else {
+            // 複数行または複数カラム
+            Ok(CallResult::Rows(results))
+        }
+    }
+
     fn commit(self: Arc<Self>) -> DbResult<()> {
         let mut committed = self.committed.lock();
         if *committed {

@@ -591,6 +591,35 @@ impl DbTransaction for PostgresTransaction {
         Ok(affected as i64)
     }
 
+    fn call(&self, name: &str, params: &[Value]) -> DbResult<CallResult> {
+        // PostgreSQLではSELECTで関数を呼び出すかCALLでプロシージャを実行
+        // まずSELECTで関数として試行
+        let placeholders: Vec<String> = (1..=params.len()).map(|i| format!("${}", i)).collect();
+        let select_sql = format!("SELECT {}({})", name, placeholders.join(", "));
+
+        match self.query(&select_sql, params, &QueryOptions::default()) {
+            Ok(rows) => {
+                // 関数の結果を取得
+                if rows.is_empty() {
+                    Ok(CallResult::Value(Value::Nil))
+                } else if rows.len() == 1 && rows[0].len() == 1 {
+                    // 単一の戻り値
+                    let value = rows[0].values().next().cloned().unwrap_or(Value::Nil);
+                    Ok(CallResult::Value(value))
+                } else {
+                    // 複数行または複数カラム
+                    Ok(CallResult::Rows(rows))
+                }
+            }
+            Err(_) => {
+                // 関数として失敗した場合、プロシージャとして試行
+                let call_sql = format!("CALL {}({})", name, placeholders.join(", "));
+                self.exec(&call_sql, params, &QueryOptions::default())?;
+                Ok(CallResult::Value(Value::Nil))
+            }
+        }
+    }
+
     fn commit(self: Arc<Self>) -> DbResult<()> {
         let mut committed = self.committed.lock();
         if *committed {

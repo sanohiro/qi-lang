@@ -56,15 +56,20 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
 
     let tx_id = extract_tx_id(&args[0])?;
 
-    // トランザクションを取り出してからミューテックスを解放
+    // トランザクションをクローンしてからミューテックスを解放（成功するまでマップに保持）
     let tx = {
-        let mut transactions = TRANSACTIONS.lock();
+        let transactions = TRANSACTIONS.lock();
         transactions
-            .remove(&tx_id)
+            .get(&tx_id)
             .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
+            .clone()
     };
 
+    // コミット実行（失敗した場合はトランザクションがマップに残るのでリトライ可能）
     tx.commit().map_err(|e| e.message)?;
+
+    // 成功したのでマップから削除
+    TRANSACTIONS.lock().remove(&tx_id);
 
     Ok(Value::Nil)
 }
@@ -77,15 +82,20 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
 
     let tx_id = extract_tx_id(&args[0])?;
 
-    // トランザクションを取り出してからミューテックスを解放
+    // トランザクションをクローンしてからミューテックスを解放（成功するまでマップに保持）
     let tx = {
-        let mut transactions = TRANSACTIONS.lock();
+        let transactions = TRANSACTIONS.lock();
         transactions
-            .remove(&tx_id)
+            .get(&tx_id)
             .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
+            .clone()
     };
 
+    // ロールバック実行（失敗した場合はトランザクションがマップに残るのでリトライ可能）
     tx.rollback().map_err(|e| e.message)?;
+
+    // 成功したのでマップから削除
+    TRANSACTIONS.lock().remove(&tx_id);
 
     Ok(Value::Nil)
 }

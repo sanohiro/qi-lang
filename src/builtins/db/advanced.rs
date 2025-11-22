@@ -6,7 +6,7 @@ use crate::i18n::{fmt_msg, MsgKey};
 /// ストアドプロシージャまたはストアドファンクションを呼び出す
 ///
 /// # 引数
-/// - `conn_id` (DbConnection): データベース接続
+/// - `conn_id` (DbConnection | DbTransaction): 接続またはトランザクション
 /// - `name` (string): プロシージャ/ファンクション名
 /// - `params` (vector, optional): パラメータのベクトル
 ///
@@ -16,8 +16,6 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 || args.len() > 3 {
         return Err(fmt_msg(MsgKey::Need2Or3Args, &["db/call"]));
     }
-
-    let conn_id = extract_conn_id(&args[0])?;
 
     let name = match &args[1] {
         Value::String(s) => s,
@@ -30,16 +28,31 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
         vec![]
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
+    // 接続かトランザクションかを判別
+    let call_result = match extract_conn_or_tx(&args[0])? {
+        ConnOrTx::Conn(conn_id) => {
+            // 接続をクローンしてからミューテックスを解放
+            let conn = {
+                let connections = CONNECTIONS.lock();
+                connections
+                    .get(&conn_id)
+                    .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+                    .clone()
+            };
+            conn.call(name, &params).map_err(|e| e.message)?
+        }
+        ConnOrTx::Tx(tx_id) => {
+            // トランザクションをクローンしてからミューテックスを解放
+            let tx = {
+                let transactions = TRANSACTIONS.lock();
+                transactions
+                    .get(&tx_id)
+                    .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
+                    .clone()
+            };
+            tx.call(name, &params).map_err(|e| e.message)?
+        }
     };
-
-    let call_result = conn.call(name, &params).map_err(|e| e.message)?;
 
     // CallResultをValueに変換
     let result = match call_result {
