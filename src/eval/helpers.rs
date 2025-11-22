@@ -68,32 +68,44 @@ pub(super) fn find_similar_names(
     let mut seen = HashSet::new();
 
     // 親環境チェーンを辿って全階層から候補を収集
-    let mut current = Some(env);
-    while let Some(e) = current {
-        for (name, _) in e.bindings() {
-            // 既に処理済みの名前はスキップ（子環境が優先）
-            if seen.contains(name) {
-                continue;
-            }
-            seen.insert(name.clone());
-
-            let distance = strsim::levenshtein(target, name);
-            if distance <= max_distance {
-                heap.push(Reverse((distance, name.clone())));
-                // limit を超えたら最も類似度が低いものを削除
-                if heap.len() > limit {
-                    heap.pop();
-                }
+    // まず現在の環境を処理
+    for (name, _) in env.bindings() {
+        seen.insert(name.clone());
+        let distance = strsim::levenshtein(target, name);
+        if distance <= max_distance {
+            heap.push(Reverse((distance, name.clone())));
+            if heap.len() > limit {
+                heap.pop();
             }
         }
-        // 親環境に移動
-        current = e.parent().and_then(|p| {
-            let guard = p.try_read();
-            guard.as_ref().map(|g| unsafe {
-                // SAFETY: この参照は次のループ開始前に破棄される
-                std::mem::transmute::<&Env, &Env>(&**g)
-            })
-        });
+    }
+
+    // 親環境を辿る（Arc<RwLock<Env>>として保持）
+    let mut current_parent = env.parent().clone();
+    while let Some(parent_arc) = current_parent {
+        // 安全にロックを取得
+        if let Some(parent_env) = parent_arc.try_read() {
+            for (name, _) in parent_env.bindings() {
+                // 既に処理済みの名前はスキップ（子環境が優先）
+                if seen.contains(name.as_ref()) {
+                    continue;
+                }
+                seen.insert(name.clone());
+
+                let distance = strsim::levenshtein(target, name);
+                if distance <= max_distance {
+                    heap.push(Reverse((distance, name.clone())));
+                    if heap.len() > limit {
+                        heap.pop();
+                    }
+                }
+            }
+            // 次の親環境に移動
+            current_parent = parent_env.parent().clone();
+        } else {
+            // ロック取得失敗時は親環境の探索を中断
+            break;
+        }
     }
 
     // BinaryHeap から結果を取り出し（距離が小さい順）

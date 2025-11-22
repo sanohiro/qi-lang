@@ -137,8 +137,9 @@ pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
     // JWTトークン検証
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
     let mut validation = Validation::new(algorithm);
-    validation.validate_exp = false; // 有効期限チェックはデフォルトで無効（expクレームがオプション）
-    validation.required_spec_claims.clear(); // 必須クレームをクリア
+    // expクレームは必須ではないが、存在する場合は検証する
+    validation.required_spec_claims.clear(); // 必須クレームをクリア（expは必須ではない）
+                                             // validate_exp = true のままにして、expが存在する場合は期限を検証する
 
     match decode::<JsonValue>(token, &decoding_key, &validation) {
         Ok(token_data) => {

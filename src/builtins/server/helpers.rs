@@ -240,14 +240,8 @@ pub(super) async fn value_to_response(
                     };
 
                     // UTF-8文字列をバイト列に変換
-                    // バイナリデータの場合は、バイト列表現のString（各char = byte）からバイトに戻す
-                    let body_bytes: Vec<u8> = if body_str.chars().all(|c| c as u32 <= 255) {
-                        // バイナリデータ表現の場合
-                        body_str.chars().map(|c| c as u8).collect()
-                    } else {
-                        // 通常のUTF-8文字列の場合
-                        body_str.as_bytes().to_vec()
-                    };
+                    // Value::Stringは常にUTF-8として扱う
+                    let body_bytes: Vec<u8> = body_str.as_bytes().to_vec();
 
                     BodyExt::boxed(Full::new(Bytes::from(body_bytes)))
                 };

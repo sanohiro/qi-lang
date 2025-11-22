@@ -26,7 +26,21 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
 
     // index.htmlの自動配信（ディレクトリの場合）
     let file_path = if file_path.is_dir() {
-        file_path.join("index.html")
+        let with_index = file_path.join("index.html");
+        // index.html追加後も再度セキュリティチェック（symlink攻撃を防止）
+        let canonical = with_index
+            .canonicalize()
+            .map_err(|e| fmt_msg(MsgKey::StaticFileNotFound, &[&e.to_string()]))?;
+        let base_canonical = std::path::Path::new(dir_path)
+            .canonicalize()
+            .map_err(|e| fmt_msg(MsgKey::StaticFileInvalidPath, &[&e.to_string()]))?;
+        if !canonical.starts_with(&base_canonical) {
+            return Err(fmt_msg(
+                MsgKey::StaticFileInvalidPath,
+                &["index.html points outside base directory"],
+            ));
+        }
+        canonical
     } else {
         file_path
     };
