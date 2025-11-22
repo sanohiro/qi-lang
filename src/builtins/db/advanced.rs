@@ -18,6 +18,7 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
     }
 
     let conn_id = extract_conn_id(&args[0])?;
+
     let name = match &args[1] {
         Value::String(s) => s,
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/call", "string"])),
@@ -29,10 +30,14 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
         vec![]
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let call_result = conn.call(name, &params).map_err(|e| e.message)?;
 
@@ -65,10 +70,14 @@ pub fn native_supports(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let supported = conn.supports(feature);
 
@@ -83,10 +92,14 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
 
     let conn_id = extract_conn_id(&args[0])?;
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let info = conn.driver_info().map_err(|e| e.message)?;
 
@@ -119,10 +132,14 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let info = conn.query_info(sql).map_err(|e| e.message)?;
 

@@ -238,9 +238,26 @@ impl DbConnection for MysqlConnection {
         Ok(affected as i64)
     }
 
-    fn begin(&self, _opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
+    fn begin(&self, opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
         let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
+
+        // 分離レベルを設定
+        let isolation_sql = match opts.isolation {
+            IsolationLevel::ReadUncommitted => "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED",
+            IsolationLevel::ReadCommitted => "SET TRANSACTION ISOLATION LEVEL READ COMMITTED",
+            IsolationLevel::RepeatableRead => "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
+            IsolationLevel::Serializable => "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE",
+        };
+
+        runtime
+            .block_on(async { conn.query_drop(isolation_sql).await })
+            .map_err(|e| {
+                DbError::new(fmt_msg(
+                    MsgKey::DbFailedToBeginTransaction,
+                    &[&format!("Failed to set isolation level: {}", e)],
+                ))
+            })?;
 
         // トランザクション開始
         runtime

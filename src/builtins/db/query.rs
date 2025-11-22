@@ -105,7 +105,6 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
     // 接続かトランザクションかを判別
     let row = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
-            // 接続をクローンしてからミューテックスを解放
             let conn = {
                 let connections = CONNECTIONS.lock();
                 connections
@@ -116,7 +115,6 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
             conn.query_one(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
-            // トランザクションをクローンしてからミューテックスを解放
             let tx = {
                 let transactions = TRANSACTIONS.lock();
                 transactions

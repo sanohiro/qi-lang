@@ -22,10 +22,14 @@ pub fn native_tables(args: &[Value]) -> Result<Value, String> {
 
     let conn_id = extract_conn_id(&args[0])?;
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let tables = conn.tables().map_err(|e| e.message)?;
 
@@ -46,10 +50,14 @@ pub fn native_columns(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/columns", "string"])),
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let columns = conn.columns(table).map_err(|e| e.message)?;
 
@@ -85,10 +93,14 @@ pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/indexes", "string"])),
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let indexes = conn.indexes(table).map_err(|e| e.message)?;
 
@@ -128,10 +140,14 @@ pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let foreign_keys = conn.foreign_keys(table).map_err(|e| e.message)?;
 

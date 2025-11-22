@@ -30,10 +30,14 @@ pub fn native_begin(args: &[Value]) -> Result<Value, String> {
         TransactionOptions::default()
     };
 
-    let connections = CONNECTIONS.lock();
-    let conn = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    // 接続をクローンしてからミューテックスを解放
+    let conn = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     let tx = conn.begin(&opts).map_err(|e| e.message)?;
 
@@ -52,10 +56,13 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
 
     let tx_id = extract_tx_id(&args[0])?;
 
-    let mut transactions = TRANSACTIONS.lock();
-    let tx = transactions
-        .remove(&tx_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
+    // トランザクションを取り出してからミューテックスを解放
+    let tx = {
+        let mut transactions = TRANSACTIONS.lock();
+        transactions
+            .remove(&tx_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
+    };
 
     tx.commit().map_err(|e| e.message)?;
 
@@ -70,10 +77,13 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
 
     let tx_id = extract_tx_id(&args[0])?;
 
-    let mut transactions = TRANSACTIONS.lock();
-    let tx = transactions
-        .remove(&tx_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?;
+    // トランザクションを取り出してからミューテックスを解放
+    let tx = {
+        let mut transactions = TRANSACTIONS.lock();
+        transactions
+            .remove(&tx_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
+    };
 
     tx.rollback().map_err(|e| e.message)?;
 

@@ -19,7 +19,27 @@ pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
 
     rayon::spawn(move || {
         let result = simple::native_get(&[Value::String(url)]);
-        let _ = sender.send(result.unwrap_or_else(Value::String));
+        let response = match result {
+            Ok(value) => {
+                // 成功: {:ok value}
+                let mut map = crate::new_hashmap();
+                map.insert(
+                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("ok")),
+                    value,
+                );
+                Value::Map(map)
+            }
+            Err(err_msg) => {
+                // エラー: {:error message}
+                let mut map = crate::new_hashmap();
+                map.insert(
+                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("error")),
+                    Value::String(err_msg),
+                );
+                Value::Map(map)
+            }
+        };
+        let _ = sender.send(response);
     });
 
     Ok(Value::Channel(result_channel))
@@ -44,7 +64,27 @@ pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
 
     rayon::spawn(move || {
         let result = simple::native_post(&[Value::String(url), body]);
-        let _ = sender.send(result.unwrap_or_else(Value::String));
+        let response = match result {
+            Ok(value) => {
+                // 成功: {:ok value}
+                let mut map = crate::new_hashmap();
+                map.insert(
+                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("ok")),
+                    value,
+                );
+                Value::Map(map)
+            }
+            Err(err_msg) => {
+                // エラー: {:error message}
+                let mut map = crate::new_hashmap();
+                map.insert(
+                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("error")),
+                    Value::String(err_msg),
+                );
+                Value::Map(map)
+            }
+        };
+        let _ = sender.send(response);
     });
 
     Ok(Value::Channel(result_channel))
