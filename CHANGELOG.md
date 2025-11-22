@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2025-01-23
+
+### Fixed
+
+#### REPL Improvements
+- **Execution time display**: Changed to show only for 100ms+ (was showing all times including 179µs, 125µs)
+  - Previous: Displayed all execution times ≥ 100µs
+  - Fixed: Display only when ≥ 100ms
+  - src/main.rs:1348-1354
+
+- **Result labels ($1, $2, $3)**: Fixed lexer to recognize `$` as identifier character
+  - Previous: Lexer error "Unexpected character: $"
+  - Fixed: `$` recognized as identifier start/continue character
+  - src/lexer.rs:849, 683
+
+#### Error Handling
+- **Non-callable values**: Fixed stack overflow when calling large maps/vectors as functions
+  - Previous: `(large-map)` caused stack overflow due to `format!("{}", value)` on large data
+  - Fixed: Display only type name instead of full value ("map は呼び出し可能ではありません")
+  - src/eval/call.rs:169-172, 568-570
+
+#### Command Execution
+- **cmd/pipe value formatting**: Fixed to use Display format instead of Debug format
+  - Previous: `111 |> (cmd/pipe "cat -")` returned `"Integer(111)"`
+  - Fixed: Now returns `"111"` as expected
+  - src/builtins/cmd/pipe.rs:44, 51, 186, 193
+
 ## [0.1.11] - 2025-01-23
 
 ### Fixed
