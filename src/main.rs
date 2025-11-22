@@ -434,6 +434,7 @@ impl Highlighter for QiHelper {
         let mut in_string = false;
         let mut in_comment = false;
         let mut escape_next = false;
+        let mut paren_depth = 0; // 括弧のネストレベル
 
         while let Some(ch) = chars.next() {
             // コメント処理
@@ -476,7 +477,17 @@ impl Highlighter for QiHelper {
                     result.push_str(&highlight_word(&current_word, &special_forms));
                     current_word.clear();
                 }
-                result.push(ch);
+
+                // 括弧の色付け（ネストレベルに応じて色を変える）
+                if ch == '(' || ch == '[' || ch == '{' {
+                    result.push_str(&colorize_paren(ch, paren_depth));
+                    paren_depth += 1;
+                } else if ch == ')' || ch == ']' || ch == '}' {
+                    paren_depth = paren_depth.saturating_sub(1);
+                    result.push_str(&colorize_paren(ch, paren_depth));
+                } else {
+                    result.push(ch);
+                }
             } else {
                 current_word.push(ch);
             }
@@ -521,6 +532,24 @@ fn highlight_word(word: &str, special_forms: &[&str]) -> String {
 
     // その他（通常表示）
     word.to_string()
+}
+
+/// 括弧を色付け（ネストレベルに応じて色を変える）
+fn colorize_paren(ch: char, depth: usize) -> String {
+    use colored::Colorize;
+
+    // 6色のレインボーカラー（レベルごとにローテーション）
+    let colors = [
+        |s: &str| s.bright_red().to_string(),
+        |s: &str| s.bright_green().to_string(),
+        |s: &str| s.bright_yellow().to_string(),
+        |s: &str| s.bright_blue().to_string(),
+        |s: &str| s.bright_magenta().to_string(),
+        |s: &str| s.bright_cyan().to_string(),
+    ];
+
+    let color_fn = colors[depth % colors.len()];
+    color_fn(&ch.to_string())
 }
 
 impl Hinter for QiHelper {
