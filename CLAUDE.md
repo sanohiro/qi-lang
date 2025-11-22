@@ -39,6 +39,42 @@
 - IDEの自動フォーマットと一致させるため、コミット前にフォーマットを適用する
 - 複数のRustファイルを変更した場合は、最後にまとめて実行してもよい
 
+#### CI/CDチェック（重要）
+
+**コミット前に必ず実行すること**
+
+GitHub ActionsのCIビルドと同じチェックをローカルで実行するスクリプトを用意しています：
+
+```bash
+./scripts/pre-commit-check.sh
+```
+
+このスクリプトは以下を実行します：
+1. `cargo fmt --check` - フォーマットチェック
+2. `cargo clippy --all-targets -- -D warnings` - 静的解析（全ターゲット）
+3. `cargo test` - テスト実行
+4. `cargo build --release` - リリースビルド
+
+**重要**: すべてのチェックが合格してからコミットすること。これによりCIビルドエラーを事前に防げます。
+
+手動で実行する場合：
+```bash
+# 1. フォーマット
+cargo fmt
+
+# 2. フォーマットチェック
+cargo fmt --check
+
+# 3. Clippy（全ターゲット、警告をエラーとして扱う）
+cargo clippy --all-targets -- -D warnings
+
+# 4. テスト
+cargo test
+
+# 5. リリースビルド
+cargo build --release
+```
+
 ### Lazy初期化 (LazyLock)
 
 グローバルな状態管理には`std::sync::LazyLock`を使用する。以下の場合に適用：
