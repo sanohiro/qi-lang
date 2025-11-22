@@ -90,7 +90,7 @@ fn json_to_value(json: serde_json::Value) -> Value {
             obj.into_iter()
                 .map(|(k, v)| {
                     (
-                        crate::value::MapKey::String(format!("\"{}\"", k)),
+                        crate::value::MapKey::String(k),
                         json_to_value(v),
                     )
                 })

@@ -335,6 +335,7 @@ pub enum MsgKey {
     ZipCreateDirFailed,       // {0}: failed to create directory '{1}': {2}
     ZipCreateParentDirFailed, // {0}: failed to create parent directory: {1}
     ZipExtractFailed,         // {0}: failed to extract: {1}
+    ZipUnsafePath,            // {0}: unsafe path detected (path traversal): {1}
     ZipCreateTempFailed,      // {0}: failed to create temporary file: {1}
     ZipRemoveOriginalFailed,  // {0}: failed to remove original: {1}
     ZipRenameTempFailed,      // {0}: failed to rename temporary file: {1}

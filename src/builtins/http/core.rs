@@ -1,4 +1,5 @@
 use super::*;
+use reqwest::Method;
 
 /// HTTPリクエストの実装（シンプル版：bodyの文字列のみ返す）
 pub(super) fn http_request(
@@ -330,6 +331,8 @@ pub(super) fn http_stream(
         "PUT" => client.put(url),
         "DELETE" => client.delete(url),
         "PATCH" => client.patch(url),
+        "HEAD" => client.head(url),
+        "OPTIONS" => client.request(Method::OPTIONS, url),
         _ => return Err(fmt_msg(MsgKey::HttpUnsupportedMethod, &[method])),
     };
 

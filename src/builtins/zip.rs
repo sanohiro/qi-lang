@@ -217,7 +217,15 @@ pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
             )
         })?;
 
-        let outpath = dest_dir.join(file.name());
+        // enclosed_name()を使用してパストラバーサル攻撃を防ぐ
+        let safe_path = file.enclosed_name().ok_or_else(|| {
+            fmt_msg(
+                MsgKey::ZipUnsafePath,
+                &["zip/extract", file.name()],
+            )
+        })?;
+
+        let outpath = dest_dir.join(safe_path);
 
         if file.is_dir() {
             fs::create_dir_all(&outpath).map_err(|e| {

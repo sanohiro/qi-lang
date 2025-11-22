@@ -574,6 +574,7 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             "{0}: failed to create parent directory: {1}",
         ),
         (ZipExtractFailed, "{0}: failed to extract: {1}"),
+        (ZipUnsafePath, "{0}: unsafe path detected (path traversal): {1}"),
         (
             ZipCreateTempFailed,
             "{0}: failed to create temporary file: {1}",

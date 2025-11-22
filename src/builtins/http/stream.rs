@@ -63,9 +63,11 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
         .to_map_key()
         .expect("body keyword should be valid");
 
+    // メソッドを取得（文字列またはキーワード）し、大文字に正規化
     let method = match config.get(&method_key) {
-        Some(Value::String(s)) => s.as_str(),
-        _ => "GET",
+        Some(Value::String(s)) => s.to_uppercase(),
+        Some(Value::Keyword(k)) => k.to_uppercase(),
+        _ => "GET".to_string(),
     };
 
     let url = match config.get(&url_key) {
@@ -77,5 +79,5 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream(method, &url, body, is_bytes)
+    core::http_stream(&method, &url, body, is_bytes)
 }

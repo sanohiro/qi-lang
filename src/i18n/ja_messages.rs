@@ -403,6 +403,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ZipCreateDirFailed, "{0}: ディレクトリ'{1}'の作成に失敗: {2}"),
         (ZipCreateParentDirFailed, "{0}: 親ディレクトリの作成に失敗: {1}"),
         (ZipExtractFailed, "{0}: 抽出に失敗: {1}"),
+        (ZipUnsafePath, "{0}: 危険なパスを検出（パストラバーサル攻撃）: {1}"),
         (ZipCreateTempFailed, "{0}: 一時ファイルの作成に失敗: {1}"),
         (ZipRemoveOriginalFailed, "{0}: 元のファイルの削除に失敗: {1}"),
         (ZipRenameTempFailed, "{0}: 一時ファイルのリネームに失敗: {1}"),
