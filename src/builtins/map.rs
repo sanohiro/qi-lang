@@ -66,6 +66,12 @@ fn assoc_in_helper(
     index: usize,
     value: &Value,
 ) -> Result<(), String> {
+    if index >= path.len() {
+        return Err(fmt_msg(
+            MsgKey::PathIndexOutOfBounds,
+            &["assoc-in", &index.to_string(), &path.len().to_string()],
+        ));
+    }
     let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {
@@ -127,6 +133,12 @@ fn dissoc_in_helper(
     path: &im::Vector<Value>,
     index: usize,
 ) -> Result<(), String> {
+    if index >= path.len() {
+        return Err(fmt_msg(
+            MsgKey::PathIndexOutOfBounds,
+            &["dissoc-in", &index.to_string(), &path.len().to_string()],
+        ));
+    }
     let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {

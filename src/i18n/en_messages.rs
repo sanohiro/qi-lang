@@ -205,6 +205,12 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FloatIsNanOrInfinity, "{0}: cannot convert NaN or Infinity to integer"),
         (CannotConvertToJson, "Cannot convert {0} to JSON"),
         (InvalidRegex, "{0}: invalid regex: {1}"),
+        (IndexOutOfBounds, "{0}: index {1} is out of bounds (length: {2})"),
+        (PathIndexOutOfBounds, "{0}: path index {1} is out of bounds (path length: {2})"),
+        (InvalidEnvVarName, "{0}: invalid environment variable name: {1}"),
+        (UnsignedIntTooLarge, "{0}: unsigned integer {1} exceeds {2}"),
+        (ValueTooLargeForI64, "{0}: value {1} is too large for i64"),
+        (IntegerTooLargeForUsize, "{0}: integer {1} is too large for usize"),
         // JWT エラー
         (NeedNArgs, "{0} requires {1} arguments"),
         (InvalidAlgorithm, "{0}: invalid algorithm '{1}' (supported: {2})"),

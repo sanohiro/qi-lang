@@ -461,6 +461,12 @@ fn update_in_helper(
     func: &Value,
     evaluator: &Evaluator,
 ) -> Result<(), String> {
+    if index >= path.len() {
+        return Err(fmt_msg(
+            MsgKey::PathIndexOutOfBounds,
+            &["update-in", &index.to_string(), &path.len().to_string()],
+        ));
+    }
     let key = path[index].to_map_key()?;
 
     if index == path.len() - 1 {

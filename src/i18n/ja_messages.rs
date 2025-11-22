@@ -235,6 +235,12 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FloatIsNanOrInfinity, "{0}: NaNまたは無限大を整数に変換できません"),
         (CannotConvertToJson, "{0}をJSONに変換できません"),
         (InvalidRegex, "{0}: 不正な正規表現: {1}"),
+        (IndexOutOfBounds, "{0}: インデックス{1}が範囲外です（長さ: {2}）"),
+        (PathIndexOutOfBounds, "{0}: パスインデックス{1}が範囲外です（パス長: {2}）"),
+        (InvalidEnvVarName, "{0}: 無効な環境変数名: {1}"),
+        (UnsignedIntTooLarge, "{0}: 符号なし整数{1}が{2}を超えています"),
+        (ValueTooLargeForI64, "{0}: 値{1}がi64に収まりません"),
+        (IntegerTooLargeForUsize, "{0}: 整数{1}がusizeに収まりません"),
         // JWT エラー
         (NeedNArgs, "{0}には{1}個の引数が必要です"),
         (InvalidAlgorithm, "{0}: 不正なアルゴリズム'{1}'（サポート: {2}）"),

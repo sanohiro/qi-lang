@@ -5,6 +5,32 @@ use crate::value::Value;
 use std::env;
 use std::fs;
 
+/// 保護された環境変数のリスト（上書きを警告）
+const PROTECTED_VARS: &[&str] = &[
+    "PATH",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "HOME",
+    "USER",
+    "SHELL",
+    "TMPDIR",
+];
+
+/// 環境変数名が有効かチェック（英数字とアンダースコアのみ、先頭は英字）
+fn is_valid_env_key(key: &str) -> bool {
+    key.chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// 保護された変数の上書きを警告
+fn warn_if_protected_var(key: &str) {
+    if PROTECTED_VARS.contains(&key) {
+        eprintln!("Warning: Overwriting protected system variable: {}", key);
+    }
+}
+
 /// get - 環境変数を取得
 /// 引数: (key [default]) - 環境変数名、オプションでデフォルト値
 /// 例: (env/get "PATH")
@@ -126,6 +152,17 @@ pub fn native_env_load_dotenv(args: &[Value]) -> Result<Value, String> {
             }
 
             if !key.is_empty() {
+                // キー名の検証（英数字とアンダースコアのみ、先頭は英字）
+                if !is_valid_env_key(key) {
+                    return Err(fmt_msg(
+                        MsgKey::InvalidEnvVarName,
+                        &["env/load-dotenv", key],
+                    ));
+                }
+
+                // 保護された変数の上書きを警告
+                warn_if_protected_var(key);
+
                 env::set_var(key, value);
                 loaded_count += 1;
             }

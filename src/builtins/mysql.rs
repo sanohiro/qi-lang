@@ -111,7 +111,11 @@ impl MysqlConnection {
                     if *u <= i64::MAX as u64 {
                         Value::Integer(*u as i64)
                     } else {
-                        Value::String(u.to_string())
+                        // i64の範囲を超える場合はエラー（明示的にFloat型を使用すべき）
+                        return Err(DbError::new(fmt_msg(
+                            MsgKey::UnsignedIntTooLarge,
+                            &["MySQL query", &u.to_string(), "i64::MAX"],
+                        )));
                     }
                 }
                 MySqlValue::Float(f) => Value::Float(*f as f64),

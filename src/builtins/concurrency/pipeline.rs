@@ -331,8 +331,17 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
     for _ in 0..items.len() {
         if let Ok(Value::Vector(vec)) = out_receiver.recv() {
             if vec.len() == 2 {
-                if let Value::Integer(idx) = vec[0] {
-                    results[idx as usize] = vec[1].clone();
+                if let Value::Integer(idx) = &vec[0] {
+                    let idx_usize = *idx as usize;
+                    if idx_usize < results.len() {
+                        results[idx_usize] = vec[1].clone();
+                    } else {
+                        eprintln!(
+                            "Warning: pipeline-map index {} out of bounds (length: {})",
+                            idx,
+                            results.len()
+                        );
+                    }
                 }
             }
         }

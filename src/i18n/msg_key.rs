@@ -132,22 +132,28 @@ pub enum MsgKey {
     TimeoutMustBeMs, // {0}: timeout must be an integer (milliseconds)
 
     // その他のエラー
-    UnsupportedNumberType,  // unsupported number type
-    RailwayRequiresOkError, // |>? requires {:ok/:error} map
-    InvalidTimestamp,       // invalid timestamp
-    InvalidDateFormat,      // invalid date format
-    InvalidPercentile,      // invalid percentile (must be 0-100)
-    SystemTimeError,        // {0}: system time error: {1}
-    JsonParseError,         // {0}: {1}
-    JsonStringifyError2,    // {0}: {1}
-    CannotParseAsInt,       // {0}: cannot parse '{1}' as integer
-    CannotConvertToInt,     // {0}: cannot convert {1} to integer
-    CannotParseAsFloat,     // {0}: cannot parse '{1}' as float
-    CannotConvertToFloat,   // {0}: cannot convert {1} to float
-    FloatOutOfI64Range,     // {0}: float value {1} is out of i64 range
-    FloatIsNanOrInfinity,   // {0}: cannot convert NaN or Infinity to integer
-    CannotConvertToJson,    // Cannot convert {0} to JSON
-    InvalidRegex,           // {0}: invalid regex: {1}
+    UnsupportedNumberType,   // unsupported number type
+    RailwayRequiresOkError,  // |>? requires {:ok/:error} map
+    InvalidTimestamp,        // invalid timestamp
+    InvalidDateFormat,       // invalid date format
+    InvalidPercentile,       // invalid percentile (must be 0-100)
+    SystemTimeError,         // {0}: system time error: {1}
+    JsonParseError,          // {0}: {1}
+    JsonStringifyError2,     // {0}: {1}
+    CannotParseAsInt,        // {0}: cannot parse '{1}' as integer
+    CannotConvertToInt,      // {0}: cannot convert {1} to integer
+    CannotParseAsFloat,      // {0}: cannot parse '{1}' as float
+    CannotConvertToFloat,    // {0}: cannot convert {1} to float
+    FloatOutOfI64Range,      // {0}: float value {1} is out of i64 range
+    FloatIsNanOrInfinity,    // {0}: cannot convert NaN or Infinity to integer
+    CannotConvertToJson,     // Cannot convert {0} to JSON
+    InvalidRegex,            // {0}: invalid regex: {1}
+    IndexOutOfBounds,        // {0}: index {1} is out of bounds (length: {2})
+    PathIndexOutOfBounds,    // {0}: path index {1} is out of bounds (path length: {2})
+    InvalidEnvVarName,       // {0}: invalid environment variable name: {1}
+    UnsignedIntTooLarge,     // {0}: unsigned integer {1} exceeds {2}
+    ValueTooLargeForI64,     // {0}: value {1} is too large for i64
+    IntegerTooLargeForUsize, // {0}: integer {1} is too large for usize
 
     // JWT エラー
     NeedNArgs,        // {0} requires {1} arguments
