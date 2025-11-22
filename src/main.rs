@@ -225,6 +225,122 @@ fn try_display_as_table(_value: &Value) -> Option<String> {
     None
 }
 
+/// Pretty Print: 大きなデータ構造を見やすくフォーマット
+#[cfg(feature = "repl")]
+fn pretty_print_value(value: &Value, indent: usize, max_inline: usize) -> String {
+    use colored::Colorize;
+
+    match value {
+        Value::Vector(vec) => {
+            if vec.is_empty() {
+                return "[]".to_string();
+            }
+
+            // 小さいVectorはインライン表示
+            if vec.len() <= max_inline && vec.iter().all(|v| is_simple_value(v)) {
+                let items: Vec<String> = vec.iter().map(|v| v.to_string()).collect();
+                return format!("[{}]", items.join(" "));
+            }
+
+            // 大きいVectorは複数行表示
+            let indent_str = " ".repeat(indent);
+            let mut result = "[\n".to_string();
+            for (i, item) in vec.iter().enumerate() {
+                result.push_str(&format!(
+                    "{}  {}",
+                    indent_str,
+                    pretty_print_value(item, indent + 2, max_inline)
+                ));
+                if i < vec.len() - 1 {
+                    result.push('\n');
+                }
+            }
+            result.push_str(&format!("\n{}]", indent_str));
+            result
+        }
+
+        Value::List(lst) => {
+            let vec: Vec<Value> = lst.iter().cloned().collect();
+            if vec.is_empty() {
+                return "()".to_string();
+            }
+
+            // 小さいListはインライン表示
+            if vec.len() <= max_inline && vec.iter().all(|v| is_simple_value(v)) {
+                let items: Vec<String> = vec.iter().map(|v| v.to_string()).collect();
+                return format!("({})", items.join(" "));
+            }
+
+            // 大きいListは複数行表示
+            let indent_str = " ".repeat(indent);
+            let mut result = "(\n".to_string();
+            for (i, item) in vec.iter().enumerate() {
+                result.push_str(&format!(
+                    "{}  {}",
+                    indent_str,
+                    pretty_print_value(item, indent + 2, max_inline)
+                ));
+                if i < vec.len() - 1 {
+                    result.push('\n');
+                }
+            }
+            result.push_str(&format!("\n{})", indent_str));
+            result
+        }
+
+        Value::Map(map) => {
+            if map.is_empty() {
+                return "{}".to_string();
+            }
+
+            // 小さいMapはインライン表示
+            if map.len() <= 3 {
+                let items: Vec<String> = map.iter().map(|(k, v)| format!("{} {}", k, v)).collect();
+                return format!("{{{}}}", items.join(", "));
+            }
+
+            // 大きいMapは複数行表示
+            let indent_str = " ".repeat(indent);
+            let mut result = "{\n".to_string();
+            let mut sorted_keys: Vec<_> = map.keys().collect();
+            sorted_keys.sort();
+
+            for (i, key) in sorted_keys.iter().enumerate() {
+                if let Some(val) = map.get(key) {
+                    result.push_str(&format!(
+                        "{}  {} {}",
+                        indent_str,
+                        key.to_string().cyan(),
+                        pretty_print_value(val, indent + 2, max_inline)
+                    ));
+                    if i < sorted_keys.len() - 1 {
+                        result.push('\n');
+                    }
+                }
+            }
+            result.push_str(&format!("\n{}}}", indent_str));
+            result
+        }
+
+        _ => value.to_string(),
+    }
+}
+
+/// Pretty Print用のヘルパー: シンプルな値かどうか判定
+#[cfg(feature = "repl")]
+fn is_simple_value(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::Integer(_) | Value::Float(_) | Value::Bool(_) | Value::Nil | Value::Symbol(_)
+    )
+}
+
+/// Pretty Print（REPLなし）
+#[cfg(not(feature = "repl"))]
+fn pretty_print_value(value: &Value, _indent: usize, _max_inline: usize) -> String {
+    value.to_string()
+}
+
 /// タブ補完のためのヘルパー
 struct QiHelper {
     completions: HashSet<String>,
@@ -984,6 +1100,11 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
                             Ok(value) => {
                                 // ワンライナーの場合、最後の結果を表示
                                 if print_result && i == exprs.len() - 1 {
+                                    #[cfg(feature = "repl")]
+                                    {
+                                        println!("{}", pretty_print_value(&value, 0, 10));
+                                    }
+                                    #[cfg(not(feature = "repl"))]
                                     println!("{}", value);
                                 }
                             }
@@ -1188,6 +1309,22 @@ fn repl(preload: Option<&str>, quiet: bool) {
                                         println!("{} =>", result_label.green().bold());
                                         println!("{}", table);
                                     } else {
+                                        // Pretty Print（大きなデータは複数行表示）
+                                        #[cfg(feature = "repl")]
+                                        {
+                                            let formatted = pretty_print_value(&value, 0, 10);
+                                            if formatted.contains('\n') {
+                                                println!("{} =>", result_label.green().bold());
+                                                println!("{}", formatted);
+                                            } else {
+                                                println!(
+                                                    "{} => {}",
+                                                    result_label.green().bold(),
+                                                    formatted
+                                                );
+                                            }
+                                        }
+                                        #[cfg(not(feature = "repl"))]
                                         println!("{} => {}", result_label.green().bold(), value);
                                     }
 
