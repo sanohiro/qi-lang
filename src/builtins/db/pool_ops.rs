@@ -127,6 +127,20 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
         }
     }
 
+    // 接続がアクティブなトランザクションに参加していないか確認（CRITICAL）
+    // トランザクション中の接続をプールに戻すと、同じ接続が複数のスレッドで共有される
+    {
+        let tx_pools = TRANSACTION_POOLS.lock();
+        for (tx_id, (_, tx_conn_id)) in tx_pools.iter() {
+            if tx_conn_id == &conn_id {
+                return Err(format!(
+                    "Connection {} has an active transaction {}. Commit or rollback before returning to pool.",
+                    conn_id, tx_id
+                ));
+            }
+        }
+    }
+
     // プールをクローンしてからミューテックスを解放
     let pool = {
         let pools = POOLS.lock();
