@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2025-01-23
+
+### Fixed
+
+#### Critical Database Pool Bugs (5 race conditions)
+- **DbPool::acquire()**: Fixed race condition where multiple threads could exceed max_connections
+  - Reserve slot by incrementing in_use before creating connection
+  - Decrement in_use on connection creation failure
+- **DbPool::release()**: Fixed race condition causing count inconsistency
+  - Decrement in_use before adding to available pool (preserves invariant)
+- **DbPool::close()**: Fixed error handling that left pool in inconsistent state
+  - Collect all errors, reset in_use even on failure
+- **DbPool::stats()**: Fixed inconsistent snapshot (read available and in_use separately)
+  - Hold both locks simultaneously for consistent snapshot
+- **native_pool_stats()**: Minimized lock hold time
+  - Clone pool before releasing POOLS lock (consistent with other pool operations)
+
+#### Database Bugs from Codex Analysis (9 issues)
+- **Transaction management**: Fixed commit/rollback removing tx from map before operation completes
+- **Metadata functions**: Fixed holding mutex during driver calls (deadlock risk)
+- **PostgreSQL/MySQL**: Fixed ignoring transaction isolation level options
+  - PostgreSQL: Use `BEGIN TRANSACTION ISOLATION LEVEL ...` single command
+  - MySQL: Use `SET TRANSACTION ISOLATION LEVEL ...; START TRANSACTION`
+- **ConnectionOptions/QueryOptions**: Fixed ignoring keyword keys (only checked string keys)
+- **db/pool-acquire**: Fixed deadlock (holding POOLS mutex during pool.acquire())
+- **db/pool-release**: Fixed accepting connections during active transaction
+- **db/pool-close**: Fixed not checking for checked-out connections
+- **kvs/mset**: Fixed MapKey conversion bug (to_string() returns debug format)
+- **db/call**: Added transaction support for stored procedures
+
 ## [0.1.10] - 2025-01-22
 
 ### Added
