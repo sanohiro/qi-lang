@@ -354,6 +354,8 @@ pub enum MsgKey {
     DbPoolNotFound,                    // Pool not found: {0}
     DbInvalidPoolSize,                 // {0}: invalid pool size, expected {1}
     DbPooledConnectionCannotClose, // Connection {0} is from a pool. Use db/pool-release instead of db/close.
+    DbInvalidTimeout, // Invalid timeout value: {0} (must be non-negative)
+    DbInvalidLimit,   // Invalid limit value: {0} (must be non-negative)
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs, // {0}: failed to decode as {1} (invalid byte sequence)

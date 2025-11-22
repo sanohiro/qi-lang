@@ -108,6 +108,28 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
     let pool_id = extract_pool_id(&args[0])?;
     let conn_id = extract_conn_id(&args[1])?;
 
+    // 接続が指定されたプールから取得されたものか確認
+    {
+        let pooled_conns = POOLED_CONNECTIONS.lock();
+        match pooled_conns.get(&conn_id) {
+            Some(actual_pool_id) if actual_pool_id == &pool_id => {
+                // OK: 正しいプールに返却しようとしている
+            }
+            Some(actual_pool_id) => {
+                return Err(format!(
+                    "Connection {} belongs to pool {}, not {}",
+                    conn_id, actual_pool_id, pool_id
+                ));
+            }
+            None => {
+                return Err(format!(
+                    "Connection {} is not a pooled connection",
+                    conn_id
+                ));
+            }
+        }
+    }
+
     // プールをクローンしてからミューテックスを解放
     let pool = {
         let pools = POOLS.lock();

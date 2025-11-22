@@ -611,6 +611,14 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             DbPooledConnectionCannotClose,
             "Connection {0} is from a pool. Use db/pool-release instead of db/close.",
         ),
+        (
+            DbInvalidTimeout,
+            "Invalid timeout value: {0} (must be non-negative)",
+        ),
+        (
+            DbInvalidLimit,
+            "Invalid limit value: {0} (must be non-negative)",
+        ),
         // I/Oエラー（追加）
         (
             IoFailedToDecodeAs,

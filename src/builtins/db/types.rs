@@ -82,6 +82,12 @@ impl ConnectionOptions {
         if let Value::Map(map) = opts {
             // timeout - キーワード、シンボル、文字列すべて試す
             if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
+                if *ms < 0 {
+                    return Err(DbError::new(fmt_msg(
+                        MsgKey::DbInvalidTimeout,
+                        &[&ms.to_string()],
+                    )));
+                }
                 options.timeout_ms = Some(*ms as u64);
             }
             // read-only - キーワード、シンボル、文字列すべて試す
@@ -124,14 +130,27 @@ impl QueryOptions {
         if let Value::Map(map) = opts {
             // timeout - キーワード、シンボル、文字列すべて試す
             if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
+                if *ms < 0 {
+                    return Err(DbError::new(fmt_msg(
+                        MsgKey::DbInvalidTimeout,
+                        &[&ms.to_string()],
+                    )));
+                }
                 options.timeout_ms = Some(*ms as u64);
             }
             // limit - キーワード、シンボル、文字列すべて試す
             if let Some(Value::Integer(n)) = get_map_value(map, "limit") {
+                if *n < 0 {
+                    return Err(DbError::new(fmt_msg(
+                        MsgKey::DbInvalidLimit,
+                        &[&n.to_string()],
+                    )));
+                }
                 options.limit = Some(*n);
             }
             // offset - キーワード、シンボル、文字列すべて試す
             if let Some(Value::Integer(n)) = get_map_value(map, "offset") {
+                // offsetは負の値も許可（末尾からの指定として解釈される場合がある）
                 options.offset = Some(*n);
             }
         }
@@ -246,6 +265,12 @@ impl TransactionOptions {
             }
             // timeout - キーワード、シンボル、文字列すべて試す
             if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
+                if *ms < 0 {
+                    return Err(DbError::new(fmt_msg(
+                        MsgKey::DbInvalidTimeout,
+                        &[&ms.to_string()],
+                    )));
+                }
                 options.timeout_ms = Some(*ms as u64);
             }
         }
