@@ -61,6 +61,13 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
         Value::Map(m) => {
             let mut map = HashMap::new();
             for (k, v) in m.iter() {
+                // MapKeyから実際の文字列を抽出（to_string()はデバッグ形式になるため使わない）
+                let key_str = match k {
+                    crate::value::MapKey::Keyword(kw) => kw.to_string(),
+                    crate::value::MapKey::String(s) => s.clone(),
+                    crate::value::MapKey::Symbol(sym) => sym.to_string(),
+                    crate::value::MapKey::Integer(i) => i.to_string(),
+                };
                 let value_str = match v {
                     Value::String(s) => s.clone(),
                     Value::Integer(i) => i.to_string(),
@@ -73,7 +80,7 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
                         ))
                     }
                 };
-                map.insert(k.to_string(), value_str);
+                map.insert(key_str, value_str);
             }
             map
         }
