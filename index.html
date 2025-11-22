@@ -2548,15 +2548,36 @@
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>qi<span class="w"> </span>template<span class="w"> </span>info<span class="w"> </span>http-server
 </span></code></pre></div>
 <h3 id="repl-interactive-environment">REPL (Interactive Environment)<a class="headerlink" href="#repl-interactive-environment" title="Permanent link">&para;</a></h3>
+<p>The Qi REPL provides a powerful interactive development environment with advanced features:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>qi
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Inside REPL</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Inside REPL - with syntax highlighting and result labels</span>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="o">)</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="m">6</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nv">$1</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="m">6</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>qi:2&gt;<span class="w"> </span><span class="o">([</span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="p">|</span>&gt;<span class="w"> </span><span class="o">(</span>map<span class="w"> </span><span class="o">(</span>fn<span class="w"> </span><span class="o">[</span>x<span class="o">]</span><span class="w"> </span><span class="o">(</span>*<span class="w"> </span>x<span class="w"> </span><span class="m">2</span><span class="o">))))</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>Vector<span class="o">([</span>Integer<span class="o">(</span><span class="m">2</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">4</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">6</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">8</span><span class="o">)</span>,<span class="w"> </span>Integer<span class="o">(</span><span class="m">10</span><span class="o">)])</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="nv">$2</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="o">[</span><span class="m">2</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">6</span><span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="m">10</span><span class="o">]</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1"># Reference previous results</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>qi:3&gt;<span class="w"> </span><span class="o">(</span>+<span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="nv">$2</span><span class="o">)</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="nv">$3</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="m">36</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1"># Auto-display execution time for slow operations</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>qi:4&gt;<span class="w"> </span><span class="o">(</span>range<span class="w"> </span><span class="m">1000000</span><span class="w"> </span><span class="p">|</span>&gt;<span class="w"> </span><span class="o">(</span>reduce<span class="w"> </span>+<span class="w"> </span><span class="m">0</span><span class="o">))</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="nv">$4</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="m">499999500000</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="o">(</span>125ms<span class="o">)</span>
 </span></code></pre></div>
+<p><strong>REPL Features:</strong>
+- 🎨 <strong>Syntax highlighting</strong> - Color-coded keywords, operators, strings, numbers, and comments
+- 📝 <strong>Tab completion</strong> - Functions, variables, REPL commands, special forms, and pipe operators
+- 📚 <strong>Enhanced documentation</strong> - <code>:doc</code> shows parameters, return values, examples, and related functions
+- 🔄 <strong>Hot reload</strong> - <code>:watch</code> monitors files and auto-reloads on changes
+- ⚡ <strong>Macros</strong> - Define shortcuts for frequently used commands
+- 📊 <strong>Profiling</strong> - Measure and analyze code performance
+- 🧵 <strong>Concurrency debugging</strong> - Inspect thread pools and channels
+- 📋 <strong>Result history</strong> - Access previous results with <code>$1</code>, <code>$2</code>, etc.
+- 📊 <strong>Auto table display</strong> - Vector of maps automatically rendered as tables
+- ⏱️ <strong>Execution timing</strong> - Shows evaluation time for operations</p>
 <h3 id="other-commands">Other Commands<a class="headerlink" href="#other-commands" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Execute script file</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>qi<span class="w"> </span>script.qi

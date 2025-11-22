@@ -2239,9 +2239,10 @@
 <p><strong>Examples:</strong>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>qi
 </span></code></pre></div></p>
-<p><strong>REPL Commands:</strong>
+<p><strong>REPL Commands:</strong></p>
+<p><strong>Basic Commands:</strong>
 - <code>:help</code> - Display help
-- <code>:doc &lt;name&gt;</code> - Display function documentation
+- <code>:doc &lt;name&gt;</code> - Display function documentation (with colors, return values, related functions, and suggestions)
 - <code>:vars</code> - Display defined variables
 - <code>:funcs</code> - Display defined functions
 - <code>:builtins [filter]</code> - Display built-in functions (filterable)
@@ -2249,10 +2250,31 @@
 - <code>:load &lt;file&gt;</code> - Load a file
 - <code>:reload</code> - Reload the last loaded file
 - <code>:quit</code> - Exit REPL</p>
+<p><strong>Hot Reload (File Watching):</strong>
+- <code>:watch &lt;file&gt;</code> - Watch a file and auto-reload on changes
+- <code>:unwatch [file]</code> - Stop watching file(s) (no args to stop all)</p>
+<p><strong>Macros (Automate Frequent Operations):</strong>
+- <code>:macro</code> - List all macros
+- <code>:macro define &lt;name&gt; &lt;command&gt;</code> - Define a macro (saved to <code>~/.qi/macros</code>)
+- <code>:macro list</code> - List all macros
+- <code>:macro delete &lt;name&gt;</code> - Delete a macro
+- <code>:m &lt;name&gt;</code> - Execute a macro (shortcut)</p>
+<p><strong>Profiling:</strong>
+- <code>:profile start</code> - Start profiling
+- <code>:profile stop</code> - Stop profiling
+- <code>:profile report</code> - Display statistics (total, average, max, min time, slowest evaluations)
+- <code>:profile clear</code> - Clear profiling data</p>
+<p><strong>Concurrency Debugging:</strong>
+- <code>:threads</code> - Display Rayon thread pool info and active channel status</p>
 <p><strong>Features:</strong>
-- Tab completion (function names, variable names, REPL commands)
-- History (saved in <code>~/.qi_history</code>)
+- Tab completion (functions, variables, REPL commands, special forms, pipe operators)
+- Syntax highlighting (special forms, operators, strings, numbers, comments color-coded)
+- History (persisted in <code>~/.qi/history</code>)
 - Multi-line input (automatic parenthesis balance detection)
+- Result labels (<code>$1</code>, <code>$2</code> to reference previous results)
+- Auto execution timing (milliseconds/microseconds)
+- Auto table display (detects <code>Vector&lt;Map&gt;</code>)
+- Colored error messages
 - Ctrl+C to cancel input
 - Ctrl+D or <code>:quit</code> to exit</p>
 <hr />
@@ -2389,13 +2411,58 @@
 </span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
 </span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># Test functions in REPL</span>
 </span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>qi:1&gt;<span class="w"> </span><span class="o">(</span>greet<span class="w"> </span><span class="s2">&quot;World&quot;</span><span class="o">)</span>
-</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>Hello,<span class="w"> </span>World!
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="nv">$1</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span>Hello,<span class="w"> </span>World!
 </span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>
-</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="c1"># Check documentation</span>
-</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>qi:2&gt;<span class="w"> </span>:doc<span class="w"> </span>map
-</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>
-</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a><span class="c1"># Search built-in functions</span>
-</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>qi:3&gt;<span class="w"> </span>:builtins<span class="w"> </span>str
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="c1"># Reference previous results</span>
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>qi:2&gt;<span class="w"> </span><span class="nv">$1</span>
+</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="nv">$2</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span>Hello,<span class="w"> </span>World!
+</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
+</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a><span class="c1"># Check documentation (with colors, return values, and related functions)</span>
+</span><span id="__span-21-13"><a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>qi:3&gt;<span class="w"> </span>:doc<span class="w"> </span>map
+</span><span id="__span-21-14"><a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+</span><span id="__span-21-15"><a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a><span class="c1"># Search built-in functions</span>
+</span><span id="__span-21-16"><a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>qi:4&gt;<span class="w"> </span>:builtins<span class="w"> </span>str
+</span><span id="__span-21-17"><a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>
+</span><span id="__span-21-18"><a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a><span class="c1"># Hot reload files during development</span>
+</span><span id="__span-21-19"><a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>qi:5&gt;<span class="w"> </span>:watch<span class="w"> </span>src/lib.qi
+</span><span id="__span-21-20"><a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>Watching:<span class="w"> </span>src/lib.qi
+</span><span id="__span-21-21"><a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a><span class="c1"># =&gt; File automatically reloads when edited</span>
+</span><span id="__span-21-22"><a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>
+</span><span id="__span-21-23"><a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a><span class="c1"># Create macros for frequently used commands</span>
+</span><span id="__span-21-24"><a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>qi:6&gt;<span class="w"> </span>:macro<span class="w"> </span>define<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="o">(</span>run-tests<span class="o">)</span>
+</span><span id="__span-21-25"><a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>Macro<span class="w"> </span><span class="s1">&#39;test&#39;</span><span class="w"> </span>defined:<span class="w"> </span><span class="o">(</span>run-tests<span class="o">)</span>
+</span><span id="__span-21-26"><a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>
+</span><span id="__span-21-27"><a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>qi:7&gt;<span class="w"> </span>:m<span class="w"> </span><span class="nb">test</span>
+</span><span id="__span-21-28"><a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a><span class="o">[</span>Running<span class="w"> </span>macro<span class="w"> </span><span class="s1">&#39;test&#39;</span>:<span class="w"> </span><span class="o">(</span>run-tests<span class="o">)]</span>
+</span><span id="__span-21-29"><a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>
+</span><span id="__span-21-30"><a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a><span class="c1"># Profile performance</span>
+</span><span id="__span-21-31"><a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>qi:8&gt;<span class="w"> </span>:profile<span class="w"> </span>start
+</span><span id="__span-21-32"><a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>Profiling<span class="w"> </span>started
+</span><span id="__span-21-33"><a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a>
+</span><span id="__span-21-34"><a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a>qi:9&gt;<span class="w"> </span><span class="o">(</span>heavy-computation<span class="w"> </span><span class="m">1000</span><span class="o">)</span>
+</span><span id="__span-21-35"><a id="__codelineno-21-35" name="__codelineno-21-35" href="#__codelineno-21-35"></a><span class="nv">$3</span><span class="w"> </span><span class="o">=</span>&gt;<span class="w"> </span><span class="m">42</span>
+</span><span id="__span-21-36"><a id="__codelineno-21-36" name="__codelineno-21-36" href="#__codelineno-21-36"></a><span class="o">(</span>15ms<span class="o">)</span>
+</span><span id="__span-21-37"><a id="__codelineno-21-37" name="__codelineno-21-37" href="#__codelineno-21-37"></a>
+</span><span id="__span-21-38"><a id="__codelineno-21-38" name="__codelineno-21-38" href="#__codelineno-21-38"></a>qi:10&gt;<span class="w"> </span>:profile<span class="w"> </span>report
+</span><span id="__span-21-39"><a id="__codelineno-21-39" name="__codelineno-21-39" href="#__codelineno-21-39"></a>Profiling<span class="w"> </span>Report:
+</span><span id="__span-21-40"><a id="__codelineno-21-40" name="__codelineno-21-40" href="#__codelineno-21-40"></a><span class="w">  </span>Total<span class="w"> </span>evaluations:<span class="w"> </span><span class="m">5</span>
+</span><span id="__span-21-41"><a id="__codelineno-21-41" name="__codelineno-21-41" href="#__codelineno-21-41"></a><span class="w">  </span>Total<span class="w"> </span>time:<span class="w"> </span>23ms
+</span><span id="__span-21-42"><a id="__codelineno-21-42" name="__codelineno-21-42" href="#__codelineno-21-42"></a><span class="w">  </span>Average<span class="w"> </span>time:<span class="w"> </span><span class="m">4</span>.6ms
+</span><span id="__span-21-43"><a id="__codelineno-21-43" name="__codelineno-21-43" href="#__codelineno-21-43"></a><span class="w">  </span>Min<span class="w"> </span>time:<span class="w"> </span>100µs
+</span><span id="__span-21-44"><a id="__codelineno-21-44" name="__codelineno-21-44" href="#__codelineno-21-44"></a><span class="w">  </span>Max<span class="w"> </span>time:<span class="w"> </span>15ms
+</span><span id="__span-21-45"><a id="__codelineno-21-45" name="__codelineno-21-45" href="#__codelineno-21-45"></a>
+</span><span id="__span-21-46"><a id="__codelineno-21-46" name="__codelineno-21-46" href="#__codelineno-21-46"></a>Slowest<span class="w"> </span>evaluations:
+</span><span id="__span-21-47"><a id="__codelineno-21-47" name="__codelineno-21-47" href="#__codelineno-21-47"></a><span class="w">  </span><span class="m">1</span>.<span class="w"> </span>Line<span class="w"> </span><span class="m">9</span><span class="w"> </span>-<span class="w"> </span>15ms
+</span><span id="__span-21-48"><a id="__codelineno-21-48" name="__codelineno-21-48" href="#__codelineno-21-48"></a><span class="w">  </span><span class="m">2</span>.<span class="w"> </span>Line<span class="w"> </span><span class="m">8</span><span class="w"> </span>-<span class="w"> </span>5ms
+</span><span id="__span-21-49"><a id="__codelineno-21-49" name="__codelineno-21-49" href="#__codelineno-21-49"></a><span class="w">  </span>...
+</span><span id="__span-21-50"><a id="__codelineno-21-50" name="__codelineno-21-50" href="#__codelineno-21-50"></a>
+</span><span id="__span-21-51"><a id="__codelineno-21-51" name="__codelineno-21-51" href="#__codelineno-21-51"></a><span class="c1"># Debug concurrency</span>
+</span><span id="__span-21-52"><a id="__codelineno-21-52" name="__codelineno-21-52" href="#__codelineno-21-52"></a>qi:11&gt;<span class="w"> </span>:threads
+</span><span id="__span-21-53"><a id="__codelineno-21-53" name="__codelineno-21-53" href="#__codelineno-21-53"></a>Rayon<span class="w"> </span>Thread<span class="w"> </span>Pool:
+</span><span id="__span-21-54"><a id="__codelineno-21-54" name="__codelineno-21-54" href="#__codelineno-21-54"></a><span class="w">  </span>Available<span class="w"> </span>parallelism:<span class="w"> </span><span class="m">8</span>
+</span><span id="__span-21-55"><a id="__codelineno-21-55" name="__codelineno-21-55" href="#__codelineno-21-55"></a>
+</span><span id="__span-21-56"><a id="__codelineno-21-56" name="__codelineno-21-56" href="#__codelineno-21-56"></a>Active<span class="w"> </span>Channels:
+</span><span id="__span-21-57"><a id="__codelineno-21-57" name="__codelineno-21-57" href="#__codelineno-21-57"></a><span class="w">  </span>ch<span class="w"> </span>-<span class="w"> </span>len:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span>is_empty:<span class="w"> </span><span class="nb">true</span>
 </span></code></pre></div>
 <hr />
 <h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
