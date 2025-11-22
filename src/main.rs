@@ -457,11 +457,7 @@ impl Highlighter for QiHelper {
             }
 
             if in_string {
-                if ch == '\\' && !escape_next {
-                    escape_next = true;
-                } else {
-                    escape_next = false;
-                }
+                escape_next = ch == '\\' && !escape_next;
                 result.push_str(&format!("{}", ch.to_string().yellow()));
                 continue;
             }
@@ -938,20 +934,20 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
                                 }
                             }
                             Err(e) => {
-                                print_error(&ui_msg(UiMsg::ErrorRuntime), &e);
+                                print_error(ui_msg(UiMsg::ErrorRuntime), &e);
                                 std::process::exit(1);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    print_error(&ui_msg(UiMsg::ErrorParse), &e);
+                    print_error(ui_msg(UiMsg::ErrorParse), &e);
                     std::process::exit(1);
                 }
             }
         }
         Err(e) => {
-            print_error(&ui_msg(UiMsg::ErrorLexer), &e);
+            print_error(ui_msg(UiMsg::ErrorLexer), &e);
             std::process::exit(1);
         }
     }
@@ -1146,12 +1142,12 @@ fn repl(preload: Option<&str>, quiet: bool) {
                                         h.update_completions(&evaluator);
                                     }
                                 }
-                                Err(e) => print_error(&ui_msg(UiMsg::ErrorRuntime), &e),
+                                Err(e) => print_error(ui_msg(UiMsg::ErrorRuntime), &e),
                             }
                         }
-                        Err(e) => print_error(&ui_msg(UiMsg::ErrorParse), &e),
+                        Err(e) => print_error(ui_msg(UiMsg::ErrorParse), &e),
                     },
-                    Err(e) => print_error(&ui_msg(UiMsg::ErrorLexer), &e),
+                    Err(e) => print_error(ui_msg(UiMsg::ErrorLexer), &e),
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -1807,7 +1803,7 @@ fn handle_repl_command(
                     // ここでは単純に表示のみ（実行は別途実装が必要）
                     println!(
                         "{}",
-                        format!("Note: Macro execution not yet implemented",).yellow()
+                        "Note: Macro execution not yet implemented".to_string().yellow()
                     );
                 } else {
                     eprintln!("{}", format!("Macro '{}' not found", macro_name).red());
@@ -1940,18 +1936,18 @@ fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
                         match evaluator.eval(expr) {
                             Ok(_) => {}
                             Err(e) => {
-                                print_error(&ui_msg(UiMsg::ErrorRuntime), &e);
+                                print_error(ui_msg(UiMsg::ErrorRuntime), &e);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    print_error(&ui_msg(UiMsg::ErrorParse), &e);
+                    print_error(ui_msg(UiMsg::ErrorParse), &e);
                 }
             }
         }
         Err(e) => {
-            print_error(&ui_msg(UiMsg::ErrorLexer), &e);
+            print_error(ui_msg(UiMsg::ErrorLexer), &e);
         }
     }
 }
