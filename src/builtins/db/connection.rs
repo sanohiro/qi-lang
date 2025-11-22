@@ -98,6 +98,14 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
 
     let conn_id = extract_conn_id(&args[0])?;
 
+    // プール接続かどうかをチェック
+    {
+        let pooled_conns = POOLED_CONNECTIONS.lock();
+        if pooled_conns.contains_key(&conn_id) {
+            return Err(fmt_msg(MsgKey::DbPooledConnectionCannotClose, &[&conn_id]));
+        }
+    }
+
     let mut connections = CONNECTIONS.lock();
     let conn = connections
         .remove(&conn_id)

@@ -88,12 +88,7 @@ fn json_to_value(json: serde_json::Value) -> Value {
         }
         serde_json::Value::Object(obj) => Value::Map(
             obj.into_iter()
-                .map(|(k, v)| {
-                    (
-                        crate::value::MapKey::String(k),
-                        json_to_value(v),
-                    )
-                })
+                .map(|(k, v)| (crate::value::MapKey::String(k), json_to_value(v)))
                 .collect(),
         ),
     }

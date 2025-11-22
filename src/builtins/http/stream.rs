@@ -31,7 +31,16 @@ pub fn native_post_stream(args: &[Value]) -> Result<Value, String> {
 
     let is_bytes = args.len() >= 3 && matches!(&args[2], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream("POST", &url, Some(&args[1]), None, None, None, None, is_bytes)
+    core::http_stream(
+        "POST",
+        &url,
+        Some(&args[1]),
+        None,
+        None,
+        None,
+        None,
+        is_bytes,
+    )
 }
 
 /// HTTP Request（ストリーミング版）- 詳細な設定でストリーミング受信
@@ -122,5 +131,14 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
 
     let is_bytes = args.len() >= 2 && matches!(&args[1], Value::Keyword(k) if &**k == "bytes");
 
-    core::http_stream(&method, &url, body, headers, timeout_ms, basic_auth, bearer_token, is_bytes)
+    core::http_stream(
+        &method,
+        &url,
+        body,
+        headers,
+        timeout_ms,
+        basic_auth,
+        bearer_token,
+        is_bytes,
+    )
 }

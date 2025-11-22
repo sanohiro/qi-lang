@@ -81,22 +81,16 @@ impl ConnectionOptions {
 
         if let Value::Map(map) = opts {
             // timeout - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "timeout") {
-                if let Value::Integer(ms) = v {
-                    options.timeout_ms = Some(*ms as u64);
-                }
+            if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
+                options.timeout_ms = Some(*ms as u64);
             }
             // read-only - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "read-only") {
-                if let Value::Bool(ro) = v {
-                    options.read_only = *ro;
-                }
+            if let Some(Value::Bool(ro)) = get_map_value(map, "read-only") {
+                options.read_only = *ro;
             }
             // auto-commit - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "auto-commit") {
-                if let Value::Bool(ac) = v {
-                    options.auto_commit = *ac;
-                }
+            if let Some(Value::Bool(ac)) = get_map_value(map, "auto-commit") {
+                options.auto_commit = *ac;
             }
         }
 
@@ -129,22 +123,16 @@ impl QueryOptions {
 
         if let Value::Map(map) = opts {
             // timeout - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "timeout") {
-                if let Value::Integer(ms) = v {
-                    options.timeout_ms = Some(*ms as u64);
-                }
+            if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
+                options.timeout_ms = Some(*ms as u64);
             }
             // limit - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "limit") {
-                if let Value::Integer(n) = v {
-                    options.limit = Some(*n);
-                }
+            if let Some(Value::Integer(n)) = get_map_value(map, "limit") {
+                options.limit = Some(*n);
             }
             // offset - キーワード、シンボル、文字列すべて試す
-            if let Some(v) = get_map_value(map, "offset") {
-                if let Value::Integer(n) = v {
-                    options.offset = Some(*n);
-                }
+            if let Some(Value::Integer(n)) = get_map_value(map, "offset") {
+                options.offset = Some(*n);
             }
         }
 

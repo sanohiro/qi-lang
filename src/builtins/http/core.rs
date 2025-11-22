@@ -205,17 +205,16 @@ pub(super) fn http_request_detailed(
                                 .body(s.clone());
                         }
                     }
-                    Value::Map(ref m) if m.contains_key(&crate::value::MapKey::Keyword(
-                        crate::intern::intern_keyword("error")
-                    )) => {
+                    Value::Map(ref m)
+                        if m.contains_key(&crate::value::MapKey::Keyword(
+                            crate::intern::intern_keyword("error"),
+                        )) =>
+                    {
                         // JSON serialization失敗（NaN/Inf/再帰構造等）
                         if let Some(Value::String(err_msg)) = m.get(&crate::value::MapKey::Keyword(
-                            crate::intern::intern_keyword("error")
+                            crate::intern::intern_keyword("error"),
                         )) {
-                            return Err(fmt_msg(
-                                MsgKey::HttpJsonSerializationError,
-                                &[err_msg],
-                            ));
+                            return Err(fmt_msg(MsgKey::HttpJsonSerializationError, &[err_msg]));
                         } else {
                             return Err(fmt_msg(
                                 MsgKey::HttpJsonSerializationError,
@@ -253,12 +252,9 @@ pub(super) fn http_request_detailed(
                 .collect();
 
             // ボディをバイナリとして取得
-            let body_bytes = response.bytes().map_err(|e| {
-                fmt_msg(
-                    MsgKey::HttpFailedToReadBody,
-                    &[&e.to_string()],
-                )
-            })?;
+            let body_bytes = response
+                .bytes()
+                .map_err(|e| fmt_msg(MsgKey::HttpFailedToReadBody, &[&e.to_string()]))?;
 
             // UTF-8として解釈を試み、成功すれば文字列、失敗すればBytesとして返す
             let body_value = match std::str::from_utf8(&body_bytes) {

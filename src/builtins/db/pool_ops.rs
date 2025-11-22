@@ -93,6 +93,9 @@ pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
     let conn_id = gen_conn_id();
     CONNECTIONS.lock().insert(conn_id.clone(), conn);
 
+    // プール接続として追跡（db/closeで誤って閉じられないようにする）
+    POOLED_CONNECTIONS.lock().insert(conn_id.clone(), pool_id);
+
     Ok(Value::String(format!("DbConnection:{}", conn_id)))
 }
 
@@ -120,6 +123,9 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
             .remove(&conn_id)
             .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
     };
+
+    // プール接続の追跡から削除
+    POOLED_CONNECTIONS.lock().remove(&conn_id);
 
     pool.release(conn);
 

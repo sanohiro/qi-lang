@@ -421,6 +421,10 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (DbExpectedPool, "DbPoolが必要です、実際: {0}"),
         (DbPoolNotFound, "プールが見つかりません: {0}"),
         (DbInvalidPoolSize, "{0}: 不正なプールサイズです、期待: {1}"),
+        (
+            DbPooledConnectionCannotClose,
+            "接続{0}はプールから取得されたものです。db/closeの代わりにdb/pool-releaseを使用してください。",
+        ),
         // I/Oエラー（追加）
         (IoFailedToDecodeAs, "{0}: {1}としてデコード失敗 (不正なバイト列)"),
         (IoCouldNotDetectEncoding, "{0}: エンコーディングを検出できませんでした (UTF-8、UTF-16、日本語、中国語、韓国語、ヨーロッパのエンコーディングを試行)"),

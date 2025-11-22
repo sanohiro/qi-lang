@@ -240,17 +240,17 @@ pub enum MsgKey {
     InvalidIfExistsOption, // Invalid :if-exists option: {0}
 
     // HTTPエラー
-    HttpClientError,           // HTTP client error: {0}
-    HttpCompressionError,      // Compression error: {0}
-    HttpStreamClientError,     // http stream: client creation error: {0}
-    HttpStreamRequestFailed,   // http stream: request failed: {0}
-    HttpStreamReadBytesFailed, // http stream: failed to read bytes: {0}
-    HttpStreamReadBodyFailed,  // http stream: failed to read body: {0}
-    HttpRequestUrlRequired,    // http/request: :url is required
-    HttpUnsupportedMethod,     // Unsupported HTTP method: {0}
-    HttpStreamError,           // http stream: HTTP {0}
-    HttpErrorStatus,           // HTTP error {0}
-    HttpFailedToReadBody,      // Failed to read response body: {0}
+    HttpClientError,            // HTTP client error: {0}
+    HttpCompressionError,       // Compression error: {0}
+    HttpStreamClientError,      // http stream: client creation error: {0}
+    HttpStreamRequestFailed,    // http stream: request failed: {0}
+    HttpStreamReadBytesFailed,  // http stream: failed to read bytes: {0}
+    HttpStreamReadBodyFailed,   // http stream: failed to read body: {0}
+    HttpRequestUrlRequired,     // http/request: :url is required
+    HttpUnsupportedMethod,      // Unsupported HTTP method: {0}
+    HttpStreamError,            // http stream: HTTP {0}
+    HttpErrorStatus,            // HTTP error {0}
+    HttpFailedToReadBody,       // Failed to read response body: {0}
     HttpJsonSerializationError, // JSON serialization error: {0}
 
     // I/Oエラー（詳細）
@@ -353,6 +353,7 @@ pub enum MsgKey {
     DbExpectedPool,                    // Expected DbPool, got: {0}
     DbPoolNotFound,                    // Pool not found: {0}
     DbInvalidPoolSize,                 // {0}: invalid pool size, expected {1}
+    DbPooledConnectionCannotClose, // Connection {0} is from a pool. Use db/pool-release instead of db/close.
 
     // I/Oエラー（追加）
     IoFailedToDecodeAs, // {0}: failed to decode as {1} (invalid byte sequence)
