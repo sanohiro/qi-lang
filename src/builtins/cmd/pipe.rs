@@ -41,14 +41,14 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
                         Value::String(s) => s.clone(),
                         Value::Integer(i) => i.to_string(),
                         Value::Float(f) => f.to_string(),
-                        _ => format!("{:?}", v),
+                        _ => format!("{}", v),
                     })
                     .collect();
                 lines.join("\n").into_bytes()
             }
             _ => {
                 // その他の型は文字列化
-                format!("{:?}", args[1]).into_bytes()
+                format!("{}", args[1]).into_bytes()
             }
         }
     } else {
@@ -183,14 +183,14 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
                         Value::String(s) => s.clone(),
                         Value::Integer(i) => i.to_string(),
                         Value::Float(f) => f.to_string(),
-                        _ => format!("{:?}", v),
+                        _ => format!("{}", v),
                     })
                     .collect();
                 lines.join("\n").into_bytes()
             }
             _ => {
                 // その他の型は文字列化
-                format!("{:?}", args[1]).into_bytes()
+                format!("{}", args[1]).into_bytes()
             }
         }
     } else {
