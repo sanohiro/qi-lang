@@ -94,7 +94,7 @@ pub(super) fn http_request_detailed(
     // カスタムタイムアウトの場合のみ新しいClientを作成
     let custom_client;
     let client = if timeout_ms == 30000 {
-        &crate::builtins::lazy_init::http_client::CLIENT
+        crate::builtins::lazy_init::http_client::get_client()?
     } else {
         custom_client = Client::builder()
             .gzip(true)
@@ -273,7 +273,7 @@ pub(super) fn http_stream(
     is_bytes: bool,
 ) -> Result<Value, String> {
     // 共有Clientを使用（デフォルトで30秒タイムアウト設定済み）
-    let client = &crate::builtins::lazy_init::http_client::CLIENT;
+    let client = crate::builtins::lazy_init::http_client::get_client()?;
 
     let mut request = match method {
         "GET" => client.get(url),

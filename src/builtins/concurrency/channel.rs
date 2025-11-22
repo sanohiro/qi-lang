@@ -103,7 +103,17 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
                         match &args[2] {
                             Value::Integer(ms) if *ms >= 0 => {
                                 let timeout = std::time::Duration::from_millis(*ms as u64);
-                                Ok(ch.receiver.recv_timeout(timeout).unwrap_or(Value::Nil))
+                                use crossbeam_channel::RecvTimeoutError;
+                                match ch.receiver.recv_timeout(timeout) {
+                                    Ok(v) => Ok(v),
+                                    Err(RecvTimeoutError::Timeout) => {
+                                        // タイムアウトはnilを返す（後方互換性のため）
+                                        Ok(Value::Nil)
+                                    }
+                                    Err(RecvTimeoutError::Disconnected) => {
+                                        Err(fmt_msg(MsgKey::ChannelClosed, &["recv!"]))
+                                    }
+                                }
                             }
                             Value::Integer(_) => {
                                 Err(fmt_msg(MsgKey::MustBeNonNegative, &["recv!", "timeout"]))
@@ -143,7 +153,16 @@ pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::Channel(ch) => Ok(ch.receiver.try_recv().unwrap_or(Value::Nil)),
+        Value::Channel(ch) => {
+            use crossbeam_channel::TryRecvError;
+            match ch.receiver.try_recv() {
+                Ok(v) => Ok(v),
+                Err(TryRecvError::Empty) => Ok(Value::Nil),
+                Err(TryRecvError::Disconnected) => {
+                    Err(fmt_msg(MsgKey::ChannelClosed, &["try-recv!"]))
+                }
+            }
+        }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["try-recv!", "channels"])),
     }
 }
