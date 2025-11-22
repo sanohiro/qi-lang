@@ -323,6 +323,7 @@ pub(super) fn http_request_detailed(
 }
 
 /// HTTPストリーミングの共通実装（真のストリーミング - メモリに全体を読み込まない）
+#[allow(clippy::too_many_arguments)]
 pub(super) fn http_stream(
     method: &str,
     url: &str,
