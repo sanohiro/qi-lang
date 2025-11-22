@@ -111,28 +111,49 @@ impl DbPool {
 
     /// 接続をプールに返却
     pub fn release(&self, conn: Arc<dyn DbConnection>) {
-        let mut available = self.available.lock();
-        available.push(conn);
+        // 不変条件を守るため、先にin_useをデクリメントしてからavailableに追加
         let mut in_use = self.in_use_count.lock();
         *in_use = in_use.saturating_sub(1);
+        drop(in_use);
+
+        let mut available = self.available.lock();
+        available.push(conn);
     }
 
     /// プール全体をクローズ
     pub fn close(&self) -> DbResult<()> {
         let mut available = self.available.lock();
+
+        // すべての接続をクローズ（エラーを収集）
+        let mut errors = Vec::new();
         for conn in available.drain(..) {
-            conn.close()?;
+            if let Err(e) = conn.close() {
+                errors.push(e.message);
+            }
         }
+
+        // in_useを0にリセット（エラーがあってもリセット）
         let mut in_use = self.in_use_count.lock();
         *in_use = 0;
+
+        // エラーがあった場合は報告
+        if !errors.is_empty() {
+            return Err(DbError::new(format!(
+                "Failed to close {} connection(s): {}",
+                errors.len(),
+                errors.join(", ")
+            )));
+        }
+
         Ok(())
     }
 
     /// プールの統計情報を取得
     pub fn stats(&self) -> (usize, usize, usize) {
-        let available = self.available.lock().len();
-        let in_use = *self.in_use_count.lock();
-        (available, in_use, self.max_connections)
+        // 一貫したスナップショットを返すため、両方のロックを同時に保持
+        let available = self.available.lock();
+        let in_use = self.in_use_count.lock();
+        (available.len(), *in_use, self.max_connections)
     }
 }
 
