@@ -70,21 +70,22 @@ pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["env/set", "a string"])),
     };
 
-    let value = match &args[1] {
-        Value::String(s) => s,
-        Value::Integer(i) => &i.to_string(),
-        Value::Float(f) => &f.to_string(),
+    // 値を文字列に変換（一時的なStringのダングリングポインタを回避）
+    let value_string = match &args[1] {
+        Value::String(s) => s.clone(),
+        Value::Integer(i) => i.to_string(),
+        Value::Float(f) => f.to_string(),
         Value::Bool(b) => {
             if *b {
-                "true"
+                "true".to_string()
             } else {
-                "false"
+                "false".to_string()
             }
         }
         _ => return Err(fmt_msg(MsgKey::ValueMustBeStringNumberBool, &["env/set"])),
     };
 
-    env::set_var(key, value);
+    env::set_var(key, value_string);
     Ok(Value::Nil)
 }
 
