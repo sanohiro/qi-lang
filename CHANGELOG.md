@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2025-01-23
+
 ### Added
+
+#### REPL Enhancements (Phase 4: Metaprogramming & Debugging)
+
+**Metaprogramming Functions (2)**
+- `macroexpand` - Expands macros (converts `defn`/`defn-` to `def` + `fn` form)
+- `source` - Displays symbol definition source (distinguishes native/user-defined/macro)
+
+**REPL Debug Commands (3)**
+- `:test [path]` - Runs test file (all tests if no argument)
+- `:trace <function>` - Traces function calls (lists traced functions if no argument)
+- `:untrace [function]` - Stops tracing (stops all if no argument)
+
+**Implementation Details**
+- `src/builtins/core_state_meta.rs`: Added `macroexpand`, `source`, `expand_defn` (expanded to 10 functions)
+- `src/builtins/debug.rs`: Added `TRACED_FUNCTIONS` global state (LazyLock)
+- `src/eval/call.rs`: Added trace logging in `apply_func()`
+- `src/main.rs`: Implemented `:test`, `:trace`, `:untrace` commands with tab completion
+
+**Documentation Updates**
+- `std/docs/{ja,en}/core.qi`: Updated to "State Management & Metaprogramming (10 functions)"
+- `docs/{ja,en}/cli.md`: Added test/debug commands and usage examples
+- `docs/{ja,en}/tutorial/01-getting-started.md`: Added Phase 3 features
 
 #### REPL Enhancements (Phase 1-3)
 
