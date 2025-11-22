@@ -77,11 +77,16 @@ pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    let pools = POOLS.lock();
-    let pool = pools
-        .get(&pool_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+    // プールをクローンしてからミューテックスを解放（デッドロック回避）
+    let pool = {
+        let pools = POOLS.lock();
+        pools
+            .get(&pool_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
+            .clone()
+    }; // pools ミューテックスはここで解放される
 
+    // ブロッキング操作をミューテックス外で実行
     let conn = pool.acquire().map_err(|e| e.message)?;
 
     // 接続を保存
@@ -100,15 +105,21 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
     let pool_id = extract_pool_id(&args[0])?;
     let conn_id = extract_conn_id(&args[1])?;
 
-    let pools = POOLS.lock();
-    let pool = pools
-        .get(&pool_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+    // プールをクローンしてからミューテックスを解放
+    let pool = {
+        let pools = POOLS.lock();
+        pools
+            .get(&pool_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
+            .clone()
+    };
 
-    let mut connections = CONNECTIONS.lock();
-    let conn = connections
-        .remove(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?;
+    let conn = {
+        let mut connections = CONNECTIONS.lock();
+        connections
+            .remove(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+    };
 
     pool.release(conn);
 
@@ -123,11 +134,15 @@ pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    let mut pools = POOLS.lock();
-    let pool = pools
-        .remove(&pool_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+    // プールを取り出してからミューテックスを解放
+    let pool = {
+        let mut pools = POOLS.lock();
+        pools
+            .remove(&pool_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
+    };
 
+    // ブロッキング操作をミューテックス外で実行
     pool.close().map_err(|e| e.message)?;
 
     Ok(Value::Nil)

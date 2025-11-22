@@ -29,6 +29,27 @@ impl From<&str> for DbError {
 
 pub type DbResult<T> = Result<T, DbError>;
 
+/// マップから値を取得（キーワード、シンボル、文字列のいずれかで）
+fn get_map_value<'a>(map: &'a crate::HashMap<MapKey, Value>, key: &str) -> Option<&'a Value> {
+    // キーワードで試す（最も一般的）
+    if let Ok(keyword_key) = Value::Keyword(crate::intern::intern_keyword(key)).to_map_key() {
+        if let Some(v) = map.get(&keyword_key) {
+            return Some(v);
+        }
+    }
+    // シンボルで試す
+    if let Ok(symbol_key) = Value::Symbol(crate::intern::intern_symbol(key)).to_map_key() {
+        if let Some(v) = map.get(&symbol_key) {
+            return Some(v);
+        }
+    }
+    // 文字列で試す（後方互換性）
+    if let Some(v) = map.get(&MapKey::String(key.to_string())) {
+        return Some(v);
+    }
+    None
+}
+
 /// データベース行（カラム名 -> 値のマップ）
 pub type Row = crate::HashMap<MapKey, Value>;
 
@@ -59,20 +80,23 @@ impl ConnectionOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::Integer(ms)) =
-                map.get(&crate::value::MapKey::String("timeout".to_string()))
-            {
-                options.timeout_ms = Some(*ms as u64);
+            // timeout - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "timeout") {
+                if let Value::Integer(ms) = v {
+                    options.timeout_ms = Some(*ms as u64);
+                }
             }
-            if let Some(Value::Bool(ro)) =
-                map.get(&crate::value::MapKey::String("read-only".to_string()))
-            {
-                options.read_only = *ro;
+            // read-only - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "read-only") {
+                if let Value::Bool(ro) = v {
+                    options.read_only = *ro;
+                }
             }
-            if let Some(Value::Bool(ac)) =
-                map.get(&crate::value::MapKey::String("auto-commit".to_string()))
-            {
-                options.auto_commit = *ac;
+            // auto-commit - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "auto-commit") {
+                if let Value::Bool(ac) = v {
+                    options.auto_commit = *ac;
+                }
             }
         }
 
@@ -104,20 +128,23 @@ impl QueryOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::Integer(ms)) =
-                map.get(&crate::value::MapKey::String("timeout".to_string()))
-            {
-                options.timeout_ms = Some(*ms as u64);
+            // timeout - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "timeout") {
+                if let Value::Integer(ms) = v {
+                    options.timeout_ms = Some(*ms as u64);
+                }
             }
-            if let Some(Value::Integer(n)) =
-                map.get(&crate::value::MapKey::String("limit".to_string()))
-            {
-                options.limit = Some(*n);
+            // limit - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "limit") {
+                if let Value::Integer(n) = v {
+                    options.limit = Some(*n);
+                }
             }
-            if let Some(Value::Integer(n)) =
-                map.get(&crate::value::MapKey::String("offset".to_string()))
-            {
-                options.offset = Some(*n);
+            // offset - キーワード、シンボル、文字列すべて試す
+            if let Some(v) = get_map_value(map, "offset") {
+                if let Value::Integer(n) = v {
+                    options.offset = Some(*n);
+                }
             }
         }
 

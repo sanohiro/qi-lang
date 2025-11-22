@@ -6,6 +6,7 @@ use parking_lot::Mutex;
 #[cfg(feature = "db-sqlite")]
 use crate::builtins::sqlite::SqliteDriver;
 
+#[derive(Clone)]
 pub struct DbPool {
     url: String,
     opts: ConnectionOptions,
