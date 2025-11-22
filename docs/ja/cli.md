@@ -189,6 +189,11 @@ qi
 - `:reload` - 最後に読み込んだファイルを再読み込み
 - `:quit` - REPLを終了
 
+**テスト・デバッグ:**
+- `:test [path]` - テストファイルを実行（引数なしで全テスト）
+- `:trace <function>` - 関数呼び出しをトレース（引数なしでトレース中の関数一覧を表示）
+- `:untrace [function]` - トレースを停止（引数なしで全停止）
+
 **ホットリロード（ファイル監視）:**
 - `:watch <file>` - ファイルを監視して変更時に自動再読み込み
 - `:unwatch [file]` - ファイル監視を停止（引数なしで全停止）
@@ -450,6 +455,39 @@ Rayon Thread Pool:
 
 Active Channels:
   ch - len: 0, is_empty: true
+
+# テストファイルを実行
+qi:12> :test tests/math_test.qi
+Running tests in tests/math_test.qi...
+テスト結果:
+  ✓ addition
+  ✓ subtraction
+  ✓ multiplication
+
+# 関数のトレース（デバッグ用）
+qi:13> (defn factorial [n] (if (<= n 1) 1 (* n (factorial (- n 1)))))
+qi:14> :trace factorial
+Tracing function: factorial
+qi:15> (factorial 3)
+→ factorial(Integer(3))
+→ factorial(Integer(2))
+→ factorial(Integer(1))
+$4 => 6
+
+qi:16> :untrace factorial
+Stopped tracing: factorial
+
+# マクロ展開を確認
+qi:17> (macroexpand '(defn add [a b] (+ a b)))
+$5 => (def add (fn [a b] (+ a b)))
+
+# 関数のソースコードを表示
+qi:18> (source '+)
+$6 => Native function: +
+Implemented in: src/builtins/
+
+This is a built-in function implemented in Rust.
+Use :doc + to see documentation.
 ```
 
 ---

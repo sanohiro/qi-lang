@@ -418,6 +418,11 @@ pub fn eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     core_state_meta::native_eval(args, evaluator)
 }
 
+/// source - シンボルの定義元を表示
+pub fn source(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
+    core_state_meta::native_source(args, evaluator)
+}
+
 /// go/run - goroutine風の非同期実行
 pub fn run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     concurrency::native_run(args, evaluator)

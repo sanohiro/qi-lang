@@ -189,6 +189,11 @@ qi
 - `:reload` - Reload the last loaded file
 - `:quit` - Exit REPL
 
+**Testing & Debugging:**
+- `:test [path]` - Run test file (no args to run all tests)
+- `:trace <function>` - Trace function calls (no args to list traced functions)
+- `:untrace [function]` - Stop tracing (no args to stop all)
+
 **Hot Reload (File Watching):**
 - `:watch <file>` - Watch a file and auto-reload on changes
 - `:unwatch [file]` - Stop watching file(s) (no args to stop all)
@@ -450,6 +455,39 @@ Rayon Thread Pool:
 
 Active Channels:
   ch - len: 0, is_empty: true
+
+# Run test file
+qi:12> :test tests/math_test.qi
+Running tests in tests/math_test.qi...
+Test results:
+  ✓ addition
+  ✓ subtraction
+  ✓ multiplication
+
+# Trace function calls (for debugging)
+qi:13> (defn factorial [n] (if (<= n 1) 1 (* n (factorial (- n 1)))))
+qi:14> :trace factorial
+Tracing function: factorial
+qi:15> (factorial 3)
+→ factorial(Integer(3))
+→ factorial(Integer(2))
+→ factorial(Integer(1))
+$4 => 6
+
+qi:16> :untrace factorial
+Stopped tracing: factorial
+
+# Check macro expansion
+qi:17> (macroexpand '(defn add [a b] (+ a b)))
+$5 => (def add (fn [a b] (+ a b)))
+
+# Display function source
+qi:18> (source '+)
+$6 => Native function: +
+Implemented in: src/builtins/
+
+This is a built-in function implemented in Rust.
+Use :doc + to see documentation.
 ```
 
 ---

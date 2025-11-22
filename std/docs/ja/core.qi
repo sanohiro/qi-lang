@@ -1,5 +1,5 @@
 ;; 標準ライブラリドキュメント - Core関数
-;; コア機能（88関数）
+;; コア機能（90関数）
 
 ;; ========================================
 ;; 数値・算術演算（11関数）
@@ -612,8 +612,10 @@
               "(try (error \"oops\") (catch e (println e)))"]})
 
 ;; ========================================
-;; 状態管理・メタ（5関数）
+;; 状態管理・メタプログラミング（10関数）
 ;; ========================================
+
+;; 状態管理（4関数）
 
 (def __doc__atom
   {:desc "アトム（可変参照）を作成します。"
@@ -639,22 +641,46 @@
               "(reset! a 100)"
               "@a ;=> 100"]})
 
+(def __doc__swap!
+  {:desc "関数を適用してアトムの値をアトミックに更新します。"
+   :params [{:name "atom" :type "atom" :desc "アトム"}
+            {:name "f" :type "function" :desc "適用する関数"}
+            {:name "args" :type "any..." :desc "関数に渡す追加引数"}]
+   :returns {:type "any" :desc "新しい値"}
+   :examples ["(def counter (atom 0))"
+              "(swap! counter inc)"
+              "@counter ;=> 1"
+              "(swap! counter + 10)"
+              "@counter ;=> 11"]})
+
+;; メタプログラミング（6関数）
+
+(def __doc__eval
+  {:desc "式を評価します。文字列の場合はパースして評価、データ構造の場合は直接評価します。"
+   :params [{:name "expr" :type "string|any" :desc "評価する式（文字列またはデータ構造）"}]
+   :returns {:type "any" :desc "評価結果"}
+   :examples ["(eval \"(+ 1 2)\") ;=> 3"
+              "(eval (list + 1 2)) ;=> 3"
+              "(def code '(* 3 4))"
+              "(eval code) ;=> 12"]})
+
 (def __doc__uvar
-  {:desc "未束縛変数を作成します（遅延評価用）。"
+  {:desc "一意な変数（ユニバーク変数）を生成します。パターンマッチングやマクロで使用。"
    :params []
-   :returns {:type "uvar" :desc "未束縛変数"}
+   :returns {:type "uvar" :desc "一意な変数"}
    :examples ["(def x (uvar))"
-              "(variable x 42)"
-              "x ;=> 42"]})
+              "(def y (uvar))"
+              "(= x y) ;=> false"]})
 
 (def __doc__variable
-  {:desc "未束縛変数に値を束縛します。"
-   :params [{:name "uvar" :type "uvar" :desc "未束縛変数"}
-            {:name "value" :type "any" :desc "束縛する値"}]
-   :returns {:type "nil" :desc "常にnil"}
-   :examples ["(def x (uvar))"
-              "(variable x 100)"
-              "x ;=> 100"]})
+  {:desc "値が変数（シンボルまたはuvar）かを判定します。nil、true、falseは変数ではありません。"
+   :params [{:name "value" :type "any" :desc "値"}]
+   :returns {:type "bool" :desc "変数の場合true"}
+   :examples ["(variable 'x) ;=> true"
+              "(variable (uvar)) ;=> true"
+              "(variable 'nil) ;=> false"
+              "(variable 'true) ;=> false"
+              "(variable 42) ;=> false"]})
 
 (def __doc__macro?
   {:desc "値がマクロかを判定します。"
@@ -662,6 +688,28 @@
    :returns {:type "bool" :desc "マクロの場合true"}
    :examples ["(macro? defn) ;=> false"
               "(macro? +) ;=> false"]})
+
+(def __doc__macroexpand
+  {:desc "マクロを展開した形を返します。defn/defn-をdef+fn形式に変換します。"
+   :params [{:name "expr" :type "list|vector" :desc "マクロ式"}]
+   :returns {:type "list" :desc "展開された式"}
+   :examples ["(macroexpand '(defn add [a b] (+ a b)))"
+              ";=> (def add (fn [a b] (+ a b)))"
+              ""
+              "(macroexpand '(defn greet \"Greeting function\" [name] (str \"Hello, \" name)))"
+              ";=> (do (def __doc__greet \"Greeting function\") (def greet (fn [name] (str \"Hello, \" name))))"]})
+
+(def __doc__source
+  {:desc "シンボルの定義元を表示します。ネイティブ関数、ユーザー定義関数、マクロ、値を区別します。"
+   :params [{:name "symbol" :type "symbol" :desc "シンボル"}]
+   :returns {:type "string" :desc "定義元の情報"}
+   :examples ["(source '+)"
+              ";=> \"Native function: +\\nImplemented in: src/builtins/...\""
+              ""
+              "(defn add [a b] (+ a b))"
+              "(source 'add)"
+              ";=> \"User-defined function: add\\nLocation: ...\""]})
+
 
 ;; ========================================
 ;; ユーティリティ（6関数）

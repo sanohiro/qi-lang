@@ -248,6 +248,9 @@ impl QiHelper {
         completions.insert(":macro".to_string());
         completions.insert(":m".to_string());
         completions.insert(":profile".to_string());
+        completions.insert(":test".to_string());
+        completions.insert(":trace".to_string());
+        completions.insert(":untrace".to_string());
         completions.insert(":threads".to_string());
         completions.insert(":quit".to_string());
 
@@ -1849,6 +1852,76 @@ fn handle_repl_command(
             #[cfg(not(feature = "repl"))]
             {
                 eprintln!("Profile feature is not available");
+            }
+        }
+        ":test" => {
+            if parts.len() < 2 {
+                // 引数なし: tests/ ディレクトリの全テストを実行
+                // test/run-all を呼び出す
+                println!("{}", "Running all tests...".cyan());
+                eval_repl_code(evaluator, "(test/run-all)", None);
+            } else {
+                // ファイル指定: そのファイルを読み込んでtest/run-allを実行
+                let path = parts[1];
+                match std::fs::read_to_string(path) {
+                    Ok(content) => {
+                        println!("{}", format!("Running tests in {}...", path).cyan());
+                        eval_repl_code(evaluator, &content, Some(path));
+                        // テストを実行
+                        eval_repl_code(evaluator, "(test/run-all)", None);
+                    }
+                    Err(e) => {
+                        eprintln!("{}: {}", "Failed to read test file".red(), e);
+                    }
+                }
+            }
+        }
+        ":trace" => {
+            if parts.len() < 2 {
+                // 引数なし: トレース中の関数一覧を表示
+                let traced = qi_lang::builtins::debug::TRACED_FUNCTIONS.read();
+                if traced.is_empty() {
+                    println!("{}", "No functions are being traced".yellow());
+                } else {
+                    println!("{}", "Traced functions:".cyan());
+                    for func in traced.iter() {
+                        println!("  - {}", func);
+                    }
+                }
+            } else {
+                // 関数名を指定: トレース対象に追加
+                let func_name = parts[1];
+                qi_lang::builtins::debug::TRACED_FUNCTIONS
+                    .write()
+                    .insert(func_name.to_string());
+                println!(
+                    "{}",
+                    format!("Tracing function: {}", func_name).green()
+                );
+            }
+        }
+        ":untrace" => {
+            if parts.len() < 2 {
+                // 引数なし: 全トレースを停止
+                qi_lang::builtins::debug::TRACED_FUNCTIONS.write().clear();
+                println!("{}", "Stopped tracing all functions".yellow());
+            } else {
+                // 関数名を指定: トレース対象から削除
+                let func_name = parts[1];
+                let removed = qi_lang::builtins::debug::TRACED_FUNCTIONS
+                    .write()
+                    .remove(func_name);
+                if removed {
+                    println!(
+                        "{}",
+                        format!("Stopped tracing: {}", func_name).yellow()
+                    );
+                } else {
+                    println!(
+                        "{}",
+                        format!("Function not traced: {}", func_name).red()
+                    );
+                }
             }
         }
         ":quit" => {

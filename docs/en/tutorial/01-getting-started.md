@@ -355,6 +355,8 @@ curl http://localhost:3000/api/status
 
 ## Try the REPL
 
+Qi's **REPL** (Read-Eval-Print Loop) is a powerful development tool for instantly testing code.
+
 ### Starting the REPL
 
 ```bash
@@ -362,83 +364,157 @@ qi
 ```
 
 ```
-Qi Programming Language v0.1.0
+Qi Programming Language v0.1.8
 Press Ctrl+C to interrupt, Ctrl+D to exit
 Type :help for available commands
 
 qi:1>
 ```
 
+**Key REPL Features:**
+- 🎨 **Syntax Highlighting** - Keywords and operators are color-coded
+- 📝 **Tab Completion** - Complete function and variable names with Tab
+- 📋 **Result Labels** - Reference previous results with `$1`, `$2`
+- ⏱️ **Execution Timing** - Automatic timing display for slow operations
+- 🔄 **Hot Reload** - Auto-reload files on changes
+
 ### Basic Calculations
 
 ```qi
 qi:1> (+ 1 2 3)
-6
+$1 => 6
 
 qi:2> (* 2 (+ 3 4))
-14
+$2 => 14
 
 qi:3> (/ 10 3)
-3
+$3 => 3
 ```
+
+**Using Result Labels:**
+```qi
+qi:4> (+ $1 $2)
+$4 => 20
+```
+
+You can reference previous results with `$1`, `$2`!
 
 ### Defining Variables and Functions
 
 ```qi
-qi:4> (def x 10)
-10
+qi:5> (def x 10)
+$5 => 10
 
-qi:5> (defn square [n] (* n n))
-Function(square)
+qi:6> (defn square [n] (* n n))
+$6 => Function(square)
 
-qi:6> (square x)
-100
+qi:7> (square x)
+$7 => 100
 ```
 
 ### Trying Pipelines
 
 ```qi
-qi:7> ([1 2 3 4 5] |> (map (fn [x] (* x 2))))
-Vector([Integer(2), Integer(4), Integer(6), Integer(8), Integer(10)])
+qi:8> ([1 2 3 4 5] |> (map (fn [x] (* x 2))))
+$8 => [2, 4, 6, 8, 10]
 
-qi:8> ([1 2 3 4 5]
+qi:9> ([1 2 3 4 5]
         |> (map (fn [x] (* x 2)))
         |> (filter (fn [x] (> x 5)))
         |> (reduce + 0))
-30
+$9 => 30
 ```
 
 ### REPL Commands
 
+#### Basic Commands
+
 ```qi
-qi:9> :help
+qi:10> :help
 Available commands:
   :help                    Show help
-  :doc <name>              Show documentation for a function
+  :doc <name>              Show function documentation
   :vars                    Show defined variables
+  :funcs                   Show defined functions
+  :builtins [filter]       Show built-in functions
   ...
 
-qi:10> :vars
+qi:11> :vars
 Defined variables:
   x
 
-qi:11> :funcs
+qi:12> :funcs
 Defined functions:
   square
 
-qi:12> :doc map
-(Documentation will be displayed)
+qi:13> :doc map
+map - Apply function to each element in collection
+...
 ```
 
-### Loading Files
+#### Loading Files
 
 ```qi
-qi:13> :load src/lib.qi
+qi:14> :load src/lib.qi
 Loading src/lib.qi...
 Loaded
 
-qi:14> (greet "REPL")
-"こんにちは、REPLさん！"
+qi:15> (greet "REPL")
+$15 => "Hello, REPL!"
+```
+
+#### Hot Reload (File Watching)
+
+Watch files during development and auto-reload on save:
+
+```qi
+qi:16> :watch src/lib.qi
+Watching: src/lib.qi
+
+# Edit src/lib.qi in your editor and save...
+[File changed: src/lib.qi]
+[Reloaded]
+```
+
+Stop watching:
+```qi
+qi:17> :unwatch src/lib.qi
+Stopped watching: src/lib.qi
+```
+
+#### Macros (Register Frequently Used Commands)
+
+Register frequently used commands as macros:
+
+```qi
+qi:18> :macro define test (println "Running tests...")
+Macro 'test' defined
+
+qi:19> :m test
+[Running macro 'test': (println "Running tests...")]
+Running tests...
+```
+
+Macros are saved to `~/.qi/macros` and persist across sessions.
+
+#### Profiling (Performance Measurement)
+
+Measure code execution time:
+
+```qi
+qi:20> :profile start
+Profiling started
+
+qi:21> (range 1000000 |> (reduce + 0))
+$21 => 499999500000
+(125ms)
+
+qi:22> :profile report
+Profiling Report:
+  Total evaluations: 1
+  Total time: 125ms
+  Average time: 125ms
+  ...
 ```
 
 ---

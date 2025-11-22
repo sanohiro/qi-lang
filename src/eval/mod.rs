@@ -660,6 +660,11 @@ impl Evaluator {
         builtins::eval(&[expr], self)
     }
 
+    fn eval_source(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
+        let expr = self.eval_with_env(&args[0], Arc::clone(&env))?;
+        builtins::source(&[expr], self)
+    }
+
     /// pmap関数の実装: (pmap f coll)
     fn eval_pmap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;

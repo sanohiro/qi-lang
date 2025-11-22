@@ -5,6 +5,13 @@
 use crate::debugger::GLOBAL_DEBUGGER;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
+use parking_lot::RwLock;
+use std::collections::HashSet;
+use std::sync::LazyLock;
+
+/// トレース対象の関数名セット（グローバル）
+pub static TRACED_FUNCTIONS: LazyLock<RwLock<HashSet<String>>> =
+    LazyLock::new(|| RwLock::new(HashSet::new()));
 
 /// debug/trace - トレース機能の有効/無効を切り替え
 ///

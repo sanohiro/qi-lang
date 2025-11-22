@@ -47,6 +47,7 @@ impl Evaluator {
                 "comp" => Some(self.eval_comp(args, env)),
                 "drop-while" => Some(self.eval_drop_while(args, env)),
                 "eval" => Some(self.eval_eval(args, env)),
+                "source" => Some(self.eval_source(args, env)),
                 "list/every?" => Some(self.eval_every(args, env)),
                 "filter" => Some(self.eval_filter(args, env)),
                 "find" => Some(self.eval_find(args, env)),
@@ -309,6 +310,21 @@ impl Evaluator {
         func: &Value,
         args: SmallVec<[Value; 4]>,
     ) -> Result<Value, String> {
+        // トレース機能: 関数呼び出しをログ出力
+        let traced_funcs = crate::builtins::debug::TRACED_FUNCTIONS.read();
+        if !traced_funcs.is_empty() {
+            // トレース対象がある場合のみ関数名を取得（パフォーマンス最適化）
+            if let Some(func_name) = self.get_function_name(func) {
+                if traced_funcs.contains(&func_name) {
+                    use colored::Colorize;
+                    let args_str: Vec<String> = args.iter().map(|a| format!("{:?}", a)).collect();
+                    eprintln!("{}", format!("→ {}({})", func_name, args_str.join(", ")).cyan());
+                }
+            }
+        }
+        drop(traced_funcs); // ロック解放
+
+        // 関数を実行
         match func {
             Value::NativeFunc(nf) => (nf.func)(&args),
             Value::Function(f) => {

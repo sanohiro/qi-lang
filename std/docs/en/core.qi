@@ -1,5 +1,5 @@
 ;; Standard Library Documentation - Core Functions
-;; Core Functions (88 functions)
+;; Core Functions (90 functions)
 
 ;; ========================================
 ;; Numeric & Arithmetic Operations (11 functions)
@@ -612,8 +612,10 @@
               "(try (error \"oops\") (catch e (println e)))"]})
 
 ;; ========================================
-;; State Management & Meta (5 functions)
+;; State Management & Metaprogramming (10 functions)
 ;; ========================================
+
+;; State Management (4 functions)
 
 (def __doc__atom
   {:desc "Creates an atom (mutable reference)."
@@ -639,22 +641,46 @@
               "(reset! a 100)"
               "@a ;=> 100"]})
 
+(def __doc__swap!
+  {:desc "Atomically updates an atom's value by applying a function."
+   :params [{:name "atom" :type "atom" :desc "Atom"}
+            {:name "f" :type "function" :desc "Function to apply"}
+            {:name "args" :type "any..." :desc "Additional arguments to pass to the function"}]
+   :returns {:type "any" :desc "New value"}
+   :examples ["(def counter (atom 0))"
+              "(swap! counter inc)"
+              "@counter ;=> 1"
+              "(swap! counter + 10)"
+              "@counter ;=> 11"]})
+
+;; Metaprogramming (6 functions)
+
+(def __doc__eval
+  {:desc "Evaluates an expression. If a string, parses and evaluates. If a data structure, evaluates directly."
+   :params [{:name "expr" :type "string|any" :desc "Expression to evaluate (string or data structure)"}]
+   :returns {:type "any" :desc "Evaluation result"}
+   :examples ["(eval \"(+ 1 2)\") ;=> 3"
+              "(eval (list + 1 2)) ;=> 3"
+              "(def code '(* 3 4))"
+              "(eval code) ;=> 12"]})
+
 (def __doc__uvar
-  {:desc "Creates an unbound variable (for lazy evaluation)."
+  {:desc "Generates a unique variable (uvark variable). Used in pattern matching and macros."
    :params []
-   :returns {:type "uvar" :desc "Unbound variable"}
+   :returns {:type "uvar" :desc "Unique variable"}
    :examples ["(def x (uvar))"
-              "(variable x 42)"
-              "x ;=> 42"]})
+              "(def y (uvar))"
+              "(= x y) ;=> false"]})
 
 (def __doc__variable
-  {:desc "Binds a value to an unbound variable."
-   :params [{:name "uvar" :type "uvar" :desc "Unbound variable"}
-            {:name "value" :type "any" :desc "Value to bind"}]
-   :returns {:type "nil" :desc "Always nil"}
-   :examples ["(def x (uvar))"
-              "(variable x 100)"
-              "x ;=> 100"]})
+  {:desc "Tests if a value is a variable (symbol or uvar). nil, true, and false are not variables."
+   :params [{:name "value" :type "any" :desc "Value"}]
+   :returns {:type "bool" :desc "true if variable"}
+   :examples ["(variable 'x) ;=> true"
+              "(variable (uvar)) ;=> true"
+              "(variable 'nil) ;=> false"
+              "(variable 'true) ;=> false"
+              "(variable 42) ;=> false"]})
 
 (def __doc__macro?
   {:desc "Tests if a value is a macro."
@@ -662,6 +688,28 @@
    :returns {:type "bool" :desc "true if macro"}
    :examples ["(macro? defn) ;=> false"
               "(macro? +) ;=> false"]})
+
+(def __doc__macroexpand
+  {:desc "Expands macros and returns the expanded form. Converts defn/defn- to def+fn form."
+   :params [{:name "expr" :type "list|vector" :desc "Macro expression"}]
+   :returns {:type "list" :desc "Expanded expression"}
+   :examples ["(macroexpand '(defn add [a b] (+ a b)))"
+              ";=> (def add (fn [a b] (+ a b)))"
+              ""
+              "(macroexpand '(defn greet \"Greeting function\" [name] (str \"Hello, \" name)))"
+              ";=> (do (def __doc__greet \"Greeting function\") (def greet (fn [name] (str \"Hello, \" name))))"]})
+
+(def __doc__source
+  {:desc "Displays the definition source of a symbol. Distinguishes between native functions, user-defined functions, macros, and values."
+   :params [{:name "symbol" :type "symbol" :desc "Symbol"}]
+   :returns {:type "string" :desc "Definition source information"}
+   :examples ["(source '+)"
+              ";=> \"Native function: +\\nImplemented in: src/builtins/...\""
+              ""
+              "(defn add [a b] (+ a b))"
+              "(source 'add)"
+              ";=> \"User-defined function: add\\nLocation: ...\""]})
+
 
 ;; ========================================
 ;; Utilities (6 functions)
