@@ -39,11 +39,26 @@ pub fn native_begin(args: &[Value]) -> Result<Value, String> {
             .clone()
     };
 
+    // 接続がプールされているか確認
+    let pool_info = {
+        let pooled_conns = POOLED_CONNECTIONS.lock();
+        pooled_conns
+            .get(&conn_id)
+            .map(|pool_id| (pool_id.clone(), conn_id.clone()))
+    };
+
     let tx = conn.begin(&opts).map_err(|e| e.message)?;
 
     // トランザクションを保存
     let tx_id = gen_tx_id();
     TRANSACTIONS.lock().insert(tx_id.clone(), tx);
+
+    // プール接続の場合、トランザクション→プールマッピングを保存
+    if let Some((pool_id, conn_id)) = pool_info {
+        TRANSACTION_POOLS
+            .lock()
+            .insert(tx_id.clone(), (pool_id, conn_id));
+    }
 
     Ok(Value::String(format!("DbTransaction:{}", tx_id)))
 }
@@ -71,6 +86,29 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
     // 成功したのでマップから削除
     TRANSACTIONS.lock().remove(&tx_id);
 
+    // プール接続の場合、プールに戻す
+    if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
+        // プールに接続を戻す（pool_ops::native_pool_releaseと同じ処理）
+        let pool = {
+            let pools = super::pool::POOLS.lock();
+            pools.get(&pool_id).cloned()
+        };
+
+        if let Some(pool) = pool {
+            let conn = {
+                let connections = CONNECTIONS.lock();
+                connections.get(&conn_id).cloned()
+            };
+
+            if let Some(conn) = conn {
+                pool.release(conn);
+            }
+
+            // POOLED_CONNECTIONSから削除
+            POOLED_CONNECTIONS.lock().remove(&conn_id);
+        }
+    }
+
     Ok(Value::Nil)
 }
 
@@ -96,6 +134,29 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
 
     // 成功したのでマップから削除
     TRANSACTIONS.lock().remove(&tx_id);
+
+    // プール接続の場合、プールに戻す
+    if let Some((pool_id, conn_id)) = TRANSACTION_POOLS.lock().remove(&tx_id) {
+        // プールに接続を戻す（pool_ops::native_pool_releaseと同じ処理）
+        let pool = {
+            let pools = super::pool::POOLS.lock();
+            pools.get(&pool_id).cloned()
+        };
+
+        if let Some(pool) = pool {
+            let conn = {
+                let connections = CONNECTIONS.lock();
+                connections.get(&conn_id).cloned()
+            };
+
+            if let Some(conn) = conn {
+                pool.release(conn);
+            }
+
+            // POOLED_CONNECTIONSから削除
+            POOLED_CONNECTIONS.lock().remove(&conn_id);
+        }
+    }
 
     Ok(Value::Nil)
 }

@@ -178,30 +178,20 @@ impl DbConnection for PostgresConnection {
         let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
             .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
 
-        // トランザクション開始
+        // PostgreSQLではBEGIN TRANSACTION ISOLATION LEVEL ...を1つのコマンドで実行
+        let begin_sql = match opts.isolation {
+            IsolationLevel::ReadUncommitted => "BEGIN TRANSACTION ISOLATION LEVEL READ UNCOMMITTED",
+            IsolationLevel::ReadCommitted => "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED",
+            IsolationLevel::RepeatableRead => "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ",
+            IsolationLevel::Serializable => "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE",
+        };
+
         runtime
-            .block_on(async { client.execute("BEGIN", &[]).await })
+            .block_on(async { client.execute(begin_sql, &[]).await })
             .map_err(|e| {
                 DbError::new(fmt_msg(
                     MsgKey::DbFailedToBeginTransaction,
                     &[&e.to_string()],
-                ))
-            })?;
-
-        // 分離レベルを設定
-        let isolation_sql = match opts.isolation {
-            IsolationLevel::ReadUncommitted => "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED",
-            IsolationLevel::ReadCommitted => "SET TRANSACTION ISOLATION LEVEL READ COMMITTED",
-            IsolationLevel::RepeatableRead => "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
-            IsolationLevel::Serializable => "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE",
-        };
-
-        runtime
-            .block_on(async { client.execute(isolation_sql, &[]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToBeginTransaction,
-                    &[&format!("Failed to set isolation level: {}", e)],
                 ))
             })?;
 

@@ -134,10 +134,14 @@ lazy_static::lazy_static! {
     static ref NEXT_TX_ID: Mutex<usize> = Mutex::new(0);
 
     /// グローバルプールマネージャー
-    static ref POOLS: Mutex<HashMap<String, DbPool>> = Mutex::new(HashMap::new());
+    pub(super) static ref POOLS: Mutex<HashMap<String, DbPool>> = Mutex::new(HashMap::new());
     static ref NEXT_POOL_ID: Mutex<usize> = Mutex::new(0);
 
     /// プール接続の追跡（conn_id -> pool_id）
     /// プールから取得した接続を追跡し、db/closeではなくdb/pool-releaseを使うよう強制する
     pub(super) static ref POOLED_CONNECTIONS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+
+    /// トランザクション→プールマッピング（tx_id -> (pool_id, conn_id)）
+    /// トランザクション終了時に自動的にプールに戻すために使用
+    pub(super) static ref TRANSACTION_POOLS: Mutex<HashMap<String, (String, String)>> = Mutex::new(HashMap::new());
 }
