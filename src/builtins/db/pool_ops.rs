@@ -215,10 +215,14 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    let pools = POOLS.lock();
-    let pool = pools
-        .get(&pool_id)
-        .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?;
+    // プールをクローンしてからミューテックスを解放（ロック保持時間を最小化）
+    let pool = {
+        let pools = POOLS.lock();
+        pools
+            .get(&pool_id)
+            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
+            .clone()
+    };
 
     let (available, in_use, max) = pool.stats();
 
