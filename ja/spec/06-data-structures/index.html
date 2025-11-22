@@ -3469,20 +3469,23 @@
 </span><span id="__span-27-7"><a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>;; =&gt; {:user {:profile {:visits 11}}}
 </span><span id="__span-27-8"><a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>
 </span><span id="__span-27-9"><a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a>;; get-in - ネストした値を取得
-</span><span id="__span-27-10"><a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>(get-in {:user {:name &quot;Bob&quot;}} [:user :name])    ;; =&gt; &quot;Bob&quot;
-</span><span id="__span-27-11"><a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a>(get-in {} [:user :name] &quot;guest&quot;)               ;; =&gt; &quot;guest&quot;
-</span><span id="__span-27-12"><a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a>
-</span><span id="__span-27-13"><a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>;; map/assoc-in - ネストしたマップに値を設定
-</span><span id="__span-27-14"><a id="__codelineno-27-14" name="__codelineno-27-14" href="#__codelineno-27-14"></a>(map/assoc-in {} [:user :profile :name] &quot;Alice&quot;)
-</span><span id="__span-27-15"><a id="__codelineno-27-15" name="__codelineno-27-15" href="#__codelineno-27-15"></a>;; =&gt; {:user {:profile {:name &quot;Alice&quot;}}}
-</span><span id="__span-27-16"><a id="__codelineno-27-16" name="__codelineno-27-16" href="#__codelineno-27-16"></a>(map/assoc-in {:user {:age 30}} [:user :name] &quot;Bob&quot;)
-</span><span id="__span-27-17"><a id="__codelineno-27-17" name="__codelineno-27-17" href="#__codelineno-27-17"></a>;; =&gt; {:user {:age 30, :name &quot;Bob&quot;}}
-</span><span id="__span-27-18"><a id="__codelineno-27-18" name="__codelineno-27-18" href="#__codelineno-27-18"></a>
-</span><span id="__span-27-19"><a id="__codelineno-27-19" name="__codelineno-27-19" href="#__codelineno-27-19"></a>;; map/dissoc-in - ネストしたマップからキーを削除
-</span><span id="__span-27-20"><a id="__codelineno-27-20" name="__codelineno-27-20" href="#__codelineno-27-20"></a>(map/dissoc-in {:user {:name &quot;Alice&quot; :age 30}} [:user :age])
-</span><span id="__span-27-21"><a id="__codelineno-27-21" name="__codelineno-27-21" href="#__codelineno-27-21"></a>;; =&gt; {:user {:name &quot;Alice&quot;}}
-</span><span id="__span-27-22"><a id="__codelineno-27-22" name="__codelineno-27-22" href="#__codelineno-27-22"></a>(map/dissoc-in {:a {:b {:c 1}}} [:a :b :c])
-</span><span id="__span-27-23"><a id="__codelineno-27-23" name="__codelineno-27-23" href="#__codelineno-27-23"></a>;; =&gt; {:a {:b {}}}
+</span><span id="__span-27-10"><a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>;; キーが存在しない場合はデフォルト値を返すが、値がnilの場合はnilを返す
+</span><span id="__span-27-11"><a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a>(get-in {:user {:name &quot;Bob&quot;}} [:user :name])    ;; =&gt; &quot;Bob&quot;
+</span><span id="__span-27-12"><a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a>(get-in {} [:user :name] &quot;guest&quot;)               ;; =&gt; &quot;guest&quot;
+</span><span id="__span-27-13"><a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>(get-in {:key nil} [:key] &quot;default&quot;)            ;; =&gt; nil（値がnilの場合）
+</span><span id="__span-27-14"><a id="__codelineno-27-14" name="__codelineno-27-14" href="#__codelineno-27-14"></a>(get-in {:other &quot;val&quot;} [:key] &quot;default&quot;)        ;; =&gt; &quot;default&quot;（キーが存在しない場合）
+</span><span id="__span-27-15"><a id="__codelineno-27-15" name="__codelineno-27-15" href="#__codelineno-27-15"></a>
+</span><span id="__span-27-16"><a id="__codelineno-27-16" name="__codelineno-27-16" href="#__codelineno-27-16"></a>;; map/assoc-in - ネストしたマップに値を設定
+</span><span id="__span-27-17"><a id="__codelineno-27-17" name="__codelineno-27-17" href="#__codelineno-27-17"></a>(map/assoc-in {} [:user :profile :name] &quot;Alice&quot;)
+</span><span id="__span-27-18"><a id="__codelineno-27-18" name="__codelineno-27-18" href="#__codelineno-27-18"></a>;; =&gt; {:user {:profile {:name &quot;Alice&quot;}}}
+</span><span id="__span-27-19"><a id="__codelineno-27-19" name="__codelineno-27-19" href="#__codelineno-27-19"></a>(map/assoc-in {:user {:age 30}} [:user :name] &quot;Bob&quot;)
+</span><span id="__span-27-20"><a id="__codelineno-27-20" name="__codelineno-27-20" href="#__codelineno-27-20"></a>;; =&gt; {:user {:age 30, :name &quot;Bob&quot;}}
+</span><span id="__span-27-21"><a id="__codelineno-27-21" name="__codelineno-27-21" href="#__codelineno-27-21"></a>
+</span><span id="__span-27-22"><a id="__codelineno-27-22" name="__codelineno-27-22" href="#__codelineno-27-22"></a>;; map/dissoc-in - ネストしたマップからキーを削除
+</span><span id="__span-27-23"><a id="__codelineno-27-23" name="__codelineno-27-23" href="#__codelineno-27-23"></a>(map/dissoc-in {:user {:name &quot;Alice&quot; :age 30}} [:user :age])
+</span><span id="__span-27-24"><a id="__codelineno-27-24" name="__codelineno-27-24" href="#__codelineno-27-24"></a>;; =&gt; {:user {:name &quot;Alice&quot;}}
+</span><span id="__span-27-25"><a id="__codelineno-27-25" name="__codelineno-27-25" href="#__codelineno-27-25"></a>(map/dissoc-in {:a {:b {:c 1}}} [:a :b :c])
+</span><span id="__span-27-26"><a id="__codelineno-27-26" name="__codelineno-27-26" href="#__codelineno-27-26"></a>;; =&gt; {:a {:b {}}}
 </span></code></pre></div>
 <h3 id="_32">マップの一括変換<a class="headerlink" href="#_32" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>;; map/map-keys - キーを変換
