@@ -240,14 +240,12 @@ impl TransactionOptions {
         let mut options = Self::default();
 
         if let Value::Map(map) = opts {
-            if let Some(Value::String(iso)) =
-                map.get(&crate::value::MapKey::String("isolation".to_string()))
-            {
+            // isolation - キーワード、シンボル、文字列すべて試す
+            if let Some(Value::String(iso)) = get_map_value(map, "isolation") {
                 options.isolation = iso.parse().map_err(DbError::new)?;
             }
-            if let Some(Value::Integer(ms)) =
-                map.get(&crate::value::MapKey::String("timeout".to_string()))
-            {
+            // timeout - キーワード、シンボル、文字列すべて試す
+            if let Some(Value::Integer(ms)) = get_map_value(map, "timeout") {
                 options.timeout_ms = Some(*ms as u64);
             }
         }

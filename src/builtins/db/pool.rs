@@ -45,8 +45,11 @@ impl DbPool {
 
         // 利用可能な接続がない場合、新規作成を試みる
         drop(available); // ロックを解放
-        let in_use = self.in_use_count.lock();
-        let total = *in_use + self.available.lock().len();
+
+        // デッドロック回避: available.len()を先に取得してからin_useをロック
+        let available_count = self.available.lock().len();
+        let in_use_count = *self.in_use_count.lock();
+        let total = in_use_count + available_count;
 
         if total >= self.max_connections {
             return Err(DbError::new(format!(
@@ -54,7 +57,7 @@ impl DbPool {
                 self.max_connections
             )));
         }
-        drop(in_use); // ロックを解放
+        // ロックは自動的に解放される
 
         // 新しい接続を作成
         let driver: Box<dyn DbDriver> = if self.url.starts_with("sqlite:") {
