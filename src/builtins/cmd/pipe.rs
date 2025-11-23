@@ -34,20 +34,18 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
         match &args[1] {
             Value::String(s) => s.as_bytes().to_vec(),
             Value::List(items) | Value::Vector(items) => {
-                // リスト/ベクタの場合、各要素を改行で結合
+                // リスト/ベクタの場合、各要素を改行で結合（Unix的な行指向処理）
                 let lines: Vec<String> = items
                     .iter()
                     .map(|v| match v {
                         Value::String(s) => s.clone(),
-                        Value::Integer(i) => i.to_string(),
-                        Value::Float(f) => f.to_string(),
                         _ => format!("{}", v),
                     })
                     .collect();
                 lines.join("\n").into_bytes()
             }
             _ => {
-                // その他の型は文字列化
+                // その他の型はDisplayフォーマットで文字列化
                 format!("{}", args[1]).into_bytes()
             }
         }
@@ -176,20 +174,18 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
         match &args[1] {
             Value::String(s) => s.as_bytes().to_vec(),
             Value::List(items) | Value::Vector(items) => {
-                // リスト/ベクタの場合、各要素を改行で結合
+                // リスト/ベクタの場合、各要素を改行で結合（Unix的な行指向処理）
                 let lines: Vec<String> = items
                     .iter()
                     .map(|v| match v {
                         Value::String(s) => s.clone(),
-                        Value::Integer(i) => i.to_string(),
-                        Value::Float(f) => f.to_string(),
                         _ => format!("{}", v),
                     })
                     .collect();
                 lines.join("\n").into_bytes()
             }
             _ => {
-                // その他の型は文字列化
+                // その他の型はDisplayフォーマットで文字列化
                 format!("{}", args[1]).into_bytes()
             }
         }
