@@ -221,6 +221,13 @@
 
 (println)
 (println "=== All examples completed! ===")
+
+;; ========================================
+;; 接続をクローズ（リソース解放）
+;; ========================================
+(kvs/close kvs)
+(println "\n接続をクローズしました")
+
 (println)
 (println "💡 Notice: このコードは統一インターフェースを使用しています。")
 (println "   バックエンドをRedis → Memcachedに変更する場合:")

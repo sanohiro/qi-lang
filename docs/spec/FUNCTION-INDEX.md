@@ -140,7 +140,7 @@
 ### kvs
 
   - kvs/redis-get, kvs/redis-set, kvs/redis-delete, kvs/redis-exists?, kvs/redis-keys, kvs/redis-expire, kvs/redis-ttl, kvs/redis-incr, kvs/redis-decr, kvs/redis-lpush, kvs/redis-rpush, kvs/redis-lpop, kvs/redis-rpop, kvs/redis-lrange, kvs/redis-hset, kvs/redis-hget, kvs/redis-hgetall, kvs/redis-sadd, kvs/redis-smembers, kvs/redis-mget, kvs/redis-mset
-  - kvs/connect, kvs/get, kvs/set, kvs/del, kvs/exists, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/lrange, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers, kvs/mget, kvs/mset
+  - kvs/connect, kvs/close, kvs/get, kvs/set, kvs/del, kvs/exists, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/lrange, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers, kvs/mget, kvs/mset
 
 ### kvs/redis
 

@@ -1,5 +1,5 @@
 ;; Standard Library Documentation - KVS (Key-Value Store) Unified API
-;; KVS Functions (21 functions - kvs/*)
+;; KVS Functions (23 functions - kvs/*)
 ;; This module is compiled with the `kvs-redis` feature
 
 ;; ========== Unified KVS Interface ==========
@@ -7,7 +7,7 @@
 ;; Currently supports: Redis
 ;; Future support planned: Memcached, etc.
 
-;; --- Connection ---
+;; --- Connection (2 functions) ---
 
 (def __doc__kvs/connect
   {:desc "Connect to a KVS backend (Redis, etc.)."
@@ -15,6 +15,14 @@
    :returns {:type "connection" :desc "Connection object (use with other kvs/* functions)"}
    :examples ["(def conn (kvs/connect \"redis://localhost:6379\"))"
               "(def conn (kvs/connect \"redis://user:pass@example.com:6379/0\"))"]})
+
+(def __doc__kvs/close
+  {:desc "Close a KVS connection and free resources."
+   :params [{:name "conn" :type "connection" :desc "Connection object from kvs/connect"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(def conn (kvs/connect \"redis://localhost:6379\"))"
+              ";; ... perform KVS operations ..."
+              "(kvs/close conn) ;; Close the connection"]})
 
 ;; --- Basic Operations (7 functions) ---
 

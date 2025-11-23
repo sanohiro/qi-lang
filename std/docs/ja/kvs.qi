@@ -1,11 +1,11 @@
 ;; 標準ライブラリドキュメント - KVS統一API
-;; KVS Functions (21 functions - kvs/*)
+;; KVS Functions (23 functions - kvs/*)
 ;; このモジュールは `kvs-redis` feature でコンパイルされます
 
-;; ========== 統一インターフェース（21個） ==========
+;; ========== 統一インターフェース（23個） ==========
 ;; バックエンド（Redis, Memcached等）の違いを隠蔽し、同じAPIで操作できます。
 
-;; --- 接続 (1個) ---
+;; --- 接続 (2個) ---
 
 (def __doc__kvs/connect
   {:desc "KVSに接続し、接続オブジェクトを返します。URLからバックエンドを自動判別します。"
@@ -13,6 +13,14 @@
    :returns {:type "string" :desc "接続ID（文字列）"}
    :examples ["(def kvs (kvs/connect \"redis://localhost:6379\"))"
               "(def kvs (kvs/connect \"memcached://localhost:11211\")) ;; 将来対応"]})
+
+(def __doc__kvs/close
+  {:desc "KVS接続をクローズします。接続リソースを解放します。"
+   :params [{:name "conn" :type "string" :desc "接続ID（kvs/connectの戻り値）"}]
+   :returns {:type "nil" :desc "nil"}
+   :examples ["(def kvs (kvs/connect \"redis://localhost:6379\"))"
+              ";; ... KVS操作 ..."
+              "(kvs/close kvs) ;; 接続を閉じる"]})
 
 ;; --- 基本操作 (7個) ---
 
