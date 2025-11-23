@@ -323,12 +323,16 @@ impl Evaluator {
                 // 再度ロックを取得してチェック
                 let traced_funcs = crate::builtins::debug::TRACED_FUNCTIONS.read();
                 if traced_funcs.contains(&func_name) {
-                    use colored::Colorize;
                     let args_str: Vec<String> = args.iter().map(|a| format!("{:?}", a)).collect();
-                    eprintln!(
-                        "{}",
-                        format!("→ {}({})", func_name, args_str.join(", ")).cyan()
-                    );
+                    let trace_msg = format!("→ {}({})", func_name, args_str.join(", "));
+
+                    #[cfg(feature = "repl")]
+                    {
+                        use colored::Colorize;
+                        eprintln!("{}", trace_msg.cyan());
+                    }
+                    #[cfg(not(feature = "repl"))]
+                    eprintln!("{}", trace_msg);
                 }
             }
         }

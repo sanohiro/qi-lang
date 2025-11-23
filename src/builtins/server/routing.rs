@@ -55,7 +55,7 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
 
     let method = match req {
         Value::Map(m) => match m.get(&method_key) {
-            Some(Value::Keyword(k)) => k.to_string(),
+            Some(Value::Keyword(k)) => k.clone(),
             _ => {
                 return Err(fmt_msg(
                     MsgKey::RequestMustHave,
@@ -87,8 +87,9 @@ pub(super) fn route_request(req: &Value, routes: &im::Vector<Value>) -> Result<V
                     (&route_def[0], &route_def[1])
                 {
                     // メソッドに対応するハンドラーを取得
+                    // ルート定義は {:get handler :post handler} のようにキーワードキーを使用
                     if let Some(handler) =
-                        handlers.get(&crate::value::MapKey::String(method.clone()))
+                        handlers.get(&crate::value::MapKey::Keyword(method.clone()))
                     {
                         // 静的ファイルハンドラーの場合はプレフィックスマッチング
                         if let Value::Map(m) = handler {
@@ -420,7 +421,15 @@ fn match_route_pattern(
     for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
         if let Some(param_name) = pattern_part.strip_prefix(':') {
             // パラメータ部分 - パラメータ名を抽出
-            params.insert(param_name.to_string(), Value::String(path_part.to_string()));
+            // percent-encodingをデコード（例: %E3%81%82 → あ）
+            #[cfg(feature = "string-encoding")]
+            let decoded_value = urlencoding::decode(path_part)
+                .unwrap_or(std::borrow::Cow::Borrowed(path_part))
+                .to_string();
+            #[cfg(not(feature = "string-encoding"))]
+            let decoded_value = path_part.to_string();
+
+            params.insert(param_name.to_string(), Value::String(decoded_value));
         } else if pattern_part != path_part {
             // 固定部分が一致しない
             return None;

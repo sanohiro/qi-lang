@@ -93,7 +93,7 @@ kvs-redis = ["dep:redis", "dep:tokio", "format-json"]  # Redis対応（非同期
 # kvs-dynamodb = ["dep:rusoto_dynamodb"]  # TODO: DynamoDB対応（将来、C依存）
 
 http-client = ["dep:reqwest", "format-json", "string-encoding", "util-zip", "dep:tar"]  # JSON、base64、gzip圧縮、tar展開が必要
-http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio", "dep:tokio-util", "dep:tokio-stream", "format-json", "string-encoding", "util-zip"]  # JSON、URL/base64、gzip圧縮、ストリーミングが必要
+http-server = ["dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:tokio", "dep:tokio-util", "dep:tokio-stream", "dep:futures-util", "format-json", "string-encoding", "util-zip"]  # JSON、URL/base64、gzip圧縮、ストリーミングが必要
 websocket = ["dep:tokio-tungstenite", "dep:futures-util", "dep:tokio", "format-json"]  # WebSocketサーバー/クライアント（Pure Rust）
 
 format-json = ["dep:serde_json"]

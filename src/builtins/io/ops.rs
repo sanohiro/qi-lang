@@ -18,6 +18,7 @@ use super::*;
 /// (io/list-dir "./src" :pattern "*.rs")
 /// (io/list-dir "./src" :recursive true)
 /// ```
+#[cfg(feature = "io-glob")]
 pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
     // 可変引数（1 + keyword args）のため、最小1つの引数が必要
     if args.is_empty() {
@@ -86,6 +87,12 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
         .collect();
 
     Ok(Value::List(entries?.into()))
+}
+
+/// list-dir スタブ実装（io-glob feature無効時）
+#[cfg(not(feature = "io-glob"))]
+pub fn native_list_dir(_args: &[Value]) -> Result<Value, String> {
+    Err("io/list-dir requires 'io-glob' feature. Enable it in Cargo.toml.".to_string())
 }
 
 /// create-dir - ディレクトリを作成
