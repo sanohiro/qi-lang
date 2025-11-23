@@ -340,9 +340,12 @@ impl Evaluator {
                 );
             }
 
-            // パースして評価
+            // パースして評価（ソース名を設定してエラー診断を改善）
             let mut parser = crate::parser::Parser::new(&content)
                 .map_err(|e| qerr(MsgKey::ModuleParserInitError, &[name, &e]))?;
+
+            // ソース名を設定（エラー時にファイル名と行番号を表示）
+            parser.set_source_name(found_path.clone().unwrap_or_else(|| name.to_string()));
 
             let exprs = parser
                 .parse_all()

@@ -61,24 +61,30 @@ impl Table {
     fn from_map_list(items: &[Value]) -> Result<Self, String> {
         let mut rows = Vec::new();
 
-        // 最初の要素からヘッダーを抽出（MapKeyを保持）
-        let (header_keys, header_strings): (Vec<crate::value::MapKey>, Vec<String>) =
-            if let Value::Map(first_map) = &items[0] {
-                let mut pairs: Vec<(crate::value::MapKey, String)> = first_map
-                    .keys()
-                    .map(|k| (k.clone(), k.to_string()))
-                    .collect();
-                // to_string()結果でソート（順序を安定させる）
-                pairs.sort_by(|a, b| a.1.cmp(&b.1));
-                pairs.into_iter().unzip()
+        // 全ての行のキーの和集合を取得（異質データ対応）
+        let mut all_keys = std::collections::HashSet::new();
+        for item in items {
+            if let Value::Map(map) = item {
+                for key in map.keys() {
+                    all_keys.insert(key.clone());
+                }
             } else {
                 return Err(fmt_msg(
                     MsgKey::TableInvalidFormat,
                     &["all elements must be maps"],
                 ));
-            };
+            }
+        }
 
-        // 各行を抽出
+        // キーをソート（順序を安定させる）
+        let mut pairs: Vec<(crate::value::MapKey, String)> = all_keys
+            .into_iter()
+            .map(|k| (k.clone(), k.to_string()))
+            .collect();
+        pairs.sort_by(|a, b| a.1.cmp(&b.1));
+        let (header_keys, header_strings): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+
+        // 各行を抽出（存在しないキーはnilで埋める）
         for item in items {
             if let Value::Map(map) = item {
                 let mut row = Vec::new();

@@ -36,10 +36,6 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
     })?;
     let mut zip = ZipWriter::new(file);
 
-    let options = FileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o755);
-
     // 各ファイルを追加
     for arg in &args[1..] {
         let path_str = match arg {
@@ -56,9 +52,9 @@ pub fn native_zip_create(args: &[Value]) -> Result<Value, String> {
         }
 
         if path.is_file() {
-            add_file_to_zip(&mut zip, path, path, &options)?;
+            add_file_to_zip(&mut zip, path, path)?;
         } else if path.is_dir() {
-            add_dir_to_zip(&mut zip, path, path, &options)?;
+            add_dir_to_zip(&mut zip, path, path)?;
         }
     }
 
@@ -73,7 +69,6 @@ fn add_file_to_zip<W: Write + std::io::Seek>(
     zip: &mut ZipWriter<W>,
     file_path: &Path,
     base_path: &Path,
-    options: &FileOptions<()>,
 ) -> Result<(), String> {
     let name = file_path
         .strip_prefix(base_path.parent().unwrap_or(Path::new("")))
@@ -81,7 +76,35 @@ fn add_file_to_zip<W: Write + std::io::Seek>(
         .to_string_lossy()
         .to_string();
 
-    zip.start_file(name, *options)
+    // ファイルのメタデータを取得してパーミッションを保持
+    let metadata = fs::metadata(file_path).map_err(|e| {
+        fmt_msg(
+            MsgKey::ZipReadFileFailed,
+            &[
+                "zip/create",
+                &file_path.display().to_string(),
+                &e.to_string(),
+            ],
+        )
+    })?;
+
+    #[cfg(unix)]
+    let permissions = {
+        use std::os::unix::fs::PermissionsExt;
+        metadata.permissions().mode() & 0o777
+    };
+    #[cfg(not(unix))]
+    let permissions = if metadata.permissions().readonly() {
+        0o444 // r--r--r--
+    } else {
+        0o644 // rw-r--r--
+    };
+
+    let options = FileOptions::<()>::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(permissions);
+
+    zip.start_file(name, options)
         .map_err(|e| fmt_msg(MsgKey::ZipStartFileFailed, &["zip/create", &e.to_string()]))?;
 
     let mut f = File::open(file_path).map_err(|e| {
@@ -117,13 +140,29 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
     zip: &mut ZipWriter<W>,
     dir_path: &Path,
     base_path: &Path,
-    options: &FileOptions<()>,
 ) -> Result<(), String> {
     // ディレクトリエントリを追加（空ディレクトリも保存されるように）
     if let Ok(relative_path) = dir_path.strip_prefix(base_path) {
         if !relative_path.as_os_str().is_empty() {
             let dir_name = relative_path.to_string_lossy().to_string() + "/";
-            zip.add_directory(&dir_name, *options).map_err(|e| {
+
+            // ディレクトリのパーミッションを取得
+            #[cfg(unix)]
+            let permissions = {
+                use std::os::unix::fs::PermissionsExt;
+                match fs::metadata(dir_path) {
+                    Ok(metadata) => metadata.permissions().mode() & 0o777,
+                    Err(_) => 0o755, // デフォルト
+                }
+            };
+            #[cfg(not(unix))]
+            let permissions = 0o755;
+
+            let options = FileOptions::<()>::default()
+                .compression_method(zip::CompressionMethod::Deflated)
+                .unix_permissions(permissions);
+
+            zip.add_directory(&dir_name, options).map_err(|e| {
                 fmt_msg(MsgKey::ZipStartFileFailed, &["zip/create", &e.to_string()])
             })?;
         }
@@ -150,9 +189,9 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
         let path = entry.path();
 
         if path.is_file() {
-            add_file_to_zip(zip, &path, base_path, options)?;
+            add_file_to_zip(zip, &path, base_path)?;
         } else if path.is_dir() {
-            add_dir_to_zip(zip, &path, base_path, options)?;
+            add_dir_to_zip(zip, &path, base_path)?;
         }
     }
 
@@ -365,11 +404,7 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
         .map_err(|e| fmt_msg(MsgKey::ZipCreateTempFailed, &["zip/add", &e.to_string()]))?;
     let mut zip = ZipWriter::new(temp_file);
 
-    let options = FileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o755);
-
-    // 既存ファイルをコピー
+    // 既存ファイルをコピー（パーミッション保持）
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| {
             fmt_msg(
@@ -377,6 +412,12 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
                 &["zip/add", &i.to_string(), &e.to_string()],
             )
         })?;
+
+        // 既存ファイルのパーミッションを保持
+        let permissions = file.unix_mode().unwrap_or(0o644);
+        let options = FileOptions::<()>::default()
+            .compression_method(zip::CompressionMethod::Deflated)
+            .unix_permissions(permissions);
 
         zip.start_file(file.name(), options)
             .map_err(|e| fmt_msg(MsgKey::ZipStartFileFailed, &["zip/add", &e.to_string()]))?;
@@ -401,9 +442,9 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
         }
 
         if path.is_file() {
-            add_file_to_zip(&mut zip, path, path, &options)?;
+            add_file_to_zip(&mut zip, path, path)?;
         } else if path.is_dir() {
-            add_dir_to_zip(&mut zip, path, path, &options)?;
+            add_dir_to_zip(&mut zip, path, path)?;
         }
     }
 
