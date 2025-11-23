@@ -211,7 +211,15 @@ pub fn native_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     let seconds = match &args[2] {
-        Value::Integer(i) => *i,
+        Value::Integer(i) => {
+            if *i < 0 {
+                return Err(fmt_msg(
+                    MsgKey::MustBeNonNegative,
+                    &["kvs/expire", "seconds"],
+                ));
+            }
+            *i
+        }
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,

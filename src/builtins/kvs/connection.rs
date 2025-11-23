@@ -79,8 +79,11 @@ pub(super) fn get_connection(conn_str: &str) -> Result<String, String> {
         return Err(fmt_msg(MsgKey::InvalidConnection, &[]));
     }
     let conn_id = &conn_str["KvsConnection:".len()..];
-    if !CONNECTIONS.lock().contains_key(conn_id) {
-        return Err(fmt_msg(MsgKey::ConnectionNotFound, &[conn_id]));
+
+    // ロックを1回だけ取得して存在チェック（TOCTOU問題を回避）
+    if CONNECTIONS.lock().contains_key(conn_id) {
+        Ok(conn_id.to_string())
+    } else {
+        Err(fmt_msg(MsgKey::ConnectionNotFound, &[conn_id]))
     }
-    Ok(conn_id.to_string())
 }

@@ -97,16 +97,13 @@ impl KvsDriver for RedisDriver {
             Value::String(pattern.to_string()),
         ])
         .and_then(|v| match v {
-            Value::Vector(vec) => Ok(vec
+            Value::Vector(vec) => vec
                 .iter()
-                .filter_map(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.clone())
-                    } else {
-                        None
-                    }
+                .map(|v| match v {
+                    Value::String(s) => Ok(s.clone()),
+                    _ => Err("kvs/keys: unexpected non-string value in response".to_string()),
                 })
-                .collect()),
+                .collect::<Result<Vec<_>, _>>(),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
                 Err(m
@@ -322,16 +319,23 @@ impl KvsDriver for RedisDriver {
                 }
                 let mut pairs = Vec::new();
                 for (k, v) in m.iter() {
-                    if let Value::String(s) = v {
-                        // MapKeyをフィールド名に変換
-                        let field = match k {
-                            crate::value::MapKey::Keyword(kw) => kw.to_string(),
-                            crate::value::MapKey::String(s) => s.clone(),
-                            crate::value::MapKey::Symbol(sym) => sym.to_string(),
-                            crate::value::MapKey::Integer(i) => i.to_string(),
-                        };
-                        pairs.push((field, s.clone()));
-                    }
+                    // 非文字列値があればエラー
+                    let s = match v {
+                        Value::String(s) => s.clone(),
+                        _ => {
+                            return Err(
+                                "kvs/hgetall: unexpected non-string value in response".to_string()
+                            )
+                        }
+                    };
+                    // MapKeyをフィールド名に変換
+                    let field = match k {
+                        crate::value::MapKey::Keyword(kw) => kw.to_string(),
+                        crate::value::MapKey::String(s) => s.clone(),
+                        crate::value::MapKey::Symbol(sym) => sym.to_string(),
+                        crate::value::MapKey::Integer(i) => i.to_string(),
+                    };
+                    pairs.push((field, s));
                 }
                 Ok(pairs)
             }
@@ -364,16 +368,13 @@ impl KvsDriver for RedisDriver {
             Value::String(key.to_string()),
         ])
         .and_then(|v| match v {
-            Value::Vector(vec) => Ok(vec
+            Value::Vector(vec) => vec
                 .iter()
-                .filter_map(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.clone())
-                    } else {
-                        None
-                    }
+                .map(|v| match v {
+                    Value::String(s) => Ok(s.clone()),
+                    _ => Err("kvs/smembers: unexpected non-string value in response".to_string()),
                 })
-                .collect()),
+                .collect::<Result<Vec<_>, _>>(),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
                 Err(m
@@ -392,14 +393,14 @@ impl KvsDriver for RedisDriver {
             Value::Vector(keys_vec.into()),
         ])
         .and_then(|v| match v {
-            Value::Vector(vec) => Ok(vec
+            Value::Vector(vec) => vec
                 .iter()
                 .map(|v| match v {
-                    Value::String(s) => Some(s.clone()),
-                    Value::Nil => None,
-                    _ => None,
+                    Value::String(s) => Ok(Some(s.clone())),
+                    Value::Nil => Ok(None),
+                    _ => Err("kvs/mget: unexpected value type in response".to_string()),
                 })
-                .collect()),
+                .collect::<Result<Vec<_>, _>>(),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
                 Err(m
@@ -444,16 +445,13 @@ impl KvsDriver for RedisDriver {
             Value::Integer(stop),
         ])
         .and_then(|v| match v {
-            Value::Vector(vec) => Ok(vec
+            Value::Vector(vec) => vec
                 .iter()
-                .filter_map(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.clone())
-                    } else {
-                        None
-                    }
+                .map(|v| match v {
+                    Value::String(s) => Ok(s.clone()),
+                    _ => Err("kvs/lrange: unexpected non-string value in response".to_string()),
                 })
-                .collect()),
+                .collect::<Result<Vec<_>, _>>(),
             Value::Map(m) if m.contains_key(&crate::constants::keywords::error_mapkey()) => {
                 // SAFETY: contains_keyでチェック済み
                 Err(m
