@@ -11,6 +11,7 @@ Qi provides unified access to key-value stores. Currently supports Redis with fu
 - [Overview](#overview)
 - [Unified Interface Design](#unified-interface-design)
 - [kvs/connect - Connection](#kvsconnect---connection)
+- [kvs/close - Close Connection](#kvsclose---close-connection)
 - [Basic Operations](#basic-operations)
 - [Numeric Operations](#numeric-operations)
 - [List Operations](#list-operations)
@@ -123,6 +124,51 @@ Like `db/connect` for databases, KVS backends are handled transparently.
 - **Automatic connection pool**: Multiple connections to same URL are shared internally
 - **Automatic reconnection**: Automatically retries on connection failure
 - **Thread-safe**: Safe concurrent access from multiple threads
+- **Resource cleanup**: Explicitly close connections with `kvs/close`
+
+---
+
+## kvs/close - Close Connection
+
+**Closes a KVS connection and frees resources.**
+
+```qi
+(kvs/close conn)
+```
+
+### Arguments
+
+- `conn`: Connection ID (returned by `kvs/connect`)
+
+### Return Value
+
+- `nil` (success)
+- `{:error "message"}` (failure)
+
+### Usage Examples
+
+```qi
+;; Redis connection
+(def kvs (kvs/connect "redis://localhost:6379"))
+
+;; ... perform KVS operations ...
+(kvs/set kvs "key" "value")
+(kvs/get kvs "key")
+
+;; Close the connection
+(kvs/close kvs)
+;; => nil
+
+;; Operations after close result in error
+(kvs/get kvs "key")
+;; => {:error "Connection not found: kvs:1"}
+```
+
+### Notes
+
+- **Long-running applications**: Close unused connections with `kvs/close` to prevent connection leaks
+- **Short-lived scripts**: Resources are automatically freed on script exit, so explicit close is optional
+- **Connection pooling**: Connections to the same URL are pooled internally, but `kvs/close` only closes the specific connection ID
 
 ---
 
