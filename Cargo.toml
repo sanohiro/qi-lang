@@ -223,3 +223,9 @@ strip = true         # デバッグシンボルを削除してバイナリサイ
 lto = true           # リンク時最適化（クレート間の最適化）
 codegen-units = 1    # 最大限の最適化（コンパイル時間は増加）
 opt-level = 3        # 最高レベルの最適化
+
+# Clippy設定（コード品質向上）
+[lints.clippy]
+unwrap_used = "warn"      # unwrap()の使用を警告（ok_or_else、unwrap_or等を推奨）
+expect_used = "warn"      # expect()の使用を警告
+panic = "warn"            # panic!の使用を警告（Result返却を推奨）
