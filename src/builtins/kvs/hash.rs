@@ -35,10 +35,15 @@ pub fn native_hset(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.hset(key, field, &value) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -68,10 +73,15 @@ pub fn native_hget(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.hget(key, field) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -102,10 +112,15 @@ pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.hgetall(key) {
         Ok(pairs) => {

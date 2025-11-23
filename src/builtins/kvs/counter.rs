@@ -17,10 +17,15 @@ pub fn native_incr(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.incr(key) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -45,10 +50,15 @@ pub fn native_decr(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.decr(key) {
         Ok(i) => Ok(Value::Integer(i)),

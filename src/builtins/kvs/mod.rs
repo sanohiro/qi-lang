@@ -30,8 +30,14 @@ pub use list::*;
 pub use multi::*;
 pub use set::*;
 
+use std::sync::Arc;
+
+/// KVS接続の型エイリアス（Arc<Box<dyn KvsDriver>>）
+type KvsConnection = Arc<Box<dyn KvsDriver>>;
+
 /// KVS接続プール（接続ID → KvsDriver のマッピング）
-pub(super) static CONNECTIONS: LazyLock<Mutex<HashMap<String, Box<dyn KvsDriver>>>> =
+/// Arc で包むことで、ロックを早期に解放してから I/O 操作を実行可能
+pub(super) static CONNECTIONS: LazyLock<Mutex<HashMap<String, KvsConnection>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// 接続ID生成カウンター
@@ -48,12 +54,13 @@ pub(super) fn gen_conn_id() -> String {
 // 関数登録テーブル
 // ========================================
 
-/// 登録すべき関数のリスト（全22関数）
+/// 登録すべき関数のリスト（全23関数）
 /// @qi-doc:category kvs
-/// @qi-doc:functions kvs/connect, kvs/get, kvs/set, kvs/del, kvs/exists, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/lrange, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers, kvs/mget, kvs/mset
+/// @qi-doc:functions kvs/connect, kvs/close, kvs/get, kvs/set, kvs/del, kvs/exists, kvs/keys, kvs/expire, kvs/ttl, kvs/incr, kvs/decr, kvs/lpush, kvs/rpush, kvs/lpop, kvs/rpop, kvs/lrange, kvs/hset, kvs/hget, kvs/hgetall, kvs/sadd, kvs/smembers, kvs/mget, kvs/mset
 pub const FUNCTIONS: super::NativeFunctions = &[
     // 接続
     ("kvs/connect", native_connect),
+    ("kvs/close", native_close),
     // 基本操作（7関数）
     ("kvs/get", native_get),
     ("kvs/set", native_set),

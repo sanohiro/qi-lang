@@ -30,10 +30,15 @@ pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.lpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -71,10 +76,15 @@ pub fn native_rpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.rpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -99,10 +109,15 @@ pub fn native_lpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.lpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -128,10 +143,15 @@ pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.rpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -177,10 +197,15 @@ pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-    let connections = CONNECTIONS.lock();
-    let driver = connections
-        .get(&conn_id)
-        .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?;
+
+    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
+    let driver = {
+        let connections = CONNECTIONS.lock();
+        connections
+            .get(&conn_id)
+            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
+            .clone()
+    };
 
     match driver.lrange(key, start, stop) {
         Ok(items) => Ok(Value::Vector(
