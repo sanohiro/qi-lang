@@ -217,7 +217,12 @@ pub fn native_stream_take(args: &[Value]) -> Result<Value, String> {
     }
 
     let n = match &args[0] {
-        Value::Integer(n) if *n >= 0 => *n as usize,
+        Value::Integer(n) if *n >= 0 => usize::try_from(*n).map_err(|_| {
+            fmt_msg(
+                MsgKey::ValueTooLargeForI64,
+                &["stream-take", &n.to_string()],
+            )
+        })?,
         _ => {
             return Err(fmt_msg(
                 MsgKey::MustBeNonNegative,
@@ -261,7 +266,12 @@ pub fn native_stream_drop(args: &[Value]) -> Result<Value, String> {
     }
 
     let n = match &args[0] {
-        Value::Integer(n) if *n >= 0 => *n as usize,
+        Value::Integer(n) if *n >= 0 => usize::try_from(*n).map_err(|_| {
+            fmt_msg(
+                MsgKey::ValueTooLargeForI64,
+                &["stream-drop", &n.to_string()],
+            )
+        })?,
         _ => {
             return Err(fmt_msg(
                 MsgKey::MustBeNonNegative,

@@ -335,14 +335,13 @@ pub fn native_trim_right(args: &[Value]) -> Result<Value, String> {
 pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "repeat");
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::Integer(n)) => {
-            if *n < 0 {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["repeat", "non-negative integer"],
-                ));
-            }
-            Ok(Value::String(s.repeat(*n as usize)))
+        (Value::String(s), Value::Integer(n)) if *n >= 0 => {
+            let count = usize::try_from(*n)
+                .map_err(|_| fmt_msg(MsgKey::ValueTooLargeForI64, &["repeat", &n.to_string()]))?;
+            Ok(Value::String(s.repeat(count)))
+        }
+        (Value::String(_), Value::Integer(_)) => {
+            Err(fmt_msg(MsgKey::MustBeNonNegative, &["repeat", "count"]))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["repeat", "string and integer"])),
     }

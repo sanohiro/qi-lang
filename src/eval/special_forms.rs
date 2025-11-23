@@ -31,10 +31,13 @@ impl<'a> Drop for DeferGuard<'a> {
         // deferを実行（LIFO順）
         if let Some(defers) = self.evaluator.defer_stack.write().pop() {
             for defer_expr in defers.iter().rev() {
-                // deferの実行中のエラーは無視（Lisp/Rust文化に則る）
-                let _ = self
+                // deferの実行中のエラーはログ出力（リソースリーク検出のため）
+                if let Err(e) = self
                     .evaluator
-                    .eval_with_env(defer_expr, Arc::clone(&self.env));
+                    .eval_with_env(defer_expr, Arc::clone(&self.env))
+                {
+                    eprintln!("Warning: defer cleanup failed: {}", e);
+                }
             }
         }
     }

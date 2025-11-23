@@ -209,10 +209,12 @@ pub fn native_variance(args: &[Value]) -> Result<Value, String> {
 
 /// stddev - 標準偏差
 pub fn native_stddev(args: &[Value]) -> Result<Value, String> {
-    match native_variance(args) {
-        Ok(Value::Float(variance)) => Ok(Value::Float(variance.sqrt())),
-        Ok(_) => unreachable!(),
-        Err(e) => Err(e.replace("variance", "stddev")),
+    match native_variance(args)? {
+        Value::Float(variance) => Ok(Value::Float(variance.sqrt())),
+        _ => Err(fmt_msg(
+            MsgKey::InternalError,
+            &["stddev: variance should return float"],
+        )),
     }
 }
 

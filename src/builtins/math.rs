@@ -288,7 +288,10 @@ pub fn native_shuffle(args: &[Value]) -> Result<Value, String> {
             match &args[0] {
                 Value::List(_) => Ok(Value::List(shuffled.into())),
                 Value::Vector(_) => Ok(Value::Vector(shuffled.into())),
-                _ => unreachable!(),
+                _ => Err(fmt_msg(
+                    MsgKey::InternalError,
+                    &["shuffle: unexpected collection type"],
+                )),
             }
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["shuffle", "lists or vectors"])),
