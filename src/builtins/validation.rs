@@ -18,9 +18,10 @@
 
 use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use crate::HashMap;
 use regex::Regex;
+use std::sync::Arc;
 
 /// validate関数
 ///
@@ -45,7 +46,7 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
     };
 
     // :required チェック
-    let is_required = matches!(schema_map.get(":required"), Some(Value::Bool(true)));
+    let is_required = matches!(schema_map.get(&MapKey::Keyword(Arc::from("required"))), Some(Value::Bool(true)));
 
     if matches!(data, Value::Nil) {
         if is_required {
@@ -63,7 +64,7 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
     }
 
     // :type チェック（nilでない場合のみ）
-    if let Some(type_val) = schema_map.get(":type") {
+    if let Some(type_val) = schema_map.get(&MapKey::Keyword(Arc::from("type"))) {
         if let Some(error) = validate_type(type_val, data, field_name)? {
             return Ok(error);
         }
@@ -157,7 +158,7 @@ fn validate_string(
     field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
     // :min-length チェック
-    if let Some(Value::Integer(min)) = schema.get(":min-length") {
+    if let Some(Value::Integer(min)) = schema.get(&MapKey::Keyword(Arc::from("min-length"))) {
         if s.chars().count() < *min as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -168,7 +169,7 @@ fn validate_string(
     }
 
     // :max-length チェック
-    if let Some(Value::Integer(max)) = schema.get(":max-length") {
+    if let Some(Value::Integer(max)) = schema.get(&MapKey::Keyword(Arc::from("max-length"))) {
         if s.chars().count() > *max as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -179,7 +180,7 @@ fn validate_string(
     }
 
     // :pattern チェック
-    if let Some(Value::String(pattern)) = schema.get(":pattern") {
+    if let Some(Value::String(pattern)) = schema.get(&MapKey::Keyword(Arc::from("pattern"))) {
         let re = Regex::new(pattern)
             .map_err(|e| fmt_msg(MsgKey::InvalidRegex, &["validate", &e.to_string()]))?;
         if !re.is_match(s) {
@@ -201,7 +202,7 @@ fn validate_number(
     field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
     // :min チェック
-    if let Some(Value::Integer(min)) = schema.get(":min") {
+    if let Some(Value::Integer(min)) = schema.get(&MapKey::Keyword(Arc::from("min"))) {
         if n < *min as f64 {
             return Ok(Some(error_result(
                 field_name,
@@ -210,7 +211,7 @@ fn validate_number(
             )));
         }
     }
-    if let Some(Value::Float(min)) = schema.get(":min") {
+    if let Some(Value::Float(min)) = schema.get(&MapKey::Keyword(Arc::from("min"))) {
         if n < *min {
             return Ok(Some(error_result(
                 field_name,
@@ -221,7 +222,7 @@ fn validate_number(
     }
 
     // :max チェック
-    if let Some(Value::Integer(max)) = schema.get(":max") {
+    if let Some(Value::Integer(max)) = schema.get(&MapKey::Keyword(Arc::from("max"))) {
         if n > *max as f64 {
             return Ok(Some(error_result(
                 field_name,
@@ -230,7 +231,7 @@ fn validate_number(
             )));
         }
     }
-    if let Some(Value::Float(max)) = schema.get(":max") {
+    if let Some(Value::Float(max)) = schema.get(&MapKey::Keyword(Arc::from("max"))) {
         if n > *max {
             return Ok(Some(error_result(
                 field_name,
@@ -241,7 +242,7 @@ fn validate_number(
     }
 
     // :positive チェック
-    if let Some(Value::Bool(true)) = schema.get(":positive") {
+    if let Some(Value::Bool(true)) = schema.get(&MapKey::Keyword(Arc::from("positive"))) {
         if n <= 0.0 {
             return Ok(Some(error_result(
                 field_name,
@@ -252,7 +253,7 @@ fn validate_number(
     }
 
     // :integer チェック
-    if let Some(Value::Bool(true)) = schema.get(":integer") {
+    if let Some(Value::Bool(true)) = schema.get(&MapKey::Keyword(Arc::from("integer"))) {
         if n.fract() != 0.0 {
             return Ok(Some(error_result(
                 field_name,
@@ -278,7 +279,7 @@ fn validate_collection(
     };
 
     // :min-items チェック
-    if let Some(Value::Integer(min)) = schema.get(":min-items") {
+    if let Some(Value::Integer(min)) = schema.get(&MapKey::Keyword(Arc::from("min-items"))) {
         if items < *min as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -289,7 +290,7 @@ fn validate_collection(
     }
 
     // :max-items チェック
-    if let Some(Value::Integer(max)) = schema.get(":max-items") {
+    if let Some(Value::Integer(max)) = schema.get(&MapKey::Keyword(Arc::from("max-items"))) {
         if items > *max as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -309,7 +310,7 @@ fn validate_map(
     _field_name: Option<&str>,
 ) -> Result<Option<Value>, String> {
     // :fields チェック
-    if let Some(Value::Map(fields_schema)) = schema.get(":fields") {
+    if let Some(Value::Map(fields_schema)) = schema.get(&MapKey::Keyword(Arc::from("fields"))) {
         for (field_key, field_schema) in fields_schema.iter() {
             let field_data = data.get(field_key).unwrap_or(&Value::Nil);
             let result = validate_value(field_schema, field_data, Some(field_key))?;

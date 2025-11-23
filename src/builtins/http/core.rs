@@ -147,12 +147,16 @@ pub(super) fn http_request_detailed(
     if let Some(h) = headers {
         for (k, v) in h.iter() {
             if let Value::String(val) = v {
-                // MapKeyから文字列を取得
-                let key = match k {
+                // MapKeyから文字列を取得（Integer用にStringを生成）
+                let key_owned;
+                let key: &str = match k {
                     crate::value::MapKey::String(s) => s.trim_matches('"'),
                     crate::value::MapKey::Symbol(s) => s.as_ref(),
                     crate::value::MapKey::Keyword(s) => s.as_ref(),
-                    crate::value::MapKey::Integer(i) => &i.to_string(),
+                    crate::value::MapKey::Integer(i) => {
+                        key_owned = i.to_string();
+                        &key_owned
+                    }
                 };
                 let value = val.trim_matches('"');
                 request = request.header(key, value);

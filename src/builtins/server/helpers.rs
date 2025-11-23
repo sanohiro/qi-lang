@@ -213,11 +213,16 @@ pub(super) async fn value_to_response(
             if let Some(Value::Map(headers)) = m.get(&headers_key) {
                 for (k, v) in headers {
                     if let Value::String(val) = v {
-                        let key_str = match k {
+                        // Integer用にStringを生成してから参照
+                        let key_owned;
+                        let key_str: &str = match k {
                             MapKey::String(s) => s.as_str(),
                             MapKey::Symbol(s) => s.as_ref(),
                             MapKey::Keyword(s) => s.as_ref(),
-                            MapKey::Integer(i) => &i.to_string(),
+                            MapKey::Integer(i) => {
+                                key_owned = i.to_string();
+                                &key_owned
+                            }
                         };
                         response = response.header(key_str, val.as_str());
                     }

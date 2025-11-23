@@ -71,7 +71,15 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
             for item in items {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
-                    Value::Float(f) => numbers.push(*f),
+                    Value::Float(f) => {
+                        if f.is_nan() {
+                            return Err(fmt_msg(
+                                MsgKey::InvalidFloat,
+                                &["stats/median (NaN is not allowed)"],
+                            ));
+                        }
+                        numbers.push(*f)
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::AllElementsMustBe,
@@ -81,10 +89,7 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            numbers.sort_by(|a, b| {
-                a.partial_cmp(b)
-                    .expect("NaN values should have been filtered out")
-            });
+            numbers.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
             let len = numbers.len();
             let median = if len.is_multiple_of(2) {

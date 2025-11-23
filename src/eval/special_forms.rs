@@ -183,34 +183,18 @@ impl Evaluator {
         let _recur_guard = RecurGuard;
 
         // ループ用の環境を作成
-        let mut loop_env = Env::with_parent(Arc::clone(&env));
+        let loop_env = Env::with_parent(Arc::clone(&env));
 
-        // 初期値で環境を設定（Iterator で一度に評価）
-        let current_values: Vec<Value> = bindings
-            .iter()
-            .map(|(_name, expr)| self.eval_with_env(expr, Arc::clone(&env)))
-            .collect::<Result<_, _>>()?;
-
-        // 環境に設定
-        for ((name, _), value) in bindings.iter().zip(current_values.iter()) {
-            loop_env.set(name.clone(), value.clone());
+        // 初期値を順次評価し、各バインディングが前のバインディングを参照できるようにする
+        // （Clojure風セマンティクス: (loop [x 0 y (+ x 1)] ...) でyがxを参照可能）
+        let loop_env_rc = Arc::new(RwLock::new(loop_env));
+        for (name, expr) in bindings {
+            let value = self.eval_with_env(expr, Arc::clone(&loop_env_rc))?;
+            loop_env_rc.write().set(name.clone(), value);
         }
 
-        let loop_env_rc = Arc::new(RwLock::new(loop_env));
-
-        // ループ本体を繰り返し評価（無限ループ保護付き）
-        let mut loop_count: usize = 0;
-        const MAX_LOOP_ITERATIONS: usize = 10_000_000; // 1000万回
-
+        // ループ本体を繰り返し評価（無限ループ保護なし - ユーザーの意図を尊重）
         loop {
-            loop_count += 1;
-            if loop_count > MAX_LOOP_ITERATIONS {
-                return Err(fmt_msg(
-                    MsgKey::InfiniteLoopDetected,
-                    &[&loop_count.to_string()],
-                ));
-            }
-
             match self.eval_with_env(body, loop_env_rc.clone()) {
                 Ok(value) => return Ok(value),
                 Err(e) if e == RECUR_SENTINEL => {
