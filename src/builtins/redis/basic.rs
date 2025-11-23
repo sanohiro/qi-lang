@@ -279,7 +279,13 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     let seconds = match &args[2] {
-        Value::Integer(i) => *i as u64,
+        Value::Integer(i) if *i >= 0 => *i,
+        Value::Integer(_) => {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["kvs/redis-expire", "seconds"],
+            ))
+        }
         _ => {
             return Err(fmt_msg(
                 MsgKey::TypeOnly,
@@ -289,9 +295,10 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     TOKIO_RT.block_on(async {
-        let result = execute_with_retry(url, |mut conn| async move {
-            conn.expire(key, seconds as i64).await
-        })
+        let result = execute_with_retry(
+            url,
+            |mut conn| async move { conn.expire(key, seconds).await },
+        )
         .await;
 
         match result {

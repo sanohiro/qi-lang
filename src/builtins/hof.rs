@@ -151,7 +151,10 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
             match collection {
                 Value::List(_) => Ok(Value::List(results?.into())),
                 Value::Vector(_) => Ok(Value::Vector(results?.into())),
-                _ => unreachable!(),
+                _ => Err(fmt_msg(
+                    MsgKey::InternalError,
+                    &["pmap/pfilter: unexpected collection type"],
+                )),
             }
         }
         _ => Err(fmt_msg(
@@ -226,7 +229,10 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
             match collection {
                 Value::List(_) => Ok(Value::List(results?.into())),
                 Value::Vector(_) => Ok(Value::Vector(results?.into())),
-                _ => unreachable!(),
+                _ => Err(fmt_msg(
+                    MsgKey::InternalError,
+                    &["pmap/pfilter: unexpected collection type"],
+                )),
             }
         }
         _ => Err(fmt_msg(
