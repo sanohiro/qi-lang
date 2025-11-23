@@ -61,28 +61,29 @@ impl Table {
     fn from_map_list(items: &[Value]) -> Result<Self, String> {
         let mut rows = Vec::new();
 
-        // 最初の要素からヘッダーを抽出
-        let headers: Vec<String> = if let Value::Map(first_map) = &items[0] {
-            let mut h: Vec<String> = first_map.keys().map(|k| k.to_string()).collect();
-            h.sort(); // 順序を安定させる
-            h
-        } else {
-            return Err(fmt_msg(
-                MsgKey::TableInvalidFormat,
-                &["all elements must be maps"],
-            ));
-        };
+        // 最初の要素からヘッダーを抽出（MapKeyを保持）
+        let (header_keys, header_strings): (Vec<crate::value::MapKey>, Vec<String>) =
+            if let Value::Map(first_map) = &items[0] {
+                let mut pairs: Vec<(crate::value::MapKey, String)> = first_map
+                    .keys()
+                    .map(|k| (k.clone(), k.to_string()))
+                    .collect();
+                // to_string()結果でソート（順序を安定させる）
+                pairs.sort_by(|a, b| a.1.cmp(&b.1));
+                pairs.into_iter().unzip()
+            } else {
+                return Err(fmt_msg(
+                    MsgKey::TableInvalidFormat,
+                    &["all elements must be maps"],
+                ));
+            };
 
         // 各行を抽出
         for item in items {
             if let Value::Map(map) = item {
                 let mut row = Vec::new();
-                for header in &headers {
-                    row.push(
-                        map.get(&crate::value::MapKey::String(header.clone()))
-                            .cloned()
-                            .unwrap_or(Value::Nil),
-                    );
+                for key in &header_keys {
+                    row.push(map.get(key).cloned().unwrap_or(Value::Nil));
                 }
                 rows.push(row);
             } else {
@@ -95,7 +96,7 @@ impl Table {
 
         Ok(Table {
             format: TableFormat::MapList,
-            headers: Some(headers),
+            headers: Some(header_strings),
             rows,
         })
     }

@@ -120,7 +120,11 @@ pub fn native_csv_read_file(args: &[Value]) -> Result<Value, String> {
 }
 
 /// csv/read-stream - CSV ファイルをストリームとして読み込み
-/// 大きなCSVファイルを処理する際に、メモリを節約しながら行ごとに処理できる
+///
+/// **注意**: 現在の実装では、ファイル全体を一度にメモリに読み込んでから
+/// イテレータとして返しています。大きなファイルの場合、メモリ使用量が
+/// 増加する可能性があります。真のストリーミング実装は将来のバージョンで
+/// 提供される予定です。
 pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "csv/read-stream");
 

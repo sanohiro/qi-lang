@@ -56,17 +56,18 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
         })
         .unwrap_or(false);
 
-    // グロブパターンの構築
+    // グロブパターンの構築（dir_pathをエスケープしてメタ文字を無効化）
+    let escaped_dir = glob::Pattern::escape(dir_path);
     let glob_pattern = if let Some(pat) = pattern {
         if recursive {
-            format!("{}/**/{}", dir_path, pat)
+            format!("{}/**/{}", escaped_dir, pat)
         } else {
-            format!("{}/{}", dir_path, pat)
+            format!("{}/{}", escaped_dir, pat)
         }
     } else if recursive {
-        format!("{}/**/*", dir_path)
+        format!("{}/**/*", escaped_dir)
     } else {
-        format!("{}/*", dir_path)
+        format!("{}/*", escaped_dir)
     };
 
     // グロブでファイル一覧を取得

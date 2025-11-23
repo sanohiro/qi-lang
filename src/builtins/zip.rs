@@ -119,6 +119,16 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
     base_path: &Path,
     options: &FileOptions<()>,
 ) -> Result<(), String> {
+    // ディレクトリエントリを追加（空ディレクトリも保存されるように）
+    if let Ok(relative_path) = dir_path.strip_prefix(base_path) {
+        if !relative_path.as_os_str().is_empty() {
+            let dir_name = relative_path.to_string_lossy().to_string() + "/";
+            zip.add_directory(&dir_name, *options).map_err(|e| {
+                fmt_msg(MsgKey::ZipStartFileFailed, &["zip/create", &e.to_string()])
+            })?;
+        }
+    }
+
     let entries = fs::read_dir(dir_path).map_err(|e| {
         fmt_msg(
             MsgKey::ZipReadDirFailed,
