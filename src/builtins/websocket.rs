@@ -10,8 +10,6 @@
 //! - `ws/receive` - メッセージ受信
 //! - `ws/close` - 接続クローズ
 
-#![cfg(feature = "websocket")]
-
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use dashmap::DashMap;

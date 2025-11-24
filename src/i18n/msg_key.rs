@@ -23,7 +23,7 @@ pub enum MsgKey {
     TypeMismatch, // 型エラー（期待と実際）
     ArgCountMismatch,
     DivisionByZero,
-    IntegerOverflow, // integer overflow in {0} operation
+    IntegerOverflow,  // integer overflow in {0} operation
     IntegerUnderflow, // integer underflow in {1} operation
     ExportOnlyInModule,
     CannotQuote, // 統合: CannotQuoteとCannotQuoteSpecialForm

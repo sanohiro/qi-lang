@@ -162,6 +162,13 @@ fn validate_string(
 ) -> Result<Option<Value>, String> {
     // :min-length チェック
     if let Some(Value::Integer(min)) = schema.get(&MapKey::Keyword(Arc::from("min-length"))) {
+        // 負数の場合はエラー
+        if *min < 0 {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["validation :min-length", "value"],
+            ));
+        }
         if s.chars().count() < *min as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -173,6 +180,13 @@ fn validate_string(
 
     // :max-length チェック
     if let Some(Value::Integer(max)) = schema.get(&MapKey::Keyword(Arc::from("max-length"))) {
+        // 負数の場合はエラー
+        if *max < 0 {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["validation :max-length", "value"],
+            ));
+        }
         if s.chars().count() > *max as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -283,6 +297,13 @@ fn validate_collection(
 
     // :min-items チェック
     if let Some(Value::Integer(min)) = schema.get(&MapKey::Keyword(Arc::from("min-items"))) {
+        // 負数の場合はエラー
+        if *min < 0 {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["validation :min-items", "value"],
+            ));
+        }
         if items < *min as usize {
             return Ok(Some(error_result(
                 field_name,
@@ -294,6 +315,13 @@ fn validate_collection(
 
     // :max-items チェック
     if let Some(Value::Integer(max)) = schema.get(&MapKey::Keyword(Arc::from("max-items"))) {
+        // 負数の場合はエラー
+        if *max < 0 {
+            return Err(fmt_msg(
+                MsgKey::MustBeNonNegative,
+                &["validation :max-items", "value"],
+            ));
+        }
         if items > *max as usize {
             return Ok(Some(error_result(
                 field_name,

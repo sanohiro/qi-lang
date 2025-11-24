@@ -289,10 +289,7 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
 
             // NaN値は上記でフィルタリング済みのため安全
             #[allow(clippy::expect_used)]
-            numbers.sort_by(|a, b| {
-                a.partial_cmp(b)
-                    .expect("NaN values have been filtered out")
-            });
+            numbers.sort_by(|a, b| a.partial_cmp(b).expect("NaN values have been filtered out"));
 
             // 線形補間法でパーセンタイルを計算
             let index = (p / 100.0) * (numbers.len() - 1) as f64;

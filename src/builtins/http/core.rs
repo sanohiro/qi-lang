@@ -262,10 +262,12 @@ pub(super) fn http_request_detailed(
                 .collect();
 
             // ボディをバイナリとして取得（サイズ制限: 100MB）
+            use std::io::Read;
             const MAX_RESPONSE_SIZE: usize = 100 * 1024 * 1024; // 100MB
             let mut body_bytes = Vec::new();
             let mut limited_response = response.take(MAX_RESPONSE_SIZE as u64);
-            std::io::Read::read_to_end(&mut limited_response, &mut body_bytes)
+            limited_response
+                .read_to_end(&mut body_bytes)
                 .map_err(|e| fmt_msg(MsgKey::HttpFailedToReadBody, &[&e.to_string()]))?;
 
             if body_bytes.len() >= MAX_RESPONSE_SIZE {

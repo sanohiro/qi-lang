@@ -60,9 +60,10 @@ pub(super) fn gen_conn_id() -> String {
 /// 接続IDを抽出
 pub(super) fn extract_conn_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
+    const DB_CONN_PREFIX: &str = "DbConnection:";
     match value {
-        Value::String(s) if s.starts_with("DbConnection:") => Ok(s
-            .strip_prefix("DbConnection:")
+        Value::String(s) if s.starts_with(DB_CONN_PREFIX) => Ok(s
+            .strip_prefix(DB_CONN_PREFIX)
             .expect("checked by starts_with above")
             .to_string()),
         _ => Err(fmt_msg(
@@ -83,9 +84,10 @@ pub(super) fn gen_tx_id() -> String {
 /// トランザクションIDを抽出
 pub(super) fn extract_tx_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
+    const DB_TX_PREFIX: &str = "DbTransaction:";
     match value {
-        Value::String(s) if s.starts_with("DbTransaction:") => Ok(s
-            .strip_prefix("DbTransaction:")
+        Value::String(s) if s.starts_with(DB_TX_PREFIX) => Ok(s
+            .strip_prefix(DB_TX_PREFIX)
             .expect("checked by starts_with above")
             .to_string()),
         _ => Err(fmt_msg(
@@ -106,9 +108,10 @@ pub(super) fn gen_pool_id() -> String {
 /// プールIDを抽出
 pub(super) fn extract_pool_id(value: &Value) -> Result<String, String> {
     use crate::i18n::{fmt_msg, MsgKey};
+    const DB_POOL_PREFIX: &str = "DbPool:";
     match value {
-        Value::String(s) if s.starts_with("DbPool:") => Ok(s
-            .strip_prefix("DbPool:")
+        Value::String(s) if s.starts_with(DB_POOL_PREFIX) => Ok(s
+            .strip_prefix(DB_POOL_PREFIX)
             .expect("checked by starts_with above")
             .to_string()),
         _ => Err(fmt_msg(MsgKey::DbExpectedPool, &[&format!("{:?}", value)])),
@@ -124,14 +127,16 @@ pub(super) enum ConnOrTx {
 /// 接続IDまたはトランザクションIDを抽出
 pub(super) fn extract_conn_or_tx(value: &Value) -> Result<ConnOrTx, String> {
     use crate::i18n::{fmt_msg, MsgKey};
+    const DB_CONN_PREFIX: &str = "DbConnection:";
+    const DB_TX_PREFIX: &str = "DbTransaction:";
     match value {
-        Value::String(s) if s.starts_with("DbConnection:") => Ok(ConnOrTx::Conn(
-            s.strip_prefix("DbConnection:")
+        Value::String(s) if s.starts_with(DB_CONN_PREFIX) => Ok(ConnOrTx::Conn(
+            s.strip_prefix(DB_CONN_PREFIX)
                 .expect("checked by starts_with above")
                 .to_string(),
         )),
-        Value::String(s) if s.starts_with("DbTransaction:") => Ok(ConnOrTx::Tx(
-            s.strip_prefix("DbTransaction:")
+        Value::String(s) if s.starts_with(DB_TX_PREFIX) => Ok(ConnOrTx::Tx(
+            s.strip_prefix(DB_TX_PREFIX)
                 .expect("checked by starts_with above")
                 .to_string(),
         )),

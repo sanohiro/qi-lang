@@ -123,8 +123,9 @@ pub(super) async fn request_to_value(
         if let Ok(encoding_str) = encoding.to_str() {
             if encoding_str.to_lowercase() == "gzip" {
                 // gzip解凍
-                let decompressed = decompress_gzip(&body_bytes)
-                    .map_err(|e| fmt_msg(MsgKey::ServerFailedToDecompressGzip, &[&e.to_string()]))?;
+                let decompressed = decompress_gzip(&body_bytes).map_err(|e| {
+                    fmt_msg(MsgKey::ServerFailedToDecompressGzip, &[&e.to_string()])
+                })?;
 
                 // ⚠️ SECURITY: 解凍後のサイズもチェック（zip bomb攻撃防止）
                 if decompressed.len() > MAX_BODY_SIZE {
@@ -227,10 +228,7 @@ pub(super) async fn value_to_response(
                 Some(Value::Integer(s)) => {
                     // ⚠️ SECURITY: ステータスコードの範囲検証（100-599）
                     if *s < 100 || *s > 599 {
-                        return Err(fmt_msg(
-                            MsgKey::ServerInvalidStatusCode,
-                            &[&s.to_string()],
-                        ));
+                        return Err(fmt_msg(MsgKey::ServerInvalidStatusCode, &[&s.to_string()]));
                     }
                     *s as u16
                 }

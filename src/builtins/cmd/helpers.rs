@@ -18,8 +18,8 @@ pub(super) static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 /// 検出された場合はエラーを返す。
 pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
     const DANGEROUS_CHARS: &[&str] = &[
-        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\"", "'", "\\",
-        "*", "?", "[", "]", "{", "}", "~",  // グロブパターン、ブレース展開、チルダ展開
+        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\"", "'", "\\", "*", "?", "[", "]",
+        "{", "}", "~", // グロブパターン、ブレース展開、チルダ展開
     ];
 
     let found_chars: Vec<&str> = DANGEROUS_CHARS

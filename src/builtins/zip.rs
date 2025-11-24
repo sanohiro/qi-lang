@@ -107,7 +107,7 @@ fn add_file_to_zip<W: Write + std::io::Seek>(
     zip.start_file(name, options)
         .map_err(|e| fmt_msg(MsgKey::ZipStartFileFailed, &["zip/create", &e.to_string()]))?;
 
-    let mut f = File::open(file_path).map_err(|e| {
+    let f = File::open(file_path).map_err(|e| {
         fmt_msg(
             MsgKey::ZipOpenFileFailed,
             &[
@@ -417,7 +417,7 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
 
     // 既存ファイルをコピー（パーミッション保持）
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| {
+        let file = archive.by_index(i).map_err(|e| {
             fmt_msg(
                 MsgKey::ZipReadEntryFailed,
                 &["zip/add", &i.to_string(), &e.to_string()],
@@ -430,20 +430,24 @@ pub fn native_zip_add(args: &[Value]) -> Result<Value, String> {
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(permissions);
 
-        zip.start_file(file.name(), options)
+        // ファイル名を先に取得（take()で所有権が移動する前）
+        let file_name = file.name().to_string();
+
+        zip.start_file(&file_name, options)
             .map_err(|e| fmt_msg(MsgKey::ZipStartFileFailed, &["zip/add", &e.to_string()]))?;
 
         // Zip bomb攻撃対策: ファイルサイズ制限（500MB）
         const MAX_FILE_SIZE: usize = 500 * 1024 * 1024; // 500MB
         let mut buffer = Vec::new();
         let mut limited_reader = file.take(MAX_FILE_SIZE as u64);
-        limited_reader.read_to_end(&mut buffer)
+        limited_reader
+            .read_to_end(&mut buffer)
             .map_err(|e| fmt_msg(MsgKey::ZipReadFileFailed, &["zip/add", "?", &e.to_string()]))?;
 
         if buffer.len() >= MAX_FILE_SIZE {
             return Err(fmt_msg(
                 MsgKey::ZipFileTooLarge,
-                &["zip/add", file.name(), "500"],
+                &["zip/add", &file_name, "500"],
             ));
         }
 

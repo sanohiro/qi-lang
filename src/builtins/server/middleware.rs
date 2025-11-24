@@ -138,11 +138,7 @@ pub(super) fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -
 /// レスポンスボディを圧縮
 ///
 /// RFC 7231 §5.3.4準拠: Accept-Encodingヘッダーを検査し、クライアントがgzipをサポートする場合のみ圧縮
-pub(super) fn apply_compression_middleware(
-    req: &Value,
-    resp: &Value,
-    min_size: usize,
-) -> Value {
+pub(super) fn apply_compression_middleware(req: &Value, resp: &Value, min_size: usize) -> Value {
     let Value::Map(resp_map) = resp else {
         return resp.clone();
     };
@@ -166,8 +162,7 @@ pub(super) fn apply_compression_middleware(
 
                     // "gzip" または "*" が含まれる場合のみ圧縮
                     accept_encoding.map_or(false, |ae| {
-                        ae.split(',')
-                            .any(|enc| matches!(enc.trim(), "gzip" | "*"))
+                        ae.split(',').any(|enc| matches!(enc.trim(), "gzip" | "*"))
                     })
                 }
                 _ => false,

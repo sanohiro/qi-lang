@@ -259,8 +259,23 @@ impl Table {
                 let col_count = self.rows.first().map(|r| r.len()).unwrap_or(0);
                 let resolved_idx = if *idx < 0 {
                     // 負数: 末尾から
-                    (col_count as i64 + idx) as usize
+                    // オーバーフローチェック: col_count + idx >= 0
+                    let abs_idx = idx.unsigned_abs() as usize;
+                    if abs_idx > col_count {
+                        return Err(fmt_msg(
+                            MsgKey::TableColumnIndexOutOfRange,
+                            &[&idx.to_string()],
+                        ));
+                    }
+                    col_count - abs_idx
                 } else {
+                    // i64からusizeへの変換チェック
+                    if (*idx as u64) > usize::MAX as u64 {
+                        return Err(fmt_msg(
+                            MsgKey::IntegerOverflow,
+                            &["table column index conversion"],
+                        ));
+                    }
                     *idx as usize
                 };
 
