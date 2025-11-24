@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2025-01-24
+
+### Fixed
+
+#### Critical Security & Safety Fixes (Codex Analysis)
+
+1. **HTTP body DoS attack (CRITICAL)** - src/builtins/server/helpers.rs:106-127
+   - Previous: `body.collect()` executed before size check, allowing unlimited memory allocation
+   - Fixed: Use `Limited::new(body, MAX_BODY_SIZE)` to enforce limit during streaming
+   - Also checks decompressed size to prevent zip bomb attacks
+
+2. **go/close! not working (CRITICAL)** - src/value.rs:171, src/builtins/concurrency/channel.rs:215-218
+   - Previous: `go/close!` returned nil without actually closing channels
+   - Fixed: Changed Channel to use `Arc<Mutex<Option<Sender>>>` for interior mutability
+   - Now properly closes channels by setting sender to None
+   - Updated: async_ops.rs, pipeline.rs, promise.rs, scope.rs
+
+3. **Pipeline error deadlock** - src/builtins/concurrency/pipeline.rs:306-318, 426-435
+   - Previous: Workers silently dropped errors, causing coordinator to deadlock
+   - Fixed: Errors propagated as `Value::error` following Railway Oriented Programming
+   - Affects: `go/pipeline-map`, `go/pipeline-filter`
+
+4. **Pipeline nil filtering bug** - src/builtins/concurrency/pipeline.rs:422, 460-467
+   - Previous: Legitimate nil values ([1 nil 3]) were incorrectly filtered out
+   - Fixed: Use internal marker (`:__filtered__`) to distinguish filter mismatch from nil data
+   - Affects: `go/pipeline-filter`
+
+5. **Windows DAP handle truncation** - src/dap/server.rs:1292-1297, 1400
+   - Previous: HANDLE (64-bit isize) truncated to i32, corrupting upper 32 bits
+   - Fixed: Use `Option<isize>` for Windows handles to preserve full value
+
+6. **Windows DAP close-after-restore** - src/dap/server.rs:1391-1400
+   - Previous: Closed pipe_read immediately after SetStdHandle(), breaking stdin
+   - Fixed: Only close handles on error; let system manage them on success
+
+#### Type Safety & Validation
+
+- **Validation schema negative values** - src/builtins/validation.rs:165-189, 299-323
+  - Added checks for negative `:min-length`, `:max-length`, `:min-items`, `:max-items`
+  - Prevents integer overflow when converting to usize
+
+- **Table negative index handling** - src/builtins/table.rs:260-280
+  - Use `unsigned_abs()` for safe negative index calculation
+  - Added i64→usize overflow checks
+
+- **HTTP response compilation** - src/builtins/http/core.rs:265-271
+  - Added missing `use std::io::Read` import
+  - Fixed Response::take() compilation error
+
+- **ZIP file move error** - src/builtins/zip.rs:433-450
+  - Save filename before file.take() to avoid use-after-move
+  - Removed unused mut warnings
+
+- **WebSocket duplicate attribute** - src/builtins/websocket.rs:13
+  - Removed duplicate `#![cfg(feature = "websocket")]`
+
+### Documentation
+
+- Updated validation schema docs to specify non-negative requirements
+  - docs/en/spec/19-stdlib-validation.md
+  - docs/ja/spec/19-stdlib-validation.md
+  - std/docs/en/validation.qi
+  - std/docs/ja/validation.qi
+
 ## [0.1.12] - 2025-01-23
 
 ### Fixed
