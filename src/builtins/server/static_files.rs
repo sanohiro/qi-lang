@@ -129,8 +129,12 @@ pub(super) fn get_content_type(path: &str) -> &'static str {
 /// パストラバーサル攻撃を防ぐため、以下のチェックを実施:
 /// - URLデコード後のパス検証
 /// - 正規化（canonicalize）によるシンボリックリンク・..の解決
+///
+/// ⚠️ SECURITY: base_dirは既にnative_server_static_dirで正規化済みであること
+/// リクエストごとにbase_dirをcanonicalize()すると、攻撃者がシンボリックリンクを
+/// 差し替えた場合に新しいターゲットを追跡してしまう
 pub(super) fn validate_safe_path(
-    base_dir: &std::path::Path,
+    base_canonical: &std::path::Path,
     requested_path: &str,
 ) -> Result<std::path::PathBuf, String> {
     // URLデコード（%2e%2e などの攻撃を防ぐ）
@@ -141,7 +145,7 @@ pub(super) fn validate_safe_path(
     let requested = std::path::Path::new(decoded_path.trim_start_matches('/'));
 
     // ベースディレクトリと結合
-    let full_path = base_dir.join(requested);
+    let full_path = base_canonical.join(requested);
 
     // 正規化（シンボリックリンク解決、.. 解決）
     // ファイルが存在しない場合は404エラーを返す（セキュリティ対策）
@@ -149,13 +153,9 @@ pub(super) fn validate_safe_path(
         .canonicalize()
         .map_err(|_| fmt_msg(MsgKey::StaticFileNotFound, &[requested_path]))?;
 
-    // ベースディレクトリの正規化
-    let base_canonical = base_dir
-        .canonicalize()
-        .map_err(|_| fmt_msg(MsgKey::StaticFileBaseDirNotExist, &[]))?;
-
+    // ⚠️ SECURITY: base_canonicalは既に正規化済みのため、再度canonicalize()しない
     // ベースディレクトリ外へのアクセスを防止
-    if !canonical.starts_with(&base_canonical) {
+    if !canonical.starts_with(base_canonical) {
         return Err(fmt_msg(MsgKey::StaticFilePathTraversal, &[]));
     }
 
