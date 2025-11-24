@@ -23,6 +23,8 @@ pub enum MsgKey {
     TypeMismatch, // 型エラー（期待と実際）
     ArgCountMismatch,
     DivisionByZero,
+    IntegerOverflow, // integer overflow in {0} operation
+    IntegerUnderflow, // integer underflow in {1} operation
     ExportOnlyInModule,
     CannotQuote, // 統合: CannotQuoteとCannotQuoteSpecialForm
     NoMatchingPattern,
@@ -251,6 +253,7 @@ pub enum MsgKey {
     HttpStreamError,            // http stream: HTTP {0}
     HttpErrorStatus,            // HTTP error {0}
     HttpFailedToReadBody,       // Failed to read response body: {0}
+    HttpResponseTooLarge,       // HTTP response too large (max {0} MB)
     HttpJsonSerializationError, // JSON serialization error: {0}
 
     // I/Oエラー（詳細）
@@ -331,6 +334,7 @@ pub enum MsgKey {
     ZipStartFileFailed,       // {0}: failed to start file: {1}
     ZipOpenFileFailed,        // {0}: failed to open '{1}': {2}
     ZipReadFileFailed,        // {0}: failed to read '{1}': {2}
+    ZipFileTooLarge,          // {0}: file '{1}' too large (max {2} MB)
     ZipWriteFailed,           // {0}: failed to write: {1}
     ZipReadDirFailed,         // {0}: failed to read directory '{1}': {2}
     ZipReadEntryFailed,       // {0}: failed to read entry {1}: {2}

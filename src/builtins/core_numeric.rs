@@ -23,7 +23,9 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     float_sum += *n as f64;
                 } else {
-                    int_sum += n;
+                    int_sum = int_sum
+                        .checked_add(*n)
+                        .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["+"]))?;
                 }
             }
             Value::Float(f) => {
@@ -94,7 +96,9 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     result_float -= *n as f64;
                 } else {
-                    result_int -= n;
+                    result_int = result_int
+                        .checked_sub(*n)
+                        .ok_or_else(|| fmt_msg(MsgKey::IntegerUnderflow, &["-"]))?;
                 }
             }
             Value::Float(f) => {
@@ -132,7 +136,9 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     float_product *= *n as f64;
                 } else {
-                    int_product *= n;
+                    int_product = int_product
+                        .checked_mul(*n)
+                        .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["*"]))?;
                 }
             }
             Value::Float(f) => {

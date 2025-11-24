@@ -33,6 +33,8 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (TypeMismatch, "type error: expected {0}, got {1} ({2})"),
         (ArgCountMismatch, "argument count mismatch: expected {0}, got {1}"),
         (DivisionByZero, "division by zero"),
+        (IntegerOverflow, "integer overflow in {0} operation"),
+        (IntegerUnderflow, "integer underflow in {0} operation"),
         (
             ExportOnlyInModule,
             "export can only be used inside a module definition",
@@ -334,6 +336,7 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpStreamError, "http stream: HTTP {0}"),
         (HttpErrorStatus, "HTTP error {0}"),
         (HttpFailedToReadBody, "Failed to read response body: {0}"),
+        (HttpResponseTooLarge, "HTTP response too large (max {0} MB)"),
         (HttpJsonSerializationError, "JSON serialization error: {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
@@ -567,6 +570,7 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ZipStartFileFailed, "{0}: failed to start file: {1}"),
         (ZipOpenFileFailed, "{0}: failed to open '{1}': {2}"),
         (ZipReadFileFailed, "{0}: failed to read '{1}': {2}"),
+        (ZipFileTooLarge, "{0}: file '{1}' too large (max {2} MB)"),
         (ZipWriteFailed, "{0}: failed to write: {1}"),
         (
             ZipReadDirFailed,

@@ -36,6 +36,8 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             "引数の数が一致しません: 期待 {0}, 実際 {1}",
         ),
         (DivisionByZero, "ゼロ除算エラー"),
+        (IntegerOverflow, "{0}演算で整数オーバーフローが発生しました"),
+        (IntegerUnderflow, "{0}演算で整数アンダーフローが発生しました"),
         (
             ExportOnlyInModule,
             "exportはmodule定義の中でのみ使用できます",
@@ -316,6 +318,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpStreamError, "http stream: HTTP {0}"),
         (HttpErrorStatus, "HTTPエラー {0}"),
         (HttpFailedToReadBody, "レスポンスボディの読み取りに失敗しました: {0}"),
+        (HttpResponseTooLarge, "HTTPレスポンスが大きすぎます (最大{0}MB)"),
         (HttpJsonSerializationError, "JSONシリアライズエラー: {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
@@ -399,6 +402,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ZipStartFileFailed, "{0}: ファイル開始に失敗: {1}"),
         (ZipOpenFileFailed, "{0}: '{1}'を開くのに失敗: {2}"),
         (ZipReadFileFailed, "{0}: '{1}'の読み込みに失敗: {2}"),
+        (ZipFileTooLarge, "{0}: ファイル'{1}'が大きすぎます (最大{2}MB)"),
         (ZipWriteFailed, "{0}: 書き込みに失敗: {1}"),
         (ZipReadDirFailed, "{0}: ディレクトリ'{1}'の読み込みに失敗: {2}"),
         (ZipReadEntryFailed, "{0}: エントリ{1}の読み込みに失敗: {2}"),

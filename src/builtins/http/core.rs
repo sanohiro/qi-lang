@@ -257,10 +257,16 @@ pub(super) fn http_request_detailed(
                 })
                 .collect();
 
-            // ボディをバイナリとして取得
-            let body_bytes = response
-                .bytes()
+            // ボディをバイナリとして取得（サイズ制限: 100MB）
+            const MAX_RESPONSE_SIZE: usize = 100 * 1024 * 1024; // 100MB
+            let mut body_bytes = Vec::new();
+            let mut limited_response = response.take(MAX_RESPONSE_SIZE as u64);
+            std::io::Read::read_to_end(&mut limited_response, &mut body_bytes)
                 .map_err(|e| fmt_msg(MsgKey::HttpFailedToReadBody, &[&e.to_string()]))?;
+
+            if body_bytes.len() >= MAX_RESPONSE_SIZE {
+                return Err(fmt_msg(MsgKey::HttpResponseTooLarge, &["100"]));
+            }
 
             // UTF-8として解釈を試み、成功すれば文字列、失敗すればBytesとして返す
             let body_value = match std::str::from_utf8(&body_bytes) {
