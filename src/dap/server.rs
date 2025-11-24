@@ -1289,7 +1289,12 @@ fn backup_stdout() -> io::Result<std::fs::File> {
 }
 
 /// Qiプログラム用のstdin書き込み側fd（将来のinputイベント用）
+#[cfg(unix)]
 static QI_STDIN_WRITE_FD: parking_lot::Mutex<Option<i32>> = parking_lot::Mutex::new(None);
+
+/// Qiプログラム用のstdin書き込み側ハンドル（Windows用）
+#[cfg(windows)]
+static QI_STDIN_WRITE_FD: parking_lot::Mutex<Option<isize>> = parking_lot::Mutex::new(None);
 
 /// 元のstdin (fd 0)を保存し、Qiプログラム用のパイプに差し替える
 ///
@@ -1385,13 +1390,18 @@ unsafe fn backup_stdin() -> io::Result<std::fs::File> {
     // 4. stdin をパイプの read 側に差し替え
     if SetStdHandle(STD_INPUT_HANDLE, pipe_read) == 0 {
         CloseHandle(duplicated_stdin);
+        // 注意: pipe_readとpipe_writeはエラー時のみclose
+        // 成功時はSetStdHandle()でシステムが管理するのでcloseしない
         CloseHandle(pipe_read);
         CloseHandle(pipe_write);
         return Err(io::Error::last_os_error());
     }
+    // 注意: pipe_readはSetStdHandle()で設定済みなのでcloseしない
+    // pipe_writeはQI_STDIN_WRITE_FDに保存され、後でwrite時に使用する
 
     // 5. パイプの write 側を保存（input イベントで使用）
-    *QI_STDIN_WRITE_FD.lock() = Some(pipe_write as i32);
+    // SAFETY: pipe_writeはHANDLE(isize)なのでそのまま保存
+    *QI_STDIN_WRITE_FD.lock() = Some(pipe_write as isize);
 
     // 6. 複製した元の stdin ハンドルを File に変換して返す
     Ok(std::fs::File::from_raw_handle(duplicated_stdin as _))
