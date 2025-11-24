@@ -6,17 +6,25 @@ use crate::value::Value;
 
 pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
     let path_key = kw("path");
+    let method_key = kw("method");
 
-    let path = match req {
-        Value::Map(m) => match m.get(&path_key) {
-            Some(Value::String(p)) => p,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::RequestMustHave,
-                    &["request", ":path string"],
-                ))
-            }
-        },
+    let (path, method) = match req {
+        Value::Map(m) => {
+            let p = match m.get(&path_key) {
+                Some(Value::String(p)) => p,
+                _ => {
+                    return Err(fmt_msg(
+                        MsgKey::RequestMustHave,
+                        &["request", ":path string"],
+                    ))
+                }
+            };
+            let method = match m.get(&method_key) {
+                Some(Value::String(m)) => m.as_str(),
+                _ => "GET", // デフォルトはGET
+            };
+            (p, method)
+        }
         _ => return Err(fmt_msg(MsgKey::RequestMustBe, &["request", "a map"])),
     };
 
@@ -53,7 +61,7 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
         fmt_msg(MsgKey::StaticFileMetadataFailed, &[&e.to_string()])
     })?;
 
-    // ストリーミングレスポンスを生成（:body-file を使用）
+    // レスポンス生成（HEADメソッドの場合はボディを含めない）
     let content_type = get_content_type(file_path.to_str().unwrap_or(""));
     let file_path_str = file_path
         .to_str()
@@ -61,7 +69,11 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
 
     let mut resp = crate::new_hashmap();
     resp.insert(kw("status"), Value::Integer(200));
-    resp.insert(kw("body-file"), Value::String(file_path_str.to_string()));
+
+    // HEADリクエストの場合はヘッダーのみ（RFC 7231 §4.3.2準拠）
+    if method != "HEAD" {
+        resp.insert(kw("body-file"), Value::String(file_path_str.to_string()));
+    }
 
     let mut headers = crate::new_hashmap();
     headers.insert(

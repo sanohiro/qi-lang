@@ -323,12 +323,14 @@ pub fn native_server_with_basic_auth(args: &[Value]) -> Result<Value, String> {
     let handler = args[0].clone();
 
     // ユーザー設定（オプション引数）
+    // キーワード、シンボル、文字列など任意のキー形式を受け入れ、
+    // 文字列形式に正規化して保存（検索時の一貫性確保）
     let users = if args.len() > 1 {
         match &args[1] {
             Value::Map(m) => {
                 let users_key = kw("users");
                 match m.get(&users_key) {
-                    Some(Value::Map(u)) => u.clone(),
+                    Some(Value::Map(u)) => crate::builtins::util::normalize_map_keys_to_string(u),
                     _ => crate::new_hashmap(),
                 }
             }

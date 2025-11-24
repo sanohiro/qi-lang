@@ -12,12 +12,30 @@ pub fn to_map_key(key: &str) -> crate::value::MapKey {
 
 /// HashMap<String, Value>をHashMap<MapKey, Value>に変換
 ///
-/// 文字列キーをMapKey::Stringに変換する
+/// 文字列キーをMapKey::Keywordに変換する（ルートパラメータ等で使用）
+/// `:id`のようなキーワード形式でアクセスできるようにする
 pub fn convert_string_map_to_mapkey(
     map: std::collections::HashMap<String, Value>,
 ) -> crate::HashMap<MapKey, Value> {
     map.into_iter()
-        .map(|(k, v)| (MapKey::String(k), v))
+        .map(|(k, v)| (MapKey::Keyword(crate::intern::intern_keyword(&k)), v))
+        .collect()
+}
+
+/// マップのキーを文字列形式に正規化
+///
+/// Keyword、Symbol、String、Integerキーを全て文字列キーに変換する
+/// Basic認証のユーザーテーブル等で、任意のキー形式を受け入れるために使用
+pub fn normalize_map_keys_to_string(map: &crate::HashMap<MapKey, Value>) -> crate::HashMap<MapKey, Value> {
+    map.iter()
+        .map(|(k, v)| {
+            let string_key = match k {
+                MapKey::Keyword(s) | MapKey::Symbol(s) => s.to_string(),
+                MapKey::String(s) => s.clone(),
+                MapKey::Integer(i) => i.to_string(),
+            };
+            (MapKey::String(string_key), v.clone())
+        })
         .collect()
 }
 
