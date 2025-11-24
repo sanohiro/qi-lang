@@ -303,19 +303,18 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
                 if let Value::Vector(vec) = msg {
                     if vec.len() == 2 {
                         if let Value::Integer(idx) = vec[0] {
-                            match evaluator.apply_function(&f, &[vec[1].clone()]) {
-                                Ok(result) => {
-                                    // [idx, result] の形式で結果を返す
-                                    if out_sender
-                                        .send(Value::Vector(
-                                            vec![Value::Integer(idx), result].into(),
-                                        ))
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
-                                }
-                                Err(_) => break,
+                            // エラーもValueとして送信（Railway Oriented Programming）
+                            let result = match evaluator.apply_function(&f, &[vec[1].clone()]) {
+                                Ok(r) => r,
+                                Err(e) => Value::error(e),
+                            };
+
+                            // [idx, result] の形式で結果を返す
+                            if out_sender
+                                .send(Value::Vector(vec![Value::Integer(idx), result].into()))
+                                .is_err()
+                            {
+                                break;
                             }
                         }
                     }
@@ -419,35 +418,28 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
         let evaluator = Arc::clone(&evaluator);
 
         std::thread::spawn(move || {
+            // フィルター不一致を表す内部マーカー
+            let filtered_marker = Value::Keyword(std::sync::Arc::from("__filtered__"));
+
             while let Ok(msg) = in_receiver.recv() {
                 // [idx, value] の形式
                 if let Value::Vector(vec) = msg {
                     if vec.len() == 2 {
                         if let Value::Integer(idx) = vec[0] {
-                            match evaluator.apply_function(&pred, &[vec[1].clone()]) {
-                                Ok(result) if result.is_truthy() => {
-                                    // マッチした場合は送信
-                                    if out_sender
-                                        .send(Value::Vector(
-                                            vec![Value::Integer(idx), vec[1].clone()].into(),
-                                        ))
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
-                                }
-                                Ok(_) => {
-                                    // マッチしなかった場合はnilを送信
-                                    if out_sender
-                                        .send(Value::Vector(
-                                            vec![Value::Integer(idx), Value::Nil].into(),
-                                        ))
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
-                                }
-                                Err(_) => break,
+                            // エラーもValueとして送信（Railway Oriented Programming）
+                            // フィルター不一致は特別なマーカーで表現（元データのnilと区別）
+                            let result = match evaluator.apply_function(&pred, &[vec[1].clone()]) {
+                                Ok(result) if result.is_truthy() => vec[1].clone(),
+                                Ok(_) => filtered_marker.clone(),
+                                Err(e) => Value::error(e),
+                            };
+
+                            // [idx, result] の形式で結果を返す
+                            if out_sender
+                                .send(Value::Vector(vec![Value::Integer(idx), result].into()))
+                                .is_err()
+                            {
+                                break;
                             }
                         }
                     }
@@ -464,13 +456,15 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
     }
     drop(in_sender);
 
-    // 結果を収集（順序を保持、nilは除外）
+    // 結果を収集（順序を保持、フィルター不一致のみ除外）
+    let filtered_marker = Value::Keyword(std::sync::Arc::from("__filtered__"));
     let mut indexed_results = Vec::new();
     for _ in 0..items.len() {
         if let Ok(Value::Vector(vec)) = out_receiver.recv() {
             if vec.len() == 2 {
                 if let Value::Integer(idx) = vec[0] {
-                    if !matches!(vec[1], Value::Nil) {
+                    // フィルター不一致マーカー以外は全て含める（nilも含む）
+                    if vec[1] != filtered_marker {
                         indexed_results.push((idx as usize, vec[1].clone()));
                     }
                 }
