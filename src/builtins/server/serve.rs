@@ -37,7 +37,6 @@ const MAX_TIMEOUT_SECS: u64 = 300; // 5分
 ///
 /// 戻り値: nil（サーバー起動後は戻らない）
 pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
-
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/serve", "1"]));
     }

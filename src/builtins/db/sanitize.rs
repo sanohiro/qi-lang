@@ -1,5 +1,6 @@
 use super::*;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// 文字列値をサニタイズしてSQLインジェクションを防ぐ
 ///
@@ -23,14 +24,7 @@ pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/sanitize", "string"])),
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     Ok(Value::String(conn.sanitize(value)))
 }
@@ -52,14 +46,7 @@ pub fn native_sanitize_identifier(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     Ok(Value::String(conn.sanitize_identifier(name)))
 }
@@ -81,14 +68,7 @@ pub fn native_escape_like(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     Ok(Value::String(conn.escape_like(pattern)))
 }

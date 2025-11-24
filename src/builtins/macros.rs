@@ -97,6 +97,131 @@ macro_rules! register_native {
     };
 }
 
+/// グローバルマップから値を安全に取得してクローン
+///
+/// グローバルな `Mutex<HashMap>` や `parking_lot::Mutex<HashMap>` から
+/// 値を取得する際の定型コードを削減します。
+///
+/// # 引数
+/// - `$map`: グローバルマップ（例: `CONNECTIONS`, `POOLS`, `TRANSACTIONS`）
+/// - `$key`: 検索キー（`&str` または `&String`）
+/// - `$err_key`: エラーメッセージキー（`MsgKey::XXX`）
+///
+/// # 戻り値
+/// - `Ok(T)`: マップから取得した値（クローン）
+/// - `Err(String)`: キーが見つからない場合のエラーメッセージ
+///
+/// # 使用例
+/// ```rust,ignore
+/// // データベース接続取得
+/// let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound)?;
+///
+/// // トランザクション取得
+/// let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound)?;
+///
+/// // プール取得
+/// let pool = with_global!(POOLS, &pool_id, MsgKey::DbPoolNotFound)?;
+///
+/// // KVS接続取得
+/// let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound)?;
+/// ```
+///
+/// # 生成されるコード
+/// ```rust,ignore
+/// {
+///     let lock = CONNECTIONS.lock();
+///     lock.get(&conn_id)
+///         .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
+///         .clone()
+/// }
+/// ```
+#[macro_export]
+macro_rules! with_global {
+    ($map:expr, $key:expr, $err_key:expr) => {{
+        let lock = $map.lock();
+        lock.get($key)
+            .ok_or_else(|| $crate::i18n::fmt_msg($err_key, &[$key]))?
+            .clone()
+    }};
+}
+
+/// エラーをi18nメッセージに変換
+///
+/// `Result<T, E>` の `E` を `String` (i18nメッセージ) に変換します。
+/// `map_err()` の冗長なボイラープレートを削減します。
+///
+/// # 引数
+/// - `$result`: `Result<T, E>` 型の式
+/// - `$msg_key`: エラーメッセージキー（`MsgKey::XXX`）
+/// - `$arg`: メッセージパラメータ（0個以上）
+///
+/// # 使用例
+/// ```rust,ignore
+/// // ファイルオープン
+/// let file = map_i18n_err!(File::create(path), MsgKey::FileNotFound, path)?;
+///
+/// // HTTP接続
+/// let resp = map_i18n_err!(
+///     reqwest::blocking::get(url),
+///     MsgKey::HttpRequestFailed,
+///     "GET",
+///     url
+/// )?;
+/// ```
+///
+/// # 生成されるコード
+/// ```rust,ignore
+/// File::create(path).map_err(|e| {
+///     fmt_msg(MsgKey::FileNotFound, &[path, &e.to_string()])
+/// })
+/// ```
+#[macro_export]
+macro_rules! map_i18n_err {
+    ($result:expr, $msg_key:expr $(, $arg:expr)*) => {
+        $result.map_err(|e| {
+            $crate::i18n::fmt_msg($msg_key, &[$($arg,)* &e.to_string()])
+        })
+    };
+}
+
+/// エラーを `DbError` 型に変換
+///
+/// データベース操作のエラーを `DbError` でラップし、i18nメッセージに変換します。
+///
+/// # 引数
+/// - `$result`: `Result<T, E>` 型の式
+/// - `$msg_key`: エラーメッセージキー（`MsgKey::XXX`）
+/// - `$arg`: メッセージパラメータ（0個以上）
+///
+/// # 使用例
+/// ```rust,ignore
+/// // データベース接続
+/// let conn = map_db_err!(rusqlite::Connection::open(path), MsgKey::DbFailedToConnect)?;
+///
+/// // クエリ実行
+/// let rows = map_db_err!(
+///     conn.query(sql, params),
+///     MsgKey::DbFailedToExecuteQuery
+/// )?;
+/// ```
+///
+/// # 生成されるコード
+/// ```rust,ignore
+/// rusqlite::Connection::open(path).map_err(|e| {
+///     DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()]))
+/// })
+/// ```
+#[macro_export]
+macro_rules! map_db_err {
+    ($result:expr, $msg_key:expr $(, $arg:expr)*) => {
+        $result.map_err(|e| {
+            $crate::builtins::db::types::DbError::new(
+                $crate::i18n::fmt_msg($msg_key, &[$($arg,)* &e.to_string()])
+            )
+        })
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use crate::value::Value;

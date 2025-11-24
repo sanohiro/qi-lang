@@ -1,6 +1,7 @@
 use super::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// データベース内のテーブル一覧を取得する
 ///
@@ -22,14 +23,7 @@ pub fn native_tables(args: &[Value]) -> Result<Value, String> {
 
     let conn_id = extract_conn_id(&args[0])?;
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let tables = conn.tables().map_err(|e| e.message)?;
 
@@ -50,14 +44,7 @@ pub fn native_columns(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/columns", "string"])),
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let columns = conn.columns(table).map_err(|e| e.message)?;
 
@@ -93,14 +80,7 @@ pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["db/indexes", "string"])),
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let indexes = conn.indexes(table).map_err(|e| e.message)?;
 
@@ -140,14 +120,7 @@ pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let foreign_keys = conn.foreign_keys(table).map_err(|e| e.message)?;
 

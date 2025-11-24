@@ -1,6 +1,7 @@
 use super::*;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// トランザクションを開始する
 ///
@@ -30,14 +31,7 @@ pub fn native_begin(args: &[Value]) -> Result<Value, String> {
         TransactionOptions::default()
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     // 接続がプールされているか確認
     let pool_info = {
@@ -72,13 +66,7 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
     let tx_id = extract_tx_id(&args[0])?;
 
     // トランザクションをクローンしてからミューテックスを解放（成功するまでマップに保持）
-    let tx = {
-        let transactions = TRANSACTIONS.lock();
-        transactions
-            .get(&tx_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-            .clone()
-    };
+    let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
 
     // コミット実行（失敗した場合はトランザクションがマップに残るのでリトライ可能）
     tx.commit().map_err(|e| e.message)?;
@@ -103,13 +91,7 @@ pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
     let tx_id = extract_tx_id(&args[0])?;
 
     // トランザクションをクローンしてからミューテックスを解放（成功するまでマップに保持）
-    let tx = {
-        let transactions = TRANSACTIONS.lock();
-        transactions
-            .get(&tx_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-            .clone()
-    };
+    let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
 
     // ロールバック実行（失敗した場合はトランザクションがマップに残るのでリトライ可能）
     tx.rollback().map_err(|e| e.message)?;

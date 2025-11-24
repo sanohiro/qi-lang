@@ -2,6 +2,7 @@ use super::*;
 use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// ストアドプロシージャまたはストアドファンクションを呼び出す
 ///
@@ -31,25 +32,11 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
     // 接続かトランザクションかを判別
     let call_result = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
-            // 接続をクローンしてからミューテックスを解放
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections
-                    .get(&conn_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-                    .clone()
-            };
+            let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
             conn.call(name, &params).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
-            // トランザクションをクローンしてからミューテックスを解放
-            let tx = {
-                let transactions = TRANSACTIONS.lock();
-                transactions
-                    .get(&tx_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-                    .clone()
-            };
+            let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
             tx.call(name, &params).map_err(|e| e.message)?
         }
     };
@@ -83,14 +70,7 @@ pub fn native_supports(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let supported = conn.supports(feature);
 
@@ -105,14 +85,7 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
 
     let conn_id = extract_conn_id(&args[0])?;
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let info = conn.driver_info().map_err(|e| e.message)?;
 
@@ -145,14 +118,7 @@ pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // 接続をクローンしてからミューテックスを解放
-    let conn = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
 
     let info = conn.query_info(sql).map_err(|e| e.message)?;
 

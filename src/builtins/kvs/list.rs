@@ -1,4 +1,5 @@
 use super::*;
+use crate::with_global;
 
 /// kvs/lpush - リスト左端に要素を追加
 pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
@@ -30,15 +31,7 @@ pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.lpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -76,15 +69,7 @@ pub fn native_rpush(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.rpush(key, &value) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -109,15 +94,7 @@ pub fn native_lpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.lpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -143,15 +120,7 @@ pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.rpop(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -197,15 +166,7 @@ pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.lrange(key, start, stop) {
         Ok(items) => Ok(Value::Vector(

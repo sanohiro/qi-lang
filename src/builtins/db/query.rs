@@ -1,6 +1,7 @@
 use super::*;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// SQLクエリを実行してすべての結果行を取得する
 ///
@@ -45,25 +46,11 @@ pub fn native_query(args: &[Value]) -> Result<Value, String> {
     // 接続かトランザクションかを判別
     let rows = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
-            // 接続をクローンしてからミューテックスを解放（デッドロック回避）
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections
-                    .get(&conn_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-                    .clone()
-            };
+            let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
             conn.query(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
-            // トランザクションをクローンしてからミューテックスを解放
-            let tx = {
-                let transactions = TRANSACTIONS.lock();
-                transactions
-                    .get(&tx_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-                    .clone()
-            };
+            let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
             tx.query(sql, &params, &opts).map_err(|e| e.message)?
         }
     };
@@ -105,23 +92,11 @@ pub fn native_query_one(args: &[Value]) -> Result<Value, String> {
     // 接続かトランザクションかを判別
     let row = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections
-                    .get(&conn_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-                    .clone()
-            };
+            let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
             conn.query_one(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
-            let tx = {
-                let transactions = TRANSACTIONS.lock();
-                transactions
-                    .get(&tx_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-                    .clone()
-            };
+            let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
             tx.query_one(sql, &params, &opts).map_err(|e| e.message)?
         }
     };
@@ -158,25 +133,11 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
     // 接続かトランザクションかを判別
     let affected = match extract_conn_or_tx(&args[0])? {
         ConnOrTx::Conn(conn_id) => {
-            // 接続をクローンしてからミューテックスを解放（デッドロック回避）
-            let conn = {
-                let connections = CONNECTIONS.lock();
-                connections
-                    .get(&conn_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbConnectionNotFound, &[&conn_id]))?
-                    .clone()
-            };
+            let conn = with_global!(CONNECTIONS, &conn_id, MsgKey::DbConnectionNotFound);
             conn.exec(sql, &params, &opts).map_err(|e| e.message)?
         }
         ConnOrTx::Tx(tx_id) => {
-            // トランザクションをクローンしてからミューテックスを解放
-            let tx = {
-                let transactions = TRANSACTIONS.lock();
-                transactions
-                    .get(&tx_id)
-                    .ok_or_else(|| fmt_msg(MsgKey::DbTransactionNotFound, &[&tx_id]))?
-                    .clone()
-            };
+            let tx = with_global!(TRANSACTIONS, &tx_id, MsgKey::DbTransactionNotFound);
             tx.exec(sql, &params, &opts).map_err(|e| e.message)?
         }
     };

@@ -1,4 +1,5 @@
 use super::*;
+use crate::map_i18n_err;
 
 /// list-dir - ディレクトリ内のファイル一覧を取得
 ///
@@ -72,19 +73,17 @@ pub fn native_list_dir(args: &[Value]) -> Result<Value, String> {
     };
 
     // グロブでファイル一覧を取得
-    let entries: Result<Vec<Value>, String> = glob::glob(&glob_pattern)
-        .map_err(|e| {
-            fmt_msg(
-                MsgKey::IoListDirInvalidPattern,
-                &[&glob_pattern, &e.to_string()],
-            )
-        })?
-        .map(|entry| {
-            entry
-                .map(|path| Value::String(path.to_string_lossy().to_string()))
-                .map_err(|e| fmt_msg(MsgKey::IoListDirFailedToRead, &[&e.to_string()]))
-        })
-        .collect();
+    let entries: Result<Vec<Value>, String> = map_i18n_err!(
+        glob::glob(&glob_pattern),
+        MsgKey::IoListDirInvalidPattern,
+        &glob_pattern
+    )?
+    .map(|entry| {
+        entry
+            .map(|path| Value::String(path.to_string_lossy().to_string()))
+            .map_err(|e| fmt_msg(MsgKey::IoListDirFailedToRead, &[&e.to_string()]))
+    })
+    .collect();
 
     Ok(Value::List(entries?.into()))
 }
@@ -132,11 +131,9 @@ pub fn native_create_dir(args: &[Value]) -> Result<Value, String> {
         .unwrap_or(true);
 
     if parents {
-        fs::create_dir_all(path)
-            .map_err(|e| fmt_msg(MsgKey::IoCreateDirFailed, &[path, &e.to_string()]))?;
+        map_i18n_err!(fs::create_dir_all(path), MsgKey::IoCreateDirFailed, path)?;
     } else {
-        fs::create_dir(path)
-            .map_err(|e| fmt_msg(MsgKey::IoCreateDirFailed, &[path, &e.to_string()]))?;
+        map_i18n_err!(fs::create_dir(path), MsgKey::IoCreateDirFailed, path)?;
     }
 
     Ok(Value::Nil)
@@ -149,8 +146,7 @@ pub fn native_delete_file(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::String(path) => {
-            fs::remove_file(path)
-                .map_err(|e| fmt_msg(MsgKey::IoDeleteFileFailed, &[path, &e.to_string()]))?;
+            map_i18n_err!(fs::remove_file(path), MsgKey::IoDeleteFileFailed, path)?;
             Ok(Value::Nil)
         }
         _ => Err(fmt_msg(
@@ -197,11 +193,9 @@ pub fn native_delete_dir(args: &[Value]) -> Result<Value, String> {
         .unwrap_or(false);
 
     if recursive {
-        fs::remove_dir_all(path)
-            .map_err(|e| fmt_msg(MsgKey::IoDeleteDirFailed, &[path, &e.to_string()]))?;
+        map_i18n_err!(fs::remove_dir_all(path), MsgKey::IoDeleteDirFailed, path)?;
     } else {
-        fs::remove_dir(path)
-            .map_err(|e| fmt_msg(MsgKey::IoDeleteDirFailed, &[path, &e.to_string()]))?;
+        map_i18n_err!(fs::remove_dir(path), MsgKey::IoDeleteDirFailed, path)?;
     }
 
     Ok(Value::Nil)
@@ -214,8 +208,7 @@ pub fn native_copy_file(args: &[Value]) -> Result<Value, String> {
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
-            fs::copy(src, dst)
-                .map_err(|e| fmt_msg(MsgKey::IoCopyFileFailed, &[src, dst, &e.to_string()]))?;
+            map_i18n_err!(fs::copy(src, dst), MsgKey::IoCopyFileFailed, src, dst)?;
             Ok(Value::Nil)
         }
         _ => Err(fmt_msg(MsgKey::BothArgsMustBeStrings, &["io/copy-file"])),
@@ -229,8 +222,7 @@ pub fn native_move_file(args: &[Value]) -> Result<Value, String> {
 
     match (&args[0], &args[1]) {
         (Value::String(src), Value::String(dst)) => {
-            fs::rename(src, dst)
-                .map_err(|e| fmt_msg(MsgKey::IoMoveFileFailed, &[src, dst, &e.to_string()]))?;
+            map_i18n_err!(fs::rename(src, dst), MsgKey::IoMoveFileFailed, src, dst)?;
             Ok(Value::Nil)
         }
         _ => Err(fmt_msg(MsgKey::BothArgsMustBeStrings, &["io/move-file"])),
@@ -247,8 +239,7 @@ pub fn native_file_info(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::String(path) => {
-            let metadata = fs::metadata(path)
-                .map_err(|e| fmt_msg(MsgKey::IoGetMetadataFailed, &[path, &e.to_string()]))?;
+            let metadata = map_i18n_err!(fs::metadata(path), MsgKey::IoGetMetadataFailed, path)?;
 
             let mut info = crate::new_hashmap();
 

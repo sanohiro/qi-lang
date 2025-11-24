@@ -1,4 +1,5 @@
 use super::*;
+use crate::with_global;
 
 /// kvs/get - キーの値を取得
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
@@ -17,15 +18,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.get(key) {
         Ok(Some(v)) => Ok(Value::String(v)),
@@ -64,15 +57,7 @@ pub fn native_set(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.set(key, &value) {
         Ok(s) => Ok(Value::String(s)),
@@ -97,15 +82,7 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.delete(key) {
         Ok(n) => Ok(Value::Integer(n)),
@@ -135,15 +112,7 @@ pub fn native_exists(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.exists(key) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -173,15 +142,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.keys(pattern) {
         Ok(keys) => Ok(Value::Vector(
@@ -229,15 +190,7 @@ pub fn native_expire(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.expire(key, seconds) {
         Ok(b) => Ok(Value::Bool(b)),
@@ -262,15 +215,7 @@ pub fn native_ttl(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.ttl(key) {
         Ok(i) => Ok(Value::Integer(i)),

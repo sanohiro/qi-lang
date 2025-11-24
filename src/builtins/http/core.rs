@@ -1,4 +1,5 @@
 use super::*;
+use crate::map_i18n_err;
 use reqwest::Method;
 
 /// HTTPリクエストの実装（シンプル版：bodyの文字列のみ返す）
@@ -99,13 +100,15 @@ pub(super) fn http_request_detailed(
     let client = if timeout_ms == 30000 {
         crate::builtins::lazy_init::http_client::get_client()?
     } else {
-        custom_client = Client::builder()
-            .gzip(true)
-            .deflate(true)
-            .brotli(true)
-            .timeout(Duration::from_millis(timeout_ms))
-            .build()
-            .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?;
+        custom_client = map_i18n_err!(
+            Client::builder()
+                .gzip(true)
+                .deflate(true)
+                .brotli(true)
+                .timeout(Duration::from_millis(timeout_ms))
+                .build(),
+            MsgKey::HttpClientError
+        )?;
         &custom_client
     };
 
@@ -176,8 +179,10 @@ pub(super) fn http_request_detailed(
             Value::Bytes(data) => {
                 // バイナリデータをそのまま送信
                 if should_compress {
-                    let compressed = helpers::compress_gzip(data.as_ref())
-                        .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
+                    let compressed = map_i18n_err!(
+                        helpers::compress_gzip(data.as_ref()),
+                        MsgKey::HttpCompressionError
+                    )?;
                     request = request.header("Content-Encoding", "gzip").body(compressed);
                 } else {
                     request = request.body(data.as_ref().to_vec());
@@ -186,8 +191,10 @@ pub(super) fn http_request_detailed(
             Value::String(s) => {
                 if should_compress {
                     // gzip圧縮して送信
-                    let compressed = helpers::compress_gzip(s.as_bytes())
-                        .map_err(|e| fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()]))?;
+                    let compressed = map_i18n_err!(
+                        helpers::compress_gzip(s.as_bytes()),
+                        MsgKey::HttpCompressionError
+                    )?;
                     request = request.header("Content-Encoding", "gzip").body(compressed);
                 } else {
                     request = request.body(s.clone());
@@ -202,9 +209,10 @@ pub(super) fn http_request_detailed(
                     Value::String(s) => {
                         if should_compress {
                             // JSON を圧縮して送信
-                            let compressed = helpers::compress_gzip(s.as_bytes()).map_err(|e| {
-                                fmt_msg(MsgKey::HttpCompressionError, &[&e.to_string()])
-                            })?;
+                            let compressed = map_i18n_err!(
+                                helpers::compress_gzip(s.as_bytes()),
+                                MsgKey::HttpCompressionError
+                            )?;
                             request = request
                                 .header("Content-Type", "application/json")
                                 .header("Content-Encoding", "gzip")
@@ -266,9 +274,10 @@ pub(super) fn http_request_detailed(
             const MAX_RESPONSE_SIZE: usize = 100 * 1024 * 1024; // 100MB
             let mut body_bytes = Vec::new();
             let mut limited_response = response.take(MAX_RESPONSE_SIZE as u64);
-            limited_response
-                .read_to_end(&mut body_bytes)
-                .map_err(|e| fmt_msg(MsgKey::HttpFailedToReadBody, &[&e.to_string()]))?;
+            map_i18n_err!(
+                limited_response.read_to_end(&mut body_bytes),
+                MsgKey::HttpFailedToReadBody
+            )?;
 
             if body_bytes.len() >= MAX_RESPONSE_SIZE {
                 return Err(fmt_msg(MsgKey::HttpResponseTooLarge, &["100"]));
@@ -355,10 +364,12 @@ pub(super) fn http_stream(
     // タイムアウト設定を考慮したClientを取得
     let client = if let Some(timeout) = timeout_ms {
         let timeout_duration = std::time::Duration::from_millis(timeout);
-        reqwest::blocking::Client::builder()
-            .timeout(timeout_duration)
-            .build()
-            .map_err(|e| fmt_msg(MsgKey::HttpClientError, &[&e.to_string()]))?
+        map_i18n_err!(
+            reqwest::blocking::Client::builder()
+                .timeout(timeout_duration)
+                .build(),
+            MsgKey::HttpClientError
+        )?
     } else {
         crate::builtins::lazy_init::http_client::get_client()?.clone()
     };
@@ -424,9 +435,7 @@ pub(super) fn http_stream(
     }
 
     // リクエスト送信
-    let response = request
-        .send()
-        .map_err(|e| fmt_msg(MsgKey::HttpStreamRequestFailed, &[&e.to_string()]))?;
+    let response = map_i18n_err!(request.send(), MsgKey::HttpStreamRequestFailed)?;
 
     if !response.status().is_success() {
         return Err(fmt_msg(

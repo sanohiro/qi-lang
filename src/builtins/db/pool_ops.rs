@@ -2,6 +2,7 @@ use super::*;
 use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::with_global;
 
 /// データベース接続プールを作成する
 ///
@@ -77,14 +78,8 @@ pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    // プールをクローンしてからミューテックスを解放（デッドロック回避）
-    let pool = {
-        let pools = POOLS.lock();
-        pools
-            .get(&pool_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
-            .clone()
-    }; // pools ミューテックスはここで解放される
+    // デッドロック回避: プールをクローンしてからミューテックスを解放
+    let pool = with_global!(POOLS, &pool_id, MsgKey::DbPoolNotFound);
 
     // ブロッキング操作をミューテックス外で実行
     let conn = pool.acquire().map_err(|e| e.message)?;
@@ -141,14 +136,7 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
         }
     }
 
-    // プールをクローンしてからミューテックスを解放
-    let pool = {
-        let pools = POOLS.lock();
-        pools
-            .get(&pool_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
-            .clone()
-    };
+    let pool = with_global!(POOLS, &pool_id, MsgKey::DbPoolNotFound);
 
     let conn = {
         let mut connections = CONNECTIONS.lock();
@@ -218,14 +206,8 @@ pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    // プールをクローンしてからミューテックスを解放（ロック保持時間を最小化）
-    let pool = {
-        let pools = POOLS.lock();
-        pools
-            .get(&pool_id)
-            .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?
-            .clone()
-    };
+    // ロック保持時間を最小化: プールをクローンしてからミューテックスを解放
+    let pool = with_global!(POOLS, &pool_id, MsgKey::DbPoolNotFound);
 
     let (available, in_use, max) = pool.stats();
 

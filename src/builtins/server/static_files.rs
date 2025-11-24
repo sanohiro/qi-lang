@@ -2,6 +2,7 @@
 
 use super::helpers::kw;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::map_i18n_err;
 use crate::value::Value;
 
 pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, String> {
@@ -40,9 +41,7 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
         // リクエストごとにcanonicalize()を呼ぶと、攻撃者がシンボリックリンクを
         // 差し替えた場合に新しいターゲットを追跡してしまう
         // 代わりに、保存された正規化パスを文字列比較で検証
-        let canonical = with_index
-            .canonicalize()
-            .map_err(|e| fmt_msg(MsgKey::StaticFileNotFound, &[&e.to_string()]))?;
+        let canonical = map_i18n_err!(with_index.canonicalize(), MsgKey::StaticFileNotFound)?;
 
         // dir_pathは既に正規化済みのため、再度canonicalize()せずに使用
         let base_canonical = std::path::Path::new(dir_path);
@@ -179,14 +178,15 @@ pub fn native_server_static_file(args: &[Value]) -> Result<Value, String> {
     };
 
     // セキュリティチェック（絶対パスの場合はカレントディレクトリから検証）
-    let base_dir = std::env::current_dir()
-        .map_err(|e| fmt_msg(MsgKey::StaticFileFailedToGetCwd, &[&e.to_string()]))?;
+    let base_dir = map_i18n_err!(std::env::current_dir(), MsgKey::StaticFileFailedToGetCwd)?;
     let file_path = validate_safe_path(&base_dir, file_path_str)
         .map_err(|e| fmt_msg(MsgKey::StaticFileInvalidFilePath, &[&e]))?;
 
     // ファイルの存在確認
-    std::fs::metadata(&file_path)
-        .map_err(|e| fmt_msg(MsgKey::ServerStaticFileMetadataFailed, &[&e.to_string()]))?;
+    map_i18n_err!(
+        std::fs::metadata(&file_path),
+        MsgKey::ServerStaticFileMetadataFailed
+    )?;
 
     // ストリーミングレスポンスを生成（:body-file を使用）
     let content_type = get_content_type(file_path.to_str().unwrap_or(""));
@@ -241,9 +241,10 @@ pub fn native_server_static_dir(args: &[Value]) -> Result<Value, String> {
     }
 
     // 正規化されたディレクトリパスを取得（シンボリックリンク解決）
-    let canonical_dir = dir_path
-        .canonicalize()
-        .map_err(|e| fmt_msg(MsgKey::StaticFileFailedToCanonicalize, &[&e.to_string()]))?;
+    let canonical_dir = map_i18n_err!(
+        dir_path.canonicalize(),
+        MsgKey::StaticFileFailedToCanonicalize
+    )?;
     let canonical_dir_str = canonical_dir
         .to_str()
         .ok_or_else(|| fmt_msg(MsgKey::StaticFileInvalidEncoding, &[]))?

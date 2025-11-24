@@ -1,4 +1,5 @@
 use super::*;
+use crate::with_global;
 
 /// kvs/incr - キーの値をインクリメント
 pub fn native_incr(args: &[Value]) -> Result<Value, String> {
@@ -17,15 +18,7 @@ pub fn native_incr(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.incr(key) {
         Ok(i) => Ok(Value::Integer(i)),
@@ -50,15 +43,7 @@ pub fn native_decr(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.decr(key) {
         Ok(i) => Ok(Value::Integer(i)),

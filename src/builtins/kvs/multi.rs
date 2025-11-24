@@ -1,4 +1,5 @@
 use super::*;
+use crate::with_global;
 
 /// kvs/mget - 複数のキーの値を一括取得
 pub fn native_mget(args: &[Value]) -> Result<Value, String> {
@@ -26,15 +27,7 @@ pub fn native_mget(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.mget(&keys) {
         Ok(values) => Ok(Value::Vector(
@@ -93,15 +86,7 @@ pub fn native_mset(args: &[Value]) -> Result<Value, String> {
     };
 
     let conn_id = get_connection(conn_str)?;
-
-    // ドライバーをクローンしてからミューテックスを解放（ネットワークI/O前）
-    let driver = {
-        let connections = CONNECTIONS.lock();
-        connections
-            .get(&conn_id)
-            .ok_or_else(|| fmt_msg(MsgKey::ConnectionNotFound, &[&conn_id]))?
-            .clone()
-    };
+    let driver = with_global!(CONNECTIONS, &conn_id, MsgKey::ConnectionNotFound);
 
     match driver.mset(&pairs) {
         Ok(s) => Ok(Value::String(s)),
