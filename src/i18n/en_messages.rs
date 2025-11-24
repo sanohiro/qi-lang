@@ -679,6 +679,8 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FailedToReadDirectory, "Failed to read directory: {0}"),
         (FailedToReadFile, "Failed to read file: {0}"),
         (FailedToWriteFile, "Failed to write file: {0}"),
+        (FailedToCopyFile, "Failed to copy file: {0}"),
+        (FailedToSetPermissions, "Failed to set file permissions: {0}"),
         (TemplateTomlFailedToRead, "Failed to read template.toml: {0}"),
         (TemplateTomlFailedToParse, "Failed to parse template.toml: {0}"),
         // 評価器エラー

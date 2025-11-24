@@ -164,7 +164,7 @@ fn prompt_metadata(project_dir: &Path) -> Result<ProjectMetadata, String> {
         authors: author.map(|a| vec![a]),
         description,
         license: Some(license),
-        qi_version: Some("0.1.0".to_string()),
+        qi_version: Some(env!("CARGO_PKG_VERSION").to_string()),
     })
 }
 
@@ -289,12 +289,36 @@ fn copy_dir_recursive(
                 .map_err(|e| fmt_msg(MsgKey::FailedToCreateDirectory, &[&e.to_string()]))?;
             copy_dir_recursive(&src_path, &dest_path, vars)?;
         } else if file_type.is_file() {
-            // ファイルを読み込んで変数置換
-            let content = fs::read_to_string(&src_path)
-                .map_err(|e| fmt_msg(MsgKey::FailedToReadFile, &[&e.to_string()]))?;
-            let rendered = render_template(&content, vars);
-            fs::write(&dest_path, rendered)
-                .map_err(|e| fmt_msg(MsgKey::FailedToWriteFile, &[&e.to_string()]))?;
+            // .templateサフィックスがあるファイルのみテンプレート処理
+            let should_render = file_name
+                .to_str()
+                .map(|s| s.ends_with(".template"))
+                .unwrap_or(false);
+
+            if should_render {
+                // テキストファイルとして読み込んで変数置換
+                let content = fs::read_to_string(&src_path)
+                    .map_err(|e| fmt_msg(MsgKey::FailedToReadFile, &[&e.to_string()]))?;
+                let rendered = render_template(&content, vars);
+                fs::write(&dest_path, rendered)
+                    .map_err(|e| fmt_msg(MsgKey::FailedToWriteFile, &[&e.to_string()]))?;
+            } else {
+                // バイナリファイルとしてそのままコピー
+                fs::copy(&src_path, &dest_path)
+                    .map_err(|e| fmt_msg(MsgKey::FailedToCopyFile, &[&e.to_string()]))?;
+            }
+
+            // ソースファイルのパーミッションを保持
+            #[cfg(unix)]
+            {
+                #[allow(unused_imports)] // Trait methods
+                use std::os::unix::fs::PermissionsExt;
+                let metadata = fs::metadata(&src_path)
+                    .map_err(|e| fmt_msg(MsgKey::FailedToReadFileMetadata, &[&e.to_string()]))?;
+                let permissions = metadata.permissions();
+                fs::set_permissions(&dest_path, permissions)
+                    .map_err(|e| fmt_msg(MsgKey::FailedToSetPermissions, &[&e.to_string()]))?;
+            }
         }
     }
     Ok(())

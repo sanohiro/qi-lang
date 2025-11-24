@@ -469,6 +469,8 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (FailedToReadDirectory, "ディレクトリの読み込みに失敗: {0}"),
         (FailedToReadFile, "ファイルの読み込みに失敗: {0}"),
         (FailedToWriteFile, "ファイルの書き込みに失敗: {0}"),
+        (FailedToCopyFile, "ファイルのコピーに失敗: {0}"),
+        (FailedToSetPermissions, "ファイルパーミッションの設定に失敗: {0}"),
         (TemplateTomlFailedToRead, "template.tomlの読み込みに失敗: {0}"),
         (TemplateTomlFailedToParse, "template.tomlのパースに失敗: {0}"),
         // 評価器エラー
