@@ -103,20 +103,28 @@ pub(super) async fn request_to_value(
 
     let (parts, body) = req.into_parts();
 
-    // ボディを取得（非同期）
-    let collected = body
+    // ⚠️ SECURITY: ストリーミング中にサイズ制限を適用（DoS防止）
+    // body.collect()は全データをメモリに読み込むため、サイズ制限前に実行すると
+    // 攻撃者が大量のデータを送信してメモリを使い果たすことができる
+    use http_body_util::BodyExt;
+    use http_body_util::Limited;
+
+    let limited_body = Limited::new(body, MAX_BODY_SIZE);
+    let collected = limited_body
         .collect()
         .await
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToReadBody, &[&e.to_string()]))?;
+        .map_err(|e| {
+            let err_str = e.to_string();
+            if err_str.contains("length limit exceeded") {
+                fmt_msg(
+                    MsgKey::ServerBodyTooLarge,
+                    &[&MAX_BODY_SIZE.to_string(), &MAX_BODY_SIZE.to_string()],
+                )
+            } else {
+                fmt_msg(MsgKey::ServerFailedToReadBody, &[&err_str])
+            }
+        })?;
     let body_bytes = collected.to_bytes();
-
-    // ボディサイズチェック（圧縮前）
-    if body_bytes.len() > MAX_BODY_SIZE {
-        return Err(fmt_msg(
-            MsgKey::ServerBodyTooLarge,
-            &[&body_bytes.len().to_string(), &MAX_BODY_SIZE.to_string()],
-        ));
-    }
 
     // Content-Encodingヘッダーをチェックして解凍
     let decompressed_bytes = if let Some(encoding) = parts.headers.get("content-encoding") {

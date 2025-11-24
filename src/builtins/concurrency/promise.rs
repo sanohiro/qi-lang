@@ -8,7 +8,10 @@ use std::sync::Arc;
 /// Promiseチャネルを作成（capacity=1のboundedチャネル）
 pub(super) fn create_promise_channel() -> Arc<Channel> {
     let (sender, receiver) = bounded(1);
-    Arc::new(Channel { sender, receiver })
+    Arc::new(Channel {
+        sender: Arc::new(parking_lot::Mutex::new(Some(sender))),
+        receiver,
+    })
 }
 
 /// スレッドを起動してPromiseを返す汎用ヘルパー
@@ -24,6 +27,7 @@ pub(super) fn create_promise_channel() -> Arc<Channel> {
 /// - `channel`はArc<Channel>で共有されるため、senderを別途cloneして
 ///   スレッドに移動させる必要がある（channelの所有権は返す）
 /// - スレッドクロージャは`move`なので、senderの所有権を移動
+/// - Channelのsenderは Arc<Mutex<Option<Sender>>> なので、実際のSenderを取得してclone
 ///
 /// ## クロージャ内でチャネルのsenderに結果を送信する処理を実行する
 pub(super) fn spawn_promise<F>(f: F) -> Value
@@ -31,7 +35,16 @@ where
     F: FnOnce(crossbeam_channel::Sender<Value>) + Send + 'static,
 {
     let channel = create_promise_channel();
-    let sender = channel.sender.clone();
+
+    // Arc<Mutex<Option<Sender>>>からSenderを取り出してclone
+    let sender = {
+        let guard = channel.sender.lock();
+        // SAFETY: create_promise_channel()で作成した直後なので必ずSome
+        guard
+            .as_ref()
+            .expect("sender should be Some immediately after channel creation")
+            .clone()
+    };
 
     std::thread::spawn(move || {
         f(sender);
@@ -240,7 +253,16 @@ pub fn native_race(args: &[Value]) -> Result<Value, String> {
     };
 
     let result_channel = create_promise_channel();
-    let sender = result_channel.sender.clone();
+
+    // Arc<Mutex<Option<Sender>>>から実際のSenderを取り出す
+    let sender = {
+        let guard = result_channel.sender.lock();
+        // SAFETY: create_promise_channel()で作成した直後なので必ずSome
+        guard
+            .as_ref()
+            .expect("sender should be Some immediately after channel creation")
+            .clone()
+    };
 
     // すべてのpromiseから受信を試みる（最初に完了したものを返す）
     for promise in promises {

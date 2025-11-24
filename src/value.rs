@@ -165,9 +165,10 @@ pub enum Value {
 /// - MPMC（Multiple Producer, Multiple Consumer）
 /// - スレッドセーフ
 /// - `Arc`でラップされているため、複数のスレッドで共有可能
+/// - `sender`はOption<Sender>でラップされており、close時にNoneに設定される
 #[derive(Debug, Clone)]
 pub struct Channel {
-    pub sender: Sender<Value>,
+    pub sender: std::sync::Arc<parking_lot::Mutex<Option<Sender<Value>>>>,
     pub receiver: Receiver<Value>,
 }
 

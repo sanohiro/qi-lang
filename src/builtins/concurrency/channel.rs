@@ -38,7 +38,10 @@ pub fn native_chan(args: &[Value]) -> Result<Value, String> {
         unbounded()
     };
 
-    Ok(Value::Channel(Arc::new(Channel { sender, receiver })))
+    Ok(Value::Channel(Arc::new(Channel {
+        sender: Arc::new(parking_lot::Mutex::new(Some(sender))),
+        receiver,
+    })))
 }
 
 /// send! - チャネルに値を送信
@@ -63,10 +66,15 @@ pub fn native_send(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Channel(ch) => {
             let value = args[1].clone();
-            ch.sender
-                .send(value.clone())
-                .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["send!"]))?;
-            Ok(value)
+            let sender_guard = ch.sender.lock();
+            if let Some(sender) = sender_guard.as_ref() {
+                sender
+                    .send(value.clone())
+                    .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["send!"]))?;
+                Ok(value)
+            } else {
+                Err(fmt_msg(MsgKey::ChannelClosed, &["send!"]))
+            }
         }
         _ => Err(fmt_msg(MsgKey::FirstArgMustBe, &["send!", "a channel"])),
     }
@@ -175,10 +183,20 @@ pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
 /// 戻り値:
 /// - nil
 ///
+/// 説明:
+/// チャネルの送信側をクローズします。クローズ後、そのチャネルへの
+/// go/send!は失敗し、go/recv!は残りのバッファ済みメッセージを返した後、
+/// Disconnectedエラーを返します。
+///
 /// 例:
 /// ```qi
 /// (def ch (go/chan))
+/// (go/send! ch 1)
+/// (go/send! ch 2)
 /// (go/close! ch)
+/// (go/recv! ch)  ;; => 1
+/// (go/recv! ch)  ;; => 2
+/// (go/recv! ch)  ;; => Error: channel closed
 /// ```
 pub fn native_close(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
@@ -186,10 +204,11 @@ pub fn native_close(args: &[Value]) -> Result<Value, String> {
     }
 
     match &args[0] {
-        Value::Channel(_ch) => {
-            // crossbeam-channelではdropでクローズされる
-            // 明示的にクローズするにはsenderをすべてdropする必要がある
-            // ここでは単にnilを返す（実際のクローズはGCで行われる）
+        Value::Channel(ch) => {
+            // senderをNoneに設定してクローズ
+            let mut sender_guard = ch.sender.lock();
+            *sender_guard = None;
+            // senderがdropされると、receiverは次のrecv()でDisconnectedを受け取る
             Ok(Value::Nil)
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["close!", "channels"])),

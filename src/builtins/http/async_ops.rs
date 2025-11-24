@@ -13,7 +13,7 @@ pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
 
     let (sender, receiver) = bounded(1);
     let result_channel = Arc::new(crate::value::Channel {
-        sender: sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(sender.clone()))),
         receiver,
     });
 
@@ -58,7 +58,7 @@ pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
 
     let (sender, receiver) = bounded(1);
     let result_channel = Arc::new(crate::value::Channel {
-        sender: sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(sender.clone()))),
         receiver,
     });
 

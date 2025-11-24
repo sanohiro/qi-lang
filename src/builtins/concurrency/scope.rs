@@ -68,7 +68,7 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
     // チャネルを作成して結果を返す
     let (sender, receiver) = unbounded();
     let ch = Value::Channel(Arc::new(Channel {
-        sender: sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(sender.clone()))),
         receiver: receiver.clone(),
     }));
 
@@ -220,7 +220,7 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
         .map(|func| {
             let (sender, receiver) = unbounded();
             let ch = Arc::new(Channel {
-                sender: sender.clone(),
+                sender: Arc::new(parking_lot::Mutex::new(Some(sender.clone()))),
                 receiver: receiver.clone(),
             });
 

@@ -75,7 +75,10 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
     let mut out_channels = Vec::new();
     for _ in 0..n {
         let (sender, receiver) = unbounded();
-        out_channels.push(Value::Channel(Arc::new(Channel { sender, receiver })));
+        out_channels.push(Value::Channel(Arc::new(Channel {
+            sender: Arc::new(parking_lot::Mutex::new(Some(sender))),
+            receiver,
+        })));
     }
 
     // 入力から出力へ分配するgoroutineを起動
@@ -95,7 +98,10 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
         while let Ok(value) = in_receiver.recv() {
             // すべての出力チャネルに送信
             for sender in &out_senders {
-                let _ = sender.send(value.clone());
+                let sender_guard = sender.lock();
+                if let Some(s) = sender_guard.as_ref() {
+                    let _ = s.send(value.clone());
+                }
             }
         }
     });
@@ -129,7 +135,7 @@ pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
     // 出力チャネルを作成
     let (out_sender, out_receiver) = unbounded();
     let result_channel = Arc::new(Channel {
-        sender: out_sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(out_sender.clone()))),
         receiver: out_receiver,
     });
 
@@ -192,7 +198,7 @@ pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
     // 出力チャネルを作成
     let (out_sender, out_receiver) = unbounded();
     let result_channel = Arc::new(Channel {
-        sender: out_sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(out_sender.clone()))),
         receiver: out_receiver,
     });
 
@@ -266,7 +272,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
     let (out_sender, out_receiver) = unbounded();
 
     let in_channel = Arc::new(Channel {
-        sender: in_sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(in_sender.clone()))),
         receiver: in_receiver,
     });
 
@@ -397,7 +403,7 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
     let (out_sender, out_receiver) = unbounded();
 
     let in_channel = Arc::new(Channel {
-        sender: in_sender.clone(),
+        sender: Arc::new(parking_lot::Mutex::new(Some(in_sender.clone()))),
         receiver: in_receiver,
     });
 
