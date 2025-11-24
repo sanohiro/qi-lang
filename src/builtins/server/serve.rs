@@ -207,7 +207,7 @@ async fn handle_request(
         let is_head = match &req_value {
             Value::Map(m) => {
                 let method_key = MapKey::Keyword(crate::intern::intern_keyword("method"));
-                matches!(m.get(&method_key), Some(Value::String(s)) if s == "HEAD")
+                matches!(m.get(&method_key), Some(Value::Keyword(s)) if s.as_ref() == "head")
             }
             _ => false,
         };

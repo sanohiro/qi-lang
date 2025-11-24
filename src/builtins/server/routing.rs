@@ -422,12 +422,10 @@ fn match_route_pattern(
         if let Some(param_name) = pattern_part.strip_prefix(':') {
             // パラメータ部分 - パラメータ名を抽出
             // percent-encodingをデコード（例: %E3%81%82 → あ）
-            #[cfg(feature = "string-encoding")]
+            // URLのパーセントデコードは基本機能なので無条件で有効
             let decoded_value = urlencoding::decode(path_part)
                 .unwrap_or(std::borrow::Cow::Borrowed(path_part))
                 .to_string();
-            #[cfg(not(feature = "string-encoding"))]
-            let decoded_value = path_part.to_string();
 
             params.insert(param_name.to_string(), Value::String(decoded_value));
         } else if pattern_part != path_part {

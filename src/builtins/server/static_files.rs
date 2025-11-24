@@ -20,8 +20,8 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
                 }
             };
             let method = match m.get(&method_key) {
-                Some(Value::String(m)) => m.as_str(),
-                _ => "GET", // デフォルトはGET
+                Some(Value::Keyword(k)) => k.as_ref(),
+                _ => "get", // デフォルトはget（小文字）
             };
             (p, method)
         }
@@ -71,7 +71,7 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
     resp.insert(kw("status"), Value::Integer(200));
 
     // HEADリクエストの場合はヘッダーのみ（RFC 7231 §4.3.2準拠）
-    if method != "HEAD" {
+    if method != "head" {
         resp.insert(kw("body-file"), Value::String(file_path_str.to_string()));
     }
 
