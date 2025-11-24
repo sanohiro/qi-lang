@@ -182,7 +182,15 @@ pub fn native_variance(args: &[Value]) -> Result<Value, String> {
             for item in items {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
-                    Value::Float(f) => numbers.push(*f),
+                    Value::Float(f) => {
+                        if f.is_nan() {
+                            return Err(fmt_msg(
+                                MsgKey::InvalidFloat,
+                                &["stats/variance", "NaN is not allowed"],
+                            ));
+                        }
+                        numbers.push(*f);
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::AllElementsMustBe,
@@ -261,7 +269,15 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
             for item in items {
                 match item {
                     Value::Integer(n) => numbers.push(*n as f64),
-                    Value::Float(f) => numbers.push(*f),
+                    Value::Float(f) => {
+                        if f.is_nan() {
+                            return Err(fmt_msg(
+                                MsgKey::InvalidFloat,
+                                &["stats/percentile", "NaN is not allowed"],
+                            ));
+                        }
+                        numbers.push(*f);
+                    }
                     _ => {
                         return Err(fmt_msg(
                             MsgKey::AllElementsMustBe,
@@ -271,11 +287,11 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
-            // NaN値は整数変換時に除外されているため安全
+            // NaN値は上記でフィルタリング済みのため安全
             #[allow(clippy::expect_used)]
             numbers.sort_by(|a, b| {
                 a.partial_cmp(b)
-                    .expect("NaN values should have been filtered out")
+                    .expect("NaN values have been filtered out")
             });
 
             // 線形補間法でパーセンタイルを計算
