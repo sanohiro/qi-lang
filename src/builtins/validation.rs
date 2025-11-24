@@ -58,7 +58,10 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
         } else {
             // オプショナルフィールドでnilの場合は成功
             let mut result_map = crate::new_hashmap();
-            result_map.insert(":ok".to_string(), data.clone());
+            result_map.insert(
+                MapKey::Keyword(std::sync::Arc::from("ok")),
+                data.clone(),
+            );
             return Ok(Value::Map(result_map));
         }
     }
@@ -102,7 +105,7 @@ fn validate_value(schema: &Value, data: &Value, field_name: Option<&str>) -> Res
 
     // 全て通過したら成功
     let mut result_map = crate::new_hashmap();
-    result_map.insert(":ok".to_string(), data.clone());
+    result_map.insert(MapKey::Keyword(Arc::from("ok")), data.clone());
     Ok(Value::Map(result_map))
 }
 
@@ -330,15 +333,27 @@ fn validate_map(
 /// エラー結果を生成
 fn error_result(field: Option<&str>, code: &str, message: String) -> Value {
     let mut error_map = crate::new_hashmap();
-    error_map.insert(":code".to_string(), Value::String(code.to_string()));
-    error_map.insert(":message".to_string(), Value::String(message));
+    error_map.insert(
+        MapKey::Keyword(Arc::from("code")),
+        Value::String(code.to_string()),
+    );
+    error_map.insert(
+        MapKey::Keyword(Arc::from("message")),
+        Value::String(message),
+    );
 
     if let Some(f) = field {
-        error_map.insert(":field".to_string(), Value::String(f.to_string()));
+        error_map.insert(
+            MapKey::Keyword(Arc::from("field")),
+            Value::String(f.to_string()),
+        );
     }
 
     let mut result_map = crate::new_hashmap();
-    result_map.insert(ERROR_KEY.to_string(), Value::Map(error_map));
+    result_map.insert(
+        MapKey::Keyword(Arc::from("error")),
+        Value::Map(error_map),
+    );
     Value::Map(result_map)
 }
 
