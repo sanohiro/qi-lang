@@ -43,6 +43,7 @@
 // ユーティリティモジュール
 pub mod lazy_init;
 pub mod macros;
+pub mod numeric_helpers;
 pub mod value_helpers;
 
 // Coreモジュール

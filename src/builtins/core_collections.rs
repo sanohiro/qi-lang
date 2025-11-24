@@ -8,6 +8,7 @@
 //! 注: map, filter, reduce, pmap, take-while, drop-while, find, every, some, update-in, update
 //!     は Evaluator が必要なため、mod.rs で別途エクスポートされます
 
+use crate::builtins::value_helpers::usize_to_int_value;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
@@ -86,33 +87,9 @@ pub fn native_len(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["len"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => {
-            let len = v.len();
-            i64::try_from(len).map(Value::Integer).map_err(|_| {
-                fmt_msg(
-                    MsgKey::IntegerOverflow,
-                    &["collection length too large for i64"],
-                )
-            })
-        }
-        Value::Map(m) => {
-            let len = m.len();
-            i64::try_from(len).map(Value::Integer).map_err(|_| {
-                fmt_msg(
-                    MsgKey::IntegerOverflow,
-                    &["map size too large for i64"],
-                )
-            })
-        }
-        Value::String(s) => {
-            let len = s.len();
-            i64::try_from(len).map(Value::Integer).map_err(|_| {
-                fmt_msg(
-                    MsgKey::IntegerOverflow,
-                    &["string length too large for i64"],
-                )
-            })
-        }
+        Value::List(v) | Value::Vector(v) => usize_to_int_value(v.len(), "len"),
+        Value::Map(m) => usize_to_int_value(m.len(), "len"),
+        Value::String(s) => usize_to_int_value(s.len(), "len"),
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
             &["len", "strings or collections"],

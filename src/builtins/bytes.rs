@@ -2,6 +2,7 @@
 //!
 //! バイナリデータの生成、変換、操作を提供します。
 
+use crate::builtins::value_helpers::validate_byte;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::sync::Arc;
@@ -27,23 +28,8 @@ pub fn native_bytes(args: &[Value]) -> Result<Value, String> {
         Value::Vector(v) => {
             let mut bytes = Vec::with_capacity(v.len());
             for (i, item) in v.iter().enumerate() {
-                match item {
-                    Value::Integer(n) if *n >= 0 && *n <= 255 => {
-                        bytes.push(*n as u8);
-                    }
-                    Value::Integer(n) => {
-                        return Err(fmt_msg(
-                            MsgKey::ByteOutOfRange,
-                            &[&i.to_string(), &n.to_string()],
-                        ));
-                    }
-                    _ => {
-                        return Err(fmt_msg(
-                            MsgKey::BytesMustBeIntegers,
-                            &[&i.to_string(), item.type_name()],
-                        ));
-                    }
-                }
+                let byte = validate_byte(item, "bytes", i)?;
+                bytes.push(byte);
             }
             Ok(Value::Bytes(Arc::from(bytes)))
         }

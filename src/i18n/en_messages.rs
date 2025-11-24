@@ -77,6 +77,7 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (KeyNotFound, "key not found: {0}"),
         (MustBePositive, "{0}: {1} must be positive"),
         (MustBeNonNegative, "{0}: {1} must be non-negative"),
+        (IntegerOutOfRange, "{0}: {1} is out of range: {2} (range: {3} to {4})"),
         (MustBeInteger, "{0}: {1} must be an integer"),
         (MustBeString, "{0}: {1} must be a string"),
         (MinMustBeLessThanMax, "{0}: min must be less than max"),

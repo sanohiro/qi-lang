@@ -1,5 +1,6 @@
 //! リスト操作 - 集約・統計関数
 
+use crate::builtins::numeric_helpers::checked_int_add;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -173,10 +174,8 @@ pub fn native_sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                         if has_float {
                             float_sum += n as f64;
                         } else {
-                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_add() を使用
-                            int_sum = int_sum
-                                .checked_add(n)
-                                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["sum-by"]))?;
+                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_int_add() を使用
+                            int_sum = checked_int_add(int_sum, n, "sum-by")?;
                         }
                     }
                     Value::Float(f) => {

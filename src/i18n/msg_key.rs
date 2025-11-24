@@ -64,6 +64,7 @@ pub enum MsgKey {
     KeyNotFound,          // キーが見つかりません: {0}
     MustBePositive,       // {0}: {1}は正の数である必要があります
     MustBeNonNegative,    // {0}: {1}は非負の数である必要があります
+    IntegerOutOfRange,    // {0}: {1}は範囲外です: {2} (範囲: {3}から{4})
     MustBeInteger,        // {0}: {1}は整数である必要があります
     MustBeString,         // {0}: {1}は文字列である必要があります
     MinMustBeLessThanMax, // {0}: min must be less than max

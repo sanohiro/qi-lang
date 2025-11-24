@@ -242,7 +242,10 @@ pub(super) async fn value_to_response(
                             })?
                         }
                         _ => {
-                            return Err(fmt_msg(MsgKey::ServerInvalidStatusCode, &[&s.to_string()]));
+                            return Err(fmt_msg(
+                                MsgKey::ServerInvalidStatusCode,
+                                &[&s.to_string()],
+                            ));
                         }
                     }
                 }

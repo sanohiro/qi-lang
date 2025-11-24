@@ -2,6 +2,7 @@
 
 use super::helpers::{error_response, kw, request_to_value, value_to_response};
 use super::routing::route_request;
+use crate::builtins::value_helpers::validate_port;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
@@ -17,6 +18,14 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
+use super::{DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, DEFAULT_TIMEOUT_SECS};
+
+/// HTTPサーバータイムアウトの最小値（秒）
+const MIN_TIMEOUT_SECS: u64 = 1;
+
+/// HTTPサーバータイムアウトの最大値（秒）
+const MAX_TIMEOUT_SECS: u64 = 300; // 5分
+
 /// server/serve - HTTPサーバーを起動
 ///
 /// 引数:
@@ -28,10 +37,6 @@ use tokio::net::TcpListener;
 ///
 /// 戻り値: nil（サーバー起動後は戻らない）
 pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
-    // タイムアウト制限
-    const MIN_TIMEOUT_SECS: u64 = 1;
-    const MAX_TIMEOUT_SECS: u64 = 300; // 5分
-    const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
     if args.is_empty() {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["server/serve", "1"]));
@@ -54,19 +59,13 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     let timeout_key = kw("timeout");
 
     let port = match opts.get(&port_key) {
-        Some(Value::Integer(p)) if *p >= 0 && *p <= 65535 => *p as u16,
-        Some(Value::Integer(p)) => {
-            return Err(fmt_msg(
-                MsgKey::ServerInvalidPortNumber,
-                &[&p.to_string()],
-            ));
-        }
-        _ => 3000,
+        Some(val) => validate_port(val, "server/serve")?,
+        None => DEFAULT_HTTP_PORT,
     };
 
     let host = match opts.get(&host_key) {
         Some(Value::String(h)) => h.clone(),
-        _ => "127.0.0.1".to_string(),
+        _ => DEFAULT_HTTP_HOST.to_string(),
     };
 
     let timeout_secs = match opts.get(&timeout_key) {

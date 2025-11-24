@@ -10,13 +10,19 @@ use once_cell::sync::{Lazy, OnceCell};
 pub mod http_client {
     use super::*;
 
+    #[cfg(feature = "http-server")]
+    use crate::builtins::server::DEFAULT_TIMEOUT_SECS;
+
+    #[cfg(not(feature = "http-server"))]
+    const DEFAULT_TIMEOUT_SECS: u64 = 30;
+
     pub static CLIENT: Lazy<Result<reqwest::blocking::Client, String>> = Lazy::new(|| {
         reqwest::blocking::Client::builder()
             .user_agent("qi-lang/0.1.0")
             .gzip(true)
             .deflate(true)
             .brotli(true)
-            .timeout(std::time::Duration::from_secs(30))
+            .timeout(std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS))
             .build()
             .map_err(|e| format!("Failed to create HTTP client: {}", e))
     });

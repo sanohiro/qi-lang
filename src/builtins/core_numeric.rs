@@ -4,6 +4,10 @@
 //! 比較演算（6個）: =, !=, <, >, <=, >=
 //! 合計17個のCore関数
 
+use crate::builtins::numeric_helpers::{
+    checked_abs_value, checked_add_value, checked_int_add, checked_int_mul, checked_int_sub,
+    checked_neg_value, checked_sub_value,
+};
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
@@ -23,9 +27,7 @@ pub fn native_add(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     float_sum += *n as f64;
                 } else {
-                    int_sum = int_sum
-                        .checked_add(*n)
-                        .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["+"]))?;
+                    int_sum = checked_int_add(int_sum, *n, "+")?;
                 }
             }
             Value::Float(f) => {
@@ -61,10 +63,8 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
     if args.len() == 1 {
         return match &args[0] {
             Value::Integer(n) => {
-                // ⚠️ SAFETY: i64::MIN の符号反転はオーバーフローするため checked_neg() を使用
-                n.checked_neg()
-                    .map(Value::Integer)
-                    .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["unary negation"]))
+                // ⚠️ SAFETY: i64::MIN の符号反転はオーバーフローするため checked_neg_value() を使用
+                checked_neg_value(*n, "unary negation")
             }
             Value::Float(f) => Ok(Value::Float(-f)),
             _ => Err(fmt_msg(
@@ -101,9 +101,7 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     result_float -= *n as f64;
                 } else {
-                    result_int = result_int
-                        .checked_sub(*n)
-                        .ok_or_else(|| fmt_msg(MsgKey::IntegerUnderflow, &["-"]))?;
+                    result_int = checked_int_sub(result_int, *n, "-")?;
                 }
             }
             Value::Float(f) => {
@@ -141,9 +139,7 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
                 if has_float {
                     float_product *= *n as f64;
                 } else {
-                    int_product = int_product
-                        .checked_mul(*n)
-                        .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["*"]))?;
+                    int_product = checked_int_mul(int_product, *n, "*")?;
                 }
             }
             Value::Float(f) => {
@@ -246,10 +242,8 @@ pub fn native_abs(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => {
-            // ⚠️ SAFETY: i64::MIN の絶対値は i64 の範囲外のため checked_abs() を使用
-            n.checked_abs()
-                .map(Value::Integer)
-                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["abs"]))
+            // ⚠️ SAFETY: i64::MIN の絶対値は i64 の範囲外のため checked_abs_value() を使用
+            checked_abs_value(*n, "abs")
         }
         Value::Float(f) => Ok(Value::Float(f.abs())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["abs", "numbers"])),
@@ -370,10 +364,8 @@ pub fn native_inc(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => {
-            // ⚠️ SAFETY: i64::MAX + 1 はオーバーフローするため checked_add() を使用
-            n.checked_add(1)
-                .map(Value::Integer)
-                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["inc"]))
+            // ⚠️ SAFETY: i64::MAX + 1 はオーバーフローするため checked_add_value() を使用
+            checked_add_value(*n, 1, "inc")
         }
         Value::Float(f) => Ok(Value::Float(f + 1.0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["inc", "numbers"])),
@@ -388,10 +380,8 @@ pub fn native_dec(args: &[Value]) -> Result<Value, String> {
     }
     match &args[0] {
         Value::Integer(n) => {
-            // ⚠️ SAFETY: i64::MIN - 1 はアンダーフローするため checked_sub() を使用
-            n.checked_sub(1)
-                .map(Value::Integer)
-                .ok_or_else(|| fmt_msg(MsgKey::IntegerUnderflow, &["dec"]))
+            // ⚠️ SAFETY: i64::MIN - 1 はアンダーフローするため checked_sub_value() を使用
+            checked_sub_value(*n, 1, "dec")
         }
         Value::Float(f) => Ok(Value::Float(f - 1.0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["dec", "numbers"])),
@@ -416,10 +406,8 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
                         if has_float {
                             float_sum += *n as f64;
                         } else {
-                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_add() を使用
-                            int_sum = int_sum
-                                .checked_add(*n)
-                                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["sum"]))?;
+                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_int_add() を使用
+                            int_sum = checked_int_add(int_sum, *n, "sum")?;
                         }
                     }
                     Value::Float(f) => {

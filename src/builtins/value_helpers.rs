@@ -157,6 +157,180 @@ pub fn values_equal(a: &Value, b: &Value) -> bool {
     }
 }
 
+// ========================================
+// 範囲検証・型変換ヘルパー関数
+// ========================================
+
+/// ポート番号検証（0-65535）
+///
+/// # 引数
+/// - `val`: 検証対象の値
+/// - `func`: 関数名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(u16)`: 有効なポート番号
+/// - `Err(String)`: 範囲外またはinteger型でない場合のエラーメッセージ
+#[inline]
+pub fn validate_port(val: &Value, func: &str) -> Result<u16, String> {
+    match val {
+        Value::Integer(p) if *p >= 0 && *p <= u16::MAX as i64 => Ok(*p as u16),
+        Value::Integer(p) => Err(fmt_msg(MsgKey::ServerInvalidPortNumber, &[&p.to_string()])),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &[func, "integer"])),
+    }
+}
+
+/// バイト値検証（0-255）
+///
+/// # 引数
+/// - `val`: 検証対象の値
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `idx`: インデックス（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(u8)`: 有効なバイト値
+/// - `Err(String)`: 範囲外またはinteger型でない場合のエラーメッセージ
+#[inline]
+pub fn validate_byte(val: &Value, func: &str, idx: usize) -> Result<u8, String> {
+    match val {
+        Value::Integer(n) if *n >= 0 && *n <= u8::MAX as i64 => Ok(*n as u8),
+        Value::Integer(n) => Err(fmt_msg(
+            MsgKey::ByteOutOfRange,
+            &[&idx.to_string(), &n.to_string()],
+        )),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &[func, "integer"])),
+    }
+}
+
+/// 正の整数をusizeに変換（>0）
+///
+/// # 引数
+/// - `val`: 検証対象の値
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `param`: パラメータ名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(usize)`: 変換後の正の整数
+/// - `Err(String)`: 負数、ゼロ、またはオーバーフローの場合のエラーメッセージ
+#[inline]
+pub fn to_positive_usize(val: &Value, func: &str, param: &str) -> Result<usize, String> {
+    match val {
+        Value::Integer(n) if *n > 0 => usize::try_from(*n)
+            .map_err(|_| fmt_msg(MsgKey::IntegerOverflow, &[&format!("{} {}", func, param)])),
+        Value::Integer(n) => Err(fmt_msg(
+            MsgKey::MustBePositive,
+            &[func, param, &n.to_string()],
+        )),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &[func, "integer"])),
+    }
+}
+
+/// 非負整数をusizeに変換（>=0）
+///
+/// # 引数
+/// - `val`: 検証対象の値
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `param`: パラメータ名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(usize)`: 変換後の非負整数
+/// - `Err(String)`: 負数またはオーバーフローの場合のエラーメッセージ
+#[inline]
+pub fn to_nonnegative_usize(val: &Value, func: &str, param: &str) -> Result<usize, String> {
+    match val {
+        Value::Integer(n) if *n >= 0 => usize::try_from(*n)
+            .map_err(|_| fmt_msg(MsgKey::IntegerOverflow, &[&format!("{} {}", func, param)])),
+        Value::Integer(n) => Err(fmt_msg(
+            MsgKey::MustBeNonNegative,
+            &[func, param, &n.to_string()],
+        )),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &[func, "integer"])),
+    }
+}
+
+/// 範囲指定の整数検証（min <= n <= max）
+///
+/// # 引数
+/// - `val`: 検証対象の値
+/// - `min`: 最小値（含む）
+/// - `max`: 最大値（含む）
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `param`: パラメータ名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(i64)`: 範囲内の整数値
+/// - `Err(String)`: 範囲外またはinteger型でない場合のエラーメッセージ
+#[inline]
+pub fn validate_int_range(
+    val: &Value,
+    min: i64,
+    max: i64,
+    func: &str,
+    param: &str,
+) -> Result<i64, String> {
+    match val {
+        Value::Integer(n) if *n >= min && *n <= max => Ok(*n),
+        Value::Integer(n) => Err(fmt_msg(
+            MsgKey::IntegerOutOfRange,
+            &[
+                func,
+                param,
+                &n.to_string(),
+                &min.to_string(),
+                &max.to_string(),
+            ],
+        )),
+        _ => Err(fmt_msg(MsgKey::ArgMustBeType, &[func, "integer"])),
+    }
+}
+
+/// usizeをi64に安全変換（Value::Integerを返す）
+///
+/// # 引数
+/// - `n`: 変換対象のusize値
+/// - `func`: 関数名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(Value::Integer)`: 変換後の整数値
+/// - `Err(String)`: オーバーフローの場合のエラーメッセージ
+#[inline]
+pub fn usize_to_int_value(n: usize, func: &str) -> Result<Value, String> {
+    i64::try_from(n)
+        .map(Value::Integer)
+        .map_err(|_| fmt_msg(MsgKey::IntegerOverflow, &[func]))
+}
+
+/// i64をusizeに安全変換
+///
+/// # 引数
+/// - `n`: 変換対象のi64値
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `param`: パラメータ名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(usize)`: 変換後のusize値
+/// - `Err(String)`: オーバーフローの場合のエラーメッセージ
+#[inline]
+pub fn i64_to_usize(n: i64, func: &str, param: &str) -> Result<usize, String> {
+    usize::try_from(n)
+        .map_err(|_| fmt_msg(MsgKey::IntegerOverflow, &[&format!("{} {}", func, param)]))
+}
+
+/// i64をu16に安全変換
+///
+/// # 引数
+/// - `n`: 変換対象のi64値
+/// - `func`: 関数名（エラーメッセージ用）
+/// - `param`: パラメータ名（エラーメッセージ用）
+///
+/// # 戻り値
+/// - `Ok(u16)`: 変換後のu16値
+/// - `Err(String)`: オーバーフローの場合のエラーメッセージ
+#[inline]
+pub fn i64_to_u16(n: i64, func: &str, param: &str) -> Result<u16, String> {
+    u16::try_from(n)
+        .map_err(|_| fmt_msg(MsgKey::IntegerOverflow, &[&format!("{} {}", func, param)]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
