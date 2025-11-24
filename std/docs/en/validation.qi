@@ -53,15 +53,15 @@
    :schema-options [
      {:key ":type" :type "string" :desc "Data type: \"string\", \"integer\", \"number\", \"boolean\", \"map\", \"vector\", \"list\", \"keyword\", \"symbol\", \"nil\", \"any\""}
      {:key ":required" :type "bool" :desc "Whether the field is required (default: false)"}
-     {:key ":min-length" :type "integer" :desc "Minimum string length"}
-     {:key ":max-length" :type "integer" :desc "Maximum string length"}
+     {:key ":min-length" :type "integer" :desc "Minimum string length (must be non-negative)"}
+     {:key ":max-length" :type "integer" :desc "Maximum string length (must be non-negative)"}
      {:key ":pattern" :type "string" :desc "Regular expression pattern (for strings)"}
      {:key ":min" :type "integer|float" :desc "Minimum numeric value"}
      {:key ":max" :type "integer|float" :desc "Maximum numeric value"}
      {:key ":positive" :type "bool" :desc "Whether the number must be positive (greater than 0)"}
      {:key ":integer" :type "bool" :desc "Whether the number must be an integer (for floats)"}
-     {:key ":min-items" :type "integer" :desc "Minimum collection size"}
-     {:key ":max-items" :type "integer" :desc "Maximum collection size"}
+     {:key ":min-items" :type "integer" :desc "Minimum collection size (must be non-negative)"}
+     {:key ":max-items" :type "integer" :desc "Maximum collection size (must be non-negative)"}
      {:key ":fields" :type "map" :desc "Schema for nested map fields"}
    ]
    :error-codes [

@@ -210,8 +210,8 @@ You can define schemas for each field in a map using `:fields`.
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `:min-length` | integer | Minimum character count |
-| `:max-length` | integer | Maximum character count |
+| `:min-length` | integer | Minimum character count (must be non-negative) |
+| `:max-length` | integer | Maximum character count (must be non-negative) |
 | `:pattern` | string | Regular expression pattern |
 
 ### Numeric-Specific
@@ -227,8 +227,8 @@ You can define schemas for each field in a map using `:fields`.
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `:min-items` | integer | Minimum item count |
-| `:max-items` | integer | Maximum item count |
+| `:min-items` | integer | Minimum item count (must be non-negative) |
+| `:max-items` | integer | Maximum item count (must be non-negative) |
 
 ### Map-Specific
 

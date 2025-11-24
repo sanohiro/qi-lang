@@ -210,8 +210,8 @@ Qiのバリデーション機能は、スキーマ（マップ）に基づいて
 
 | オプション | 型 | 説明 |
 |-----------|-----|------|
-| `:min-length` | integer | 最小文字数 |
-| `:max-length` | integer | 最大文字数 |
+| `:min-length` | integer | 最小文字数（0以上） |
+| `:max-length` | integer | 最大文字数（0以上） |
 | `:pattern` | string | 正規表現パターン |
 
 ### 数値専用
@@ -227,8 +227,8 @@ Qiのバリデーション機能は、スキーマ（マップ）に基づいて
 
 | オプション | 型 | 説明 |
 |-----------|-----|------|
-| `:min-items` | integer | 最小要素数 |
-| `:max-items` | integer | 最大要素数 |
+| `:min-items` | integer | 最小要素数（0以上） |
+| `:max-items` | integer | 最大要素数（0以上） |
 
 ### マップ専用
 

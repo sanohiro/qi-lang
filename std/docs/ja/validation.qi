@@ -53,15 +53,15 @@
    :schema-options [
      {:key ":type" :type "string" :desc "データ型: \"string\", \"integer\", \"number\", \"boolean\", \"map\", \"vector\", \"list\", \"keyword\", \"symbol\", \"nil\", \"any\""}
      {:key ":required" :type "bool" :desc "必須フィールドかどうか（デフォルト: false）"}
-     {:key ":min-length" :type "integer" :desc "文字列の最小文字数"}
-     {:key ":max-length" :type "integer" :desc "文字列の最大文字数"}
+     {:key ":min-length" :type "integer" :desc "文字列の最小文字数（0以上）"}
+     {:key ":max-length" :type "integer" :desc "文字列の最大文字数（0以上）"}
      {:key ":pattern" :type "string" :desc "正規表現パターン（文字列のみ）"}
      {:key ":min" :type "integer|float" :desc "数値の最小値"}
      {:key ":max" :type "integer|float" :desc "数値の最大値"}
      {:key ":positive" :type "bool" :desc "正の数かどうか（0より大きい）"}
      {:key ":integer" :type "bool" :desc "整数かどうか（floatの場合）"}
-     {:key ":min-items" :type "integer" :desc "コレクションの最小要素数"}
-     {:key ":max-items" :type "integer" :desc "コレクションの最大要素数"}
+     {:key ":min-items" :type "integer" :desc "コレクションの最小要素数（0以上）"}
+     {:key ":max-items" :type "integer" :desc "コレクションの最大要素数（0以上）"}
      {:key ":fields" :type "map" :desc "ネストしたマップのフィールドスキーマ"}
    ]
    :error-codes [
