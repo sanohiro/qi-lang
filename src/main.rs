@@ -1213,9 +1213,10 @@ fn repl(preload: Option<&str>, quiet: bool) {
     >::new()));
     // スレッド管理: パス -> (JoinHandle, 終了シグナル送信側)
     #[cfg(feature = "repl")]
-    let watch_threads = std::sync::Arc::new(parking_lot::Mutex::new(
-        std::collections::HashMap::<String, std::sync::mpsc::Sender<()>>::new(),
-    ));
+    let watch_threads = std::sync::Arc::new(parking_lot::Mutex::new(std::collections::HashMap::<
+        String,
+        std::sync::mpsc::Sender<()>,
+    >::new()));
 
     // REPLマクロ
     #[cfg(feature = "repl")]

@@ -357,7 +357,12 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
                 groups.entry(map_key).or_default().push_back(item.clone());
             }
 
-            Ok(Value::Map(groups.into_iter().map(|(k, v)| (k, Value::List(v))).collect()))
+            Ok(Value::Map(
+                groups
+                    .into_iter()
+                    .map(|(k, v)| (k, Value::List(v)))
+                    .collect(),
+            ))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,

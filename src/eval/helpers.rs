@@ -111,7 +111,10 @@ pub(super) fn find_similar_names(
     // BinaryHeap から結果を取り出して距離でソート（昇順）
     let mut results: Vec<_> = heap.into_iter().collect();
     results.sort_by_key(|(distance, _)| *distance);
-    results.into_iter().map(|(_, name)| name.to_string()).collect()
+    results
+        .into_iter()
+        .map(|(_, name)| name.to_string())
+        .collect()
 }
 
 // ========================================
