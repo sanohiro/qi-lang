@@ -161,6 +161,10 @@ pub(super) fn http_request_detailed(
                     }
                 };
                 let value = val.trim_matches('"');
+                // HTTPヘッダーインジェクション対策: 改行文字チェック
+                if value.contains('\r') || value.contains('\n') {
+                    return Err(fmt_msg(MsgKey::HttpInvalidHeader, &[key]));
+                }
                 request = request.header(key, value);
             }
         }

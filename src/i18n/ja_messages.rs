@@ -319,6 +319,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (HttpErrorStatus, "HTTPエラー {0}"),
         (HttpFailedToReadBody, "レスポンスボディの読み取りに失敗しました: {0}"),
         (HttpResponseTooLarge, "HTTPレスポンスが大きすぎます (最大{0}MB)"),
+        (HttpInvalidHeader, "無効なHTTPヘッダー'{0}': 改行文字が含まれています"),
         (HttpJsonSerializationError, "JSONシリアライズエラー: {0}"),
         // I/Oエラー（詳細）
         (IoFileError, "{0}: {1}"),
