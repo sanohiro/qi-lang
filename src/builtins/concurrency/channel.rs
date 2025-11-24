@@ -66,8 +66,14 @@ pub fn native_send(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::Channel(ch) => {
             let value = args[1].clone();
-            let sender_guard = ch.sender.lock();
-            if let Some(sender) = sender_guard.as_ref() {
+            // ロックを保持したまま送信するとブロック時に問題があるため、
+            // senderをcloneしてからロックを解放する
+            let sender = {
+                let sender_guard = ch.sender.lock();
+                sender_guard.as_ref().map(|s| s.clone())
+            };
+
+            if let Some(sender) = sender {
                 sender
                     .send(value.clone())
                     .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["send!"]))?;

@@ -67,15 +67,16 @@ impl DapContext {
             .map(|p| p.display().to_string())
             .unwrap_or_else(|_| "<unknown>".to_string());
 
-        std::fs::write(
+        if let Err(e) = std::fs::write(
             "/tmp/qi-dap.log",
             format!(
                 "DAP server started at {:?}\nExecutable: {}\n",
                 std::time::SystemTime::now(),
                 exe_path
             ),
-        )
-        .ok();
+        ) {
+            eprintln!("Warning: Failed to write DAP log file: {}", e);
+        }
     }
 
     /// デバッガーを初期化
