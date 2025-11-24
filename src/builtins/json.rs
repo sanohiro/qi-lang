@@ -86,11 +86,16 @@ fn json_to_value(json: serde_json::Value) -> Value {
         serde_json::Value::Array(arr) => {
             Value::Vector(arr.into_iter().map(json_to_value).collect())
         }
-        serde_json::Value::Object(obj) => Value::Map(
-            obj.into_iter()
-                .map(|(k, v)| (crate::value::MapKey::String(k), json_to_value(v)))
-                .collect(),
-        ),
+        serde_json::Value::Object(obj) => {
+            // JSONオブジェクトのキーをKeywordキーに変換（Qi標準のアクセス方法に対応）
+            let string_map: std::collections::HashMap<String, Value> = obj
+                .into_iter()
+                .map(|(k, v)| (k, json_to_value(v)))
+                .collect();
+            Value::Map(crate::builtins::util::convert_string_map_to_mapkey(
+                string_map,
+            ))
+        }
     }
 }
 

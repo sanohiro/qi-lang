@@ -72,11 +72,39 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
     let mut flags = Vec::new();
     let mut options = HashMap::new();
     let mut positional = Vec::new();
+    let mut positional_mode = false; // "--"以降は全て位置引数
+
+    // 文字列がオプション（-で始まりASCII文字が続く）かどうか判定
+    let is_option = |s: &str| {
+        if s == "-" || s == "--" {
+            return false; // "-" や "--" は値として扱う
+        }
+        if s.starts_with("--") {
+            return s.len() > 2; // "--a" 以上
+        }
+        if s.starts_with('-') && s.len() > 1 {
+            // "-1" や "-1.5" は数値なので、2文字目が英字の場合のみオプション
+            return s.chars().nth(1).map_or(false, |c| c.is_ascii_alphabetic());
+        }
+        false
+    };
 
     let mut skip_next = false;
     for (i, arg) in cmd_args.iter().enumerate() {
         if skip_next {
             skip_next = false;
+            continue;
+        }
+
+        if positional_mode {
+            // "--" 以降は全て位置引数
+            positional.push(Value::String(arg.clone()));
+            continue;
+        }
+
+        if arg == "--" {
+            // "--" ターミネーター: 以降は全て位置引数として扱う
+            positional_mode = true;
             continue;
         }
 
@@ -88,13 +116,19 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
                 .strip_prefix("--")
                 .expect("checked by starts_with above");
 
+            if arg_trimmed.is_empty() {
+                // "--" のみ（上でチェック済みだが念のため）
+                continue;
+            }
+
             if let Some(eq_pos) = arg_trimmed.find('=') {
                 // --key=value形式
                 let key = arg_trimmed[..eq_pos].to_string();
                 let value = arg_trimmed[eq_pos + 1..].to_string();
                 options.insert(key, Value::String(value));
-            } else if i + 1 < cmd_args.len() && !cmd_args[i + 1].starts_with('-') {
+            } else if i + 1 < cmd_args.len() && !is_option(&cmd_args[i + 1]) {
                 // --key value形式
+                // is_option()で数値（-1等）を値として扱う
                 let key = arg_trimmed.to_string();
                 let value = cmd_args[i + 1].clone();
                 options.insert(key, Value::String(value));
