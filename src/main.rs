@@ -1,5 +1,6 @@
 use qi_lang::eval::Evaluator;
 use qi_lang::i18n::{self, fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
+use qi_lang::intern;
 use qi_lang::parser::Parser;
 use qi_lang::project;
 use qi_lang::value::{MapKey, Value};
@@ -177,11 +178,12 @@ fn try_display_as_table(value: &Value) -> Option<String> {
         }
 
         // ヘッダーを収集（すべてのMapのキーの和集合）
+        // MapKeyをそのまま保持して、検索時の型不一致を防ぐ
         let mut headers = std::collections::HashSet::new();
         for item in vec.iter() {
             if let Value::Map(m) = item {
                 for key in m.keys() {
-                    headers.insert(key.to_string());
+                    headers.insert(key.clone());
                 }
             }
         }
@@ -190,13 +192,14 @@ fn try_display_as_table(value: &Value) -> Option<String> {
             return None;
         }
 
-        let mut header_list: Vec<String> = headers.into_iter().collect();
-        header_list.sort();
+        let mut header_list: Vec<MapKey> = headers.into_iter().collect();
+        header_list.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
 
         // テーブルを作成
         let mut table = Table::new();
         table.load_preset(UTF8_FULL);
-        table.set_header(&header_list);
+        let header_strings: Vec<String> = header_list.iter().map(|k| k.to_string()).collect();
+        table.set_header(&header_strings);
 
         // 各行を追加
         for item in vec.iter() {
@@ -204,7 +207,7 @@ fn try_display_as_table(value: &Value) -> Option<String> {
                 let row: Vec<String> = header_list
                     .iter()
                     .map(|header| {
-                        m.get(&MapKey::String(header.clone()))
+                        m.get(header)
                             .map(|v| v.to_string())
                             .unwrap_or_else(|| "".to_string())
                     })
@@ -1710,21 +1713,21 @@ fn handle_repl_command(
 
                         // Description
                         if let Some(Value::String(desc)) =
-                            m.get(&MapKey::String("desc".to_string()))
+                            m.get(&MapKey::Keyword(intern::intern_keyword("desc")))
                         {
                             println!("  {}", desc);
                         }
 
                         // Parameters
                         if let Some(Value::Vector(params)) =
-                            m.get(&MapKey::String("params".to_string()))
+                            m.get(&MapKey::Keyword(intern::intern_keyword("params")))
                         {
                             println!("\n{}", ui_msg(UiMsg::ReplDocParameters).cyan());
                             for param in params {
                                 if let Value::Map(pm) = param {
-                                    let pname = pm.get(&MapKey::String("name".to_string()));
-                                    let ptype = pm.get(&MapKey::String("type".to_string()));
-                                    let pdesc = pm.get(&MapKey::String("desc".to_string()));
+                                    let pname = pm.get(&MapKey::Keyword(intern::intern_keyword("name")));
+                                    let ptype = pm.get(&MapKey::Keyword(intern::intern_keyword("type")));
+                                    let pdesc = pm.get(&MapKey::Keyword(intern::intern_keyword("desc")));
 
                                     if let Some(Value::String(name_str)) = pname {
                                         print!("  {}", name_str.yellow());
@@ -1741,18 +1744,18 @@ fn handle_repl_command(
                         }
 
                         // Returns
-                        if let Some(returns) = m.get(&MapKey::String("returns".to_string())) {
+                        if let Some(returns) = m.get(&MapKey::Keyword(intern::intern_keyword("returns"))) {
                             println!("\n{}", "Returns:".cyan());
                             match returns {
                                 Value::String(s) => println!("  {}", s),
                                 Value::Map(rm) => {
                                     if let Some(Value::String(rtype)) =
-                                        rm.get(&MapKey::String("type".to_string()))
+                                        rm.get(&MapKey::Keyword(intern::intern_keyword("type")))
                                     {
                                         print!("  {}", rtype.yellow());
                                     }
                                     if let Some(Value::String(rdesc)) =
-                                        rm.get(&MapKey::String("desc".to_string()))
+                                        rm.get(&MapKey::Keyword(intern::intern_keyword("desc")))
                                     {
                                         print!(" - {}", rdesc);
                                     }
@@ -1764,7 +1767,7 @@ fn handle_repl_command(
 
                         // Examples
                         if let Some(Value::Vector(examples)) =
-                            m.get(&MapKey::String("examples".to_string()))
+                            m.get(&MapKey::Keyword(intern::intern_keyword("examples")))
                         {
                             println!("\n{}", ui_msg(UiMsg::ReplDocExamples).cyan());
                             for ex in examples {
@@ -1776,7 +1779,7 @@ fn handle_repl_command(
 
                         // Related functions
                         if let Some(Value::Vector(related)) =
-                            m.get(&MapKey::String("related".to_string()))
+                            m.get(&MapKey::Keyword(intern::intern_keyword("related")))
                         {
                             println!("\n{}", "Related:".cyan());
                             let related_names: Vec<String> = related
