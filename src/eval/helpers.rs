@@ -60,11 +60,11 @@ pub(super) fn find_similar_names(
     max_distance: usize,
     limit: usize,
 ) -> Vec<String> {
-    use std::cmp::Reverse;
     use std::collections::{BinaryHeap, HashSet};
 
     // BinaryHeap で上位 limit 件のみを保持（距離が小さい順、つまり類似度が高い順）
-    let mut heap: BinaryHeap<Reverse<(usize, Arc<str>)>> = BinaryHeap::new();
+    // max-heapなので、heap.pop()は最大値（最悪のマッチ）を削除する
+    let mut heap: BinaryHeap<(usize, Arc<str>)> = BinaryHeap::new();
     let mut seen = HashSet::new();
 
     // 親環境チェーンを辿って全階層から候補を収集
@@ -73,9 +73,9 @@ pub(super) fn find_similar_names(
         seen.insert(name.clone());
         let distance = strsim::levenshtein(target, name);
         if distance <= max_distance {
-            heap.push(Reverse((distance, name.clone())));
+            heap.push((distance, name.clone()));
             if heap.len() > limit {
-                heap.pop();
+                heap.pop(); // 最悪のマッチ（最大距離）を削除
             }
         }
     }
@@ -94,9 +94,9 @@ pub(super) fn find_similar_names(
 
                 let distance = strsim::levenshtein(target, name);
                 if distance <= max_distance {
-                    heap.push(Reverse((distance, name.clone())));
+                    heap.push((distance, name.clone()));
                     if heap.len() > limit {
-                        heap.pop();
+                        heap.pop(); // 最悪のマッチ（最大距離）を削除
                     }
                 }
             }
@@ -108,10 +108,10 @@ pub(super) fn find_similar_names(
         }
     }
 
-    // BinaryHeap から結果を取り出し（距離が小さい順）
-    let mut results: Vec<_> = heap.into_iter().map(|Reverse((_, name))| name).collect();
-    results.reverse(); // 距離が小さい順にソート
-    results.into_iter().map(|s| s.to_string()).collect()
+    // BinaryHeap から結果を取り出して距離でソート（昇順）
+    let mut results: Vec<_> = heap.into_iter().collect();
+    results.sort_by_key(|(distance, _)| *distance);
+    results.into_iter().map(|(_, name)| name.to_string()).collect()
 }
 
 // ========================================

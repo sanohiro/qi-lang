@@ -143,7 +143,7 @@ impl Evaluator {
                         }
                         Value::Map(m) => {
                             let strs: Vec<_> =
-                                m.iter().map(|(k, v)| format!(":{} {}", k, v)).collect();
+                                m.iter().map(|(k, v)| format!("{} {}", k, v)).collect();
                             format!("{{{}}}", strs.join(" "))
                         }
                         Value::Function(_) => "<function>".to_string(),

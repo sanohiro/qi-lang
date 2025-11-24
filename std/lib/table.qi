@@ -44,10 +44,10 @@
 ;;
 ;;   (table/distinct data :user_id :email)
 ;;   ;=> user_idとemailの組み合わせで重複除去
-(defn distinct-table [table & keys]
+(defn distinct [table & keys]
   (if (empty? keys)
     ;; キー指定なし: 全カラムで重複除去
-    (distinct table)
+    (core/distinct table)
     ;; キー指定あり: 指定されたキーで重複除去
     (let [key-fn (fn [row] (map (fn [k] (get row k)) keys))
           seen (atom [])]
@@ -63,4 +63,4 @@
 ;; エクスポート
 ;; ========================================
 
-(export group-by distinct-table)
+(export group-by distinct)
