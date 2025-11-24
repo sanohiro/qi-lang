@@ -310,15 +310,21 @@ fn render_template(content: &str, vars: &HashMap<String, String>) -> String {
         result = result.replace(&placeholder, value);
     }
 
-    // 条件分岐の処理（簡易版）
+    // 条件分岐の処理（ネスト対応版）
     // {{ #if var }}...{{ /if }} のような行を削除または展開
     let lines: Vec<&str> = result.lines().collect();
     let mut output_lines = Vec::new();
-    let mut skip_mode = false;
+    let mut skip_depth = 0; // スキップ中のネスト深度（0 = スキップなし）
 
     for line in lines {
         // 同じ行に {{ #if }} と {{ /if }} がある場合の処理
         if line.contains("{{ #if") && line.contains("{{ /if }}") {
+            // シングルライン条件の場合、ネスト深度は影響しない
+            if skip_depth > 0 {
+                // 外側がスキップ中なら、この行もスキップ
+                continue;
+            }
+
             let mut processed_line = line.to_string();
             let mut include_line = true;
 
@@ -346,13 +352,24 @@ fn render_template(content: &str, vars: &HashMap<String, String>) -> String {
             let var_exists = vars
                 .iter()
                 .any(|(k, v)| line.contains(&format!("#if {}", k)) && !v.is_empty());
-            if !var_exists {
-                skip_mode = true;
+
+            if skip_depth > 0 {
+                // 既にスキップ中なら、ネスト深度を増やす
+                skip_depth += 1;
+            } else if !var_exists {
+                // 条件が偽の場合、スキップ開始
+                skip_depth = 1;
             }
+            // var_existsがtrueかつskip_depth == 0なら、この行は除外して中身は出力
         } else if line.contains("{{ /if }}") {
             // 複数行にまたがる条件分岐の終了
-            skip_mode = false;
-        } else if !skip_mode {
+            if skip_depth > 0 {
+                // スキップ中なら、ネスト深度を減らす
+                skip_depth -= 1;
+            }
+            // skip_depth == 0なら、この行は除外（条件終了タグ）
+        } else if skip_depth == 0 {
+            // スキップ中でなければ出力
             output_lines.push(line.to_string());
         }
     }
