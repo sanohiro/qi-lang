@@ -278,7 +278,7 @@ pub(super) fn apply_middleware(
                                 _ => None,
                             })
                             .unwrap_or(1024);
-                        apply_compression_middleware(&response, min_size)
+                        apply_compression_middleware(&processed_req, &response, min_size)
                     }
                     "logging" => {
                         // レスポンスステータスをログ出力

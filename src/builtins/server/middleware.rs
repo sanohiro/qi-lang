@@ -136,10 +136,49 @@ pub(super) fn apply_cors_middleware(resp: &Value, origins: &im::Vector<Value>) -
 }
 
 /// レスポンスボディを圧縮
-pub(super) fn apply_compression_middleware(resp: &Value, min_size: usize) -> Value {
+///
+/// RFC 7231 §5.3.4準拠: Accept-Encodingヘッダーを検査し、クライアントがgzipをサポートする場合のみ圧縮
+pub(super) fn apply_compression_middleware(
+    req: &Value,
+    resp: &Value,
+    min_size: usize,
+) -> Value {
     let Value::Map(resp_map) = resp else {
         return resp.clone();
     };
+
+    // Accept-Encodingヘッダーを検査（RFC 7231 §5.3.4）
+    let accepts_gzip = match req {
+        Value::Map(req_map) => {
+            let headers_key = kw("headers");
+            match req_map.get(&headers_key) {
+                Some(Value::Map(headers)) => {
+                    // Accept-Encodingヘッダーを探す（大文字小文字を区別しない）
+                    let accept_encoding = headers
+                        .iter()
+                        .find(|(k, _)| {
+                            matches!(k, crate::value::MapKey::String(s) if s.eq_ignore_ascii_case("accept-encoding"))
+                        })
+                        .and_then(|(_, v)| match v {
+                            Value::String(s) => Some(s.as_str()),
+                            _ => None,
+                        });
+
+                    // "gzip" または "*" が含まれる場合のみ圧縮
+                    accept_encoding.map_or(false, |ae| {
+                        ae.split(',')
+                            .any(|enc| matches!(enc.trim(), "gzip" | "*"))
+                    })
+                }
+                _ => false,
+            }
+        }
+        _ => false,
+    };
+
+    if !accepts_gzip {
+        return resp.clone(); // クライアントがgzipをサポートしない → 圧縮しない
+    }
 
     let body_key = kw("body");
     let headers_key = kw("headers");
