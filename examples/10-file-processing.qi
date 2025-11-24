@@ -43,9 +43,9 @@
           |> (filter (fn [u]
                        (let [age (get u "age")]
                          (>= (if (= age "age") 0
-                                  (try (string/to-int age))
-                                  (if (error? (try (string/to-int age))) 0
-                                       (string/to-int age)))
+                                  (try (str/parse-int age))
+                                  (if (error? (try (str/parse-int age))) 0
+                                       (str/parse-int age)))
                              25))))))
 
 ;; 都市ごとのグループ化

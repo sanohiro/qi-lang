@@ -458,11 +458,11 @@ Qiでは2種類のHTTPクライアント関数を提供しています：
 {:method :get                       ;; HTTPメソッド（キーワード）
  :path "/api/users/123"             ;; リクエストパス
  :query "page=1&limit=10"           ;; クエリ文字列（生）
- :query-params {"page" "1"          ;; クエリパラメータ（自動パース）
+ :query-params {"page" "1"          ;; クエリパラメータ（?page=1&limit=10から自動パース）
                 "limit" "10"}
  :headers {"content-type" "application/json" ...}
  :body "..."                        ;; リクエストボディ（文字列）
- :params {"id" "123"}}              ;; パスパラメータ（マッチした場合のみ）
+ :params {"id" "123"}}              ;; パスパラメータ（/users/:idルート定義時のみ、:id部分を抽出）
 
 ;; レスポンス構造
 {:status 200                        ;; HTTPステータスコード

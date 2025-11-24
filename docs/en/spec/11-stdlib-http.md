@@ -370,11 +370,11 @@ Both simple and detailed versions support optional parameters:
 {:method :get                       ;; HTTP method (keyword)
  :path "/api/users/123"             ;; Request path
  :query "page=1&limit=10"           ;; Query string (raw)
- :query-params {"page" "1"          ;; Query parameters (auto-parsed)
+ :query-params {"page" "1"          ;; Query parameters (auto-parsed from ?page=1&limit=10)
                 "limit" "10"}
  :headers {"content-type" "application/json" ...}
  :body "..."                        ;; Request body (string)
- :params {"id" "123"}}              ;; Path parameters (when matched)
+ :params {"id" "123"}}              ;; Path parameters (extracted from /users/:id route definition)
 
 ;; Response structure
 {:status 200                        ;; HTTP status code

@@ -95,7 +95,7 @@
     ;; GET /api/todos/:id - 個別取得
     [:get path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
-            id (try (string/to-int id-str))]
+            id (try (str/parse-int id-str))]
         (if (error? id)
           (server/response 400 "Invalid ID")
           (let [todo (get-todo id)]
@@ -106,7 +106,7 @@
     ;; PUT /api/todos/:id - 更新
     [:put path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
-            id (try (string/to-int id-str))
+            id (try (str/parse-int id-str))
             body (json/parse (get req :body))]
         (if (or (error? id) (error? body))
           (server/response 400 "Invalid request")
@@ -118,7 +118,7 @@
     ;; DELETE /api/todos/:id - 削除
     [:delete path] when (str/starts-with? path "/api/todos/") ->
       (let [id-str (str/replace path "/api/todos/" "")
-            id (try (string/to-int id-str))]
+            id (try (str/parse-int id-str))]
         (if (error? id)
           (server/response 400 "Invalid ID")
           (let [deleted (delete-todo id)]
@@ -143,8 +143,8 @@
 (println "\n=== フィルタリングとソート ===")
 
 (defn filter-todos-handler [req]
-  (let [query (get req :query)
-        completed-str (get query "completed")
+  (let [query-params (get req :query-params)
+        completed-str (get query-params "completed")
         all-todos (get-all-todos)]
     (server/json
       {:todos
@@ -154,10 +154,10 @@
            (filter (fn [t] (= (get t :completed) completed)) all-todos)))})))
 
 (println "Filter completed todos:")
-(println (filter-todos-handler {:query {"completed" "true"}}))
+(println (filter-todos-handler {:query-params {"completed" "true"}}))
 
 (println "\nFilter incomplete todos:")
-(println (filter-todos-handler {:query {"completed" "false"}}))
+(println (filter-todos-handler {:query-params {"completed" "false"}}))
 
 ;; ページネーション
 (println "\n=== ページネーション ===")
@@ -169,11 +169,11 @@
      |> (take limit))))
 
 (defn paginated-todos-handler [req]
-  (let [query (get req :query)
-        page-str (get query "page" "1")
-        limit-str (get query "limit" "10")
-        page (try (string/to-int page-str))
-        limit (try (string/to-int limit-str))
+  (let [query-params (get req :query-params)
+        page-str (get query-params "page" "1")
+        limit-str (get query-params "limit" "10")
+        page (try (str/parse-int page-str))
+        limit (try (str/parse-int limit-str))
         all-todos (get-all-todos)]
     (if (or (error? page) (error? limit))
       (server/response 400 "Invalid pagination params")
@@ -189,10 +189,10 @@
 (create-todo "Task 6")
 
 (println "Page 1 (limit 2):")
-(println (paginated-todos-handler {:query {"page" "1" "limit" "2"}}))
+(println (paginated-todos-handler {:query-params {"page" "1" "limit" "2"}}))
 
 (println "\nPage 2 (limit 2):")
-(println (paginated-todos-handler {:query {"page" "2" "limit" "2"}}))
+(println (paginated-todos-handler {:query-params {"page" "2" "limit" "2"}}))
 
 ;; バリデーション
 (println "\n=== バリデーション ===")

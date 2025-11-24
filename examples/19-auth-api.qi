@@ -22,7 +22,7 @@
 (defn init-db
   "usersテーブルを作成してデータベースを初期化する"
   []
-  (db/pg-exec db-conn
+  (db/exec db-conn
     "CREATE TABLE IF NOT EXISTS users (
        id SERIAL PRIMARY KEY,
        username TEXT UNIQUE NOT NULL,
@@ -40,7 +40,7 @@
   "新規ユーザーを作成し、パスワードをハッシュ化して保存する"
   [username email password]
   (let [hash (password/hash password)]
-    (db/pg-exec db-conn
+    (db/exec db-conn
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)"
       [username email hash])))
 
@@ -48,7 +48,7 @@
 (defn find-user-by-username
   "ユーザー名でユーザーを検索し、結果の行を返す"
   [username]
-  (db/pg-query db-conn
+  (db/query db-conn
     "SELECT * FROM users WHERE username = $1"
     [username]))
 
@@ -95,8 +95,8 @@
   (let [auth-header (get-in request [:headers :authorization])]
     (if (nil? auth-header)
       nil
-      (if (string/starts-with? auth-header "Bearer ")
-        (string/replace-first auth-header "Bearer " "")
+      (if (str/starts-with? auth-header "Bearer ")
+        (str/replace-first auth-header "Bearer " "")
         nil))))
 
 ;; ========================================

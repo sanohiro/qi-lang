@@ -120,7 +120,7 @@
     [:post "/api/users"] -> (create-user req)
     [:get path] when (str/starts-with? path "/api/users/") ->
       (let [id-str (str/replace path "/api/users/" "")
-            id (try (string/to-int id-str))]
+            id (try (str/parse-int id-str))]
         (if (error? id)
           (server/response 400 "Invalid user ID")
           (get-user req id)))
@@ -185,11 +185,11 @@
 (println "\n=== クエリパラメータ ===")
 
 (defn search-handler [req]
-  (let [query (get req :query)]
-    (server/json {:query query :results []})))
+  (let [query-params (get req :query-params)]
+    (server/json {:query-params query-params :results []})))
 
 (println "Search with query:")
-(println (search-handler {:query {"q" "qi language" "limit" "10"}}))
+(println (search-handler {:query-params {"q" "qi language" "limit" "10"}}))
 
 ;; ファイルアップロード風
 (println "\n=== ファイルアップロード風 ===")

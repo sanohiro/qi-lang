@@ -65,9 +65,9 @@
 ;; スラッグ生成（タイトルからURL安全な文字列を作成）
 (defn make-slug [title]
   (title
-   |> string/lower
-   |> (string/replace " " "-")
-   |> (string/replace "[^a-z0-9-]" "")))
+   |> str/lower
+   |> (str/replace " " "-")
+   |> (str/replace "[^a-z0-9-]" "")))
 
 ;; JWTトークン生成
 (defn create-token [user-id username]
@@ -85,7 +85,7 @@
   (fn [req]
     (let [auth-header (get-in req [:headers "authorization"])
           token (if auth-header
-                  (string/trim (string/replace auth-header "Bearer " ""))
+                  (str/trim (str/replace auth-header "Bearer " ""))
                   nil)]
       (if (nil? token)
         (server/response 401 "Unauthorized")
@@ -268,7 +268,7 @@
 
     ;; GET /api/posts/:slug - 記事詳細
     [:get path] when (str/starts-with? path "/api/posts/") ->
-      (let [slug (string/replace path "/api/posts/" "")]
+      (let [slug (str/replace path "/api/posts/" "")]
         (match (get-post-by-slug slug)
           nil -> (server/response 404 "Post not found")
           post ->
@@ -279,8 +279,8 @@
     [:put path] when (str/starts-with? path "/api/posts/") ->
       ((with-auth
          (fn [req]
-           (let [id-str (string/replace path "/api/posts/" "")]
-             (match (try (string/to-int id-str))
+           (let [id-str (str/replace path "/api/posts/" "")]
+             (match (try (str/to-int id-str))
                {:error _} -> (server/response 400 "Invalid ID")
                id ->
                  (match (try (json/parse (get req :body)))
@@ -298,8 +298,8 @@
     [:delete path] when (str/starts-with? path "/api/posts/") ->
       ((with-auth
          (fn [req]
-           (let [id-str (string/replace path "/api/posts/" "")]
-             (match (try (string/to-int id-str))
+           (let [id-str (str/replace path "/api/posts/" "")]
+             (match (try (str/to-int id-str))
                {:error _} -> (server/response 400 "Invalid ID")
                id ->
                  (do
@@ -314,9 +314,9 @@
   (match [(get req :method) (get req :path)]
     ;; POST /api/posts/:id/comments - コメント作成
     [:post path] when (str/starts-with? path "/api/posts/") ->
-      (let [path-parts (string/split path "/")
+      (let [path-parts (str/split path "/")
             id-str (get path-parts 3)]
-        (match (try (string/to-int id-str))
+        (match (try (str/to-int id-str))
           {:error _} -> (server/response 400 "Invalid post ID")
           post-id ->
             (match (try (json/parse (get req :body)))
