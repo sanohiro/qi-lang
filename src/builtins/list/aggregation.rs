@@ -173,7 +173,10 @@ pub fn native_sum_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
                         if has_float {
                             float_sum += n as f64;
                         } else {
-                            int_sum += n;
+                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_add() を使用
+                            int_sum = int_sum
+                                .checked_add(n)
+                                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["sum-by"]))?;
                         }
                     }
                     Value::Float(f) => {

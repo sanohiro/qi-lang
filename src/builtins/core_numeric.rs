@@ -245,7 +245,12 @@ pub fn native_abs(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["abs"]));
     }
     match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n.abs())),
+        Value::Integer(n) => {
+            // ⚠️ SAFETY: i64::MIN の絶対値は i64 の範囲外のため checked_abs() を使用
+            n.checked_abs()
+                .map(Value::Integer)
+                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["abs"]))
+        }
         Value::Float(f) => Ok(Value::Float(f.abs())),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["abs", "numbers"])),
     }
@@ -364,7 +369,12 @@ pub fn native_inc(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["inc"]));
     }
     match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n + 1)),
+        Value::Integer(n) => {
+            // ⚠️ SAFETY: i64::MAX + 1 はオーバーフローするため checked_add() を使用
+            n.checked_add(1)
+                .map(Value::Integer)
+                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["inc"]))
+        }
         Value::Float(f) => Ok(Value::Float(f + 1.0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["inc", "numbers"])),
     }
@@ -377,7 +387,12 @@ pub fn native_dec(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["dec"]));
     }
     match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(n - 1)),
+        Value::Integer(n) => {
+            // ⚠️ SAFETY: i64::MIN - 1 はアンダーフローするため checked_sub() を使用
+            n.checked_sub(1)
+                .map(Value::Integer)
+                .ok_or_else(|| fmt_msg(MsgKey::IntegerUnderflow, &["dec"]))
+        }
         Value::Float(f) => Ok(Value::Float(f - 1.0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["dec", "numbers"])),
     }
@@ -401,7 +416,10 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
                         if has_float {
                             float_sum += *n as f64;
                         } else {
-                            int_sum += n;
+                            // ⚠️ SAFETY: 整数の合計でオーバーフローする可能性があるため checked_add() を使用
+                            int_sum = int_sum
+                                .checked_add(*n)
+                                .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["sum"]))?;
                         }
                     }
                     Value::Float(f) => {
