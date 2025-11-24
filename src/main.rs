@@ -1725,9 +1725,12 @@ fn handle_repl_command(
                             println!("\n{}", ui_msg(UiMsg::ReplDocParameters).cyan());
                             for param in params {
                                 if let Value::Map(pm) = param {
-                                    let pname = pm.get(&MapKey::Keyword(intern::intern_keyword("name")));
-                                    let ptype = pm.get(&MapKey::Keyword(intern::intern_keyword("type")));
-                                    let pdesc = pm.get(&MapKey::Keyword(intern::intern_keyword("desc")));
+                                    let pname =
+                                        pm.get(&MapKey::Keyword(intern::intern_keyword("name")));
+                                    let ptype =
+                                        pm.get(&MapKey::Keyword(intern::intern_keyword("type")));
+                                    let pdesc =
+                                        pm.get(&MapKey::Keyword(intern::intern_keyword("desc")));
 
                                     if let Some(Value::String(name_str)) = pname {
                                         print!("  {}", name_str.yellow());
@@ -1744,7 +1747,9 @@ fn handle_repl_command(
                         }
 
                         // Returns
-                        if let Some(returns) = m.get(&MapKey::Keyword(intern::intern_keyword("returns"))) {
+                        if let Some(returns) =
+                            m.get(&MapKey::Keyword(intern::intern_keyword("returns")))
+                        {
                             println!("\n{}", "Returns:".cyan());
                             match returns {
                                 Value::String(s) => println!("  {}", s),

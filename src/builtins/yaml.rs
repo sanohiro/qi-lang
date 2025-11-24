@@ -95,10 +95,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
                     serde_yaml::Value::Bool(b) => b.to_string(),
                     _ => continue, // その他のキーはスキップ
                 };
-                map.insert(
-                    crate::value::MapKey::String(key),
-                    yaml_to_value(v),
-                );
+                map.insert(crate::value::MapKey::String(key), yaml_to_value(v));
             }
             Value::Map(map)
         }

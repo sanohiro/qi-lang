@@ -722,8 +722,10 @@ impl Evaluator {
                                             .set(doc_key, Value::String(doc.clone()));
                                     } else if let Value::Map(doc_map) = &items[2] {
                                         // 構造化ドキュメント（マップ）
-                                        if let Some(Value::String(desc)) = doc_map
-                                            .get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("desc")))
+                                        if let Some(Value::String(desc)) =
+                                            doc_map.get(&crate::value::MapKey::Keyword(
+                                                crate::intern::intern_keyword("desc"),
+                                            ))
                                         {
                                             let doc_key = format!("{}{}", DOC_PREFIX, name);
                                             self.global_env
@@ -766,7 +768,9 @@ impl Evaluator {
                                         // 構造化ドキュメント（マップ）もサポート
                                         // 後で実装予定。今は文字列のみ
                                         doc_string = doc_map
-                                            .get(&crate::value::MapKey::Keyword(crate::intern::intern_keyword("desc")))
+                                            .get(&crate::value::MapKey::Keyword(
+                                                crate::intern::intern_keyword("desc"),
+                                            ))
                                             .and_then(|v| match v {
                                                 Value::String(s) => Some(s.clone()),
                                                 _ => None,

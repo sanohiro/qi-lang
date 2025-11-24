@@ -233,7 +233,8 @@ async fn handle_request(
                 if is_head {
                     if let Value::Map(m) = &mut v {
                         let body_key = MapKey::Keyword(crate::intern::intern_keyword("body"));
-                        let body_file_key = MapKey::Keyword(crate::intern::intern_keyword("body-file"));
+                        let body_file_key =
+                            MapKey::Keyword(crate::intern::intern_keyword("body-file"));
                         m.remove(&body_key);
                         m.remove(&body_file_key);
                     }
