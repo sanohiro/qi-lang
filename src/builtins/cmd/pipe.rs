@@ -245,11 +245,12 @@ pub fn native_pipe_bang(args: &[Value]) -> Result<Value, String> {
                     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
                     // [stdout stderr exitcode] のベクタを返す
+                    // i32→i64の明示的な符号拡張変換
                     Ok(Value::Vector(
                         vec![
                             Value::String(stdout),
                             Value::String(stderr),
-                            Value::Integer(exit_code as i64),
+                            Value::Integer(i64::from(exit_code)),
                         ]
                         .into(),
                     ))

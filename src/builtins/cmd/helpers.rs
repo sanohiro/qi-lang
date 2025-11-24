@@ -17,11 +17,23 @@ pub(super) static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 /// コマンドインジェクション攻撃に利用される可能性のある文字を検出する。
 /// 検出された場合はエラーを返す。
 pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
+    // 危険な文字の定義（文字列パターンと文字パターンの両方）
     const DANGEROUS_CHARS: &[&str] = &[
-        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\"", "'", "\\", "*", "?", "[", "]",
-        "{", "}", "~", // グロブパターン、ブレース展開、チルダ展開
+        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\r", "\"", "'", "\\", "*", "?",
+        "[", "]", "{", "}", "~", // グロブパターン、ブレース展開、チルダ展開
     ];
 
+    // 制御文字とNULLバイトのチェック
+    for ch in cmd.chars() {
+        if ch.is_ascii_control() || ch == '\0' {
+            return Err(fmt_msg(
+                MsgKey::CmdDangerousCharacters,
+                &[&format!("control character: {}", ch.escape_default())],
+            ));
+        }
+    }
+
+    // 危険な文字列パターンのチェック
     let found_chars: Vec<&str> = DANGEROUS_CHARS
         .iter()
         .filter(|&&c| cmd.contains(c))

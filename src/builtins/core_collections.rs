@@ -86,9 +86,33 @@ pub fn native_len(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Arg, &["len"]));
     }
     match &args[0] {
-        Value::List(v) | Value::Vector(v) => Ok(Value::Integer(v.len() as i64)),
-        Value::Map(m) => Ok(Value::Integer(m.len() as i64)),
-        Value::String(s) => Ok(Value::Integer(s.len() as i64)),
+        Value::List(v) | Value::Vector(v) => {
+            let len = v.len();
+            i64::try_from(len).map(Value::Integer).map_err(|_| {
+                fmt_msg(
+                    MsgKey::IntegerOverflow,
+                    &["collection length too large for i64"],
+                )
+            })
+        }
+        Value::Map(m) => {
+            let len = m.len();
+            i64::try_from(len).map(Value::Integer).map_err(|_| {
+                fmt_msg(
+                    MsgKey::IntegerOverflow,
+                    &["map size too large for i64"],
+                )
+            })
+        }
+        Value::String(s) => {
+            let len = s.len();
+            i64::try_from(len).map(Value::Integer).map_err(|_| {
+                fmt_msg(
+                    MsgKey::IntegerOverflow,
+                    &["string length too large for i64"],
+                )
+            })
+        }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
             &["len", "strings or collections"],

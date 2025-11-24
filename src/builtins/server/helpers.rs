@@ -231,11 +231,20 @@ pub(super) async fn value_to_response(
 
             let status = match m.get(&status_key) {
                 Some(Value::Integer(s)) => {
-                    // ⚠️ SECURITY: ステータスコードの範囲検証（100-599）
-                    if *s < 100 || *s > 599 {
-                        return Err(fmt_msg(MsgKey::ServerInvalidStatusCode, &[&s.to_string()]));
+                    // ⚠️ SECURITY: ステータスコードの厳密な範囲検証
+                    // 100-199: 情報、200-299: 成功、300-399: リダイレクト、
+                    // 400-499: クライアントエラー、500-599: サーバーエラー
+                    match *s {
+                        100..=599 => {
+                            // i64→u16への変換も検証（負数やu16範囲外を排除）
+                            u16::try_from(*s).map_err(|_| {
+                                fmt_msg(MsgKey::ServerInvalidStatusCode, &[&s.to_string()])
+                            })?
+                        }
+                        _ => {
+                            return Err(fmt_msg(MsgKey::ServerInvalidStatusCode, &[&s.to_string()]));
+                        }
                     }
-                    *s as u16
                 }
                 _ => 200,
             };
