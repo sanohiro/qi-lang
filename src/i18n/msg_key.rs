@@ -281,6 +281,7 @@ pub enum MsgKey {
     ServerBodyTooLarge,             // Request body too large: {0} bytes (max: {1} bytes)
     ServerFailedToDecompressGzip,   // Failed to decompress gzip body: {0}
     ServerInvalidStatusCode,        // Invalid HTTP status code: {0} (must be 100-599)
+    ServerInvalidPortNumber,        // Invalid port number: {0} (must be 0-65535)
     ServerFailedToBuildResponse,    // Failed to build response: {0}
     ServerStaticFileMetadataFailed, // server/static-file: failed to read file metadata: {0}
     ServerHandlerMustReturnMap,     // Handler must return a map, got: {0}

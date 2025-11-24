@@ -54,7 +54,13 @@ pub fn native_server_serve(args: &[Value]) -> Result<Value, String> {
     let timeout_key = kw("timeout");
 
     let port = match opts.get(&port_key) {
-        Some(Value::Integer(p)) => *p as u16,
+        Some(Value::Integer(p)) if *p >= 0 && *p <= 65535 => *p as u16,
+        Some(Value::Integer(p)) => {
+            return Err(fmt_msg(
+                MsgKey::ServerInvalidPortNumber,
+                &[&p.to_string()],
+            ));
+        }
         _ => 3000,
     };
 

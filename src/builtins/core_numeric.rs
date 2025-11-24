@@ -60,7 +60,12 @@ pub fn native_sub(args: &[Value]) -> Result<Value, String> {
     // 符号反転（単項マイナス）
     if args.len() == 1 {
         return match &args[0] {
-            Value::Integer(n) => Ok(Value::Integer(-n)),
+            Value::Integer(n) => {
+                // ⚠️ SAFETY: i64::MIN の符号反転はオーバーフローするため checked_neg() を使用
+                n.checked_neg()
+                    .map(Value::Integer)
+                    .ok_or_else(|| fmt_msg(MsgKey::IntegerOverflow, &["unary negation"]))
+            }
             Value::Float(f) => Ok(Value::Float(-f)),
             _ => Err(fmt_msg(
                 MsgKey::TypeOnlyWithDebug,

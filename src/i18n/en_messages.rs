@@ -417,6 +417,10 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             "Invalid HTTP status code: {0} (must be 100-599)",
         ),
         (
+            ServerInvalidPortNumber,
+            "Invalid port number: {0} (must be 0-65535)",
+        ),
+        (
             ServerFailedToBuildResponse,
             "Failed to build response: {0}",
         ),

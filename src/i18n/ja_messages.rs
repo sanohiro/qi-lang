@@ -344,6 +344,7 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         (ServerBodyTooLarge, "リクエストボディが大きすぎます: {0}バイト (最大: {1}バイト)"),
         (ServerFailedToDecompressGzip, "gzipボディの解凍失敗: {0}"),
         (ServerInvalidStatusCode, "無効なHTTPステータスコード: {0} (100-599の範囲である必要があります)"),
+        (ServerInvalidPortNumber, "無効なポート番号: {0} (0-65535の範囲である必要があります)"),
         (ServerFailedToBuildResponse, "レスポンス構築失敗: {0}"),
         (ServerStaticFileMetadataFailed, "server/static-file: ファイルメタデータ読み込み失敗: {0}"),
         (ServerHandlerMustReturnMap, "ハンドラはマップを返す必要があります、実際: {0}"),
