@@ -173,10 +173,16 @@ pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
 
     let pool_id = extract_pool_id(&args[0])?;
 
-    // チェックアウト中の接続がないか確認（CRITICAL）
-    // プールをクローズした後、これらの接続は返却もクローズもできなくなる
-    {
+    // CRITICAL: POOLED_CONNECTIONSとPOOLSを同時にロックして競合状態を防ぐ
+    // 1. outstanding接続のチェック
+    // 2. プールの削除
+    // この2つの操作の間にdb/pool-acquireが割り込むとデッドロックするため、
+    // 両方のロックを同時に保持する必要がある
+    let pool = {
         let pooled_conns = POOLED_CONNECTIONS.lock();
+        let mut pools = POOLS.lock();
+
+        // チェックアウト中の接続がないか確認
         let outstanding: Vec<String> = pooled_conns
             .iter()
             .filter(|(_, pid)| *pid == &pool_id)
@@ -191,11 +197,8 @@ pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
                 outstanding.join(", ")
             ));
         }
-    }
 
-    // プールを取り出してからミューテックスを解放
-    let pool = {
-        let mut pools = POOLS.lock();
+        // プールを削除（pooled_connsのロックを保持したまま）
         pools
             .remove(&pool_id)
             .ok_or_else(|| fmt_msg(MsgKey::DbPoolNotFound, &[&pool_id]))?

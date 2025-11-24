@@ -84,7 +84,7 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
         }
         if s.starts_with('-') && s.len() > 1 {
             // "-1" や "-1.5" は数値なので、2文字目が英字の場合のみオプション
-            return s.chars().nth(1).map_or(false, |c| c.is_ascii_alphabetic());
+            return s.chars().nth(1).is_some_and(|c| c.is_ascii_alphabetic());
         }
         false
     };
