@@ -4,7 +4,7 @@ use super::helpers::{error_response, kw, request_to_value, value_to_response};
 use super::routing::route_request;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
-use crate::value::Value;
+use crate::value::{MapKey, Value};
 use http_body_util::combinators::BoxBody;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
@@ -203,6 +203,15 @@ async fn handle_request(
         // リクエストをQi値に変換
         let (req_value, _body) = request_to_value(req).await?;
 
+        // HEADリクエストの場合はボディを削除（RFC 7231 §4.3.2準拠）
+        let is_head = match &req_value {
+            Value::Map(m) => {
+                let method_key = MapKey::Keyword(crate::intern::intern_keyword("method"));
+                matches!(m.get(&method_key), Some(Value::String(s)) if s == "HEAD")
+            }
+            _ => false,
+        };
+
         // ハンドラーがルーター（Vector）の場合、ルーティング処理
         let resp_value = match handler.as_ref() {
             Value::Vector(routes) => route_request(&req_value, routes),
@@ -219,7 +228,18 @@ async fn handle_request(
 
         // Qi値をHTTPレスポンスに変換（async）
         match resp_value {
-            Ok(v) => value_to_response(v).await,
+            Ok(mut v) => {
+                // HEADリクエストの場合、レスポンスから:bodyと:body-fileを削除
+                if is_head {
+                    if let Value::Map(m) = &mut v {
+                        let body_key = MapKey::Keyword(crate::intern::intern_keyword("body"));
+                        let body_file_key = MapKey::Keyword(crate::intern::intern_keyword("body-file"));
+                        m.remove(&body_key);
+                        m.remove(&body_file_key);
+                    }
+                }
+                value_to_response(v).await
+            }
             Err(e) => {
                 eprintln!("Handler error: {}", e);
                 Err(fmt_msg(MsgKey::ServerHandlerError, &[&e]))

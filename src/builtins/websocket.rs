@@ -2,11 +2,15 @@
 //!
 //! Pure RustのWebSocketサーバー/クライアント実装（tokio-tungstenite）
 //!
+//! このモジュールは `websocket` feature でコンパイルされます。
+//!
 //! ## クライアントサイド
 //! - `ws/connect` - WebSocket接続（接続IDを返す）
 //! - `ws/send` - メッセージ送信
 //! - `ws/receive` - メッセージ受信
 //! - `ws/close` - 接続クローズ
+
+#![cfg(feature = "websocket")]
 
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
