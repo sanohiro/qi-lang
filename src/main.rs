@@ -1211,6 +1211,11 @@ fn repl(preload: Option<&str>, quiet: bool) {
     let watched_files = std::sync::Arc::new(parking_lot::Mutex::new(std::collections::HashSet::<
         String,
     >::new()));
+    // スレッド管理: パス -> (JoinHandle, 終了シグナル送信側)
+    #[cfg(feature = "repl")]
+    let watch_threads = std::sync::Arc::new(parking_lot::Mutex::new(
+        std::collections::HashMap::<String, std::sync::mpsc::Sender<()>>::new(),
+    ));
 
     // REPLマクロ
     #[cfg(feature = "repl")]
@@ -1288,6 +1293,8 @@ fn repl(preload: Option<&str>, quiet: bool) {
                         &watch_tx,
                         #[cfg(feature = "repl")]
                         &watched_files,
+                        #[cfg(feature = "repl")]
+                        &watch_threads,
                         #[cfg(feature = "repl")]
                         &mut profile,
                     );
@@ -1604,6 +1611,9 @@ fn handle_repl_command(
     #[cfg(feature = "repl")] watch_tx: &std::sync::mpsc::Sender<String>,
     #[cfg(feature = "repl")] watched_files: &std::sync::Arc<
         parking_lot::Mutex<std::collections::HashSet<String>>,
+    >,
+    #[cfg(feature = "repl")] watch_threads: &std::sync::Arc<
+        parking_lot::Mutex<std::collections::HashMap<String, std::sync::mpsc::Sender<()>>>,
     >,
     #[cfg(feature = "repl")] profile: &mut ProfileData,
 ) {
@@ -1936,6 +1946,9 @@ fn handle_repl_command(
                 let tx = watch_tx.clone();
                 let watch_path = abs_path.clone();
 
+                // スレッド終了シグナル用のチャンネル
+                let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+
                 std::thread::spawn(move || {
                     let (tx_event, rx_event) = std::sync::mpsc::channel();
                     let mut watcher = notify::recommended_watcher(
@@ -1953,15 +1966,28 @@ fn handle_repl_command(
                         .watch(&watch_path, RecursiveMode::NonRecursive)
                         .expect("Failed to watch file");
 
-                    // イベントを受信したらメインスレッドに通知
-                    while rx_event.recv().is_ok() {
-                        let _ = tx.send(watch_path.to_string_lossy().to_string());
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                        // デバウンス
+                    // イベントまたは終了シグナルを待つ
+                    loop {
+                        match (rx_event.try_recv(), stop_rx.try_recv()) {
+                            (Ok(()), _) => {
+                                // ファイル変更イベント
+                                let _ = tx.send(watch_path.to_string_lossy().to_string());
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                            }
+                            (_, Ok(())) => {
+                                // 終了シグナル受信
+                                break;
+                            }
+                            _ => {
+                                // 何も受信していない場合はスリープして待つ
+                                std::thread::sleep(std::time::Duration::from_millis(50));
+                            }
+                        }
                     }
                 });
 
                 watched_files.lock().insert(path_str.clone());
+                watch_threads.lock().insert(path_str.clone(), stop_tx);
                 println!("{}", format!("Watching: {}", file_path).green());
             }
             #[cfg(not(feature = "repl"))]
@@ -1974,8 +2000,17 @@ fn handle_repl_command(
             {
                 if parts.len() < 2 {
                     // 全ての監視を停止
-                    let count = watched_files.lock().len();
-                    watched_files.lock().clear();
+                    let paths: Vec<String> = watched_files.lock().iter().cloned().collect();
+                    let count = paths.len();
+
+                    for path in paths {
+                        // スレッドに終了シグナルを送信
+                        if let Some(stop_tx) = watch_threads.lock().remove(&path) {
+                            let _ = stop_tx.send(());
+                        }
+                        watched_files.lock().remove(&path);
+                    }
+
                     println!("{}", format!("Stopped watching {} file(s)", count).yellow());
                 } else {
                     let file_path = parts[1];
@@ -1984,6 +2019,10 @@ fn handle_repl_command(
                     let path_str = abs_path.to_string_lossy().to_string();
 
                     if watched_files.lock().remove(&path_str) {
+                        // スレッドに終了シグナルを送信
+                        if let Some(stop_tx) = watch_threads.lock().remove(&path_str) {
+                            let _ = stop_tx.send(());
+                        }
                         println!("{}", format!("Stopped watching: {}", file_path).yellow());
                     } else {
                         eprintln!("{}", format!("Not watching: {}", file_path).red());
