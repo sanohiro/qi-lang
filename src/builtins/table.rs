@@ -181,6 +181,8 @@ impl Table {
     fn to_value(&self) -> Value {
         match self.format {
             TableFormat::MapList => {
+                // MapList形式は常にheadersを持つ（from_map_list参照）
+                #[allow(clippy::expect_used)]
                 let headers = self
                     .headers
                     .as_ref()
@@ -301,6 +303,8 @@ pub fn native_table_where(args: &[Value], eval: &Evaluator) -> Result<Value, Str
         let row_value = match &table.format {
             TableFormat::MapList => {
                 // MapList形式はMapとして渡す（キーは":key"形式）
+                // MapList形式は常にheadersを持つ（from_map_list参照）
+                #[allow(clippy::expect_used)]
                 let headers = table
                     .headers
                     .as_ref()

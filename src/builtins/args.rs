@@ -82,6 +82,8 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 
         if arg.starts_with("--") {
             // 長いオプション --key=value または --key value
+            // starts_with("--") をチェック済みのため安全
+            #[allow(clippy::expect_used)]
             let arg_trimmed = arg
                 .strip_prefix("--")
                 .expect("checked by starts_with above");

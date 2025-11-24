@@ -337,17 +337,21 @@ pub fn native_markdown_image(args: &[Value]) -> Result<Value, String> {
     Ok(Value::String(format!("![{}]({})", alt, src)))
 }
 
-// 正規表現パターン（遅延初期化）
+// 正規表現パターン（遅延初期化、ハードコードされたパターンのため安全）
+#[allow(clippy::expect_used)]
 static CODE_BLOCK_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"```([^\n]*)\n([\s\S]*?)```").expect("hardcoded regex should compile")
 });
 
+#[allow(clippy::expect_used)]
 static HEADER_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+)$").expect("hardcoded regex should compile"));
 
+#[allow(clippy::expect_used)]
 static LIST_ITEM_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[-*+]\s+(.+)$").expect("hardcoded regex should compile"));
 
+#[allow(clippy::expect_used)]
 static ORDERED_LIST_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\d+\.\s+(.+)$").expect("hardcoded regex should compile"));
 

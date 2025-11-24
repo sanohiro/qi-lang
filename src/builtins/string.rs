@@ -451,6 +451,8 @@ pub fn native_pad_left(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => {
+                        // count() == 1 をチェック済みのため安全
+                        #[allow(clippy::expect_used)]
                         ch.chars().next().expect("checked by count == 1 above")
                     }
                     _ => {
@@ -496,6 +498,8 @@ pub fn native_pad_right(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => {
+                        // count() == 1 をチェック済みのため安全
+                        #[allow(clippy::expect_used)]
                         ch.chars().next().expect("checked by count == 1 above")
                     }
                     _ => {
@@ -541,6 +545,8 @@ pub fn native_pad(args: &[Value]) -> Result<Value, String> {
             let pad_char = if args.len() == 3 {
                 match &args[2] {
                     Value::String(ch) if ch.chars().count() == 1 => {
+                        // count() == 1 をチェック済みのため安全
+                        #[allow(clippy::expect_used)]
                         ch.chars().next().expect("checked by count == 1 above")
                     }
                     _ => {

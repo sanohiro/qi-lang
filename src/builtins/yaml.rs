@@ -88,7 +88,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
         serde_yaml::Value::Mapping(obj) => {
             let mut map = crate::new_hashmap();
             for (k, v) in obj {
-                // YAMLのキーは文字列に変換
+                // YAMLのキーは文字列に変換（外部データなのでMapKey::String）
                 let key = match k {
                     serde_yaml::Value::String(s) => s,
                     serde_yaml::Value::Number(n) => n.to_string(),
@@ -96,7 +96,7 @@ fn yaml_to_value(yaml: serde_yaml::Value) -> Value {
                     _ => continue, // その他のキーはスキップ
                 };
                 map.insert(
-                    crate::value::MapKey::String(format!("\"{}\"", key)),
+                    crate::value::MapKey::String(key),
                     yaml_to_value(v),
                 );
             }
@@ -151,17 +151,10 @@ fn value_to_yaml(value: &Value) -> serde_yaml::Value {
         Value::Map(m) => {
             let mut mapping = serde_yaml::Mapping::new();
             for (k, v) in m.iter() {
-                // MapKeyをYAMLキーに変換
+                // MapKeyをYAMLキーに変換（文字列として出力）
                 let yaml_key = match k {
                     crate::value::MapKey::Keyword(kw) => kw.to_string(),
-                    crate::value::MapKey::String(s) => {
-                        // ダブルクォートで囲まれている場合は取り除く
-                        if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
-                            s[1..s.len() - 1].to_string()
-                        } else {
-                            s.clone()
-                        }
-                    }
+                    crate::value::MapKey::String(s) => s.clone(),
                     crate::value::MapKey::Symbol(sym) => sym.to_string(),
                     crate::value::MapKey::Integer(i) => i.to_string(),
                 };

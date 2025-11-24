@@ -89,6 +89,8 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
+            // NaNチェック済み（line 75-80）のため安全にunwrap可能
+            #[allow(clippy::unwrap_used)]
             numbers.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
             let len = numbers.len();
@@ -269,6 +271,8 @@ pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
                 }
             }
 
+            // NaN値は整数変換時に除外されているため安全
+            #[allow(clippy::expect_used)]
             numbers.sort_by(|a, b| {
                 a.partial_cmp(b)
                     .expect("NaN values should have been filtered out")

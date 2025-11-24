@@ -239,13 +239,13 @@ Use :doc {} to see documentation.",
             // マクロ
             Ok(Value::String(format!("Macro: {}", symbol)))
         }
-        Some(_) => {
+        Some(v) => {
             // その他の値
             Ok(Value::String(format!(
                 "Value binding: {}
 Type: {}",
                 symbol,
-                value.unwrap().type_name()
+                v.type_name()
             )))
         }
         None => Err(fmt_msg(MsgKey::UndefinedVar, &[symbol])),

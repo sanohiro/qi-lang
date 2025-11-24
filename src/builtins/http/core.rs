@@ -2,6 +2,7 @@ use super::*;
 use reqwest::Method;
 
 /// HTTPリクエストの実装（シンプル版：bodyの文字列のみ返す）
+#[allow(clippy::expect_used)] // 静的キーワードの初期化（CONTRIBUTING.md参照）
 pub(super) fn http_request(
     method: &str,
     url: &str,
@@ -84,6 +85,7 @@ pub(super) fn http_request(
 }
 
 /// HTTPリクエストの実装（詳細版：Map形式で詳細情報を返す）
+#[allow(clippy::expect_used)] // 静的キーワードの初期化（CONTRIBUTING.md参照）
 pub(super) fn http_request_detailed(
     method: &str,
     url: &str,

@@ -61,25 +61,32 @@ pub fn native_request_stream(args: &[Value]) -> Result<Value, String> {
         }
     };
 
-    // キーワードキーを生成
+    // キーワードキーを生成（静的キーワードの初期化、CONTRIBUTING.md参照）
+    #[allow(clippy::expect_used)]
     let method_key = Value::Keyword(crate::intern::intern_keyword("method"))
         .to_map_key()
         .expect("method keyword should be valid");
+    #[allow(clippy::expect_used)]
     let url_key = Value::Keyword(crate::intern::intern_keyword("url"))
         .to_map_key()
         .expect("url keyword should be valid");
+    #[allow(clippy::expect_used)]
     let body_key = Value::Keyword(crate::intern::intern_keyword("body"))
         .to_map_key()
         .expect("body keyword should be valid");
+    #[allow(clippy::expect_used)]
     let headers_key = Value::Keyword(crate::intern::intern_keyword("headers"))
         .to_map_key()
         .expect("headers keyword should be valid");
+    #[allow(clippy::expect_used)]
     let timeout_key = Value::Keyword(crate::intern::intern_keyword("timeout"))
         .to_map_key()
         .expect("timeout keyword should be valid");
+    #[allow(clippy::expect_used)]
     let basic_auth_key = Value::Keyword(crate::intern::intern_keyword("basic-auth"))
         .to_map_key()
         .expect("basic-auth keyword should be valid");
+    #[allow(clippy::expect_used)]
     let bearer_token_key = Value::Keyword(crate::intern::intern_keyword("bearer-token"))
         .to_map_key()
         .expect("bearer-token keyword should be valid");

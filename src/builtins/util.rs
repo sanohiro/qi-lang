@@ -26,7 +26,9 @@ pub fn convert_string_map_to_mapkey(
 ///
 /// Keyword、Symbol、String、Integerキーを全て文字列キーに変換する
 /// Basic認証のユーザーテーブル等で、任意のキー形式を受け入れるために使用
-pub fn normalize_map_keys_to_string(map: &crate::HashMap<MapKey, Value>) -> crate::HashMap<MapKey, Value> {
+pub fn normalize_map_keys_to_string(
+    map: &crate::HashMap<MapKey, Value>,
+) -> crate::HashMap<MapKey, Value> {
     map.iter()
         .map(|(k, v)| {
             let string_key = match k {

@@ -28,7 +28,8 @@ pub fn native_csv_parse(args: &[Value]) -> Result<Value, String> {
                 if d.chars().count() != 1 {
                     return Err(fmt_msg(MsgKey::CsvDelimiterMustBeSingleChar, &[]));
                 }
-                // SAFETY: 上のチェックで1文字であることを確認済み
+                // count() == 1 をチェック済みのため安全
+                #[allow(clippy::expect_used)]
                 d.chars()
                     .next()
                     .expect("delimiter must have exactly one character")
