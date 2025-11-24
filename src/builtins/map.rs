@@ -313,7 +313,16 @@ pub fn native_group_by(
 
     for item in coll {
         let key_val = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
-        let key = key_val.to_map_key()?;
+        // ValueをMapKeyに変換（to_map_keyがサポートする型のみ）
+        // Bool/Float/Nilはエラーになるため、文字列化する
+        let key = match key_val.to_map_key() {
+            Ok(k) => k,
+            Err(_) => {
+                // Bool, Float, Nil等はMapKeyに変換できないため、文字列化
+                // TODO: MapKeyにBool/Float/Nil型を追加すれば元の型を保持できる
+                crate::value::MapKey::String(format!("{}", key_val))
+            }
+        };
         groups.entry(key).or_default().push(item.clone());
     }
 

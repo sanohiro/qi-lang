@@ -420,13 +420,18 @@ pub fn native_sum(args: &[Value]) -> Result<Value, String> {
 
 /// 値の等価性を判定するヘルパー関数
 /// ListとVectorは内容が同じなら等しいと見なす
+/// IntegerとFloatは数値的に等価なら等しいと見なす（Lisp系言語の一般的な仕様）
 fn values_equal(a: &Value, b: &Value) -> bool {
     use std::ptr;
     match (a, b) {
         (Value::Nil, Value::Nil) => true,
         (Value::Bool(a), Value::Bool(b)) => a == b,
         (Value::Integer(a), Value::Integer(b)) => a == b,
-        (Value::Float(a), Value::Float(b)) => a == b,
+        (Value::Float(a), Value::Float(b)) => (a - b).abs() < f64::EPSILON,
+        // IntegerとFloatの相互比較（数値的等価性）
+        (Value::Integer(a), Value::Float(b)) | (Value::Float(b), Value::Integer(a)) => {
+            (*a as f64 - b).abs() < f64::EPSILON
+        }
         (Value::String(a), Value::String(b)) => a == b,
         (Value::Bytes(a), Value::Bytes(b)) => a.as_ref() == b.as_ref(),
         (Value::Symbol(a), Value::Symbol(b)) => a == b,

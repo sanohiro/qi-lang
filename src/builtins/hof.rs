@@ -340,27 +340,24 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     match collection {
         Value::List(items) | Value::Vector(items) => {
-            // グループ数の推定: items.len() / 4（4個に1個が新しいグループと仮定）
-            let estimated_groups = (items.len() / 4).max(4);
-            let mut groups: std::collections::HashMap<String, im::Vector<Value>> =
-                std::collections::HashMap::with_capacity(estimated_groups);
+            let mut groups: crate::HashMap<crate::value::MapKey, im::Vector<Value>> =
+                crate::new_hashmap();
             for item in items {
                 let key = evaluator.apply_function(key_fn, std::slice::from_ref(item))?;
-                // Valueから純粋な文字列を抽出（Displayの引用符を避けるため）
-                let key_str = match &key {
-                    Value::String(s) => s.clone(),
-                    Value::Keyword(k) => format!(":{}", k),
-                    Value::Symbol(s) => s.to_string(),
-                    _ => format!("{}", key),
+                // ValueをMapKeyに変換（to_map_keyがサポートする型のみ）
+                // Bool/Float/Nilはエラーになるため、文字列化する
+                let map_key = match key.to_map_key() {
+                    Ok(mk) => mk,
+                    Err(_) => {
+                        // Bool, Float, Nil等はMapKeyに変換できないため、文字列化
+                        // TODO: MapKeyにBool/Float/Nil型を追加すれば元の型を保持できる
+                        crate::value::MapKey::String(format!("{}", key))
+                    }
                 };
-                groups.entry(key_str).or_default().push_back(item.clone());
+                groups.entry(map_key).or_default().push_back(item.clone());
             }
 
-            let mut result = crate::new_hashmap();
-            for (key_str, values) in groups {
-                result.insert(crate::value::MapKey::String(key_str), Value::List(values));
-            }
-            Ok(Value::Map(result))
+            Ok(Value::Map(groups.into_iter().map(|(k, v)| (k, Value::List(v))).collect()))
         }
         _ => Err(fmt_msg(
             MsgKey::TypeOnly,
