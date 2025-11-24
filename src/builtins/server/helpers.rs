@@ -110,20 +110,17 @@ pub(super) async fn request_to_value(
     use http_body_util::Limited;
 
     let limited_body = Limited::new(body, MAX_BODY_SIZE);
-    let collected = limited_body
-        .collect()
-        .await
-        .map_err(|e| {
-            let err_str = e.to_string();
-            if err_str.contains("length limit exceeded") {
-                fmt_msg(
-                    MsgKey::ServerBodyTooLarge,
-                    &[&MAX_BODY_SIZE.to_string(), &MAX_BODY_SIZE.to_string()],
-                )
-            } else {
-                fmt_msg(MsgKey::ServerFailedToReadBody, &[&err_str])
-            }
-        })?;
+    let collected = limited_body.collect().await.map_err(|e| {
+        let err_str = e.to_string();
+        if err_str.contains("length limit exceeded") {
+            fmt_msg(
+                MsgKey::ServerBodyTooLarge,
+                &[&MAX_BODY_SIZE.to_string(), &MAX_BODY_SIZE.to_string()],
+            )
+        } else {
+            fmt_msg(MsgKey::ServerFailedToReadBody, &[&err_str])
+        }
+    })?;
     let body_bytes = collected.to_bytes();
 
     // Content-Encodingヘッダーをチェックして解凍
