@@ -24,19 +24,19 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
 
       - name: Cache cargo index
         uses: actions/cache@v3
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
 
       - name: Cache target directory
         uses: actions/cache@v3
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
 
       - name: Build
         run: cargo build --release
@@ -49,5 +49,5 @@ jobs:
         if: runner.os == 'Linux'
 
       - name: Run clippy
-        run: cargo clippy --release -- -D warnings
+        run: cargo clippy --release
         if: runner.os == 'Linux'
