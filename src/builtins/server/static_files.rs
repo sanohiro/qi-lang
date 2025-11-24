@@ -36,13 +36,17 @@ pub(super) fn serve_static_file(dir_path: &str, req: &Value) -> Result<Value, St
     let file_path = if file_path.is_dir() {
         let with_index = file_path.join("index.html");
         // index.html追加後も再度セキュリティチェック（symlink攻撃を防止）
+        // ⚠️ SECURITY: dir_pathは既にnative_server_static_dirで正規化済み
+        // リクエストごとにcanonicalize()を呼ぶと、攻撃者がシンボリックリンクを
+        // 差し替えた場合に新しいターゲットを追跡してしまう
+        // 代わりに、保存された正規化パスを文字列比較で検証
         let canonical = with_index
             .canonicalize()
             .map_err(|e| fmt_msg(MsgKey::StaticFileNotFound, &[&e.to_string()]))?;
-        let base_canonical = std::path::Path::new(dir_path)
-            .canonicalize()
-            .map_err(|e| fmt_msg(MsgKey::StaticFileInvalidPath, &[&e.to_string()]))?;
-        if !canonical.starts_with(&base_canonical) {
+
+        // dir_pathは既に正規化済みのため、再度canonicalize()せずに使用
+        let base_canonical = std::path::Path::new(dir_path);
+        if !canonical.starts_with(base_canonical) {
             return Err(fmt_msg(
                 MsgKey::StaticFileInvalidPath,
                 &["index.html points outside base directory"],

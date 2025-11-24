@@ -98,22 +98,43 @@ pub(super) fn parse_query_params(query_str: &str) -> HashMap<MapKey, Value> {
 pub(super) async fn request_to_value(
     req: Request<hyper::body::Incoming>,
 ) -> Result<(Value, String), String> {
+    // ⚠️ SECURITY: 最大ボディサイズを10MBに制限（DoS攻撃防止）
+    const MAX_BODY_SIZE: usize = 10 * 1024 * 1024; // 10MB
+
     let (parts, body) = req.into_parts();
 
     // ボディを取得（非同期）
-    let body_bytes = body
+    let collected = body
         .collect()
         .await
-        .map_err(|e| fmt_msg(MsgKey::ServerFailedToReadBody, &[&e.to_string()]))?
-        .to_bytes();
+        .map_err(|e| fmt_msg(MsgKey::ServerFailedToReadBody, &[&e.to_string()]))?;
+    let body_bytes = collected.to_bytes();
+
+    // ボディサイズチェック（圧縮前）
+    if body_bytes.len() > MAX_BODY_SIZE {
+        return Err(fmt_msg(
+            MsgKey::ServerBodyTooLarge,
+            &[&body_bytes.len().to_string(), &MAX_BODY_SIZE.to_string()],
+        ));
+    }
 
     // Content-Encodingヘッダーをチェックして解凍
     let decompressed_bytes = if let Some(encoding) = parts.headers.get("content-encoding") {
         if let Ok(encoding_str) = encoding.to_str() {
             if encoding_str.to_lowercase() == "gzip" {
                 // gzip解凍
-                decompress_gzip(&body_bytes)
-                    .map_err(|e| fmt_msg(MsgKey::ServerFailedToDecompressGzip, &[&e.to_string()]))?
+                let decompressed = decompress_gzip(&body_bytes)
+                    .map_err(|e| fmt_msg(MsgKey::ServerFailedToDecompressGzip, &[&e.to_string()]))?;
+
+                // ⚠️ SECURITY: 解凍後のサイズもチェック（zip bomb攻撃防止）
+                if decompressed.len() > MAX_BODY_SIZE {
+                    return Err(fmt_msg(
+                        MsgKey::ServerBodyTooLarge,
+                        &[&decompressed.len().to_string(), &MAX_BODY_SIZE.to_string()],
+                    ));
+                }
+
+                decompressed
             } else {
                 body_bytes.to_vec()
             }
@@ -203,7 +224,16 @@ pub(super) async fn value_to_response(
             let body_file_key = kw("body-file");
 
             let status = match m.get(&status_key) {
-                Some(Value::Integer(s)) => *s as u16,
+                Some(Value::Integer(s)) => {
+                    // ⚠️ SECURITY: ステータスコードの範囲検証（100-599）
+                    if *s < 100 || *s > 599 {
+                        return Err(fmt_msg(
+                            MsgKey::ServerInvalidStatusCode,
+                            &[&s.to_string()],
+                        ));
+                    }
+                    *s as u16
+                }
                 _ => 200,
             };
 

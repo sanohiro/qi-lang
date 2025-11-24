@@ -401,8 +401,16 @@ pub static EN_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
             "Failed to read request body: {0}",
         ),
         (
+            ServerBodyTooLarge,
+            "Request body too large: {0} bytes (max: {1} bytes)",
+        ),
+        (
             ServerFailedToDecompressGzip,
             "Failed to decompress gzip body: {0}",
+        ),
+        (
+            ServerInvalidStatusCode,
+            "Invalid HTTP status code: {0} (must be 100-599)",
         ),
         (
             ServerFailedToBuildResponse,
