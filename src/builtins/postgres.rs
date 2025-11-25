@@ -8,7 +8,8 @@
 //! このモジュールは `db-postgres` feature でコンパイルされます。
 
 use super::db::*;
-use crate::i18n::{fmt_msg, MsgKey};
+use crate::i18n::MsgKey;
+use crate::map_db_err;
 use crate::value::Value;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -41,13 +42,16 @@ impl DbDriver for PostgresDriver {
         };
 
         // 共有PostgreSQLランタイムを取得
-        let rt = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let rt = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // 接続を確立
-        let (client, connection) = rt
-            .block_on(async { tokio_postgres::connect(conn_str, NoTls).await })
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
+        let (client, connection) = map_db_err!(
+            rt.block_on(async { tokio_postgres::connect(conn_str, NoTls).await }),
+            MsgKey::DbFailedToConnect
+        )?;
 
         // 接続ハンドラーをバックグラウンドタスクとして実行（共有ランタイム上で）
         rt.spawn(async move {
@@ -123,8 +127,10 @@ impl PostgresConnection {
 impl DbConnection for PostgresConnection {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
@@ -134,11 +140,10 @@ impl DbConnection for PostgresConnection {
             .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect();
 
-        let rows = runtime
-            .block_on(async { client.query(sql, &param_refs[..]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
-            })?;
+        let rows = map_db_err!(
+            runtime.block_on(async { client.query(sql, &param_refs[..]).await }),
+            MsgKey::DbFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         for row in &rows {
@@ -150,8 +155,10 @@ impl DbConnection for PostgresConnection {
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
@@ -161,22 +168,20 @@ impl DbConnection for PostgresConnection {
             .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect();
 
-        let affected = runtime
-            .block_on(async { client.execute(sql, &param_refs[..]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let affected = map_db_err!(
+            runtime.block_on(async { client.execute(sql, &param_refs[..]).await }),
+            MsgKey::DbFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
 
     fn begin(&self, opts: &TransactionOptions) -> DbResult<Arc<dyn DbTransaction>> {
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // PostgreSQLではBEGIN TRANSACTION ISOLATION LEVEL ...を1つのコマンドで実行
         let begin_sql = match opts.isolation {
@@ -186,14 +191,10 @@ impl DbConnection for PostgresConnection {
             IsolationLevel::Serializable => "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE",
         };
 
-        runtime
-            .block_on(async { client.execute(begin_sql, &[]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToBeginTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { client.execute(begin_sql, &[]).await }),
+            MsgKey::DbFailedToBeginTransaction
+        )?;
 
         Ok(Arc::new(PostgresTransaction {
             client: self.client.clone(),
@@ -496,8 +497,10 @@ impl DbConnection for PostgresConnection {
         );
 
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // PREPARE文でクエリを準備
         let prepare_sql = format!("PREPARE {} AS {}", stmt_name, sql);
@@ -527,8 +530,10 @@ pub struct PostgresTransaction {
 impl DbTransaction for PostgresTransaction {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = params
@@ -540,11 +545,10 @@ impl DbTransaction for PostgresTransaction {
             .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect();
 
-        let rows = runtime
-            .block_on(async { client.query(sql, &param_refs[..]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
-            })?;
+        let rows = map_db_err!(
+            runtime.block_on(async { client.query(sql, &param_refs[..]).await }),
+            MsgKey::DbFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         for row in &rows {
@@ -556,8 +560,10 @@ impl DbTransaction for PostgresTransaction {
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // Valueをプリペアドステートメント用パラメータに変換
         let sql_params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = params
@@ -569,14 +575,10 @@ impl DbTransaction for PostgresTransaction {
             .map(|b| &**b as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect();
 
-        let affected = runtime
-            .block_on(async { client.execute(sql, &param_refs[..]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let affected = map_db_err!(
+            runtime.block_on(async { client.execute(sql, &param_refs[..]).await }),
+            MsgKey::DbFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
@@ -617,17 +619,15 @@ impl DbTransaction for PostgresTransaction {
         }
 
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
-        runtime
-            .block_on(async { client.execute("COMMIT", &[]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToCommitTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { client.execute("COMMIT", &[]).await }),
+            MsgKey::DbFailedToCommitTransaction
+        )?;
 
         *committed = true;
         Ok(())
@@ -640,17 +640,15 @@ impl DbTransaction for PostgresTransaction {
         }
 
         let client = self.client.lock();
-        let runtime = crate::builtins::lazy_init::postgres_runtime::get_runtime()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e])))?;
+        let runtime = map_db_err!(
+            crate::builtins::lazy_init::postgres_runtime::get_runtime(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
-        runtime
-            .block_on(async { client.execute("ROLLBACK", &[]).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToRollbackTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { client.execute("ROLLBACK", &[]).await }),
+            MsgKey::DbFailedToRollbackTransaction
+        )?;
 
         *committed = true;
 

@@ -1,6 +1,7 @@
 //! コマンド実行 - stream
 
 use super::helpers::*;
+use crate::builtins::value_helpers::to_positive_usize;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
 use parking_lot::RwLock;
@@ -108,15 +109,7 @@ pub fn native_stream_bytes(args: &[Value]) -> Result<Value, String> {
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
     let chunk_size = if args.len() == 2 {
-        match &args[1] {
-            Value::Integer(n) if *n > 0 => *n as usize,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::MustBePositiveInteger,
-                    &["cmd/stream-bytes", "chunk size"],
-                ))
-            }
-        }
+        to_positive_usize(&args[1], "cmd/stream-bytes", "chunk-size")?
     } else {
         4096
     };

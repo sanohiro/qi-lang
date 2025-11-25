@@ -9,6 +9,7 @@
 
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::map_db_err;
 use crate::value::Value;
 use mysql_async::prelude::*;
 use mysql_async::{Conn as MyConn, Opts, Row as MyRow};
@@ -43,17 +44,19 @@ impl DbDriver for MysqlDriver {
         };
 
         // 接続オプションを解析
-        let opts = Opts::from_url(conn_str)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
+        let opts = map_db_err!(Opts::from_url(conn_str), MsgKey::DbFailedToConnect)?;
 
         // tokioランタイムを作成
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToCreateRuntime, &[&e.to_string()])))?;
+        let rt = map_db_err!(
+            tokio::runtime::Runtime::new(),
+            MsgKey::FailedToCreateRuntime
+        )?;
 
         // 接続を確立
-        let conn = rt
-            .block_on(async { MyConn::new(opts).await })
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::DbFailedToConnect, &[&e.to_string()])))?;
+        let conn = map_db_err!(
+            rt.block_on(async { MyConn::new(opts).await }),
+            MsgKey::DbFailedToConnect
+        )?;
 
         Ok(Arc::new(MysqlConnection {
             conn: Arc::new(Mutex::new(conn)),
@@ -191,17 +194,16 @@ impl DbConnection for MysqlConnection {
         let mysql_params: Vec<mysql_async::Value> =
             params.iter().map(Self::value_to_mysql_value).collect();
 
-        let rows: Vec<MyRow> = runtime
-            .block_on(async {
+        let rows: Vec<MyRow> = map_db_err!(
+            runtime.block_on(async {
                 if mysql_params.is_empty() {
                     conn.query(sql).await
                 } else {
                     conn.exec(sql, mysql_params).await
                 }
-            })
-            .map_err(|e| {
-                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
-            })?;
+            }),
+            MsgKey::DbFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         for row in &rows {
@@ -219,21 +221,17 @@ impl DbConnection for MysqlConnection {
         let mysql_params: Vec<mysql_async::Value> =
             params.iter().map(Self::value_to_mysql_value).collect();
 
-        let affected = runtime
-            .block_on(async {
+        let affected = map_db_err!(
+            runtime.block_on(async {
                 if mysql_params.is_empty() {
                     conn.query_drop(sql).await?;
                 } else {
                     conn.exec_drop(sql, mysql_params).await?;
                 }
                 Ok::<_, mysql_async::Error>(conn.affected_rows())
-            })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+            }),
+            MsgKey::DbFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
@@ -250,24 +248,17 @@ impl DbConnection for MysqlConnection {
             IsolationLevel::Serializable => "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE",
         };
 
-        runtime
-            .block_on(async { conn.query_drop(isolation_sql).await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToBeginTransaction,
-                    &[&format!("Failed to set isolation level: {}", e)],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { conn.query_drop(isolation_sql).await }),
+            MsgKey::DbFailedToBeginTransaction,
+            "Failed to set isolation level"
+        )?;
 
         // トランザクション開始
-        runtime
-            .block_on(async { conn.query_drop("START TRANSACTION").await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToBeginTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { conn.query_drop("START TRANSACTION").await }),
+            MsgKey::DbFailedToBeginTransaction
+        )?;
 
         Ok(Arc::new(MysqlTransaction {
             conn: self.conn.clone(),
@@ -570,17 +561,16 @@ impl DbTransaction for MysqlTransaction {
             .map(MysqlConnection::value_to_mysql_value)
             .collect();
 
-        let rows: Vec<MyRow> = runtime
-            .block_on(async {
+        let rows: Vec<MyRow> = map_db_err!(
+            runtime.block_on(async {
                 if mysql_params.is_empty() {
                     conn.query(sql).await
                 } else {
                     conn.exec(sql, mysql_params).await
                 }
-            })
-            .map_err(|e| {
-                DbError::new(fmt_msg(MsgKey::DbFailedToExecuteQuery, &[&e.to_string()]))
-            })?;
+            }),
+            MsgKey::DbFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         for row in &rows {
@@ -600,21 +590,17 @@ impl DbTransaction for MysqlTransaction {
             .map(MysqlConnection::value_to_mysql_value)
             .collect();
 
-        let affected = runtime
-            .block_on(async {
+        let affected = map_db_err!(
+            runtime.block_on(async {
                 if mysql_params.is_empty() {
                     conn.query_drop(sql).await?;
                 } else {
                     conn.exec_drop(sql, mysql_params).await?;
                 }
                 Ok::<_, mysql_async::Error>(conn.affected_rows())
-            })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+            }),
+            MsgKey::DbFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
@@ -665,14 +651,10 @@ impl DbTransaction for MysqlTransaction {
         let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
-        runtime
-            .block_on(async { conn.query_drop("COMMIT").await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToCommitTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { conn.query_drop("COMMIT").await }),
+            MsgKey::DbFailedToCommitTransaction
+        )?;
 
         *committed = true;
         Ok(())
@@ -687,14 +669,10 @@ impl DbTransaction for MysqlTransaction {
         let mut conn = self.conn.lock();
         let runtime = self.runtime.lock();
 
-        runtime
-            .block_on(async { conn.query_drop("ROLLBACK").await })
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::DbFailedToRollbackTransaction,
-                    &[&e.to_string()],
-                ))
-            })?;
+        map_db_err!(
+            runtime.block_on(async { conn.query_drop("ROLLBACK").await }),
+            MsgKey::DbFailedToRollbackTransaction
+        )?;
 
         *committed = true;
 

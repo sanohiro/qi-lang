@@ -9,6 +9,7 @@
 //!     は Evaluator が必要なため、mod.rs で別途エクスポートされます
 
 use crate::builtins::value_helpers::usize_to_int_value;
+use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
@@ -18,9 +19,7 @@ use crate::value::Value;
 
 /// first - リストの最初の要素
 pub fn native_first(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["first"]));
-    }
+    check_args!(args, 1, "first");
     match &args[0] {
         Value::List(v) | Value::Vector(v) => Ok(v.head().cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["first", "lists or vectors"])),
@@ -29,9 +28,7 @@ pub fn native_first(args: &[Value]) -> Result<Value, String> {
 
 /// rest - リストの残り
 pub fn native_rest(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["rest"]));
-    }
+    check_args!(args, 1, "rest");
     match &args[0] {
         Value::List(v) => {
             if v.is_empty() {
@@ -53,9 +50,7 @@ pub fn native_rest(args: &[Value]) -> Result<Value, String> {
 
 /// last - リストの最後の要素
 pub fn native_last(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["last"]));
-    }
+    check_args!(args, 1, "last");
     match &args[0] {
         Value::List(v) | Value::Vector(v) => Ok(v.last().cloned().unwrap_or(Value::Nil)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["last", "lists or vectors"])),
@@ -64,9 +59,7 @@ pub fn native_last(args: &[Value]) -> Result<Value, String> {
 
 /// nth - n番目の要素を取得
 pub fn native_nth(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["nth"]));
-    }
+    check_args!(args, 2, "nth");
     let index = match &args[1] {
         Value::Integer(n) if *n >= 0 && (*n as u64) <= usize::MAX as u64 => *n as usize,
         Value::Integer(n) if *n >= 0 => {
@@ -83,9 +76,7 @@ pub fn native_nth(args: &[Value]) -> Result<Value, String> {
 
 /// len - 長さを取得
 pub fn native_len(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["len"]));
-    }
+    check_args!(args, 1, "len");
     match &args[0] {
         Value::List(v) | Value::Vector(v) => usize_to_int_value(v.len(), "len"),
         Value::Map(m) => usize_to_int_value(m.len(), "len"),
@@ -106,9 +97,7 @@ pub fn native_count(args: &[Value]) -> Result<Value, String> {
 /// im::Vectorの構造共有を活かしてO(1)で実行
 /// 戻り値は第二引数（コレクション）の型を維持します
 pub fn native_cons(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["cons"]));
-    }
+    check_args!(args, 2, "cons");
     match &args[1] {
         Value::Nil => Ok(Value::List(vec![args[0].clone()].into())),
         Value::List(v) => {
@@ -180,9 +169,7 @@ pub fn native_concat(args: &[Value]) -> Result<Value, String> {
 
 /// flatten - ネストしたリストを平坦化
 pub fn native_flatten(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["flatten"]));
-    }
+    check_args!(args, 1, "flatten");
     fn flatten_value(v: &Value, result: &mut im::Vector<Value>) {
         if let Some(iter) = v.as_sequence_iter() {
             for item in iter {
@@ -233,9 +220,7 @@ pub fn native_range(args: &[Value]) -> Result<Value, String> {
 /// 引数: (n val) - 繰り返し回数と値
 /// 例: (repeat 5 0) => [0 0 0 0 0]
 pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["repeat"]));
-    }
+    check_args!(args, 2, "repeat");
 
     match &args[0] {
         Value::Integer(n) => {
@@ -252,9 +237,7 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
 
 /// reverse - リストを反転
 pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["reverse"]));
-    }
+    check_args!(args, 1, "reverse");
     match &args[0] {
         Value::List(v) => {
             let reversed: im::Vector<Value> = v.iter().rev().cloned().collect();
@@ -270,9 +253,7 @@ pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
 
 /// take - リストの最初のn要素を取得
 pub fn native_take(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["take"]));
-    }
+    check_args!(args, 2, "take");
     let n = match &args[0] {
         Value::Integer(i) if *i >= 0 && (*i as u64) <= usize::MAX as u64 => *i as usize,
         Value::Integer(i) if *i >= 0 => {
@@ -290,9 +271,7 @@ pub fn native_take(args: &[Value]) -> Result<Value, String> {
 
 /// drop - リストの最初のn要素をスキップ
 pub fn native_drop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["drop"]));
-    }
+    check_args!(args, 2, "drop");
     let n = match &args[0] {
         Value::Integer(i) if *i >= 0 && (*i as u64) <= usize::MAX as u64 => *i as usize,
         Value::Integer(i) if *i >= 0 => {
@@ -311,9 +290,7 @@ pub fn native_drop(args: &[Value]) -> Result<Value, String> {
 /// sort - リストをソート
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_sort(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["sort"]));
-    }
+    check_args!(args, 1, "sort");
     match &args[0] {
         Value::List(v) => {
             let mut sorted: Vec<Value> = v.iter().cloned().collect();
@@ -346,9 +323,7 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
 /// distinct - 重複を排除
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["distinct"]));
-    }
+    check_args!(args, 1, "distinct");
     match &args[0] {
         Value::List(v) => {
             let mut result = im::Vector::new();
@@ -379,9 +354,7 @@ pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
 /// zip - 2つのリストを組み合わせる（List/Vectorの混在も可）
 /// 戻り値は第一引数の型を優先します
 pub fn native_zip(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["zip"]));
-    }
+    check_args!(args, 2, "zip");
 
     // 第一引数の型を記憶
     let is_first_vector = matches!(&args[0], Value::Vector(_));
@@ -415,9 +388,7 @@ pub fn native_zip(args: &[Value]) -> Result<Value, String> {
 
 /// get - マップから値を取得
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["get"]));
-    }
+    check_args!(args, 2, "get");
     match &args[0] {
         Value::Map(m) => {
             let key = args[1].to_map_key()?;
@@ -430,9 +401,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 /// keys - マップのキーを取得
 /// マップのキーは内部的に文字列で格納されているため、元の型に復元する
 pub fn native_keys(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["keys"]));
-    }
+    check_args!(args, 1, "keys");
     match &args[0] {
         Value::Map(m) => {
             let keys: im::Vector<Value> = m
@@ -452,9 +421,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
 
 /// vals - マップの値を取得
 pub fn native_vals(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["vals"]));
-    }
+    check_args!(args, 1, "vals");
     match &args[0] {
         Value::Map(m) => {
             let vals: im::Vector<Value> = m.values().cloned().collect();

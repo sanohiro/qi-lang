@@ -4,14 +4,13 @@
 //! core_collections.rsで実装されています。
 //! このモジュールには高度なマップ操作のみを含みます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
 /// select-keys - マップから指定したキーのみ選択
 pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["select-keys"]));
-    }
+    check_args!(args, 2, "select-keys");
     match (&args[0], &args[1]) {
         (Value::Map(m), Value::List(keys) | Value::Vector(keys)) => {
             let mut result = crate::new_hashmap();
@@ -32,12 +31,7 @@ pub fn native_select_keys(args: &[Value]) -> Result<Value, String> {
 
 /// assoc-in - ネストしたマップに値を設定
 pub fn native_assoc_in(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["assoc-in", "3", "(map, path, value)"],
-        ));
-    }
+    check_args!(args, 3, "assoc-in");
 
     let map = &args[0];
     let path = match &args[1] {
@@ -101,12 +95,7 @@ fn assoc_in_helper(
 
 /// dissoc-in - ネストしたマップからキーを削除
 pub fn native_dissoc_in(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["dissoc-in", "2", "(map, path)"],
-        ));
-    }
+    check_args!(args, 2, "dissoc-in");
 
     let map = &args[0];
     let path = match &args[1] {
@@ -160,12 +149,7 @@ pub fn native_update_keys(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
 ) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["update-keys", "2", "(key-fn, map)"],
-        ));
-    }
+    check_args!(args, 2, "update-keys");
 
     let key_fn = &args[0];
     let map_val = &args[1];
@@ -197,12 +181,7 @@ pub fn native_update_vals(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
 ) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["update-vals", "2", "(val-fn, map)"],
-        ));
-    }
+    check_args!(args, 2, "update-vals");
 
     let val_fn = &args[0];
     let map_val = &args[1];
@@ -241,12 +220,7 @@ pub fn native_filter_vals(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
 ) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["filter-vals", "2", "(pred, map)"],
-        ));
-    }
+    check_args!(args, 2, "filter-vals");
 
     let pred = &args[0];
     let map_val = &args[1];
@@ -290,12 +264,7 @@ pub fn native_group_by(
     args: &[Value],
     evaluator: &crate::eval::Evaluator,
 ) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["group-by", "2", "(key-fn, coll)"],
-        ));
-    }
+    check_args!(args, 2, "group-by");
 
     let key_fn = &args[0];
     let coll = match &args[1] {

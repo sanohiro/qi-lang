@@ -1,6 +1,7 @@
 use super::*;
 use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
+use crate::builtins::value_helpers::to_positive_usize;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::with_global;
 
@@ -43,21 +44,7 @@ pub fn native_create_pool(args: &[Value]) -> Result<Value, String> {
     };
 
     let max_connections = if args.len() >= 3 {
-        match &args[2] {
-            Value::Integer(n) if *n > 0 => *n as usize,
-            Value::Integer(_) => {
-                return Err(fmt_msg(
-                    MsgKey::DbInvalidPoolSize,
-                    &["db/create-pool", "positive integer"],
-                ))
-            }
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::ThirdArgMustBe,
-                    &["db/create-pool", "positive integer"],
-                ))
-            }
-        }
+        to_positive_usize(&args[2], "db/create-pool", "max-connections")?
     } else {
         10 // デフォルトは10接続
     };

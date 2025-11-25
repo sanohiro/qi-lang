@@ -1,6 +1,7 @@
 //! タスク実行・パイプライン・Select操作
 
 use super::promise::spawn_promise;
+use crate::builtins::value_helpers::to_positive_usize;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};
@@ -65,11 +66,7 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["fan-out", "a channel"])),
     };
 
-    let n = match &args[1] {
-        Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBePositive, &["fan-out", "n"])),
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["fan-out", "n"])),
-    };
+    let n = to_positive_usize(&args[1], "go/fan-out", "n")?;
 
     // 出力チャネルを作成
     let mut out_channels = Vec::new();
@@ -182,11 +179,7 @@ pub fn native_pipeline(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
         ));
     }
 
-    let n = match &args[0] {
-        Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBePositive, &["pipeline", "n"])),
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["pipeline", "n"])),
-    };
+    let n = to_positive_usize(&args[0], "go/pipeline", "n")?;
 
     let xf = args[1].clone();
 
@@ -249,11 +242,7 @@ pub fn native_pipeline_map(args: &[Value], evaluator: &Evaluator) -> Result<Valu
         ));
     }
 
-    let n = match &args[0] {
-        Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBePositive, &["pipeline-map", "n"])),
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["pipeline-map", "n"])),
-    };
+    let n = to_positive_usize(&args[0], "go/pipeline-map", "n")?;
 
     let f = args[1].clone();
 
@@ -377,13 +366,7 @@ pub fn native_pipeline_filter(args: &[Value], evaluator: &Evaluator) -> Result<V
         ));
     }
 
-    let n = match &args[0] {
-        Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => {
-            return Err(fmt_msg(MsgKey::MustBePositive, &["pipeline-filter", "n"]))
-        }
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["pipeline-filter", "n"])),
-    };
+    let n = to_positive_usize(&args[0], "go/pipeline-filter", "n")?;
 
     let pred = args[1].clone();
 

@@ -1,6 +1,7 @@
 //! リスト操作 - 変換関数
 
 use super::helpers::values_equal;
+use crate::builtins::value_helpers::{to_nonnegative_usize, to_positive_usize};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
@@ -13,13 +14,7 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
         ));
     }
 
-    let index = match &args[0] {
-        Value::Integer(n) if *n >= 0 => *n as usize,
-        Value::Integer(_) => {
-            return Err(fmt_msg(MsgKey::MustBeNonNegative, &["split-at", "index"]))
-        }
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["split-at", "index"])),
-    };
+    let index = to_nonnegative_usize(&args[0], "split-at", "index")?;
 
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
@@ -114,11 +109,7 @@ pub fn native_chunk(args: &[Value]) -> Result<Value, String> {
         ));
     }
 
-    let size = match &args[0] {
-        Value::Integer(n) if *n > 0 => *n as usize,
-        Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBePositive, &["chunk", "size"])),
-        _ => return Err(fmt_msg(MsgKey::MustBeInteger, &["chunk", "size"])),
-    };
+    let size = to_positive_usize(&args[0], "chunk", "size")?;
 
     match &args[1] {
         Value::List(items) | Value::Vector(items) => {
@@ -197,20 +188,7 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
         ));
     }
 
-    let n = match &args[0] {
-        Value::Integer(i) => {
-            if *i <= 0 {
-                return Err(fmt_msg(MsgKey::MustBePositive, &["take-nth", "n"]));
-            }
-            *i as usize
-        }
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::MustBeInteger,
-                &["take-nth", "first argument"],
-            ))
-        }
-    };
+    let n = to_positive_usize(&args[0], "take-nth", "n")?;
 
     let collection = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,
@@ -275,20 +253,7 @@ pub fn native_drop_last(args: &[Value]) -> Result<Value, String> {
         ));
     }
 
-    let n = match &args[0] {
-        Value::Integer(i) => {
-            if *i < 0 {
-                return Err(fmt_msg(MsgKey::MustBeNonNegative, &["drop-last", "n"]));
-            }
-            *i as usize
-        }
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::MustBeInteger,
-                &["drop-last", "first argument"],
-            ))
-        }
-    };
+    let n = to_nonnegative_usize(&args[0], "drop-last", "n")?;
 
     let collection = match &args[1] {
         Value::List(v) | Value::Vector(v) => v,

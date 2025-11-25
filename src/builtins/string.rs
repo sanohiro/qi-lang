@@ -1,6 +1,7 @@
 //! 文字列操作関数
 
 use crate::builtins::util::convert_string_map_to_mapkey;
+use crate::builtins::value_helpers::{to_nonnegative_usize, to_positive_usize};
 use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
@@ -335,13 +336,9 @@ pub fn native_trim_right(args: &[Value]) -> Result<Value, String> {
 pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "repeat");
     match (&args[0], &args[1]) {
-        (Value::String(s), Value::Integer(n)) if *n >= 0 => {
-            let count = usize::try_from(*n)
-                .map_err(|_| fmt_msg(MsgKey::ValueTooLargeForI64, &["repeat", &n.to_string()]))?;
+        (Value::String(s), Value::Integer(_)) => {
+            let count = to_nonnegative_usize(&args[1], "str/repeat", "count")?;
             Ok(Value::String(s.repeat(count)))
-        }
-        (Value::String(_), Value::Integer(_)) => {
-            Err(fmt_msg(MsgKey::MustBeNonNegative, &["repeat", "count"]))
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["repeat", "string and integer"])),
     }
@@ -605,15 +602,7 @@ pub fn native_expand_tabs(args: &[Value]) -> Result<Value, String> {
     match &args[0] {
         Value::String(s) => {
             let tab_width = if args.len() == 2 {
-                match &args[1] {
-                    Value::Integer(n) if *n > 0 => *n as usize,
-                    _ => {
-                        return Err(fmt_msg(
-                            MsgKey::TypeOnly,
-                            &["expand-tabs (2nd arg)", "positive integer"],
-                        ))
-                    }
-                }
+                to_positive_usize(&args[1], "str/expand-tabs", "tab-width")?
             } else {
                 4
             };

@@ -9,6 +9,7 @@
 
 use super::db::*;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::map_db_err;
 use crate::value::Value;
 use parking_lot::Mutex;
 use rusqlite::{params_from_iter, Connection as SqliteConn, Row as SqliteRow};
@@ -44,28 +45,28 @@ impl DbDriver for SqliteDriver {
             ));
         };
 
-        let conn = if opts.read_only {
-            SqliteConn::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
-        } else {
-            SqliteConn::open(path)
-        }
-        .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToOpen, &[&e.to_string()])))?;
+        let conn = map_db_err!(
+            if opts.read_only {
+                SqliteConn::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            } else {
+                SqliteConn::open(path)
+            },
+            MsgKey::SqliteFailedToOpen
+        )?;
 
         // タイムアウト設定
         if let Some(timeout_ms) = opts.timeout_ms {
-            conn.busy_timeout(std::time::Duration::from_millis(timeout_ms))
-                .map_err(|e| {
-                    DbError::new(fmt_msg(MsgKey::SqliteFailedToSetTimeout, &[&e.to_string()]))
-                })?;
+            map_db_err!(
+                conn.busy_timeout(std::time::Duration::from_millis(timeout_ms)),
+                MsgKey::SqliteFailedToSetTimeout
+            )?;
         }
 
         // 外部キー制約を有効化（SQLiteはデフォルトで無効）
-        conn.execute("PRAGMA foreign_keys = ON", []).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::SqliteFailedToExecuteStatement,
-                &[&e.to_string()],
-            ))
-        })?;
+        map_db_err!(
+            conn.execute("PRAGMA foreign_keys = ON", []),
+            MsgKey::SqliteFailedToExecuteStatement
+        )?;
 
         Ok(Arc::new(SqliteConnection {
             conn: Arc::new(Mutex::new(conn)),
@@ -106,16 +107,11 @@ impl SqliteConnection {
         let column_count = row.as_ref().column_count();
 
         for i in 0..column_count {
-            let column_name = row
-                .as_ref()
-                .column_name(i)
-                .map_err(|e| {
-                    DbError::new(fmt_msg(
-                        MsgKey::SqliteFailedToGetColumnName,
-                        &[&e.to_string()],
-                    ))
-                })?
-                .to_string();
+            let column_name = map_db_err!(
+                row.as_ref().column_name(i),
+                MsgKey::SqliteFailedToGetColumnName
+            )?
+            .to_string();
 
             let value = match row.get_ref(i) {
                 Ok(rusqlite::types::ValueRef::Null) => Value::Nil,
@@ -146,21 +142,15 @@ impl SqliteConnection {
 impl DbConnection for SqliteConnection {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare_cached(sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare_cached(sql), MsgKey::SqliteFailedToPrepare)?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params.iter().map(Self::value_to_param).collect();
 
-        let rows = stmt
-            .query(params_from_iter(param_refs.iter()))
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::SqliteFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let rows = map_db_err!(
+            stmt.query(params_from_iter(param_refs.iter())),
+            MsgKey::SqliteFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         let mut rows = rows;
@@ -173,21 +163,15 @@ impl DbConnection for SqliteConnection {
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare_cached(sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare_cached(sql), MsgKey::SqliteFailedToPrepare)?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params.iter().map(Self::value_to_param).collect();
 
-        let affected = stmt
-            .execute(params_from_iter(param_refs.iter()))
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::SqliteFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let affected = map_db_err!(
+            stmt.execute(params_from_iter(param_refs.iter())),
+            MsgKey::SqliteFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
@@ -203,12 +187,10 @@ impl DbConnection for SqliteConnection {
             IsolationLevel::Serializable => "BEGIN IMMEDIATE;",
         };
 
-        conn.execute_batch(isolation_sql).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::SqliteFailedToBeginTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        map_db_err!(
+            conn.execute_batch(isolation_sql),
+            MsgKey::SqliteFailedToBeginTransaction
+        )?;
 
         drop(conn); // ロックを解放
 
@@ -257,16 +239,12 @@ impl DbConnection for SqliteConnection {
     // Phase 2: メタデータAPI
     fn tables(&self) -> DbResult<Vec<String>> {
         let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryTables, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(
+            conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"),
+            MsgKey::FailedToQueryTables
+        )?;
 
-        let rows = stmt.query([]).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::FailedToExecuteTablesQuery,
-                &[&e.to_string()],
-            ))
-        })?;
+        let rows = map_db_err!(stmt.query([]), MsgKey::FailedToExecuteTablesQuery)?;
 
         let mut tables = Vec::new();
         let mut rows = rows;
@@ -281,16 +259,9 @@ impl DbConnection for SqliteConnection {
     fn columns(&self, table: &str) -> DbResult<Vec<ColumnInfo>> {
         let conn = self.conn.lock();
         let sql = format!("PRAGMA table_info({})", self.sanitize_identifier(table));
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryColumns, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare(&sql), MsgKey::FailedToQueryColumns)?;
 
-        let rows = stmt.query([]).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::FailedToExecuteColumnsQuery,
-                &[&e.to_string()],
-            ))
-        })?;
+        let rows = map_db_err!(stmt.query([]), MsgKey::FailedToExecuteColumnsQuery)?;
 
         let mut columns = Vec::new();
         let mut rows = rows;
@@ -316,16 +287,9 @@ impl DbConnection for SqliteConnection {
     fn indexes(&self, table: &str) -> DbResult<Vec<IndexInfo>> {
         let conn = self.conn.lock();
         let sql = format!("PRAGMA index_list({})", self.sanitize_identifier(table));
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::FailedToQueryIndexes, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare(&sql), MsgKey::FailedToQueryIndexes)?;
 
-        let rows = stmt.query([]).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::FailedToExecuteIndexesQuery,
-                &[&e.to_string()],
-            ))
-        })?;
+        let rows = map_db_err!(stmt.query([]), MsgKey::FailedToExecuteIndexesQuery)?;
 
         let mut indexes = Vec::new();
         let mut rows = rows;
@@ -335,19 +299,11 @@ impl DbConnection for SqliteConnection {
 
             // インデックスのカラムを取得
             let col_sql = format!("PRAGMA index_info({})", self.sanitize_identifier(&name));
-            let mut col_stmt = conn.prepare(&col_sql).map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::FailedToQueryIndexColumns,
-                    &[&e.to_string()],
-                ))
-            })?;
+            let mut col_stmt =
+                map_db_err!(conn.prepare(&col_sql), MsgKey::FailedToQueryIndexColumns)?;
 
-            let col_rows = col_stmt.query([]).map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::FailedToExecuteIndexColumnsQuery,
-                    &[&e.to_string()],
-                ))
-            })?;
+            let col_rows =
+                map_db_err!(col_stmt.query([]), MsgKey::FailedToExecuteIndexColumnsQuery)?;
 
             let mut columns = Vec::new();
             let mut col_rows = col_rows;
@@ -373,16 +329,9 @@ impl DbConnection for SqliteConnection {
             "PRAGMA foreign_key_list({})",
             self.sanitize_identifier(table)
         );
-        let mut stmt = conn.prepare(&sql).map_err(|e| {
-            DbError::new(fmt_msg(MsgKey::FailedToQueryForeignKeys, &[&e.to_string()]))
-        })?;
+        let mut stmt = map_db_err!(conn.prepare(&sql), MsgKey::FailedToQueryForeignKeys)?;
 
-        let rows = stmt.query([]).map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::FailedToExecuteForeignKeysQuery,
-                &[&e.to_string()],
-            ))
-        })?;
+        let rows = map_db_err!(stmt.query([]), MsgKey::FailedToExecuteForeignKeysQuery)?;
 
         let mut fkeys = Vec::new();
         let mut rows = rows;
@@ -447,14 +396,10 @@ impl DbConnection for SqliteConnection {
     fn driver_info(&self) -> DbResult<DriverInfo> {
         let conn = self.conn.lock();
         let version = rusqlite::version();
-        let db_version = conn
-            .query_row("SELECT sqlite_version()", [], |row| row.get::<_, String>(0))
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::FailedToGetDatabaseVersion,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let db_version = map_db_err!(
+            conn.query_row("SELECT sqlite_version()", [], |row| row.get::<_, String>(0)),
+            MsgKey::FailedToGetDatabaseVersion
+        )?;
 
         Ok(DriverInfo {
             name: "sqlite".to_string(),
@@ -465,20 +410,13 @@ impl DbConnection for SqliteConnection {
 
     fn query_info(&self, sql: &str) -> DbResult<QueryInfo> {
         let conn = self.conn.lock();
-        let stmt = conn.prepare(sql).map_err(|e| {
-            DbError::new(fmt_msg(MsgKey::FailedToPrepareStatement, &[&e.to_string()]))
-        })?;
+        let stmt = map_db_err!(conn.prepare(sql), MsgKey::FailedToPrepareStatement)?;
 
         let column_count = stmt.column_count();
         let mut columns = Vec::new();
 
         for i in 0..column_count {
-            let name = stmt
-                .column_name(i)
-                .map_err(|e| {
-                    DbError::new(fmt_msg(MsgKey::FailedToGetColumnName, &[&e.to_string()]))
-                })?
-                .to_string();
+            let name = map_db_err!(stmt.column_name(i), MsgKey::FailedToGetColumnName)?.to_string();
 
             // SQLiteではクエリから型情報を取得するのが難しいため、
             // プリペアドステートメントからは型名を取得できない
@@ -512,9 +450,7 @@ pub struct SqliteTransaction {
 impl DbTransaction for SqliteTransaction {
     fn query(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<Rows> {
         let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare_cached(sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare_cached(sql), MsgKey::SqliteFailedToPrepare)?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params
@@ -522,14 +458,10 @@ impl DbTransaction for SqliteTransaction {
             .map(SqliteConnection::value_to_param)
             .collect();
 
-        let rows = stmt
-            .query(params_from_iter(param_refs.iter()))
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::SqliteFailedToExecuteQuery,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let rows = map_db_err!(
+            stmt.query(params_from_iter(param_refs.iter())),
+            MsgKey::SqliteFailedToExecuteQuery
+        )?;
 
         let mut results = Vec::new();
         let mut rows = rows;
@@ -542,9 +474,7 @@ impl DbTransaction for SqliteTransaction {
 
     fn exec(&self, sql: &str, params: &[Value], _opts: &QueryOptions) -> DbResult<i64> {
         let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare_cached(sql)
-            .map_err(|e| DbError::new(fmt_msg(MsgKey::SqliteFailedToPrepare, &[&e.to_string()])))?;
+        let mut stmt = map_db_err!(conn.prepare_cached(sql), MsgKey::SqliteFailedToPrepare)?;
 
         // パラメータをrusqliteの形式に変換
         let param_refs: Vec<_> = params
@@ -552,14 +482,10 @@ impl DbTransaction for SqliteTransaction {
             .map(SqliteConnection::value_to_param)
             .collect();
 
-        let affected = stmt
-            .execute(params_from_iter(param_refs.iter()))
-            .map_err(|e| {
-                DbError::new(fmt_msg(
-                    MsgKey::SqliteFailedToExecuteStatement,
-                    &[&e.to_string()],
-                ))
-            })?;
+        let affected = map_db_err!(
+            stmt.execute(params_from_iter(param_refs.iter())),
+            MsgKey::SqliteFailedToExecuteStatement
+        )?;
 
         Ok(affected as i64)
     }
@@ -577,12 +503,10 @@ impl DbTransaction for SqliteTransaction {
         }
 
         let conn = self.conn.lock();
-        conn.execute_batch("COMMIT;").map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::SqliteFailedToCommitTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        map_db_err!(
+            conn.execute_batch("COMMIT;"),
+            MsgKey::SqliteFailedToCommitTransaction
+        )?;
 
         *committed = true;
         Ok(())
@@ -595,12 +519,10 @@ impl DbTransaction for SqliteTransaction {
         }
 
         let conn = self.conn.lock();
-        conn.execute_batch("ROLLBACK;").map_err(|e| {
-            DbError::new(fmt_msg(
-                MsgKey::SqliteFailedToRollbackTransaction,
-                &[&e.to_string()],
-            ))
-        })?;
+        map_db_err!(
+            conn.execute_batch("ROLLBACK;"),
+            MsgKey::SqliteFailedToRollbackTransaction
+        )?;
 
         *committed = true;
         Ok(())

@@ -1,5 +1,6 @@
 //! 高階関数
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -7,9 +8,7 @@ use crate::value::Value;
 /// map - リストの各要素に関数を適用
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["map"]));
-    }
+    check_args!(args, 2, "map");
 
     let func = &args[0];
     let collection = &args[1];
@@ -41,9 +40,7 @@ pub fn native_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 /// filter - リストから条件を満たす要素を抽出
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["filter"]));
-    }
+    check_args!(args, 2, "filter");
 
     let pred = &args[0];
     let collection = &args[1];
@@ -121,9 +118,7 @@ pub fn native_reduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use rayon::prelude::*;
 
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["pmap"]));
-    }
+    check_args!(args, 2, "pmap");
 
     let func = &args[0];
     let collection = &args[1];
@@ -167,9 +162,7 @@ pub fn native_pmap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 /// each - コレクションの各要素に関数を適用（副作用用）
 /// mapと異なり、戻り値は収集せずnilを返します
 pub fn native_each(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["each"]));
-    }
+    check_args!(args, 2, "each");
 
     let func = &args[0];
     let collection = &args[1];
@@ -194,9 +187,7 @@ pub fn native_each(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use rayon::prelude::*;
 
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["pfilter"]));
-    }
+    check_args!(args, 2, "pfilter");
 
     let pred = &args[0];
     let collection = &args[1];
@@ -251,9 +242,7 @@ pub fn native_pfilter(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
     use rayon::prelude::*;
 
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["preduce", "3"]));
-    }
+    check_args!(args, 3, "preduce");
 
     let func = &args[0];
     let collection = &args[1];
@@ -297,9 +286,7 @@ pub fn native_preduce(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 
 /// partition - 述語でリストを2つに分割
 pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["partition"]));
-    }
+    check_args!(args, 2, "partition");
 
     let pred = &args[0];
     let collection = &args[1];
@@ -331,9 +318,7 @@ pub fn native_partition(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 
 /// group-by - キー関数でリストをグループ化
 pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["group-by"]));
-    }
+    check_args!(args, 2, "group-by");
 
     let key_fn = &args[0];
     let collection = &args[1];
@@ -373,9 +358,7 @@ pub fn native_group_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
 /// map-lines - 文字列の各行に関数を適用
 pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["map-lines"]));
-    }
+    check_args!(args, 2, "map-lines");
 
     let func = &args[0];
     let text = &args[1];
@@ -406,12 +389,7 @@ pub fn native_map_lines(args: &[Value], evaluator: &Evaluator) -> Result<Value, 
 
 /// update - マップの値を関数で更新
 pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["update", "3", "(map, key, fn)"],
-        ));
-    }
+    check_args!(args, 3, "update");
 
     let map = &args[0];
     let key_val = &args[1];
@@ -434,12 +412,7 @@ pub fn native_update(args: &[Value], evaluator: &Evaluator) -> Result<Value, Str
 
 /// update-in - ネストしたマップの値を関数で更新
 pub fn native_update_in(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["update-in", "3", "(map, path, fn)"],
-        ));
-    }
+    check_args!(args, 3, "update-in");
 
     let map = &args[0];
     let path = match &args[1] {
@@ -506,12 +479,7 @@ fn update_in_helper(
 
 /// count-by - 述語でカウント
 pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["count-by", "2", "(predicate, collection)"],
-        ));
-    }
+    check_args!(args, 2, "count-by");
 
     let pred = &args[0];
     let collection = &args[1];
@@ -544,12 +512,7 @@ pub fn native_count_by(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 pub fn native_complement(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
-    if args.len() != 1 {
-        return Err(fmt_msg(
-            MsgKey::NeedNArgsDesc,
-            &["complement", "1", "(function)"],
-        ));
-    }
+    check_args!(args, 1, "complement");
 
     let func = args[0].clone();
 
@@ -614,9 +577,7 @@ pub fn native_juxt(args: &[Value]) -> Result<Value, String> {
 pub fn native_tap(args: &[Value]) -> Result<Value, String> {
     use std::sync::Arc;
 
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["fn/tap>"]));
-    }
+    check_args!(args, 1, "fn/tap>");
 
     let func = args[0].clone();
 
@@ -650,9 +611,7 @@ pub fn native_tap(args: &[Value]) -> Result<Value, String> {
 ///  |> sum)
 /// ```
 pub fn native_tap_direct(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["tap"]));
-    }
+    check_args!(args, 2, "tap");
 
     let func = &args[0];
     let value = &args[1];
