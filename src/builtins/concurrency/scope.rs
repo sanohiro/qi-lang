@@ -52,7 +52,7 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
         ));
     }
 
-    let _scope = match &args[0] {
+    let scope = match &args[0] {
         Value::Scope(s) => s.clone(),
         _ => {
             return Err(fmt_msg(
@@ -75,7 +75,20 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 
     // 新しいスレッドで実行
     std::thread::spawn(move || {
+        // スコープがキャンセルされている場合は実行をスキップ
+        if *scope.cancelled.read() {
+            let _ = sender.send(Value::Nil);
+            return;
+        }
+
         let result = evaluator_clone.apply_function(&func, &[]);
+
+        // 再度キャンセルチェック（実行後にキャンセルされた場合も考慮）
+        if *scope.cancelled.read() {
+            let _ = sender.send(Value::Nil);
+            return;
+        }
+
         // エラー情報を保持（Railway Oriented Programming）
         let value = match result {
             Ok(v) => v,
