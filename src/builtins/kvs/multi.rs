@@ -1,11 +1,10 @@
 use super::*;
+use crate::check_args;
 use crate::with_global;
 
 /// kvs/mget - 複数のキーの値を一括取得
 pub fn native_mget(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/mget", "2"]));
-    }
+    check_args!(args, 2, "kvs/mget");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -46,9 +45,7 @@ pub fn native_mget(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/mset - 複数のキーと値を一括設定
 pub fn native_mset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/mset", "2"]));
-    }
+    check_args!(args, 2, "kvs/mset");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,

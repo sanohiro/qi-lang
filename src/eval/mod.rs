@@ -1,3 +1,4 @@
+use crate::check_args;
 use crate::builtins;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::lexer::Span;
@@ -685,9 +686,7 @@ impl Evaluator {
 
     /// pfilter関数の実装: (pfilter pred coll)
     fn eval_pfilter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["go/pfilter"]));
-        }
+        check_args!(args, 2, "go/pfilter");
         let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let coll = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::pfilter(&[pred, coll], self)
@@ -764,9 +763,7 @@ impl Evaluator {
 
     /// test/run - テストを実行して結果を記録
     fn eval_test_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["test/run"]));
-        }
+        check_args!(args, 2, "test/run");
         let name = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let body = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::test_run(&[name, body], self)
@@ -778,18 +775,14 @@ impl Evaluator {
         args: &[Expr],
         env: Arc<RwLock<Env>>,
     ) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(qerr(MsgKey::Need1Arg, &["test/assert-throws"]));
-        }
+        check_args!(args, 1, "test/assert-throws");
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::test_assert_throws(&[func], self)
     }
 
     /// table/where - テーブルの行をフィルタリング
     fn eval_table_where(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["table/where"]));
-        }
+        check_args!(args, 2, "table/where");
         let table = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let predicate = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::table_where(&[table, predicate], self)
@@ -831,9 +824,7 @@ impl Evaluator {
 
     /// chunk - 固定サイズでリストを分割
     fn eval_chunk(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["chunk"]));
-        }
+        check_args!(args, 2, "chunk");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -889,9 +880,7 @@ impl Evaluator {
     }
 
     fn eval_tap(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["tap"]));
-        }
+        check_args!(args, 2, "tap");
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let value = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::tap(&[func, value], self)
@@ -906,9 +895,7 @@ impl Evaluator {
     }
 
     fn eval_then(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["go/then"]));
-        }
+        check_args!(args, 2, "go/then");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -917,9 +904,7 @@ impl Evaluator {
     }
 
     fn eval_catch(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["go/catch"]));
-        }
+        check_args!(args, 2, "go/catch");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -928,34 +913,26 @@ impl Evaluator {
     }
 
     fn eval_select(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(qerr(MsgKey::Need1Arg, &["go/select!"]));
-        }
+        check_args!(args, 1, "go/select!");
         let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::select(&[val], self)
     }
 
     fn eval_scope_go(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["go/scope-go"]));
-        }
+        check_args!(args, 2, "go/scope-go");
         let scope = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let func = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::scope_go(&[scope, func], self)
     }
 
     fn eval_with_scope(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(qerr(MsgKey::Need1Arg, &["go/with-scope"]));
-        }
+        check_args!(args, 1, "go/with-scope");
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::with_scope(&[func], self)
     }
 
     fn eval_run(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(qerr(MsgKey::Need1Arg, &["go/run"]));
-        }
+        check_args!(args, 1, "go/run");
         let val = self.eval_with_env(&args[0], Arc::clone(&env))?;
         builtins::run(&[val], self)
     }
@@ -984,36 +961,28 @@ impl Evaluator {
     }
 
     fn eval_iterate(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["iterate"]));
-        }
+        check_args!(args, 2, "iterate");
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let init = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::iterate(&[func, init], self)
     }
 
     fn eval_stream_map(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["stream-map"]));
-        }
+        check_args!(args, 2, "stream-map");
         let func = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::stream_map(&[func, stream], self)
     }
 
     fn eval_stream_filter(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["stream-filter"]));
-        }
+        check_args!(args, 2, "stream-filter");
         let pred = self.eval_with_env(&args[0], Arc::clone(&env))?;
         let stream = self.eval_with_env(&args[1], Arc::clone(&env))?;
         builtins::stream_filter(&[pred, stream], self)
     }
 
     fn eval_find(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["find"]));
-        }
+        check_args!(args, 2, "find");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1022,9 +991,7 @@ impl Evaluator {
     }
 
     fn eval_find_index(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["find-index"]));
-        }
+        check_args!(args, 2, "find-index");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1033,9 +1000,7 @@ impl Evaluator {
     }
 
     fn eval_every(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["list/every?"]));
-        }
+        check_args!(args, 2, "list/every?");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1044,9 +1009,7 @@ impl Evaluator {
     }
 
     fn eval_some(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["list/some?"]));
-        }
+        check_args!(args, 2, "list/some?");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1055,9 +1018,7 @@ impl Evaluator {
     }
 
     fn eval_update_keys(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["map/update-keys"]));
-        }
+        check_args!(args, 2, "map/update-keys");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1066,9 +1027,7 @@ impl Evaluator {
     }
 
     fn eval_update_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["map/update-vals"]));
-        }
+        check_args!(args, 2, "map/update-vals");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1077,9 +1036,7 @@ impl Evaluator {
     }
 
     fn eval_map_filter_vals(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["map/filter-vals"]));
-        }
+        check_args!(args, 2, "map/filter-vals");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1088,9 +1045,7 @@ impl Evaluator {
     }
 
     fn eval_map_group_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["map/group-by"]));
-        }
+        check_args!(args, 2, "map/group-by");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1099,9 +1054,7 @@ impl Evaluator {
     }
 
     fn eval_partition_by(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["partition-by"]));
-        }
+        check_args!(args, 2, "partition-by");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1110,9 +1063,7 @@ impl Evaluator {
     }
 
     fn eval_keep(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["keep"]));
-        }
+        check_args!(args, 2, "keep");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1121,9 +1072,7 @@ impl Evaluator {
     }
 
     fn eval_drop_last(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["drop-last"]));
-        }
+        check_args!(args, 2, "drop-last");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))
@@ -1132,9 +1081,7 @@ impl Evaluator {
     }
 
     fn eval_split_at(&self, args: &[Expr], env: Arc<RwLock<Env>>) -> Result<Value, String> {
-        if args.len() != 2 {
-            return Err(qerr(MsgKey::Need2Args, &["split-at"]));
-        }
+        check_args!(args, 2, "split-at");
         let vals: Vec<Value> = args
             .iter()
             .map(|e| self.eval_with_env(e, Arc::clone(&env)))

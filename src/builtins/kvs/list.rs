@@ -1,11 +1,10 @@
 use super::*;
+use crate::check_args;
 use crate::with_global;
 
 /// kvs/lpush - リスト左端に要素を追加
 pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/lpush", "3"]));
-    }
+    check_args!(args, 3, "kvs/lpush");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -41,9 +40,7 @@ pub fn native_lpush(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/rpush - リスト右端に要素を追加
 pub fn native_rpush(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/rpush", "3"]));
-    }
+    check_args!(args, 3, "kvs/rpush");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -79,9 +76,7 @@ pub fn native_rpush(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/lpop - リスト左端から要素を取得
 pub fn native_lpop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/lpop", "2"]));
-    }
+    check_args!(args, 2, "kvs/lpop");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -105,9 +100,7 @@ pub fn native_lpop(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/rpop - リスト右端から要素を取得
 pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/rpop", "2"]));
-    }
+    check_args!(args, 2, "kvs/rpop");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -131,9 +124,7 @@ pub fn native_rpop(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/lrange - リストの範囲を取得
 pub fn native_lrange(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 4 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/lrange", "4"]));
-    }
+    check_args!(args, 4, "kvs/lrange");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,

@@ -1,11 +1,10 @@
 use super::*;
+use crate::check_args;
 use crate::with_global;
 
 /// kvs/sadd - セットにメンバーを追加
 pub fn native_sadd(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/sadd", "3"]));
-    }
+    check_args!(args, 3, "kvs/sadd");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -41,9 +40,7 @@ pub fn native_sadd(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/smembers - セットの全メンバーを取得
 pub fn native_smembers(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/smembers", "2"]));
-    }
+    check_args!(args, 2, "kvs/smembers");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,

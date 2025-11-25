@@ -1,6 +1,7 @@
 //! Redis list operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -14,9 +15,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: リスト長 or {:error message}
 pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lpush", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-lpush");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -77,9 +76,7 @@ pub fn native_redis_lpush(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: リスト長 or {:error message}
 pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-rpush", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-rpush");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -139,9 +136,7 @@ pub fn native_redis_rpush(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 値 or nil or {:error message}
 pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lpop", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-lpop");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -183,9 +178,7 @@ pub fn native_redis_lpop(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 値 or nil or {:error message}
 pub fn native_redis_rpop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-rpop", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-rpop");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),

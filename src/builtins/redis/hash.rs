@@ -1,6 +1,7 @@
 //! Redis hash operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -15,9 +16,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: true（新規）or false（更新）or {:error message}
 pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 4 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hset", "4"]));
-    }
+    check_args!(args, 4, "kvs/redis-hset");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -88,9 +87,7 @@ pub fn native_redis_hset(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 値 or nil or {:error message}
 pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hget", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-hget");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -142,9 +139,7 @@ pub fn native_redis_hget(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: マップ {:field1 "value1" :field2 "value2"} or {:error message}
 pub fn native_redis_hgetall(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-hgetall", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-hgetall");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),

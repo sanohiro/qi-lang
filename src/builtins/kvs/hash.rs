@@ -1,11 +1,10 @@
 use super::*;
+use crate::check_args;
 use crate::with_global;
 
 /// kvs/hset - ハッシュのフィールドに値を設定
 pub fn native_hset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 4 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/hset", "4"]));
-    }
+    check_args!(args, 4, "kvs/hset");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -46,9 +45,7 @@ pub fn native_hset(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/hget - ハッシュのフィールドから値を取得
 pub fn native_hget(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/hget", "3"]));
-    }
+    check_args!(args, 3, "kvs/hget");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -77,9 +74,7 @@ pub fn native_hget(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/hgetall - ハッシュ全体を取得
 pub fn native_hgetall(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/hgetall", "2"]));
-    }
+    check_args!(args, 2, "kvs/hgetall");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,

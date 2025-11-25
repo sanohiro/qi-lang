@@ -10,9 +10,7 @@ use super::*;
 /// # 戻り値
 /// - 接続ID（文字列）
 pub fn native_connect(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/connect", "1"]));
-    }
+    check_args!(args, 1, "kvs/connect");
 
     let url = match &args[0] {
         Value::String(s) => s,

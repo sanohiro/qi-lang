@@ -1,6 +1,7 @@
 //! Redis basic operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -13,9 +14,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: 値 or nil or {:error message}
 pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-get", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-get");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -58,9 +57,7 @@ pub fn native_redis_get(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: "OK" or {:error message}
 pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-set", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-set");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -120,9 +117,7 @@ pub fn native_redis_set(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 削除されたキー数 or {:error message}
 pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-delete", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-delete");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -162,9 +157,7 @@ pub fn native_redis_delete(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: true or false or {:error message}
 pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-exists?", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-exists?");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -205,9 +198,7 @@ pub fn native_redis_exists(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: キーのベクタ or {:error message}
 pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-keys", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-keys");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -254,9 +245,7 @@ pub fn native_redis_keys(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: true or false or {:error message}
 pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-expire", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-expire");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -316,9 +305,7 @@ pub fn native_redis_expire(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 残り秒数 or -1 (期限なし) or -2 (存在しない) or {:error message}
 pub fn native_redis_ttl(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-ttl", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-ttl");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),

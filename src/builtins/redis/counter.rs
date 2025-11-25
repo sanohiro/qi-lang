@@ -1,6 +1,7 @@
 //! Redis counter operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -13,9 +14,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: インクリメント後の値 or {:error message}
 pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-incr", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-incr");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -56,9 +55,7 @@ pub fn native_redis_incr(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: デクリメント後の値 or {:error message}
 pub fn native_redis_decr(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-decr", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-decr");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),

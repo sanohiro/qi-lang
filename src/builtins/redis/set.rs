@@ -1,6 +1,7 @@
 //! Redis set operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -14,9 +15,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: 追加されたメンバー数 or {:error message}
 pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-sadd", "3"]));
-    }
+    check_args!(args, 3, "kvs/redis-sadd");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -76,9 +75,7 @@ pub fn native_redis_sadd(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: メンバーのベクタ or {:error message}
 pub fn native_redis_smembers(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-smembers", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-smembers");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),

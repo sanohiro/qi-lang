@@ -1,11 +1,10 @@
 use super::*;
+use crate::check_args;
 use crate::with_global;
 
 /// kvs/get - キーの値を取得
 pub fn native_get(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/get", "2"]));
-    }
+    check_args!(args, 2, "kvs/get");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -29,9 +28,7 @@ pub fn native_get(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/set - キーに値を設定
 pub fn native_set(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/set", "3"]));
-    }
+    check_args!(args, 3, "kvs/set");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -67,9 +64,7 @@ pub fn native_set(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/delete - キーを削除
 pub fn native_delete(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/delete", "2"]));
-    }
+    check_args!(args, 2, "kvs/delete");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -92,9 +87,7 @@ pub fn native_delete(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/exists? - キーが存在するかチェック
 pub fn native_exists(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/exists?", "2"]));
-    }
+    check_args!(args, 2, "kvs/exists?");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -122,9 +115,7 @@ pub fn native_exists(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/keys - パターンにマッチするキー一覧を取得
 pub fn native_keys(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/keys", "2"]));
-    }
+    check_args!(args, 2, "kvs/keys");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -157,9 +148,7 @@ pub fn native_keys(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/expire - キーに有効期限を設定（秒）
 pub fn native_expire(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/expire", "3"]));
-    }
+    check_args!(args, 3, "kvs/expire");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,
@@ -200,9 +189,7 @@ pub fn native_expire(args: &[Value]) -> Result<Value, String> {
 
 /// kvs/ttl - キーの残り有効期限を取得（秒）
 pub fn native_ttl(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/ttl", "2"]));
-    }
+    check_args!(args, 2, "kvs/ttl");
 
     let conn_str = match &args[0] {
         Value::String(s) => s,

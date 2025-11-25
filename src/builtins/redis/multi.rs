@@ -1,6 +1,7 @@
 //! Redis multi operations
 
 use super::connection::{execute_with_retry, TOKIO_RT};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use redis::AsyncCommands;
@@ -13,9 +14,7 @@ use redis::AsyncCommands;
 ///
 /// 戻り値: 値のベクタ（存在しないキーはnil） or {:error message}
 pub fn native_redis_mget(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-mget", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-mget");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -87,9 +86,7 @@ pub fn native_redis_mget(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: "OK" or {:error message}
 pub fn native_redis_mset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-mset", "2"]));
-    }
+    check_args!(args, 2, "kvs/redis-mset");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -159,9 +156,7 @@ pub fn native_redis_mset(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 要素のベクター or {:error message}
 pub fn native_redis_lrange(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 4 {
-        return Err(fmt_msg(MsgKey::NeedNArgs, &["kvs/redis-lrange", "4"]));
-    }
+    check_args!(args, 4, "kvs/redis-lrange");
 
     let url = match &args[0] {
         Value::String(s) => s.as_str(),
