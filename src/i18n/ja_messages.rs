@@ -635,6 +635,38 @@ pub static JA_MSGS: LazyLock<HashMap<MsgKey, &'static str>> = LazyLock::new(|| {
         // バイナリデータエラー
         (ByteOutOfRange, "インデックス{0}のバイト値が範囲外です (0-255): {1}"),
         (BytesMustBeIntegers, "すべての要素は整数である必要があります。インデックス{0}で{1}が見つかりました"),
+        // パターンマッチング・特殊形式関連エラー
+        (
+            LoopBindingMustBeSymbol,
+            "loopのバインディングはシンボルである必要があります: {0}",
+        ),
+        (
+            MacroParamMustBeSymbol,
+            "マクロのパラメータはシンボルである必要があります: {0}",
+        ),
+        (
+            RestParamRequiresName,
+            "restパラメータ '&' には名前が必要です",
+        ),
+        (
+            AsBindingMustBeSymbol,
+            ":asバインディングはシンボルである必要があります: {0}",
+        ),
+        (
+            MapPatternKeyMustBeKeyword,
+            "マップパターンのキーはキーワードである必要があります: {0}",
+        ),
+        (InvalidPattern, "無効なパターン: {0}"),
+        (InvalidMatchArm, "無効なmatchアーム: {0}"),
+        (
+            ExportMustBeSymbol,
+            "exportの引数はシンボルである必要があります: {0}",
+        ),
+        (
+            UseOnlyMustBeSymbols,
+            ":only節にはシンボルが必要です: {0}",
+        ),
+        (InvalidUseMode, "無効なuseモード: {0}"),
     ])
 });
 

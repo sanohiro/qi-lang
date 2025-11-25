@@ -530,4 +530,16 @@ pub enum MsgKey {
     // バイナリデータエラー
     ByteOutOfRange,      // Byte at index {0} out of range (0-255): {1}
     BytesMustBeIntegers, // All elements must be integers, got {1} at index {0}
+
+    // パターンマッチング・特殊形式関連エラー
+    LoopBindingMustBeSymbol,      // Loop binding must be a symbol, got: {0}
+    MacroParamMustBeSymbol,       // Macro parameter must be a symbol, got: {0}
+    RestParamRequiresName,        // Rest parameter '&' requires a following name
+    AsBindingMustBeSymbol,        // :as binding must be a symbol, got: {0}
+    MapPatternKeyMustBeKeyword,   // Map pattern key must be a keyword, got: {0}
+    InvalidPattern,               // Invalid pattern: {0}
+    InvalidMatchArm,              // Invalid match arm: {0}
+    ExportMustBeSymbol,           // export argument must be a symbol, got: {0}
+    UseOnlyMustBeSymbols,         // :only clause must contain symbols, got: {0}
+    InvalidUseMode,               // Invalid use mode: {0}
 }

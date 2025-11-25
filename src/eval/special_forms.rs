@@ -5,7 +5,7 @@
 
 use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
-use crate::value::{Env, Expr, Macro, Value};
+use crate::value::{Env, Expr, Macro, MatchArm, Pattern, UseMode, Value};
 use parking_lot::RwLock;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -812,6 +812,375 @@ impl Evaluator {
                                 }
                             }
                         }
+                        // let - (let [x 1 y 2] body...)
+                        "let" if items.len() >= 3 => {
+                            if let Value::Vector(bindings_vec) = &items[1] {
+                                // バインディングのペア [(Pattern, Expr), ...] を構築
+                                let mut bindings = Vec::new();
+                                let mut i = 0;
+                                while i + 1 < bindings_vec.len() {
+                                    let pattern = self.value_to_pattern(&bindings_vec[i])?;
+                                    let expr = self.value_to_expr(&bindings_vec[i + 1])?;
+                                    bindings.push((pattern, expr));
+                                    i += 2;
+                                }
+                                // ボディ（複数式の場合はDoに包む）
+                                let body_exprs: Result<Vec<_>, _> = items
+                                    .iter()
+                                    .skip(2)
+                                    .map(|v| self.value_to_expr(v))
+                                    .collect();
+                                let body_exprs = body_exprs?;
+                                let body = if body_exprs.len() == 1 {
+                                    Box::new(body_exprs.into_iter().next().unwrap())
+                                } else {
+                                    Box::new(Expr::Do {
+                                        exprs: body_exprs,
+                                        span: Expr::dummy_span(),
+                                    })
+                                };
+                                return Ok(Expr::Let {
+                                    bindings,
+                                    body,
+                                    span: Expr::dummy_span(),
+                                });
+                            }
+                        }
+                        // loop - (loop [i 0 acc []] body)
+                        "loop" if items.len() >= 3 => {
+                            if let Value::Vector(bindings_vec) = &items[1] {
+                                // バインディングのペア [(Arc<str>, Expr), ...] を構築
+                                // 注意: loopはPatternではなくArc<str>を使う
+                                let mut bindings = Vec::new();
+                                let mut i = 0;
+                                while i + 1 < bindings_vec.len() {
+                                    if let Value::Symbol(name) = &bindings_vec[i] {
+                                        let expr = self.value_to_expr(&bindings_vec[i + 1])?;
+                                        bindings.push((name.clone(), expr));
+                                        i += 2;
+                                    } else {
+                                        return Err(fmt_msg(
+                                            MsgKey::LoopBindingMustBeSymbol,
+                                            &[&format!("{:?}", bindings_vec[i])],
+                                        ));
+                                    }
+                                }
+                                // ボディ（単一式のみ、複数式の場合はDoに包む）
+                                let body_exprs: Result<Vec<_>, _> = items
+                                    .iter()
+                                    .skip(2)
+                                    .map(|v| self.value_to_expr(v))
+                                    .collect();
+                                let body_exprs = body_exprs?;
+                                let body = if body_exprs.len() == 1 {
+                                    Box::new(body_exprs.into_iter().next().unwrap())
+                                } else {
+                                    Box::new(Expr::Do {
+                                        exprs: body_exprs,
+                                        span: Expr::dummy_span(),
+                                    })
+                                };
+                                return Ok(Expr::Loop {
+                                    bindings,
+                                    body,
+                                    span: Expr::dummy_span(),
+                                });
+                            }
+                        }
+                        // fn - (fn [x y] body...)
+                        "fn" if items.len() >= 3 => {
+                            if let Value::Vector(params_vec) = &items[1] {
+                                // パラメータをPatternに変換
+                                let params: Result<Vec<_>, _> = params_vec
+                                    .iter()
+                                    .map(|v| self.value_to_pattern(v))
+                                    .collect();
+                                // is_variadicのチェック（&が含まれているか）
+                                let is_variadic = params_vec.iter().any(|v| {
+                                    matches!(v, Value::Symbol(s) if &**s == "&")
+                                });
+                                // ボディ（複数式の場合はDoに包む）
+                                let body_exprs: Result<Vec<_>, _> = items
+                                    .iter()
+                                    .skip(2)
+                                    .map(|v| self.value_to_expr(v))
+                                    .collect();
+                                let body_exprs = body_exprs?;
+                                let body = if body_exprs.len() == 1 {
+                                    Box::new(body_exprs.into_iter().next().unwrap())
+                                } else {
+                                    Box::new(Expr::Do {
+                                        exprs: body_exprs,
+                                        span: Expr::dummy_span(),
+                                    })
+                                };
+                                return Ok(Expr::Fn {
+                                    params: params?,
+                                    body,
+                                    is_variadic,
+                                    span: Expr::dummy_span(),
+                                });
+                            }
+                        }
+                        // try - (try expr)
+                        "try" if items.len() == 2 => {
+                            let expr = Box::new(self.value_to_expr(&items[1])?);
+                            return Ok(Expr::Try {
+                                expr,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // defer - (defer expr)
+                        "defer" if items.len() == 2 => {
+                            let expr = Box::new(self.value_to_expr(&items[1])?);
+                            return Ok(Expr::Defer {
+                                expr,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // match - (match expr arm1 arm2 ...)
+                        "match" if items.len() >= 3 => {
+                            let expr = Box::new(self.value_to_expr(&items[1])?);
+                            // アームの変換（MatchArm構造）
+                            let arms: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(2)
+                                .map(|v| self.value_to_match_arm(v))
+                                .collect();
+                            return Ok(Expr::Match {
+                                expr,
+                                arms: arms?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // recur - (recur arg1 arg2 ...)
+                        "recur" => {
+                            let args: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(1)
+                                .map(|v| self.value_to_expr(v))
+                                .collect();
+                            return Ok(Expr::Recur {
+                                args: args?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // when - (when condition body...)
+                        "when" if items.len() >= 3 => {
+                            let condition = Box::new(self.value_to_expr(&items[1])?);
+                            let body: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(2)
+                                .map(|v| self.value_to_expr(v))
+                                .collect();
+                            return Ok(Expr::When {
+                                condition,
+                                body: body?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // while - (while condition body...)
+                        "while" if items.len() >= 3 => {
+                            let condition = Box::new(self.value_to_expr(&items[1])?);
+                            let body: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(2)
+                                .map(|v| self.value_to_expr(v))
+                                .collect();
+                            return Ok(Expr::While {
+                                condition,
+                                body: body?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // until - (until condition body...)
+                        "until" if items.len() >= 3 => {
+                            let condition = Box::new(self.value_to_expr(&items[1])?);
+                            let body: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(2)
+                                .map(|v| self.value_to_expr(v))
+                                .collect();
+                            return Ok(Expr::Until {
+                                condition,
+                                body: body?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // while-some - (while-some [x expr] body...)
+                        "while-some" if items.len() >= 3 => {
+                            if let Value::Vector(binding_vec) = &items[1] {
+                                if binding_vec.len() == 2 {
+                                    if let Value::Symbol(name) = &binding_vec[0] {
+                                        let expr = Box::new(self.value_to_expr(&binding_vec[1])?);
+                                        let body: Result<Vec<_>, _> = items
+                                            .iter()
+                                            .skip(2)
+                                            .map(|v| self.value_to_expr(v))
+                                            .collect();
+                                        return Ok(Expr::WhileSome {
+                                            binding: name.clone(),
+                                            expr,
+                                            body: body?,
+                                            span: Expr::dummy_span(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        // until-error - (until-error [x expr] body...)
+                        "until-error" if items.len() >= 3 => {
+                            if let Value::Vector(binding_vec) = &items[1] {
+                                if binding_vec.len() == 2 {
+                                    if let Value::Symbol(name) = &binding_vec[0] {
+                                        let expr = Box::new(self.value_to_expr(&binding_vec[1])?);
+                                        let body: Result<Vec<_>, _> = items
+                                            .iter()
+                                            .skip(2)
+                                            .map(|v| self.value_to_expr(v))
+                                            .collect();
+                                        return Ok(Expr::UntilError {
+                                            binding: name.clone(),
+                                            expr,
+                                            body: body?,
+                                            span: Expr::dummy_span(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        // mac - (mac name [params] body...)
+                        "mac" if items.len() >= 4 => {
+                            if let Value::Symbol(name) = &items[1] {
+                                if let Value::Vector(params_vec) = &items[2] {
+                                    // パラメータは単純なシンボルのリスト
+                                    let params: Result<Vec<_>, _> = params_vec
+                                        .iter()
+                                        .map(|v| match v {
+                                            Value::Symbol(s) => Ok(s.clone()),
+                                            _ => Err(fmt_msg(
+                                                MsgKey::MacroParamMustBeSymbol,
+                                                &[&format!("{:?}", v)],
+                                            )),
+                                        })
+                                        .collect();
+                                    // is_variadicのチェック
+                                    let is_variadic = params_vec.iter().any(|v| {
+                                        matches!(v, Value::Symbol(s) if &**s == "&")
+                                    });
+                                    // ボディ（複数式の場合はDoに包む）
+                                    let body_exprs: Result<Vec<_>, _> = items
+                                        .iter()
+                                        .skip(3)
+                                        .map(|v| self.value_to_expr(v))
+                                        .collect();
+                                    let body_exprs = body_exprs?;
+                                    let body = if body_exprs.len() == 1 {
+                                        Box::new(body_exprs.into_iter().next().unwrap())
+                                    } else {
+                                        Box::new(Expr::Do {
+                                            exprs: body_exprs,
+                                            span: Expr::dummy_span(),
+                                        })
+                                    };
+                                    return Ok(Expr::Mac {
+                                        name: name.clone(),
+                                        params: params?,
+                                        is_variadic,
+                                        body,
+                                        span: Expr::dummy_span(),
+                                    });
+                                }
+                            }
+                        }
+                        // module - (module name)
+                        "module" if items.len() == 2 => {
+                            if let Value::Symbol(name) = &items[1] {
+                                return Ok(Expr::Module {
+                                    name: name.clone(),
+                                    span: Expr::dummy_span(),
+                                });
+                            }
+                        }
+                        // export - (export sym1 sym2 ...)
+                        "export" if items.len() >= 2 => {
+                            let symbols: Result<Vec<_>, _> = items
+                                .iter()
+                                .skip(1)
+                                .map(|v| match v {
+                                    Value::Symbol(s) => Ok(s.clone()),
+                                    _ => Err(fmt_msg(
+                                        MsgKey::ExportMustBeSymbol,
+                                        &[&format!("{:?}", v)],
+                                    )),
+                                })
+                                .collect();
+                            return Ok(Expr::Export {
+                                symbols: symbols?,
+                                span: Expr::dummy_span(),
+                            });
+                        }
+                        // use - (use module-name :only [sym1 sym2])
+                        // use - (use module-name :as alias)
+                        // use - (use module-name :all)
+                        "use" if items.len() >= 2 => {
+                            if let Value::Symbol(module) = &items[1] {
+                                // モードの解析
+                                let mode = if items.len() >= 4 {
+                                    if let (Value::Keyword(k), Value::Vector(syms)) = (&items[2], &items[3]) {
+                                        if &**k == "only" {
+                                            let symbols: Result<Vec<_>, _> = syms
+                                                .iter()
+                                                .map(|v| match v {
+                                                    Value::Symbol(s) => Ok(s.clone()),
+                                                    _ => Err(fmt_msg(
+                                                        MsgKey::UseOnlyMustBeSymbols,
+                                                        &[&format!("{:?}", v)],
+                                                    )),
+                                                })
+                                                .collect();
+                                            UseMode::Only(symbols?)
+                                        } else {
+                                            return Err(fmt_msg(
+                                                MsgKey::InvalidUseMode,
+                                                &[&format!(":{}", k)],
+                                            ));
+                                        }
+                                    } else if let (Value::Keyword(k), Value::Symbol(alias)) = (&items[2], &items[3]) {
+                                        if &**k == "as" {
+                                            UseMode::As(alias.clone())
+                                        } else {
+                                            return Err(fmt_msg(
+                                                MsgKey::InvalidUseMode,
+                                                &[&format!(":{}", k)],
+                                            ));
+                                        }
+                                    } else {
+                                        return Err(fmt_msg(MsgKey::InvalidUseMode, &["unknown"]));
+                                    }
+                                } else if items.len() == 3 {
+                                    if let Value::Keyword(k) = &items[2] {
+                                        if &**k == "all" {
+                                            UseMode::All
+                                        } else {
+                                            return Err(fmt_msg(
+                                                MsgKey::InvalidUseMode,
+                                                &[&format!(":{}", k)],
+                                            ));
+                                        }
+                                    } else {
+                                        return Err(fmt_msg(MsgKey::InvalidUseMode, &["unknown"]));
+                                    }
+                                } else {
+                                    UseMode::All // デフォルト
+                                };
+                                return Ok(Expr::Use {
+                                    module: module.clone(),
+                                    mode,
+                                    span: Expr::dummy_span(),
+                                });
+                            }
+                        }
                         // quasiquote/unquote/unquote-spliceは展開後には出現しないはず
                         // もし出現した場合は通常のリストとして扱う
                         _ => {}
@@ -856,6 +1225,146 @@ impl Evaluator {
             _ => Err(msg(MsgKey::ValueCannotBeConverted).to_string()),
         }
     }
-}
 
-use super::helpers::qerr;
+    /// ValueをPatternに変換（let/fn/match用）
+    fn value_to_pattern(&self, value: &Value) -> Result<Pattern, String> {
+        match value {
+            // 単純な変数
+            Value::Symbol(name) => {
+                // 特別なケース: _ はワイルドカード
+                if &**name == "_" {
+                    Ok(Pattern::Wildcard)
+                } else {
+                    Ok(Pattern::Var(name.clone()))
+                }
+            }
+            // リテラル（match専用）
+            Value::Nil => Ok(Pattern::Nil),
+            Value::Bool(b) => Ok(Pattern::Bool(*b)),
+            Value::Integer(n) => Ok(Pattern::Integer(*n)),
+            Value::Float(f) => Ok(Pattern::Float(*f)),
+            Value::String(s) => Ok(Pattern::String(s.clone())),
+            Value::Keyword(k) => Ok(Pattern::Keyword(k.clone())),
+            // ベクタパターン [x y] or [x y & rest]
+            Value::Vector(items) => {
+                let mut patterns = Vec::new();
+                let mut rest_pattern = None;
+                let mut i = 0;
+                while i < items.len() {
+                    if let Value::Symbol(s) = &items[i] {
+                        if &**s == "&" {
+                            // rest パラメータ
+                            if i + 1 < items.len() {
+                                rest_pattern = Some(Box::new(self.value_to_pattern(&items[i + 1])?));
+                                i += 2;
+                            } else {
+                                return Err(fmt_msg(MsgKey::RestParamRequiresName, &[]));
+                            }
+                        } else {
+                            patterns.push(self.value_to_pattern(&items[i])?);
+                            i += 1;
+                        }
+                    } else {
+                        patterns.push(self.value_to_pattern(&items[i])?);
+                        i += 1;
+                    }
+                }
+                Ok(Pattern::Vector(patterns, rest_pattern))
+            }
+            // マップパターン {:key val} or {:key val :as m}
+            Value::Map(map) => {
+                let mut pairs = Vec::new();
+                let mut as_var = None;
+                for (key, val) in map.iter() {
+                    if let crate::value::MapKey::Keyword(k) = key {
+                        if &**k == "as" {
+                            // :as変数
+                            if let Value::Symbol(s) = val {
+                                as_var = Some(s.clone());
+                            } else {
+                                return Err(fmt_msg(
+                                    MsgKey::AsBindingMustBeSymbol,
+                                    &[&format!("{:?}", val)],
+                                ));
+                            }
+                        } else {
+                            // 通常のキー・パターン対
+                            let pattern = self.value_to_pattern(val)?;
+                            pairs.push((k.clone(), pattern));
+                        }
+                    } else {
+                        return Err(fmt_msg(
+                            MsgKey::MapPatternKeyMustBeKeyword,
+                            &[&format!("{:?}", key)],
+                        ));
+                    }
+                }
+                Ok(Pattern::Map(pairs, as_var))
+            }
+            _ => Err(fmt_msg(
+                MsgKey::InvalidPattern,
+                &[&format!("{:?}", value)],
+            )),
+        }
+    }
+
+    /// ValueをMatchArmに変換（match用）
+    fn value_to_match_arm(&self, value: &Value) -> Result<MatchArm, String> {
+        // matchアームは (pattern -> body) または (pattern when guard -> body) の形式
+        // ただし、Valueとして受け取る時点では、リストとして受け取る
+        // (pattern :-> body) または (pattern :when guard :-> body)
+        if let Value::List(items) = value {
+            if items.len() >= 3 {
+                // 最小構成: (pattern :-> body)
+                let pattern = self.value_to_pattern(&items[0])?;
+
+                // :when guardの有無をチェック
+                let mut idx = 1;
+                let guard = if let Some(Value::Keyword(k)) = items.get(idx) {
+                    if &**k == "when" {
+                        // guard式がある
+                        idx += 1;
+                        let guard_expr = self.value_to_expr(&items[idx])?;
+                        idx += 1;
+                        Some(Box::new(guard_expr))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                // :->の確認
+                if let Some(Value::Symbol(arrow)) = items.get(idx) {
+                    if &**arrow == "->" {
+                        idx += 1;
+                        // bodyは残りの全て（複数式の場合はDoに包む）
+                        let body_exprs: Result<Vec<_>, _> = items
+                            .iter()
+                            .skip(idx)
+                            .map(|v| self.value_to_expr(v))
+                            .collect();
+                        let body_exprs = body_exprs?;
+                        let body = if body_exprs.len() == 1 {
+                            Box::new(body_exprs.into_iter().next().unwrap())
+                        } else {
+                            Box::new(Expr::Do {
+                                exprs: body_exprs,
+                                span: Expr::dummy_span(),
+                            })
+                        };
+                        return Ok(MatchArm {
+                            pattern,
+                            guard,
+                            body,
+                        });
+                    }
+                }
+            }
+        }
+        Err(fmt_msg(
+            MsgKey::InvalidMatchArm,
+            &[&format!("{:?}", value)],
+        ))
+    }
+}
