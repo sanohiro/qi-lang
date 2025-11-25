@@ -2,6 +2,7 @@
 //!
 //! このモジュールは `std-time` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::require_int;
 use crate::value::Value;
@@ -9,9 +10,7 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc};
 
 /// now-iso - 現在時刻をISO 8601形式で取得
 pub fn native_now_iso(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["time/now-iso"]));
-    }
+    check_args!(args, 0, "time/now-iso");
 
     let now = Utc::now();
     Ok(Value::String(now.to_rfc3339()))
@@ -29,9 +28,7 @@ pub fn native_from_unix(args: &[Value]) -> Result<Value, String> {
 
 /// to-unix - ISO 8601形式の文字列をUnixタイムスタンプ（秒）に変換
 pub fn native_to_unix(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/to-unix"]));
-    }
+    check_args!(args, 1, "time/to-unix");
 
     match &args[0] {
         Value::String(s) => match DateTime::parse_from_rfc3339(s) {
@@ -46,9 +43,7 @@ pub fn native_to_unix(args: &[Value]) -> Result<Value, String> {
 /// 第1引数: Unixタイムスタンプ（整数）またはISO 8601文字列
 /// 第2引数: フォーマット文字列（strftime形式）
 pub fn native_format(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/format"]));
-    }
+    check_args!(args, 2, "time/format");
 
     let dt = match &args[0] {
         Value::Integer(timestamp) => match Utc.timestamp_opt(*timestamp, 0) {
@@ -81,9 +76,7 @@ pub fn native_format(args: &[Value]) -> Result<Value, String> {
 
 /// today - 今日の日付をYYYY-MM-DD形式で取得
 pub fn native_today(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["time/today"]));
-    }
+    check_args!(args, 0, "time/today");
 
     let now = Utc::now();
     Ok(Value::String(now.format("%Y-%m-%d").to_string()))
@@ -93,9 +86,7 @@ pub fn native_today(args: &[Value]) -> Result<Value, String> {
 /// 第1引数: Unixタイムスタンプ（整数）またはISO 8601文字列
 /// 第2引数: 加算する日数（整数）
 pub fn native_add_days(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/add-days"]));
-    }
+    check_args!(args, 2, "time/add-days");
 
     let dt = parse_datetime(&args[0], "time/add-days")?;
     let days = parse_integer(&args[1], "time/add-days (days)")?;
@@ -106,9 +97,7 @@ pub fn native_add_days(args: &[Value]) -> Result<Value, String> {
 
 /// add-hours - 日付に時間を加算
 pub fn native_add_hours(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/add-hours"]));
-    }
+    check_args!(args, 2, "time/add-hours");
 
     let dt = parse_datetime(&args[0], "time/add-hours")?;
     let hours = parse_integer(&args[1], "time/add-hours (hours)")?;
@@ -119,9 +108,7 @@ pub fn native_add_hours(args: &[Value]) -> Result<Value, String> {
 
 /// add-minutes - 日付に分を加算
 pub fn native_add_minutes(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/add-minutes"]));
-    }
+    check_args!(args, 2, "time/add-minutes");
 
     let dt = parse_datetime(&args[0], "time/add-minutes")?;
     let minutes = parse_integer(&args[1], "time/add-minutes (minutes)")?;
@@ -132,9 +119,7 @@ pub fn native_add_minutes(args: &[Value]) -> Result<Value, String> {
 
 /// sub-days - 日付から日数を減算
 pub fn native_sub_days(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/sub-days"]));
-    }
+    check_args!(args, 2, "time/sub-days");
 
     let dt = parse_datetime(&args[0], "time/sub-days")?;
     let days = parse_integer(&args[1], "time/sub-days (days)")?;
@@ -145,9 +130,7 @@ pub fn native_sub_days(args: &[Value]) -> Result<Value, String> {
 
 /// sub-hours - 日付から時間を減算
 pub fn native_sub_hours(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/sub-hours"]));
-    }
+    check_args!(args, 2, "time/sub-hours");
 
     let dt = parse_datetime(&args[0], "time/sub-hours")?;
     let hours = parse_integer(&args[1], "time/sub-hours (hours)")?;
@@ -158,9 +141,7 @@ pub fn native_sub_hours(args: &[Value]) -> Result<Value, String> {
 
 /// sub-minutes - 日付から分を減算
 pub fn native_sub_minutes(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/sub-minutes"]));
-    }
+    check_args!(args, 2, "time/sub-minutes");
 
     let dt = parse_datetime(&args[0], "time/sub-minutes")?;
     let minutes = parse_integer(&args[1], "time/sub-minutes (minutes)")?;
@@ -171,9 +152,7 @@ pub fn native_sub_minutes(args: &[Value]) -> Result<Value, String> {
 
 /// diff-days - 2つの日付の差を日数で取得
 pub fn native_diff_days(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/diff-days"]));
-    }
+    check_args!(args, 2, "time/diff-days");
 
     let dt1 = parse_datetime(&args[0], "time/diff-days (date1)")?;
     let dt2 = parse_datetime(&args[1], "time/diff-days (date2)")?;
@@ -184,9 +163,7 @@ pub fn native_diff_days(args: &[Value]) -> Result<Value, String> {
 
 /// diff-hours - 2つの日付の差を時間で取得
 pub fn native_diff_hours(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/diff-hours"]));
-    }
+    check_args!(args, 2, "time/diff-hours");
 
     let dt1 = parse_datetime(&args[0], "time/diff-hours (date1)")?;
     let dt2 = parse_datetime(&args[1], "time/diff-hours (date2)")?;
@@ -197,9 +174,7 @@ pub fn native_diff_hours(args: &[Value]) -> Result<Value, String> {
 
 /// diff-minutes - 2つの日付の差を分で取得
 pub fn native_diff_minutes(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/diff-minutes"]));
-    }
+    check_args!(args, 2, "time/diff-minutes");
 
     let dt1 = parse_datetime(&args[0], "time/diff-minutes (date1)")?;
     let dt2 = parse_datetime(&args[1], "time/diff-minutes (date2)")?;
@@ -210,9 +185,7 @@ pub fn native_diff_minutes(args: &[Value]) -> Result<Value, String> {
 
 /// before? - date1がdate2より前か判定
 pub fn native_before(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/before?"]));
-    }
+    check_args!(args, 2, "time/before?");
 
     let dt1 = parse_datetime(&args[0], "time/before? (date1)")?;
     let dt2 = parse_datetime(&args[1], "time/before? (date2)")?;
@@ -222,9 +195,7 @@ pub fn native_before(args: &[Value]) -> Result<Value, String> {
 
 /// after? - date1がdate2より後か判定
 pub fn native_after(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/after?"]));
-    }
+    check_args!(args, 2, "time/after?");
 
     let dt1 = parse_datetime(&args[0], "time/after? (date1)")?;
     let dt2 = parse_datetime(&args[1], "time/after? (date2)")?;
@@ -234,9 +205,7 @@ pub fn native_after(args: &[Value]) -> Result<Value, String> {
 
 /// between? - dateがstart〜end内か判定
 pub fn native_between(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 3 {
-        return Err(fmt_msg(MsgKey::Need3Args, &["time/between?"]));
-    }
+    check_args!(args, 3, "time/between?");
 
     let date = parse_datetime(&args[0], "time/between? (date)")?;
     let start = parse_datetime(&args[1], "time/between? (start)")?;
@@ -247,9 +216,7 @@ pub fn native_between(args: &[Value]) -> Result<Value, String> {
 
 /// parse - フォーマット文字列を使って日付文字列をパース
 pub fn native_parse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["time/parse"]));
-    }
+    check_args!(args, 2, "time/parse");
 
     let date_str = match &args[0] {
         Value::String(s) => s,
@@ -293,9 +260,7 @@ pub fn native_parse(args: &[Value]) -> Result<Value, String> {
 
 /// year - 日付から年を取得
 pub fn native_year(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/year"]));
-    }
+    check_args!(args, 1, "time/year");
 
     let dt = parse_datetime(&args[0], "time/year")?;
     Ok(Value::Integer(dt.year() as i64))
@@ -303,9 +268,7 @@ pub fn native_year(args: &[Value]) -> Result<Value, String> {
 
 /// month - 日付から月を取得（1-12）
 pub fn native_month(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/month"]));
-    }
+    check_args!(args, 1, "time/month");
 
     let dt = parse_datetime(&args[0], "time/month")?;
     Ok(Value::Integer(dt.month() as i64))
@@ -313,9 +276,7 @@ pub fn native_month(args: &[Value]) -> Result<Value, String> {
 
 /// day - 日付から日を取得（1-31）
 pub fn native_day(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/day"]));
-    }
+    check_args!(args, 1, "time/day");
 
     let dt = parse_datetime(&args[0], "time/day")?;
     Ok(Value::Integer(dt.day() as i64))
@@ -323,9 +284,7 @@ pub fn native_day(args: &[Value]) -> Result<Value, String> {
 
 /// hour - 日付から時を取得（0-23）
 pub fn native_hour(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/hour"]));
-    }
+    check_args!(args, 1, "time/hour");
 
     let dt = parse_datetime(&args[0], "time/hour")?;
     Ok(Value::Integer(dt.hour() as i64))
@@ -333,9 +292,7 @@ pub fn native_hour(args: &[Value]) -> Result<Value, String> {
 
 /// minute - 日付から分を取得（0-59）
 pub fn native_minute(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/minute"]));
-    }
+    check_args!(args, 1, "time/minute");
 
     let dt = parse_datetime(&args[0], "time/minute")?;
     Ok(Value::Integer(dt.minute() as i64))
@@ -343,9 +300,7 @@ pub fn native_minute(args: &[Value]) -> Result<Value, String> {
 
 /// second - 日付から秒を取得（0-59）
 pub fn native_second(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/second"]));
-    }
+    check_args!(args, 1, "time/second");
 
     let dt = parse_datetime(&args[0], "time/second")?;
     Ok(Value::Integer(dt.second() as i64))
@@ -353,9 +308,7 @@ pub fn native_second(args: &[Value]) -> Result<Value, String> {
 
 /// weekday - 日付から曜日を取得（0=日曜, 1=月曜, ..., 6=土曜）
 pub fn native_weekday(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/weekday"]));
-    }
+    check_args!(args, 1, "time/weekday");
 
     let dt = parse_datetime(&args[0], "time/weekday")?;
     // chronoのweekday()は月曜=0なので、日曜=0に変換

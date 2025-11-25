@@ -4,6 +4,7 @@
 //! 比較演算（6個）: =, !=, <, >, <=, >=
 //! 合計17個のCore関数
 
+use crate::check_args;
 use crate::builtins::numeric_helpers::{
     checked_abs_value, checked_add_value, checked_int_add, checked_int_mul, checked_int_sub,
     checked_neg_value, checked_sub_value,
@@ -167,9 +168,7 @@ pub fn native_mul(args: &[Value]) -> Result<Value, String> {
 
 /// / - 除算
 pub fn native_div(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["/"]));
-    }
+    check_args!(args, 2, "/");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => {
             if *b == 0 {
@@ -202,9 +201,7 @@ pub fn native_div(args: &[Value]) -> Result<Value, String> {
 /// % - 剰余
 /// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_mod(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["%"]));
-    }
+    check_args!(args, 2, "%");
 
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => {
@@ -237,9 +234,7 @@ pub fn native_mod(args: &[Value]) -> Result<Value, String> {
 
 /// abs - 絶対値
 pub fn native_abs(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["abs"]));
-    }
+    check_args!(args, 1, "abs");
     match &args[0] {
         Value::Integer(n) => {
             // ⚠️ SAFETY: i64::MIN の絶対値は i64 の範囲外のため checked_abs_value() を使用
@@ -359,9 +354,7 @@ pub fn native_max(args: &[Value]) -> Result<Value, String> {
 /// inc - インクリメント
 /// 整数・浮動小数の両方に対応
 pub fn native_inc(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["inc"]));
-    }
+    check_args!(args, 1, "inc");
     match &args[0] {
         Value::Integer(n) => {
             // ⚠️ SAFETY: i64::MAX + 1 はオーバーフローするため checked_add_value() を使用
@@ -375,9 +368,7 @@ pub fn native_inc(args: &[Value]) -> Result<Value, String> {
 /// dec - デクリメント
 /// 整数・浮動小数の両方に対応
 pub fn native_dec(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["dec"]));
-    }
+    check_args!(args, 1, "dec");
     match &args[0] {
         Value::Integer(n) => {
             // ⚠️ SAFETY: i64::MIN - 1 はアンダーフローするため checked_sub_value() を使用
@@ -391,9 +382,7 @@ pub fn native_dec(args: &[Value]) -> Result<Value, String> {
 /// sum - 合計
 /// 整数・浮動小数の両方に対応。浮動小数が1つでも含まれる場合は浮動小数で返す
 pub fn native_sum(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["sum"]));
-    }
+    check_args!(args, 1, "sum");
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
             let mut int_sum = 0i64;
@@ -477,25 +466,19 @@ fn values_equal(a: &Value, b: &Value) -> bool {
 
 /// = - 等価比較
 pub fn native_eq(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["="]));
-    }
+    check_args!(args, 2, "=");
     Ok(Value::Bool(values_equal(&args[0], &args[1])))
 }
 
 /// != - 非等価比較
 pub fn native_ne(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["!="]));
-    }
+    check_args!(args, 2, "!=");
     Ok(Value::Bool(!values_equal(&args[0], &args[1])))
 }
 
 /// < - 小なり比較
 pub fn native_lt(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["<"]));
-    }
+    check_args!(args, 2, "<");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a < b)),
         (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a < b)),
@@ -507,9 +490,7 @@ pub fn native_lt(args: &[Value]) -> Result<Value, String> {
 
 /// > - 大なり比較
 pub fn native_gt(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &[">"]));
-    }
+    check_args!(args, 2, ">");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a > b)),
         (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a > b)),
@@ -521,9 +502,7 @@ pub fn native_gt(args: &[Value]) -> Result<Value, String> {
 
 /// <= - 小なりイコール比較
 pub fn native_le(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["<="]));
-    }
+    check_args!(args, 2, "<=");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a <= b)),
         (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a <= b)),
@@ -535,9 +514,7 @@ pub fn native_le(args: &[Value]) -> Result<Value, String> {
 
 /// >= - 大なりイコール比較
 pub fn native_ge(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &[">="]));
-    }
+    check_args!(args, 2, ">=");
     match (&args[0], &args[1]) {
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Bool(a >= b)),
         (Value::Float(a), Value::Float(b)) => Ok(Value::Bool(a >= b)),

@@ -2,15 +2,14 @@
 //!
 //! このモジュールは `std-stats` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;
 
 /// mean - 平均値
 pub fn native_mean(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stats/mean"]));
-    }
+    check_args!(args, 1, "stats/mean");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -54,9 +53,7 @@ pub fn native_mean(args: &[Value]) -> Result<Value, String> {
 
 /// median - 中央値
 pub fn native_median(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stats/median"]));
-    }
+    check_args!(args, 1, "stats/median");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -111,9 +108,7 @@ pub fn native_median(args: &[Value]) -> Result<Value, String> {
 
 /// mode - 最頻値
 pub fn native_mode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stats/mode"]));
-    }
+    check_args!(args, 1, "stats/mode");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -165,9 +160,7 @@ pub fn native_mode(args: &[Value]) -> Result<Value, String> {
 
 /// variance - 分散
 pub fn native_variance(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stats/variance"]));
-    }
+    check_args!(args, 1, "stats/variance");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -231,9 +224,7 @@ pub fn native_stddev(args: &[Value]) -> Result<Value, String> {
 /// percentile - パーセンタイル
 /// 第1引数: コレクション、第2引数: パーセンタイル値(0-100)
 pub fn native_percentile(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stats/percentile"]));
-    }
+    check_args!(args, 2, "stats/percentile");
 
     let p = match &args[1] {
         Value::Integer(n) => {

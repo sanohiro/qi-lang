@@ -1,5 +1,6 @@
 //! ログ関数
 
+use crate::check_args;
 use crate::builtins::value_helpers::{get_map_arg, get_string_ref};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
@@ -283,9 +284,7 @@ pub fn native_log_error(args: &[Value]) -> Result<Value, String> {
 /// 引数: (level) - ログレベル ("debug", "info", "warn", "error")
 /// 例: (log/set-level "debug")
 pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-level", "1"]));
-    }
+    check_args!(args, 1, "log/set-level");
 
     let level_str = get_string_ref(args, 0, "log/set-level")?;
 
@@ -300,9 +299,7 @@ pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
 /// 引数: (format) - フォーマット ("text", "json")
 /// 例: (log/set-format "json")
 pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-format", "1"]));
-    }
+    check_args!(args, 1, "log/set-format");
 
     let format_str = get_string_ref(args, 0, "log/set-format")?;
 

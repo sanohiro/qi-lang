@@ -1,5 +1,6 @@
 //! データ構造 - Queue, Stack等
 
+use crate::check_args;
 use crate::builtins::util::{convert_string_map_to_mapkey, kw};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -18,9 +19,7 @@ pub fn native_queue_new(_args: &[Value]) -> Result<Value, String> {
 
 /// queue/enqueue - 要素をキューに追加（末尾）
 pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["queue/enqueue"]));
-    }
+    check_args!(args, 2, "queue/enqueue");
 
     let queue = match &args[0] {
         Value::Map(m) => m,
@@ -55,9 +54,7 @@ pub fn native_queue_enqueue(args: &[Value]) -> Result<Value, String> {
 
 /// queue/dequeue - キューから要素を取り出し（先頭）
 pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/dequeue"]));
-    }
+    check_args!(args, 1, "queue/dequeue");
 
     let queue = match &args[0] {
         Value::Map(m) => m,
@@ -92,9 +89,7 @@ pub fn native_queue_dequeue(args: &[Value]) -> Result<Value, String> {
 
 /// queue/peek - キューの先頭要素を見る（取り出さない）
 pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/peek"]));
-    }
+    check_args!(args, 1, "queue/peek");
 
     let queue = match &args[0] {
         Value::Map(m) => m,
@@ -119,9 +114,7 @@ pub fn native_queue_peek(args: &[Value]) -> Result<Value, String> {
 
 /// queue/empty? - キューが空かチェック
 pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/empty?"]));
-    }
+    check_args!(args, 1, "queue/empty?");
 
     let queue = match &args[0] {
         Value::Map(m) => m,
@@ -142,9 +135,7 @@ pub fn native_queue_empty(args: &[Value]) -> Result<Value, String> {
 
 /// queue/size - キューのサイズ
 pub fn native_queue_size(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["queue/size"]));
-    }
+    check_args!(args, 1, "queue/size");
 
     let queue = match &args[0] {
         Value::Map(m) => m,
@@ -176,9 +167,7 @@ pub fn native_stack_new(_args: &[Value]) -> Result<Value, String> {
 
 /// stack/push - スタックに要素を追加
 pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stack/push"]));
-    }
+    check_args!(args, 2, "stack/push");
 
     let stack = match &args[0] {
         Value::Map(m) => m,
@@ -212,9 +201,7 @@ pub fn native_stack_push(args: &[Value]) -> Result<Value, String> {
 
 /// stack/pop - スタックから要素を取り出し
 pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/pop"]));
-    }
+    check_args!(args, 1, "stack/pop");
 
     let stack = match &args[0] {
         Value::Map(m) => m,
@@ -248,9 +235,7 @@ pub fn native_stack_pop(args: &[Value]) -> Result<Value, String> {
 
 /// stack/peek - スタックの先頭要素を見る
 pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/peek"]));
-    }
+    check_args!(args, 1, "stack/peek");
 
     let stack = match &args[0] {
         Value::Map(m) => m,
@@ -275,9 +260,7 @@ pub fn native_stack_peek(args: &[Value]) -> Result<Value, String> {
 
 /// stack/empty? - スタックが空かチェック
 pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/empty?"]));
-    }
+    check_args!(args, 1, "stack/empty?");
 
     let stack = match &args[0] {
         Value::Map(m) => m,
@@ -298,9 +281,7 @@ pub fn native_stack_empty(args: &[Value]) -> Result<Value, String> {
 
 /// stack/size - スタックのサイズ
 pub fn native_stack_size(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stack/size"]));
-    }
+    check_args!(args, 1, "stack/size");
 
     let stack = match &args[0] {
         Value::Map(m) => m,

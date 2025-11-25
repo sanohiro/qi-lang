@@ -1,5 +1,6 @@
 //! ストリーム（遅延評価）- メモリ内の無限データ構造
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Stream, Value};
@@ -8,9 +9,7 @@ use std::sync::Arc;
 
 /// stream - コレクションからストリーム作成
 pub fn native_stream(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stream"]));
-    }
+    check_args!(args, 1, "stream");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -38,9 +37,7 @@ pub fn native_stream(args: &[Value]) -> Result<Value, String> {
 
 /// range-stream - 範囲ストリーム作成
 pub fn native_range_stream(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["range-stream"]));
-    }
+    check_args!(args, 2, "range-stream");
 
     let start = match &args[0] {
         Value::Integer(n) => *n,
@@ -72,9 +69,7 @@ pub fn native_range_stream(args: &[Value]) -> Result<Value, String> {
 
 /// iterate - 無限ストリーム作成（関数の反復適用）
 pub fn native_iterate(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["iterate"]));
-    }
+    check_args!(args, 2, "iterate");
 
     let func = args[0].clone();
     let current = Arc::new(RwLock::new(args[1].clone()));
@@ -95,9 +90,7 @@ pub fn native_iterate(args: &[Value], evaluator: &Evaluator) -> Result<Value, St
 
 /// repeat - 同じ値の無限ストリーム
 pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["repeat"]));
-    }
+    check_args!(args, 1, "repeat");
 
     let val = args[0].clone();
 
@@ -110,9 +103,7 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
 
 /// cycle - リストを循環する無限ストリーム
 pub fn native_cycle(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["cycle"]));
-    }
+    check_args!(args, 1, "cycle");
 
     let items = match &args[0] {
         Value::List(items) | Value::Vector(items) => items.clone(),
@@ -139,9 +130,7 @@ pub fn native_cycle(args: &[Value]) -> Result<Value, String> {
 
 /// stream-map - ストリームの各要素に関数を適用
 pub fn native_stream_map(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stream-map"]));
-    }
+    check_args!(args, 2, "stream-map");
 
     let func = args[0].clone();
     let source_stream = match &args[1] {
@@ -171,9 +160,7 @@ pub fn native_stream_map(args: &[Value], evaluator: &Evaluator) -> Result<Value,
 
 /// stream-filter - ストリームの要素をフィルタ
 pub fn native_stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stream-filter"]));
-    }
+    check_args!(args, 2, "stream-filter");
 
     let pred = args[0].clone();
     let source_stream = match &args[1] {
@@ -212,9 +199,7 @@ pub fn native_stream_filter(args: &[Value], evaluator: &Evaluator) -> Result<Val
 
 /// stream-take - ストリームの最初のn個を取得
 pub fn native_stream_take(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stream-take"]));
-    }
+    check_args!(args, 2, "stream-take");
 
     let n = match &args[0] {
         Value::Integer(n) if *n >= 0 => usize::try_from(*n).map_err(|_| {
@@ -261,9 +246,7 @@ pub fn native_stream_take(args: &[Value]) -> Result<Value, String> {
 
 /// stream-drop - ストリームの最初のn個をスキップ
 pub fn native_stream_drop(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["stream-drop"]));
-    }
+    check_args!(args, 2, "stream-drop");
 
     let n = match &args[0] {
         Value::Integer(n) if *n >= 0 => usize::try_from(*n).map_err(|_| {
@@ -313,9 +296,7 @@ pub fn native_stream_drop(args: &[Value]) -> Result<Value, String> {
 
 /// realize - ストリームをリストに変換（実行）
 pub fn native_realize(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["realize"]));
-    }
+    check_args!(args, 1, "realize");
 
     let stream = match &args[0] {
         Value::Stream(s) => s.clone(),

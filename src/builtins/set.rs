@@ -7,6 +7,7 @@
 // 実際にはHashSetのキーとして安全に使用できる。
 #![allow(clippy::mutable_key_type)]
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashSet;
@@ -167,9 +168,7 @@ pub fn native_difference(args: &[Value]) -> Result<Value, String> {
 
 /// subset? - 部分集合判定
 pub fn native_subset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["subset?"]));
-    }
+    check_args!(args, 2, "subset?");
 
     let subset = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
@@ -207,9 +206,7 @@ pub fn native_subset(args: &[Value]) -> Result<Value, String> {
 
 /// superset? - 上位集合判定（第1引数が第2引数の上位集合か）
 pub fn native_superset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["superset?"]));
-    }
+    check_args!(args, 2, "superset?");
 
     // superset?(A, B) = subset?(B, A)
     native_subset(&[args[1].clone(), args[0].clone()])
@@ -217,9 +214,7 @@ pub fn native_superset(args: &[Value]) -> Result<Value, String> {
 
 /// disjoint? - 互いに素判定（共通要素がないか）
 pub fn native_disjoint(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["disjoint?"]));
-    }
+    check_args!(args, 2, "disjoint?");
 
     let set1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
@@ -257,9 +252,7 @@ pub fn native_disjoint(args: &[Value]) -> Result<Value, String> {
 
 /// symmetric-difference - 対称差（どちらか一方にのみ存在する要素）
 pub fn native_symmetric_difference(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["symmetric-difference"]));
-    }
+    check_args!(args, 2, "symmetric-difference");
 
     let set1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,

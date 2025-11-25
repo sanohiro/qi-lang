@@ -2,6 +2,7 @@
 //!
 //! 関数基礎（5個）: identity, constantly, partial, comp, apply
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -9,17 +10,13 @@ use std::sync::Arc;
 
 /// identity - 引数をそのまま返す
 pub fn native_identity(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["identity"]));
-    }
+    check_args!(args, 1, "identity");
     Ok(args[0].clone())
 }
 
 /// constantly - 常に同じ値を返す関数を生成
 pub fn native_constantly(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["constantly"]));
-    }
+    check_args!(args, 1, "constantly");
     let value = args[0].clone();
     // 単純に値を返すだけの関数を作る（評価時に特別処理）
     Ok(Value::Function(Arc::new(crate::value::Function {

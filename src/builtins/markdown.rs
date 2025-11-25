@@ -1,5 +1,6 @@
 //! Markdown生成・加工関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use once_cell::sync::Lazy;
@@ -24,9 +25,7 @@ const BLOCK_TYPE_PARAGRAPH: &str = "paragraph";
 /// 引数: (level text) - レベル (1-6)、テキスト
 /// 例: (markdown/header 2 "Report") → "## Report"
 pub fn native_markdown_header(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/header", "2"]));
-    }
+    check_args!(args, 2, "markdown/header");
 
     let level = match &args[0] {
         Value::Integer(n) if *n >= 1 && *n <= 6 => *n as usize,
@@ -62,9 +61,7 @@ pub fn native_markdown_header(args: &[Value]) -> Result<Value, String> {
 /// 引数: (items) - 文字列のリストまたはベクタ
 /// 例: (markdown/list ["A" "B" "C"]) → "- A\n- B\n- C"
 pub fn native_markdown_list(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/list", "1"]));
-    }
+    check_args!(args, 1, "markdown/list");
 
     let items = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
@@ -125,9 +122,7 @@ pub fn native_markdown_ordered_list(args: &[Value]) -> Result<Value, String> {
 /// 引数: (rows) - 行のリストまたはベクタ（最初の行がヘッダー）
 /// 例: (markdown/table [["Name" "Score"] ["Alice" "95"] ["Bob" "87"]])
 pub fn native_markdown_table(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/table", "1"]));
-    }
+    check_args!(args, 1, "markdown/table");
 
     let rows = match &args[0] {
         Value::List(rows) | Value::Vector(rows) => rows,
@@ -250,9 +245,7 @@ pub fn native_markdown_code_block(args: &[Value]) -> Result<Value, String> {
 /// 引数: (parts) - 文字列のリストまたはベクタ
 /// 例: (markdown/join ["# Title" "Content"]) → "# Title\n\nContent"
 pub fn native_markdown_join(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/join", "1"]));
-    }
+    check_args!(args, 1, "markdown/join");
 
     let parts = match &args[0] {
         Value::List(parts) | Value::Vector(parts) => parts,
@@ -279,9 +272,7 @@ pub fn native_markdown_join(args: &[Value]) -> Result<Value, String> {
 /// 引数: (text url) - リンクテキスト、URL
 /// 例: (markdown/link "GitHub" "https://github.com") → "[GitHub](https://github.com)"
 pub fn native_markdown_link(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/link", "2"]));
-    }
+    check_args!(args, 2, "markdown/link");
 
     let text = match &args[0] {
         Value::String(s) => s,
@@ -310,9 +301,7 @@ pub fn native_markdown_link(args: &[Value]) -> Result<Value, String> {
 /// 引数: (alt src) - 代替テキスト、画像パス/URL
 /// 例: (markdown/image "Logo" "logo.png") → "![Logo](logo.png)"
 pub fn native_markdown_image(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/image", "2"]));
-    }
+    check_args!(args, 2, "markdown/image");
 
     let alt = match &args[0] {
         Value::String(s) => s,
@@ -408,9 +397,7 @@ pub fn native_markdown_extract_code_blocks(args: &[Value]) -> Result<Value, Stri
 /// 戻り値: ブロック要素のリスト
 /// 例: (markdown/parse "# Title\n\nHello") → [{:type "header" :level 1 :text "Title"} {:type "paragraph" :text "Hello"}]
 pub fn native_markdown_parse(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["markdown/parse", "1"]));
-    }
+    check_args!(args, 1, "markdown/parse");
 
     let text = match &args[0] {
         Value::String(s) => s,

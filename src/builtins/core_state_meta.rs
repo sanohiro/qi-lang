@@ -4,6 +4,7 @@
 //! メタ（6個）: eval, uvar, variable, macro?, macroexpand, source
 //! 合計10個のCore関数
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::parser::Parser;
@@ -22,18 +23,14 @@ static UVAR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// atom - アトムを作成
 pub fn native_atom(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["atom"]));
-    }
+    check_args!(args, 1, "atom");
 
     Ok(Value::Atom(Arc::new(RwLock::new(args[0].clone()))))
 }
 
 /// deref - アトムから値を取得
 pub fn native_deref(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["deref"]));
-    }
+    check_args!(args, 1, "deref");
 
     match &args[0] {
         Value::Atom(a) => Ok(a.read().clone()),
@@ -43,9 +40,7 @@ pub fn native_deref(args: &[Value]) -> Result<Value, String> {
 
 /// reset! - アトムの値を直接セット
 pub fn native_reset(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["reset!"]));
-    }
+    check_args!(args, 2, "reset!");
 
     match &args[0] {
         Value::Atom(a) => {
@@ -86,9 +81,7 @@ pub fn native_swap(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 
 /// uvar - 一意な変数を生成
 pub fn native_uvar(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["uvar"]));
-    }
+    check_args!(args, 0, "uvar");
 
     let id = UVAR_COUNTER.fetch_add(1, Ordering::SeqCst);
     Ok(Value::Uvar(id))
@@ -96,9 +89,7 @@ pub fn native_uvar(args: &[Value]) -> Result<Value, String> {
 
 /// variable - 変数かどうかをチェック
 pub fn native_variable(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["variable"]));
-    }
+    check_args!(args, 1, "variable");
 
     let is_var = match &args[0] {
         Value::Symbol(s) => {
@@ -114,18 +105,14 @@ pub fn native_variable(args: &[Value]) -> Result<Value, String> {
 
 /// macro? - マクロかどうかをチェック
 pub fn native_macro_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["macro?"]));
-    }
+    check_args!(args, 1, "macro?");
 
     Ok(Value::Bool(matches!(&args[0], Value::Macro(_))))
 }
 
 /// eval - 式を評価
 pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["eval"]));
-    }
+    check_args!(args, 1, "eval");
 
     match &args[0] {
         Value::String(code) => {
@@ -155,9 +142,7 @@ pub fn native_eval(args: &[Value], evaluator: &Evaluator) -> Result<Value, Strin
 /// ;=> (do (def __doc__greet "Greeting function") (def greet (fn [name] (str "Hello, " name))))
 /// ```
 pub fn native_macroexpand(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["macroexpand"]));
-    }
+    check_args!(args, 1, "macroexpand");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) if !items.is_empty() => {
@@ -185,9 +170,7 @@ pub fn native_macroexpand(args: &[Value]) -> Result<Value, String> {
 /// ;=> "User-defined function: add"
 /// ```
 pub fn native_source(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["source"]));
-    }
+    check_args!(args, 1, "source");
 
     let symbol = match &args[0] {
         Value::Symbol(s) => s.as_ref(),

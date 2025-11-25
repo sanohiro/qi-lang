@@ -2,6 +2,7 @@
 //!
 //! このモジュールは `util-zip` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::map_i18n_err;
 use crate::value::Value;
@@ -299,9 +300,7 @@ pub fn native_zip_extract(args: &[Value]) -> Result<Value, String> {
 /// 引数: (zip-path) - ZIP入力パス
 /// 例: (zip/list "backup.zip")
 pub fn native_zip_list(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["zip/list", "1"]));
-    }
+    check_args!(args, 1, "zip/list");
 
     let zip_path = match &args[0] {
         Value::String(s) => s,

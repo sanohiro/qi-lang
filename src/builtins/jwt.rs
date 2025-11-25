@@ -2,6 +2,7 @@
 //!
 //! このモジュールは `auth-jwt` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::builtins::util::to_map_key;
 use crate::builtins::value_helpers::{get_int_arg, get_string_ref};
 use crate::i18n::{fmt_msg, MsgKey};
@@ -122,9 +123,7 @@ pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: {:header ... :payload ...} マップ または {:error message}
 pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["jwt/decode"]));
-    }
+    check_args!(args, 1, "jwt/decode");
 
     // トークン
     let token = get_string_ref(args, 0, "jwt/decode")?;

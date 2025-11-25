@@ -1,5 +1,6 @@
 //! パス操作関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::env;
@@ -28,9 +29,7 @@ pub fn native_path_join(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/basename "/path/to/file.txt") => "file.txt"
 pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/basename", "1"]));
-    }
+    check_args!(args, 1, "path/basename");
 
     match &args[0] {
         Value::String(s) => {
@@ -51,9 +50,7 @@ pub fn native_path_basename(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/dirname "/path/to/file.txt") => "/path/to"
 pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/dirname", "1"]));
-    }
+    check_args!(args, 1, "path/dirname");
 
     match &args[0] {
         Value::String(s) => {
@@ -74,9 +71,7 @@ pub fn native_path_dirname(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/extension "file.txt") => "txt"
 pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/extension", "1"]));
-    }
+    check_args!(args, 1, "path/extension");
 
     match &args[0] {
         Value::String(s) => {
@@ -97,9 +92,7 @@ pub fn native_path_extension(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/stem "file.txt") => "file"
 pub fn native_path_stem(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/stem", "1"]));
-    }
+    check_args!(args, 1, "path/stem");
 
     match &args[0] {
         Value::String(s) => {
@@ -117,9 +110,7 @@ pub fn native_path_stem(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/absolute "relative/path") => "/current/dir/relative/path"
 pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/absolute", "1"]));
-    }
+    check_args!(args, 1, "path/absolute");
 
     match &args[0] {
         Value::String(s) => {
@@ -145,9 +136,7 @@ pub fn native_path_absolute(args: &[Value]) -> Result<Value, String> {
 /// 引数: (path) - パス文字列
 /// 例: (path/normalize "a/./b/../c") => "a/c"
 pub fn native_path_normalize(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["path/normalize", "1"]));
-    }
+    check_args!(args, 1, "path/normalize");
 
     match &args[0] {
         Value::String(s) => {

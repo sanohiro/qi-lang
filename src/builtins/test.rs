@@ -1,5 +1,6 @@
 //! テストフレームワーク
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, fmt_ui_msg, ui_msg, MsgKey, UiMsg};
 use crate::value::Value;
@@ -22,9 +23,7 @@ fn test_registry() -> &'static Mutex<Vec<TestResult>> {
 
 /// test/assert-eq - 2つの値が等しいことをアサート
 pub fn native_assert_eq(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["test/assert-eq"]));
-    }
+    check_args!(args, 2, "test/assert-eq");
 
     let expected = &args[0];
     let actual = &args[1];
@@ -41,9 +40,7 @@ pub fn native_assert_eq(args: &[Value]) -> Result<Value, String> {
 
 /// test/assert - 値が真であることをアサート
 pub fn native_assert(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert"]));
-    }
+    check_args!(args, 1, "test/assert");
 
     if args[0].is_truthy() {
         Ok(Value::Bool(true))
@@ -57,9 +54,7 @@ pub fn native_assert(args: &[Value]) -> Result<Value, String> {
 
 /// test/assert-not - 値が偽であることをアサート
 pub fn native_assert_not(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-not"]));
-    }
+    check_args!(args, 1, "test/assert-not");
 
     if !args[0].is_truthy() {
         Ok(Value::Bool(true))
@@ -73,9 +68,7 @@ pub fn native_assert_not(args: &[Value]) -> Result<Value, String> {
 
 /// test/assert-throws - 式が例外を投げることをアサート
 pub fn native_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["test/assert-throws"]));
-    }
+    check_args!(args, 1, "test/assert-throws");
 
     // 関数を実行
     match &args[0] {
@@ -96,9 +89,7 @@ pub fn native_assert_throws(args: &[Value], evaluator: &Evaluator) -> Result<Val
 
 /// test/run - テストを実行して結果を記録
 pub fn native_test_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["test/run"]));
-    }
+    check_args!(args, 2, "test/run");
 
     let name = match &args[0] {
         Value::String(s) => s.clone(),
