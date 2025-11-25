@@ -560,24 +560,178 @@ impl Evaluator {
                 ]
                 .into(),
             )),
-            // モジュール関連とtry、deferはquoteできない
-            Expr::Module { .. }
-            | Expr::Export { .. }
-            | Expr::Use { .. }
-            | Expr::Try { .. }
-            | Expr::Defer { .. }
-            | Expr::Loop { .. }
-            | Expr::Recur { .. }
-            | Expr::When { .. }
-            | Expr::While { .. }
-            | Expr::Until { .. }
-            | Expr::WhileSome { .. }
-            | Expr::UntilError { .. }
-            | Expr::Match { .. }
-            | Expr::Mac { .. } => Err(fmt_msg(
-                MsgKey::CannotQuote,
-                &["module/export/use/try/defer/loop/recur/when/while/until/while-some/until-error/match/mac"],
+            // try - (try expr)
+            Expr::Try { expr, .. } => Ok(Value::List(
+                vec![
+                    Value::Symbol(crate::intern::intern_symbol("try")),
+                    self.expr_to_value(expr)?,
+                ]
+                .into(),
             )),
+            // defer - (defer expr)
+            Expr::Defer { expr, .. } => Ok(Value::List(
+                vec![
+                    Value::Symbol(crate::intern::intern_symbol("defer")),
+                    self.expr_to_value(expr)?,
+                ]
+                .into(),
+            )),
+            // loop - (loop [x 1 y 2] body)
+            Expr::Loop { bindings, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("loop"))];
+                let mut binding_vec = Vec::new();
+                for (name, expr) in bindings {
+                    binding_vec.push(Value::Symbol(crate::intern::intern_symbol(name)));
+                    binding_vec.push(self.expr_to_value(expr)?);
+                }
+                items.push(Value::Vector(binding_vec.into()));
+                items.push(self.expr_to_value(body)?);
+                Ok(Value::List(items.into()))
+            }
+            // recur - (recur arg1 arg2 ...)
+            Expr::Recur { args, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("recur"))];
+                for arg in args {
+                    items.push(self.expr_to_value(arg)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // when - (when condition body...)
+            Expr::When { condition, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("when"))];
+                items.push(self.expr_to_value(condition)?);
+                for expr in body {
+                    items.push(self.expr_to_value(expr)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // while - (while condition body...)
+            Expr::While { condition, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("while"))];
+                items.push(self.expr_to_value(condition)?);
+                for expr in body {
+                    items.push(self.expr_to_value(expr)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // until - (until condition body...)
+            Expr::Until { condition, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("until"))];
+                items.push(self.expr_to_value(condition)?);
+                for expr in body {
+                    items.push(self.expr_to_value(expr)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // while-some - (while-some [x expr] body...)
+            Expr::WhileSome { binding, expr, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("while-some"))];
+                items.push(Value::Vector(
+                    vec![
+                        Value::Symbol(crate::intern::intern_symbol(binding)),
+                        self.expr_to_value(expr)?,
+                    ]
+                    .into(),
+                ));
+                for e in body {
+                    items.push(self.expr_to_value(e)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // until-error - (until-error [x expr] body...)
+            Expr::UntilError { binding, expr, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("until-error"))];
+                items.push(Value::Vector(
+                    vec![
+                        Value::Symbol(crate::intern::intern_symbol(binding)),
+                        self.expr_to_value(expr)?,
+                    ]
+                    .into(),
+                ));
+                for e in body {
+                    items.push(self.expr_to_value(e)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // match - (match expr arm1 arm2 ...)
+            Expr::Match { expr, arms, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("match"))];
+                items.push(self.expr_to_value(expr)?);
+                for arm in arms {
+                    items.push(self.match_arm_to_value(arm)?);
+                }
+                Ok(Value::List(items.into()))
+            }
+            // mac - (mac name [params] body)
+            Expr::Mac { name, params, is_variadic, body, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("mac"))];
+                items.push(Value::Symbol(crate::intern::intern_symbol(name)));
+                // パラメータベクタ（&が含まれる場合あり）
+                let param_vals: Vec<Value> = if *is_variadic && params.len() == 1 {
+                    vec![
+                        Value::Symbol(crate::intern::intern_symbol("&")),
+                        Value::Symbol(crate::intern::intern_symbol(&params[0])),
+                    ]
+                } else if *is_variadic {
+                    let mut v: Vec<Value> = params[..params.len() - 1]
+                        .iter()
+                        .map(|p| Value::Symbol(crate::intern::intern_symbol(p)))
+                        .collect();
+                    v.push(Value::Symbol(crate::intern::intern_symbol("&")));
+                    v.push(Value::Symbol(crate::intern::intern_symbol(&params[params.len() - 1])));
+                    v
+                } else {
+                    params
+                        .iter()
+                        .map(|p| Value::Symbol(crate::intern::intern_symbol(p)))
+                        .collect()
+                };
+                items.push(Value::Vector(param_vals.into()));
+                items.push(self.expr_to_value(body)?);
+                Ok(Value::List(items.into()))
+            }
+            // module - (module name)
+            Expr::Module { name, .. } => Ok(Value::List(
+                vec![
+                    Value::Symbol(crate::intern::intern_symbol("module")),
+                    Value::Symbol(crate::intern::intern_symbol(name)),
+                ]
+                .into(),
+            )),
+            // export - (export sym1 sym2 ...)
+            Expr::Export { symbols, .. } => {
+                let mut items = vec![Value::Symbol(crate::intern::intern_symbol("export"))];
+                for sym in symbols {
+                    items.push(Value::Symbol(crate::intern::intern_symbol(sym)));
+                }
+                Ok(Value::List(items.into()))
+            }
+            // use - (use module-name :only [sym1 sym2]) or (use module-name :as alias) or (use module-name :all)
+            Expr::Use { module, mode, .. } => {
+                let mut items = vec![
+                    Value::Symbol(crate::intern::intern_symbol("use")),
+                    Value::Symbol(crate::intern::intern_symbol(module)),
+                ];
+                match mode {
+                    UseMode::Only(syms) => {
+                        items.push(Value::Keyword(crate::intern::intern_keyword("only")));
+                        items.push(Value::Vector(
+                            syms.iter()
+                                .map(|s| Value::Symbol(crate::intern::intern_symbol(s)))
+                                .collect::<Vec<_>>()
+                                .into(),
+                        ));
+                    }
+                    UseMode::As(alias) => {
+                        items.push(Value::Keyword(crate::intern::intern_keyword("as")));
+                        items.push(Value::Symbol(crate::intern::intern_symbol(alias)));
+                    }
+                    UseMode::All => {
+                        items.push(Value::Keyword(crate::intern::intern_keyword("all")));
+                    }
+                }
+                Ok(Value::List(items.into()))
+            }
             Expr::FString { .. } => Err(msg(MsgKey::FStringCannotBeQuoted).to_string()),
         }
     }
@@ -1305,6 +1459,101 @@ impl Evaluator {
                 MsgKey::InvalidPattern,
                 &[&format!("{:?}", value)],
             )),
+        }
+    }
+
+    /// MatchArmをValueに変換（quote用）
+    fn match_arm_to_value(&self, arm: &MatchArm) -> Result<Value, String> {
+        // MatchArm構造: { pattern, guard (Option), body }
+        // Valueに変換する形式: (pattern :-> body) または (pattern :when guard :-> body)
+        let mut items = vec![self.pattern_to_value(&arm.pattern)];
+        if let Some(guard_expr) = &arm.guard {
+            items.push(Value::Keyword(crate::intern::intern_keyword("when")));
+            items.push(self.expr_to_value(guard_expr)?);
+        }
+        items.push(Value::Symbol(crate::intern::intern_symbol("->")));
+        items.push(self.expr_to_value(&arm.body)?);
+        Ok(Value::List(items.into()))
+    }
+
+    /// PatternをValueに変換（quote用）
+    fn pattern_to_value(&self, pattern: &Pattern) -> Value {
+        match pattern {
+            Pattern::Wildcard => Value::Symbol(crate::intern::intern_symbol("_")),
+            Pattern::Var(name) => Value::Symbol(crate::intern::intern_symbol(name)),
+            Pattern::Nil => Value::Nil,
+            Pattern::Bool(b) => Value::Bool(*b),
+            Pattern::Integer(n) => Value::Integer(*n),
+            Pattern::Float(f) => Value::Float(*f),
+            Pattern::String(s) => Value::String(s.clone()),
+            Pattern::Keyword(k) => Value::Keyword(crate::intern::intern_keyword(k)),
+            Pattern::Vector(patterns, rest) => {
+                let mut items: Vec<Value> = patterns.iter().map(|p| self.pattern_to_value(p)).collect();
+                if let Some(rest_pattern) = rest {
+                    items.push(Value::Symbol(crate::intern::intern_symbol("&")));
+                    items.push(self.pattern_to_value(rest_pattern));
+                }
+                Value::Vector(items.into())
+            }
+            Pattern::Map(pairs, as_var) => {
+                let mut map = HashMap::new();
+                for (k, p) in pairs {
+                    map.insert(
+                        crate::value::MapKey::Keyword(crate::intern::intern_keyword(k)),
+                        self.pattern_to_value(p),
+                    );
+                }
+                if let Some(var) = as_var {
+                    map.insert(
+                        crate::value::MapKey::Keyword(crate::intern::intern_keyword("as")),
+                        Value::Symbol(crate::intern::intern_symbol(var)),
+                    );
+                }
+                Value::Map(map.into())
+            }
+            Pattern::List(patterns, rest) => {
+                let mut items: Vec<Value> = patterns.iter().map(|p| self.pattern_to_value(p)).collect();
+                if let Some(rest_pattern) = rest {
+                    items.push(Value::Symbol(crate::intern::intern_symbol("&")));
+                    items.push(self.pattern_to_value(rest_pattern));
+                }
+                Value::List(items.into())
+            }
+            Pattern::Or(patterns) => {
+                // Orパターンは特殊な構文 (p1 | p2 | p3)
+                // Valueとしては、中置演算子として表現
+                let mut items = vec![self.pattern_to_value(&patterns[0])];
+                for p in &patterns[1..] {
+                    items.push(Value::Symbol(crate::intern::intern_symbol("|")));
+                    items.push(self.pattern_to_value(p));
+                }
+                Value::List(items.into())
+            }
+            Pattern::As(pattern, name) => {
+                // Asパターン: (pattern :as name)
+                Value::List(
+                    vec![
+                        self.pattern_to_value(pattern),
+                        Value::Keyword(crate::intern::intern_keyword("as")),
+                        Value::Symbol(crate::intern::intern_symbol(name)),
+                    ]
+                    .into(),
+                )
+            }
+            Pattern::Transform(name, _expr) => {
+                // Transformパターン: (var => expr)
+                // これは評価が必要なので、単純化してValueに変換
+                // TODO: expr部分も変換する必要がある（将来の実装）
+                Value::List(
+                    vec![
+                        Value::Symbol(crate::intern::intern_symbol(name)),
+                        Value::Symbol(crate::intern::intern_symbol("=>")),
+                        // exprの変換は将来の実装で追加予定
+                        Value::Symbol(crate::intern::intern_symbol("<transform-expr>")),
+                    ]
+                    .into(),
+                )
+            }
         }
     }
 
