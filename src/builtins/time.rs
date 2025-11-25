@@ -3,6 +3,7 @@
 //! このモジュールは `std-time` feature でコンパイルされます。
 
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::require_int;
 use crate::value::Value;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc};
 
@@ -18,16 +19,11 @@ pub fn native_now_iso(args: &[Value]) -> Result<Value, String> {
 
 /// from-unix - Unixタイムスタンプ（秒）をISO 8601形式に変換
 pub fn native_from_unix(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["time/from-unix"]));
-    }
+    let timestamp = require_int!(args, "time/from-unix");
 
-    match &args[0] {
-        Value::Integer(timestamp) => match Utc.timestamp_opt(*timestamp, 0) {
-            chrono::LocalResult::Single(dt) => Ok(Value::String(dt.to_rfc3339())),
-            _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/from-unix"])),
-        },
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["time/from-unix", "integers"])),
+    match Utc.timestamp_opt(timestamp, 0) {
+        chrono::LocalResult::Single(dt) => Ok(Value::String(dt.to_rfc3339())),
+        _ => Err(fmt_msg(MsgKey::InvalidTimestamp, &["time/from-unix"])),
     }
 }
 

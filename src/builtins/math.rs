@@ -2,6 +2,7 @@
 
 use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
+use crate::require_number;
 use crate::value::Value;
 
 #[cfg(feature = "std-math")]
@@ -36,82 +37,59 @@ pub fn native_pow(args: &[Value]) -> Result<Value, String> {
 
 /// sqrt - 平方根
 pub fn native_sqrt(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "sqrt");
-
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Float((*n as f64).sqrt())),
-        Value::Float(n) => Ok(Value::Float(n.sqrt())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sqrt", "numbers"])),
-    }
+    let n = require_number!(args, "sqrt");
+    Ok(Value::Float(n.sqrt()))
 }
 
 /// round - 四捨五入
 pub fn native_round(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "round");
+    let n = require_number!(args, "round");
 
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => {
-            let rounded = n.round();
-            if rounded.is_nan() || rounded.is_infinite() {
-                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["round"]));
-            }
-            if rounded < i64::MIN as f64 || rounded > i64::MAX as f64 {
-                return Err(fmt_msg(
-                    MsgKey::FloatOutOfI64Range,
-                    &["round", &rounded.to_string()],
-                ));
-            }
-            Ok(Value::Integer(rounded as i64))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["round", "numbers"])),
+    let rounded = n.round();
+    if rounded.is_nan() || rounded.is_infinite() {
+        return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["round"]));
     }
+    if rounded < i64::MIN as f64 || rounded > i64::MAX as f64 {
+        return Err(fmt_msg(
+            MsgKey::FloatOutOfI64Range,
+            &["round", &rounded.to_string()],
+        ));
+    }
+    Ok(Value::Integer(rounded as i64))
 }
 
 /// floor - 切り捨て
 pub fn native_floor(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "floor");
+    let n = require_number!(args, "floor");
 
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => {
-            let floored = n.floor();
-            if floored.is_nan() || floored.is_infinite() {
-                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["floor"]));
-            }
-            if floored < i64::MIN as f64 || floored > i64::MAX as f64 {
-                return Err(fmt_msg(
-                    MsgKey::FloatOutOfI64Range,
-                    &["floor", &floored.to_string()],
-                ));
-            }
-            Ok(Value::Integer(floored as i64))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["floor", "numbers"])),
+    let floored = n.floor();
+    if floored.is_nan() || floored.is_infinite() {
+        return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["floor"]));
     }
+    if floored < i64::MIN as f64 || floored > i64::MAX as f64 {
+        return Err(fmt_msg(
+            MsgKey::FloatOutOfI64Range,
+            &["floor", &floored.to_string()],
+        ));
+    }
+    Ok(Value::Integer(floored as i64))
 }
 
 /// ceil - 切り上げ
 pub fn native_ceil(args: &[Value]) -> Result<Value, String> {
-    check_args!(args, 1, "ceil");
+    let n = require_number!(args, "ceil");
 
-    match &args[0] {
-        Value::Integer(n) => Ok(Value::Integer(*n)),
-        Value::Float(n) => {
-            let ceiled = n.ceil();
-            if ceiled.is_nan() || ceiled.is_infinite() {
-                return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["ceil"]));
-            }
-            if ceiled < i64::MIN as f64 || ceiled > i64::MAX as f64 {
-                return Err(fmt_msg(
-                    MsgKey::FloatOutOfI64Range,
-                    &["ceil", &ceiled.to_string()],
-                ));
-            }
-            Ok(Value::Integer(ceiled as i64))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["ceil", "numbers"])),
+    let ceiled = n.ceil();
+    if ceiled.is_nan() || ceiled.is_infinite() {
+        return Err(fmt_msg(MsgKey::FloatIsNanOrInfinity, &["ceil"]));
     }
+    if ceiled < i64::MIN as f64 || ceiled > i64::MAX as f64 {
+        return Err(fmt_msg(
+            MsgKey::FloatOutOfI64Range,
+            &["ceil", &ceiled.to_string()],
+        ));
+    }
+    Ok(Value::Integer(ceiled as i64))
 }
 
 /// clamp - 値を範囲内に制限

@@ -222,6 +222,144 @@ macro_rules! map_db_err {
     };
 }
 
+/// 引数1個チェック + 文字列型チェック + 抽出を1行で実行
+///
+/// 最も頻繁に使用されるパターン（引数1個かつ文字列）を1マクロで処理。
+///
+/// # 使用例
+/// ```rust,ignore
+/// // Before (6行)
+/// if args.len() != 1 {
+///     return Err(fmt_msg(MsgKey::Need1Arg, &["upper"]));
+/// }
+/// match &args[0] {
+///     Value::String(s) => Ok(Value::String(s.to_uppercase())),
+///     _ => Err(fmt_msg(MsgKey::TypeOnly, &["upper", "strings"])),
+/// }
+///
+/// // After (2行)
+/// let s = require_string!(args, "upper");
+/// Ok(Value::String(s.to_uppercase()))
+/// ```
+#[macro_export]
+macro_rules! require_string {
+    ($args:expr, $func:expr) => {{
+        if $args.len() != 1 {
+            return Err($crate::i18n::fmt_msg(
+                $crate::i18n::MsgKey::Need1Arg,
+                &[$func],
+            ));
+        }
+        match &$args[0] {
+            $crate::value::Value::String(s) => s.as_str(),
+            _ => {
+                return Err($crate::i18n::fmt_msg(
+                    $crate::i18n::MsgKey::TypeOnly,
+                    &[$func, "strings"],
+                ))
+            }
+        }
+    }};
+}
+
+/// 引数1個チェック + 整数型チェック + 抽出を1行で実行
+///
+/// 整数引数1個を取る関数で使用。
+///
+/// # 使用例
+/// ```rust,ignore
+/// let n = require_int!(args, "time/from-unix");
+/// ```
+#[macro_export]
+macro_rules! require_int {
+    ($args:expr, $func:expr) => {{
+        if $args.len() != 1 {
+            return Err($crate::i18n::fmt_msg(
+                $crate::i18n::MsgKey::Need1Arg,
+                &[$func],
+            ));
+        }
+        match &$args[0] {
+            $crate::value::Value::Integer(n) => *n,
+            _ => {
+                return Err($crate::i18n::fmt_msg(
+                    $crate::i18n::MsgKey::TypeOnly,
+                    &[$func, "integers"],
+                ))
+            }
+        }
+    }};
+}
+
+/// 引数1個チェック + 数値型（Integer/Float）チェック + 抽出を1行で実行
+///
+/// IntegerまたはFloatを受け入れ、f64として返す。
+///
+/// # 使用例
+/// ```rust,ignore
+/// let n = require_number!(args, "math/sqrt");
+/// ```
+#[macro_export]
+macro_rules! require_number {
+    ($args:expr, $func:expr) => {{
+        if $args.len() != 1 {
+            return Err($crate::i18n::fmt_msg(
+                $crate::i18n::MsgKey::Need1Arg,
+                &[$func],
+            ));
+        }
+        match &$args[0] {
+            $crate::value::Value::Float(f) => *f,
+            $crate::value::Value::Integer(i) => *i as f64,
+            _ => {
+                return Err($crate::i18n::fmt_msg(
+                    $crate::i18n::MsgKey::TypeOnly,
+                    &[$func, "numbers"],
+                ))
+            }
+        }
+    }};
+}
+
+/// 引数2個チェック + 両方文字列型チェック + 抽出を1行で実行
+///
+/// 2つの文字列引数を取る関数で使用。
+///
+/// # 使用例
+/// ```rust,ignore
+/// let (s1, s2) = require_2_strings!(args, "string/concat");
+/// ```
+#[macro_export]
+macro_rules! require_2_strings {
+    ($args:expr, $func:expr) => {{
+        if $args.len() != 2 {
+            return Err($crate::i18n::fmt_msg(
+                $crate::i18n::MsgKey::Need2Args,
+                &[$func],
+            ));
+        }
+        let s1 = match &$args[0] {
+            $crate::value::Value::String(s) => s.as_str(),
+            _ => {
+                return Err($crate::i18n::fmt_msg(
+                    $crate::i18n::MsgKey::FirstArgMustBe,
+                    &[$func, "a string"],
+                ))
+            }
+        };
+        let s2 = match &$args[1] {
+            $crate::value::Value::String(s) => s.as_str(),
+            _ => {
+                return Err($crate::i18n::fmt_msg(
+                    $crate::i18n::MsgKey::SecondArgMustBe,
+                    &[$func, "a string"],
+                ))
+            }
+        };
+        (s1, s2)
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use crate::value::Value;
