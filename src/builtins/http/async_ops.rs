@@ -1,4 +1,5 @@
 use super::*;
+use crate::builtins::util::kw;
 
 /// HTTP GETリクエスト (非同期)
 pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
@@ -23,19 +24,13 @@ pub fn native_get_async(args: &[Value]) -> Result<Value, String> {
             Ok(value) => {
                 // 成功: {:ok value}
                 let mut map = crate::new_hashmap();
-                map.insert(
-                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("ok")),
-                    value,
-                );
+                map.insert(kw("ok"), value);
                 Value::Map(map)
             }
             Err(err_msg) => {
                 // エラー: {:error message}
                 let mut map = crate::new_hashmap();
-                map.insert(
-                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("error")),
-                    Value::String(err_msg),
-                );
+                map.insert(kw("error"), Value::String(err_msg));
                 Value::Map(map)
             }
         };
@@ -68,19 +63,13 @@ pub fn native_post_async(args: &[Value]) -> Result<Value, String> {
             Ok(value) => {
                 // 成功: {:ok value}
                 let mut map = crate::new_hashmap();
-                map.insert(
-                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("ok")),
-                    value,
-                );
+                map.insert(kw("ok"), value);
                 Value::Map(map)
             }
             Err(err_msg) => {
                 // エラー: {:error message}
                 let mut map = crate::new_hashmap();
-                map.insert(
-                    crate::value::MapKey::Keyword(crate::intern::intern_keyword("error")),
-                    Value::String(err_msg),
-                );
+                map.insert(kw("error"), Value::String(err_msg));
                 Value::Map(map)
             }
         };

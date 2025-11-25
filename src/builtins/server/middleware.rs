@@ -1,6 +1,7 @@
 //! ミドルウェア関数
 
-use super::helpers::{compress_gzip_response, kw};
+use super::helpers::compress_gzip_response;
+use crate::builtins::util::kw;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 

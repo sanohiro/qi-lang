@@ -10,6 +10,7 @@
 //! - `ws/receive` - メッセージ受信
 //! - `ws/close` - 接続クローズ
 
+use crate::builtins::value_helpers::{get_int_arg, get_string_ref};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use dashmap::DashMap;
@@ -206,15 +207,12 @@ pub fn native_ws_connect(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["ws/connect", "1"]));
     }
 
-    let url = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["ws/connect", "a string"])),
-    };
+    let url = get_string_ref(args, 0, "ws/connect")?;
 
     // グローバルランタイムで非同期実行
-    let url_clone = url.clone();
+    let url_owned = url.to_string();
     let connection = TOKIO_RT.block_on(async move {
-        let (ws_stream, _) = connect_async(&url_clone)
+        let (ws_stream, _) = connect_async(&url_owned)
             .await
             .map_err(|e| fmt_msg(MsgKey::WsFailedToConnect, &[&e.to_string()]))?;
         Ok::<_, String>(Arc::new(WebSocketConnection::new(ws_stream)))
@@ -234,15 +232,7 @@ pub fn native_ws_send(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["ws/send", "2"]));
     }
 
-    let conn_id = match &args[0] {
-        Value::Integer(i) => *i,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::FirstArgMustBe,
-                &["ws/send", "a connection ID (Integer)"],
-            ))
-        }
-    };
+    let conn_id = get_int_arg(args, 0, "ws/send")?;
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)
@@ -265,15 +255,7 @@ pub fn native_ws_receive(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["ws/receive", "1"]));
     }
 
-    let conn_id = match &args[0] {
-        Value::Integer(i) => *i,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::FirstArgMustBe,
-                &["ws/receive", "a connection ID (Integer)"],
-            ))
-        }
-    };
+    let conn_id = get_int_arg(args, 0, "ws/receive")?;
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)
@@ -289,15 +271,7 @@ pub fn native_ws_close(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["ws/close", "1"]));
     }
 
-    let conn_id = match &args[0] {
-        Value::Integer(i) => *i,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::FirstArgMustBe,
-                &["ws/close", "a connection ID (Integer)"],
-            ))
-        }
-    };
+    let conn_id = get_int_arg(args, 0, "ws/close")?;
 
     let connection = WS_CONNECTIONS
         .get(&conn_id)

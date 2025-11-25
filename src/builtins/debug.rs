@@ -2,6 +2,7 @@
 //!
 //! トレース、ブレークポイント、スタックトレースなどのデバッグ機能
 
+use crate::builtins::util::kw;
 use crate::debugger::GLOBAL_DEBUGGER;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -104,23 +105,14 @@ pub fn native_debug_info(_args: &[Value]) -> Result<Value, String> {
     let mut info = crate::new_hashmap();
 
     if let Some(ref dbg) = *GLOBAL_DEBUGGER.read() {
+        info.insert(kw("enabled"), Value::Bool(dbg.is_enabled()));
+        info.insert(kw("state"), Value::String(format!("{:?}", dbg.state())));
         info.insert(
-            crate::value::MapKey::Keyword(crate::intern::intern_keyword("enabled")),
-            Value::Bool(dbg.is_enabled()),
-        );
-        info.insert(
-            crate::value::MapKey::Keyword(crate::intern::intern_keyword("state")),
-            Value::String(format!("{:?}", dbg.state())),
-        );
-        info.insert(
-            crate::value::MapKey::Keyword(crate::intern::intern_keyword("stack-depth")),
+            kw("stack-depth"),
             Value::Integer(dbg.call_stack().len() as i64),
         );
     } else {
-        info.insert(
-            crate::value::MapKey::Keyword(crate::intern::intern_keyword("enabled")),
-            Value::Bool(false),
-        );
+        info.insert(kw("enabled"), Value::Bool(false));
     }
 
     Ok(Value::Map(info))

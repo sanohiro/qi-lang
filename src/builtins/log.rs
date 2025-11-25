@@ -1,5 +1,6 @@
 //! ログ関数
 
+use crate::builtins::value_helpers::{get_map_arg, get_string_ref};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use parking_lot::RwLock;
@@ -206,16 +207,10 @@ pub fn native_log_debug(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/debug"]));
     }
 
-    let message = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/debug", "a string"])),
-    };
+    let message = get_string_ref(args, 0, "log/debug")?;
 
     let context = if args.len() == 2 {
-        match &args[1] {
-            Value::Map(m) => Some(m.clone()),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/debug", "a map"])),
-        }
+        Some(get_map_arg(args, 1, "log/debug")?)
     } else {
         None
     };
@@ -232,16 +227,10 @@ pub fn native_log_info(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/info"]));
     }
 
-    let message = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/info", "a string"])),
-    };
+    let message = get_string_ref(args, 0, "log/info")?;
 
     let context = if args.len() == 2 {
-        match &args[1] {
-            Value::Map(m) => Some(m.clone()),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/info", "a map"])),
-        }
+        Some(get_map_arg(args, 1, "log/info")?)
     } else {
         None
     };
@@ -258,16 +247,10 @@ pub fn native_log_warn(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/warn"]));
     }
 
-    let message = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/warn", "a string"])),
-    };
+    let message = get_string_ref(args, 0, "log/warn")?;
 
     let context = if args.len() == 2 {
-        match &args[1] {
-            Value::Map(m) => Some(m.clone()),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/warn", "a map"])),
-        }
+        Some(get_map_arg(args, 1, "log/warn")?)
     } else {
         None
     };
@@ -284,16 +267,10 @@ pub fn native_log_error(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::Need1Or2Args, &["log/error"]));
     }
 
-    let message = match &args[0] {
-        Value::String(s) => s,
-        _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["log/error", "a string"])),
-    };
+    let message = get_string_ref(args, 0, "log/error")?;
 
     let context = if args.len() == 2 {
-        match &args[1] {
-            Value::Map(m) => Some(m.clone()),
-            _ => return Err(fmt_msg(MsgKey::SecondArgMustBe, &["log/error", "a map"])),
-        }
+        Some(get_map_arg(args, 1, "log/error")?)
     } else {
         None
     };
@@ -310,15 +287,7 @@ pub fn native_log_set_level(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-level", "1"]));
     }
 
-    let level_str = match &args[0] {
-        Value::String(s) => s,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::FirstArgMustBe,
-                &["log/set-level", "a string"],
-            ))
-        }
-    };
+    let level_str = get_string_ref(args, 0, "log/set-level")?;
 
     let level = LogLevel::from_str(level_str)
         .ok_or_else(|| fmt_msg(MsgKey::LogSetLevelInvalidLevel, &[level_str]))?;
@@ -335,15 +304,7 @@ pub fn native_log_set_format(args: &[Value]) -> Result<Value, String> {
         return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["log/set-format", "1"]));
     }
 
-    let format_str = match &args[0] {
-        Value::String(s) => s,
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::FirstArgMustBe,
-                &["log/set-format", "a string"],
-            ))
-        }
-    };
+    let format_str = get_string_ref(args, 0, "log/set-format")?;
 
     let format = match format_str.to_lowercase().as_str() {
         "text" | "plain" => LogFormat::Text,

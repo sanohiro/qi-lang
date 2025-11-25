@@ -10,6 +10,21 @@ pub fn to_map_key(key: &str) -> crate::value::MapKey {
     crate::value::MapKey::Keyword(crate::intern::intern_keyword(key))
 }
 
+/// キーワード形式のマップキーを生成（短縮版）
+///
+/// `to_map_key()`の短縮エイリアス。頻繁に使用される場所で可読性向上のために使用。
+///
+/// # 使用例
+/// ```rust
+/// use crate::builtins::util::kw;
+///
+/// let key = kw("status"); // MapKey::Keyword(intern_keyword("status"))
+/// ```
+#[inline]
+pub fn kw(key: &str) -> MapKey {
+    MapKey::Keyword(crate::intern::intern_keyword(key))
+}
+
 /// HashMap<String, Value>をHashMap<MapKey, Value>に変換
 ///
 /// 文字列キーをMapKey::Keywordに変換する（ルートパラメータ等で使用）

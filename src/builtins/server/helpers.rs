@@ -1,5 +1,6 @@
 //! サーバーヘルパー関数
 
+use crate::builtins::util::kw;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use crate::HashMap;
@@ -12,13 +13,6 @@ use std::convert::Infallible;
 use std::io::Read;
 use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
-
-/// キーワードをマップキーに変換するヘルパー関数
-/// SAFETY: キーワード文字列は常に有効なマップキーに変換できる
-#[inline]
-pub(super) fn kw(s: &str) -> MapKey {
-    MapKey::Keyword(crate::intern::intern_keyword(s))
-}
 
 pub(super) fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     let mut decoder = GzDecoder::new(data);

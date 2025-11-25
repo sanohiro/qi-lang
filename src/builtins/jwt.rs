@@ -3,6 +3,7 @@
 //! このモジュールは `auth-jwt` feature でコンパイルされます。
 
 use crate::builtins::util::to_map_key;
+use crate::builtins::value_helpers::{get_int_arg, get_string_ref};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
@@ -29,32 +30,19 @@ pub fn native_jwt_sign(args: &[Value]) -> Result<Value, String> {
     };
 
     // シークレットキー
-    let secret = match &args[1] {
-        Value::String(s) => s.as_str(),
-        _ => return Err(fmt_msg(MsgKey::TypeOnly, &["jwt/sign (secret)", "strings"])),
-    };
+    let secret = get_string_ref(args, 1, "jwt/sign")?;
 
     // アルゴリズム（オプション、デフォルト: HS256）
     let algorithm = if args.len() >= 3 {
-        match &args[2] {
-            Value::String(s) => parse_algorithm(s.as_str())?,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["jwt/sign (algorithm)", "strings"],
-                ))
-            }
-        }
+        let alg_str = get_string_ref(args, 2, "jwt/sign")?;
+        parse_algorithm(alg_str)?
     } else {
         Algorithm::HS256
     };
 
     // 有効期限（オプション、秒数）
     let exp_seconds = if args.len() == 4 {
-        match &args[3] {
-            Value::Integer(i) => Some(*i),
-            _ => return Err(fmt_msg(MsgKey::TypeOnly, &["jwt/sign (exp)", "integers"])),
-        }
+        Some(get_int_arg(args, 3, "jwt/sign")?)
     } else {
         None
     };
@@ -98,38 +86,15 @@ pub fn native_jwt_verify(args: &[Value]) -> Result<Value, String> {
     }
 
     // トークン
-    let token = match &args[0] {
-        Value::String(s) => s.as_str(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["jwt/verify (token)", "strings"],
-            ))
-        }
-    };
+    let token = get_string_ref(args, 0, "jwt/verify")?;
 
     // シークレットキー
-    let secret = match &args[1] {
-        Value::String(s) => s.as_str(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["jwt/verify (secret)", "strings"],
-            ))
-        }
-    };
+    let secret = get_string_ref(args, 1, "jwt/verify")?;
 
     // アルゴリズム（オプション、デフォルト: HS256）
     let algorithm = if args.len() == 3 {
-        match &args[2] {
-            Value::String(s) => parse_algorithm(s.as_str())?,
-            _ => {
-                return Err(fmt_msg(
-                    MsgKey::TypeOnly,
-                    &["jwt/verify (algorithm)", "strings"],
-                ))
-            }
-        }
+        let alg_str = get_string_ref(args, 2, "jwt/verify")?;
+        parse_algorithm(alg_str)?
     } else {
         Algorithm::HS256
     };
@@ -162,15 +127,7 @@ pub fn native_jwt_decode(args: &[Value]) -> Result<Value, String> {
     }
 
     // トークン
-    let token = match &args[0] {
-        Value::String(s) => s.as_str(),
-        _ => {
-            return Err(fmt_msg(
-                MsgKey::TypeOnly,
-                &["jwt/decode (token)", "strings"],
-            ))
-        }
-    };
+    let token = get_string_ref(args, 0, "jwt/decode")?;
 
     // デコード（検証なし）
     let mut validation = Validation::default();

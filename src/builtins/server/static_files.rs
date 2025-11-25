@@ -1,6 +1,6 @@
 //! 静的ファイル配信機能
 
-use super::helpers::kw;
+use crate::builtins::util::kw;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::map_i18n_err;
 use crate::value::Value;
