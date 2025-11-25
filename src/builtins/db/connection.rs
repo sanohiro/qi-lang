@@ -1,7 +1,7 @@
 use super::*;
-use crate::check_args;
 use crate::builtins::db::traits::*;
 use crate::builtins::db::types::*;
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 
 #[cfg(feature = "db-mysql")]

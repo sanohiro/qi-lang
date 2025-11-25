@@ -136,8 +136,8 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
     };
 
     // ファイルをバッファリングして開く（ストリーミング）
-    let file = File::open(&path)
-        .map_err(|e| fmt_msg(MsgKey::FileReadError, &[&path, &e.to_string()]))?;
+    let file =
+        File::open(&path).map_err(|e| fmt_msg(MsgKey::FileReadError, &[&path, &e.to_string()]))?;
     let reader = BufReader::new(file);
     let lines = Arc::new(parking_lot::Mutex::new(reader.lines()));
 
@@ -154,7 +154,7 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
                             let record = records.remove(0);
                             Some(Value::List(record.into_iter().map(Value::String).collect()))
                         }
-                        Ok(_) => None, // 空行
+                        Ok(_) => None,  // 空行
                         Err(_) => None, // パースエラーはスキップ（エラーを返すとストリーム全体が停止）
                     }
                 }

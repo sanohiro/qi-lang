@@ -1,8 +1,8 @@
 //! タスク実行・パイプライン・Select操作
 
 use super::promise::spawn_promise;
-use crate::check_args;
 use crate::builtins::value_helpers::to_positive_usize;
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};

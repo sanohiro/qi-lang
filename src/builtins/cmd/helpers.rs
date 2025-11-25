@@ -36,10 +36,7 @@ pub(super) static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
     // NULLバイトのチェック（明らかな攻撃）
     if cmd.contains('\0') {
-        return Err(fmt_msg(
-            MsgKey::CmdDangerousCharacters,
-            &["NULL byte"],
-        ));
+        return Err(fmt_msg(MsgKey::CmdDangerousCharacters, &["NULL byte"]));
     }
 
     // 制御文字のチェック（改行、復帰、タブは許可）

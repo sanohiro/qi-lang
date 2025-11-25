@@ -2,8 +2,8 @@
 //!
 //! バイナリデータの生成、変換、操作を提供します。
 
-use crate::check_args;
 use crate::builtins::value_helpers::validate_byte;
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::sync::Arc;

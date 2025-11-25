@@ -4,16 +4,23 @@ use qi_lang::intern;
 use qi_lang::parser::Parser;
 use qi_lang::project;
 use qi_lang::value::{MapKey, Value};
-use rustyline::completion::{Completer, Pair};
-use rustyline::error::ReadlineError;
-use rustyline::highlight::Highlighter;
-use rustyline::hint::Hinter;
-use rustyline::validate::Validator;
-use rustyline::{Context, Editor, Helper};
 use std::collections::HashSet;
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+
+#[cfg(feature = "repl")]
+use rustyline::completion::{Completer, Pair};
+#[cfg(feature = "repl")]
+use rustyline::error::ReadlineError;
+#[cfg(feature = "repl")]
+use rustyline::highlight::Highlighter;
+#[cfg(feature = "repl")]
+use rustyline::hint::Hinter;
+#[cfg(feature = "repl")]
+use rustyline::validate::Validator;
+#[cfg(feature = "repl")]
+use rustyline::{Context, Editor, Helper};
 
 #[cfg(feature = "repl")]
 use colored::Colorize;
@@ -345,10 +352,12 @@ fn pretty_print_value(value: &Value, _indent: usize, _max_inline: usize) -> Stri
 }
 
 /// タブ補完のためのヘルパー
+#[cfg(feature = "repl")]
 struct QiHelper {
     completions: HashSet<String>,
 }
 
+#[cfg(feature = "repl")]
 impl QiHelper {
     fn new() -> Self {
         let mut completions = HashSet::new();
@@ -485,6 +494,7 @@ impl QiHelper {
     }
 }
 
+#[cfg(feature = "repl")]
 impl Completer for QiHelper {
     type Candidate = Pair;
 
@@ -517,6 +527,7 @@ impl Completer for QiHelper {
     }
 }
 
+#[cfg(feature = "repl")]
 impl Highlighter for QiHelper {
     fn highlight<'l>(&self, line: &'l str, _pos: usize) -> std::borrow::Cow<'l, str> {
         use colored::Colorize;
@@ -676,6 +687,7 @@ fn colorize_paren(ch: char, depth: usize) -> String {
     color_fn(&ch.to_string())
 }
 
+#[cfg(feature = "repl")]
 impl Hinter for QiHelper {
     type Hint = String;
 
@@ -700,6 +712,7 @@ impl Hinter for QiHelper {
     }
 }
 
+#[cfg(feature = "repl")]
 impl Validator for QiHelper {
     fn validate(
         &self,
@@ -727,6 +740,7 @@ impl Validator for QiHelper {
     }
 }
 
+#[cfg(feature = "repl")]
 impl Helper for QiHelper {}
 
 fn main() {
@@ -738,8 +752,17 @@ fn main() {
     // コマンドライン引数の解析
     if args.len() == 1 {
         // 引数なし: REPLを起動
-        repl(None, false);
-        return;
+        #[cfg(feature = "repl")]
+        {
+            repl(None, false);
+            return;
+        }
+        #[cfg(not(feature = "repl"))]
+        {
+            eprintln!("Error: REPL feature is not enabled. Use --features repl to enable it.");
+            eprintln!("Usage: qi <file.qi> [args...]");
+            std::process::exit(1);
+        }
     }
 
     match args[1].as_str() {
@@ -771,7 +794,15 @@ fn main() {
         }
         "-q" | "--quiet" => {
             // quietモードでREPL起動
-            repl(None, true);
+            #[cfg(feature = "repl")]
+            {
+                repl(None, true);
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Error: REPL feature is not enabled.");
+                std::process::exit(1);
+            }
         }
         "new" => {
             // プロジェクト作成
@@ -862,7 +893,15 @@ fn main() {
                 std::process::exit(1);
             }
             // -l はREPLなので quiet=false
-            repl(Some(&args[2]), false);
+            #[cfg(feature = "repl")]
+            {
+                repl(Some(&args[2]), false);
+            }
+            #[cfg(not(feature = "repl"))]
+            {
+                eprintln!("Error: REPL feature is not enabled.");
+                std::process::exit(1);
+            }
         }
         arg if arg.starts_with('-') => {
             eprintln!("{}", fmt_ui_msg(UiMsg::ErrorUnknownOption, &[arg]));
@@ -1146,6 +1185,7 @@ fn eval_code(evaluator: &mut Evaluator, code: &str, print_result: bool, filename
     }
 }
 
+#[cfg(feature = "repl")]
 fn repl(preload: Option<&str>, quiet: bool) {
     if !quiet {
         println!("{}", fmt_ui_msg(UiMsg::ReplWelcome, &[VERSION]));
@@ -1407,6 +1447,7 @@ fn repl(preload: Option<&str>, quiet: bool) {
     let _ = rl.save_history(&history_file);
 
     // セッション変数を保存
+    #[cfg(feature = "repl")]
     save_session(&evaluator);
 
     if !quiet {
@@ -1606,6 +1647,7 @@ fn load_docs_from_paths(evaluator: &Evaluator, paths: &DocPaths) {
 }
 
 /// REPLコマンドの処理
+#[cfg(feature = "repl")]
 fn handle_repl_command(
     cmd: &str,
     evaluator: &Evaluator,
@@ -2270,6 +2312,7 @@ fn handle_repl_command(
 }
 
 /// REPL用のコード評価（エラーで終了しない）
+#[cfg(feature = "repl")]
 fn eval_repl_code(evaluator: &Evaluator, code: &str, filename: Option<&str>) {
     // ソース情報を設定
     let source_name = filename.unwrap_or("<repl>").to_string();

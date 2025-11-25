@@ -1,7 +1,7 @@
 //! データ構造 - Queue, Stack等
 
-use crate::check_args;
 use crate::builtins::util::{convert_string_map_to_mapkey, kw};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::collections::HashMap;

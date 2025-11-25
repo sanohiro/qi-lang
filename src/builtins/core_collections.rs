@@ -320,9 +320,7 @@ pub fn native_sort(args: &[Value]) -> Result<Value, String> {
     let mut sorted: Vec<Value> = seq.iter().cloned().collect();
     sorted.sort_by(|a, b| match (a, b) {
         (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-        (Value::Float(x), Value::Float(y)) => {
-            x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-        }
+        (Value::Float(x), Value::Float(y)) => x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal),
         (Value::String(x), Value::String(y)) => x.cmp(y),
         _ => std::cmp::Ordering::Equal,
     });

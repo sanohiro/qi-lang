@@ -4,11 +4,11 @@
 //! 比較演算（6個）: =, !=, <, >, <=, >=
 //! 合計17個のCore関数
 
-use crate::check_args;
 use crate::builtins::numeric_helpers::{
     checked_abs_value, checked_add_value, checked_int_add, checked_int_mul, checked_int_sub,
     checked_neg_value, checked_sub_value,
 };
+use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 

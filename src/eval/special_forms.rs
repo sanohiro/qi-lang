@@ -551,7 +551,11 @@ impl Evaluator {
                 .into(),
             )),
             Expr::Unquote { expr: e, .. } => Ok(Value::List(
-                vec![Value::Symbol(crate::intern::intern_symbol("unquote")), self.expr_to_value(e)?].into(),
+                vec![
+                    Value::Symbol(crate::intern::intern_symbol("unquote")),
+                    self.expr_to_value(e)?,
+                ]
+                .into(),
             )),
             Expr::UnquoteSplice { expr: e, .. } => Ok(Value::List(
                 vec![
@@ -597,7 +601,9 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // when - (when condition body...)
-            Expr::When { condition, body, .. } => {
+            Expr::When {
+                condition, body, ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("when"))];
                 items.push(self.expr_to_value(condition)?);
                 for expr in body {
@@ -606,7 +612,9 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // while - (while condition body...)
-            Expr::While { condition, body, .. } => {
+            Expr::While {
+                condition, body, ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("while"))];
                 items.push(self.expr_to_value(condition)?);
                 for expr in body {
@@ -615,7 +623,9 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // until - (until condition body...)
-            Expr::Until { condition, body, .. } => {
+            Expr::Until {
+                condition, body, ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("until"))];
                 items.push(self.expr_to_value(condition)?);
                 for expr in body {
@@ -624,7 +634,12 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // while-some - (while-some [x expr] body...)
-            Expr::WhileSome { binding, expr, body, .. } => {
+            Expr::WhileSome {
+                binding,
+                expr,
+                body,
+                ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("while-some"))];
                 items.push(Value::Vector(
                     vec![
@@ -639,7 +654,12 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // until-error - (until-error [x expr] body...)
-            Expr::UntilError { binding, expr, body, .. } => {
+            Expr::UntilError {
+                binding,
+                expr,
+                body,
+                ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("until-error"))];
                 items.push(Value::Vector(
                     vec![
@@ -663,7 +683,13 @@ impl Evaluator {
                 Ok(Value::List(items.into()))
             }
             // mac - (mac name [params] body)
-            Expr::Mac { name, params, is_variadic, body, .. } => {
+            Expr::Mac {
+                name,
+                params,
+                is_variadic,
+                body,
+                ..
+            } => {
                 let mut items = vec![Value::Symbol(crate::intern::intern_symbol("mac"))];
                 items.push(Value::Symbol(crate::intern::intern_symbol(name)));
                 // パラメータベクタ（&が含まれる場合あり）
@@ -678,7 +704,9 @@ impl Evaluator {
                         .map(|p| Value::Symbol(crate::intern::intern_symbol(p)))
                         .collect();
                     v.push(Value::Symbol(crate::intern::intern_symbol("&")));
-                    v.push(Value::Symbol(crate::intern::intern_symbol(&params[params.len() - 1])));
+                    v.push(Value::Symbol(crate::intern::intern_symbol(
+                        &params[params.len() - 1],
+                    )));
                     v
                 } else {
                     params
@@ -1050,9 +1078,9 @@ impl Evaluator {
                                     .map(|v| self.value_to_pattern(v))
                                     .collect();
                                 // is_variadicのチェック（&が含まれているか）
-                                let is_variadic = params_vec.iter().any(|v| {
-                                    matches!(v, Value::Symbol(s) if &**s == "&")
-                                });
+                                let is_variadic = params_vec
+                                    .iter()
+                                    .any(|v| matches!(v, Value::Symbol(s) if &**s == "&"));
                                 // ボディ（複数式の場合はDoに包む）
                                 let body_exprs: Result<Vec<_>, _> = items
                                     .iter()
@@ -1219,9 +1247,9 @@ impl Evaluator {
                                         })
                                         .collect();
                                     // is_variadicのチェック
-                                    let is_variadic = params_vec.iter().any(|v| {
-                                        matches!(v, Value::Symbol(s) if &**s == "&")
-                                    });
+                                    let is_variadic = params_vec
+                                        .iter()
+                                        .any(|v| matches!(v, Value::Symbol(s) if &**s == "&"));
                                     // ボディ（複数式の場合はDoに包む）
                                     let body_exprs: Result<Vec<_>, _> = items
                                         .iter()
@@ -1281,7 +1309,9 @@ impl Evaluator {
                             if let Value::Symbol(module) = &items[1] {
                                 // モードの解析
                                 let mode = if items.len() >= 4 {
-                                    if let (Value::Keyword(k), Value::Vector(syms)) = (&items[2], &items[3]) {
+                                    if let (Value::Keyword(k), Value::Vector(syms)) =
+                                        (&items[2], &items[3])
+                                    {
                                         if &**k == "only" {
                                             let symbols: Result<Vec<_>, _> = syms
                                                 .iter()
@@ -1300,7 +1330,9 @@ impl Evaluator {
                                                 &[&format!(":{}", k)],
                                             ));
                                         }
-                                    } else if let (Value::Keyword(k), Value::Symbol(alias)) = (&items[2], &items[3]) {
+                                    } else if let (Value::Keyword(k), Value::Symbol(alias)) =
+                                        (&items[2], &items[3])
+                                    {
                                         if &**k == "as" {
                                             UseMode::As(alias.clone())
                                         } else {
@@ -1409,7 +1441,8 @@ impl Evaluator {
                         if &**s == "&" {
                             // rest パラメータ
                             if i + 1 < items.len() {
-                                rest_pattern = Some(Box::new(self.value_to_pattern(&items[i + 1])?));
+                                rest_pattern =
+                                    Some(Box::new(self.value_to_pattern(&items[i + 1])?));
                                 i += 2;
                             } else {
                                 return Err(fmt_msg(MsgKey::RestParamRequiresName, &[]));
@@ -1455,10 +1488,7 @@ impl Evaluator {
                 }
                 Ok(Pattern::Map(pairs, as_var))
             }
-            _ => Err(fmt_msg(
-                MsgKey::InvalidPattern,
-                &[&format!("{:?}", value)],
-            )),
+            _ => Err(fmt_msg(MsgKey::InvalidPattern, &[&format!("{:?}", value)])),
         }
     }
 
@@ -1488,7 +1518,8 @@ impl Evaluator {
             Pattern::String(s) => Value::String(s.clone()),
             Pattern::Keyword(k) => Value::Keyword(crate::intern::intern_keyword(k)),
             Pattern::Vector(patterns, rest) => {
-                let mut items: Vec<Value> = patterns.iter().map(|p| self.pattern_to_value(p)).collect();
+                let mut items: Vec<Value> =
+                    patterns.iter().map(|p| self.pattern_to_value(p)).collect();
                 if let Some(rest_pattern) = rest {
                     items.push(Value::Symbol(crate::intern::intern_symbol("&")));
                     items.push(self.pattern_to_value(rest_pattern));
@@ -1512,7 +1543,8 @@ impl Evaluator {
                 Value::Map(map.into())
             }
             Pattern::List(patterns, rest) => {
-                let mut items: Vec<Value> = patterns.iter().map(|p| self.pattern_to_value(p)).collect();
+                let mut items: Vec<Value> =
+                    patterns.iter().map(|p| self.pattern_to_value(p)).collect();
                 if let Some(rest_pattern) = rest {
                     items.push(Value::Symbol(crate::intern::intern_symbol("&")));
                     items.push(self.pattern_to_value(rest_pattern));
@@ -1611,9 +1643,6 @@ impl Evaluator {
                 }
             }
         }
-        Err(fmt_msg(
-            MsgKey::InvalidMatchArm,
-            &[&format!("{:?}", value)],
-        ))
+        Err(fmt_msg(MsgKey::InvalidMatchArm, &[&format!("{:?}", value)]))
     }
 }

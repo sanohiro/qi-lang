@@ -16,7 +16,7 @@ pub fn to_map_key(key: &str) -> crate::value::MapKey {
 ///
 /// # 使用例
 /// ```rust
-/// use crate::builtins::util::kw;
+/// use qi_lang::builtins::util::kw;
 ///
 /// let key = kw("status"); // MapKey::Keyword(intern_keyword("status"))
 /// ```

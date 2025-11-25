@@ -1,8 +1,8 @@
 //! リスト操作 - 変換関数
 
 use super::helpers::values_equal;
-use crate::check_args;
 use crate::builtins::value_helpers::{to_nonnegative_usize, to_positive_usize};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 

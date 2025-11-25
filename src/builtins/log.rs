@@ -1,7 +1,7 @@
 //! ログ関数
 
-use crate::check_args;
 use crate::builtins::value_helpers::{get_map_arg, get_string_ref};
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
 use parking_lot::RwLock;
