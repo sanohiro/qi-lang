@@ -2,6 +2,7 @@
 //!
 //! バイナリデータの生成、変換、操作を提供します。
 
+use crate::check_args;
 use crate::builtins::value_helpers::validate_byte;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -20,9 +21,7 @@ use std::sync::Arc;
 /// (bytes [0 1 2 3])      ;=> #bytes[00 01 02 03]
 /// ```
 pub fn native_bytes(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["bytes"]));
-    }
+    check_args!(args, 1, "bytes");
 
     match &args[0] {
         Value::Vector(v) => {
@@ -49,9 +48,7 @@ pub fn native_bytes(args: &[Value]) -> Result<Value, String> {
 /// (bytes/to-vec #bytes[FF FE FD])  ;=> [255 254 253]
 /// ```
 pub fn native_bytes_to_vec(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["bytes/to-vec"]));
-    }
+    check_args!(args, 1, "bytes/to-vec");
 
     match &args[0] {
         Value::Bytes(b) => {

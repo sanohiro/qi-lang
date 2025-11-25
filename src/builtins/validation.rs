@@ -16,6 +16,7 @@
 //! (validate schema "ab")     ;=> {:error {:code "min-length" :message "..."}}
 //! ```
 
+use crate::check_args;
 use crate::constants::keywords::ERROR_KEY;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{MapKey, Value};
@@ -29,9 +30,7 @@ use std::sync::Arc;
 ///
 /// (validate schema data) => {:ok data} | {:error {...}}
 pub fn native_validate(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["validate"]));
-    }
+    check_args!(args, 2, "validate");
 
     let schema = &args[0];
     let data = &args[1];

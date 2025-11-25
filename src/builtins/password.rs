@@ -2,6 +2,7 @@
 //!
 //! このモジュールは `auth-password` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use argon2::{
@@ -16,9 +17,7 @@ use argon2::{
 ///
 /// 戻り値: ハッシュ化されたパスワード文字列
 pub fn native_password_hash(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["password/hash"]));
-    }
+    check_args!(args, 1, "password/hash");
 
     let password = match &args[0] {
         Value::String(s) => s.as_str(),
@@ -46,9 +45,7 @@ pub fn native_password_hash(args: &[Value]) -> Result<Value, String> {
 ///
 /// 戻り値: 検証結果（true/false）
 pub fn native_password_verify(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["password/verify"]));
-    }
+    check_args!(args, 2, "password/verify");
 
     let password = match &args[0] {
         Value::String(s) => s.as_str(),

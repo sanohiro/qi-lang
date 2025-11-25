@@ -2,6 +2,7 @@
 //!
 //! 文字列基本（3個）: str, split, join
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::Value;
 
@@ -19,9 +20,7 @@ pub fn native_str(args: &[Value]) -> Result<Value, String> {
 
 /// split - 文字列を分割
 pub fn native_split(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["split"]));
-    }
+    check_args!(args, 2, "split");
     match (&args[0], &args[1]) {
         (Value::String(s), Value::String(sep)) => {
             let parts: im::Vector<Value> = s
@@ -36,9 +35,7 @@ pub fn native_split(args: &[Value]) -> Result<Value, String> {
 
 /// join - リストを文字列に結合
 pub fn native_join(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["join"]));
-    }
+    check_args!(args, 2, "join");
     match (&args[0], &args[1]) {
         (Value::String(sep), Value::List(items)) | (Value::String(sep), Value::Vector(items)) => {
             let strings: Result<Vec<String>, String> = items

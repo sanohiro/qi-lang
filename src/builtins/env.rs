@@ -1,5 +1,6 @@
 //! 環境変数関連関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::env;
@@ -61,9 +62,7 @@ pub fn native_env_get(args: &[Value]) -> Result<Value, String> {
 /// 引数: (key value) - 環境変数名と値
 /// 例: (env/set "MY_VAR" "my-value")
 pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["env/set", "2"]));
-    }
+    check_args!(args, 2, "env/set");
 
     let key = match &args[0] {
         Value::String(s) => s,
@@ -93,9 +92,7 @@ pub fn native_env_set(args: &[Value]) -> Result<Value, String> {
 /// 引数: なし
 /// 例: (env/all)
 pub fn native_env_all(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["env/all"]));
-    }
+    check_args!(args, 0, "env/all");
 
     let mut map = crate::new_hashmap();
     for (key, value) in env::vars() {

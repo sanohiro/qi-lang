@@ -4,6 +4,7 @@
 //! 日時（3個）: now, timestamp, sleep
 //! 合計6個のCore関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::thread;
@@ -15,9 +16,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// to-int - 値を整数に変換
 pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-int"]));
-    }
+    check_args!(args, 1, "to-int");
 
     match &args[0] {
         Value::Integer(i) => Ok(Value::Integer(*i)),
@@ -49,9 +48,7 @@ pub fn native_to_int(args: &[Value]) -> Result<Value, String> {
 
 /// to-float - 値を浮動小数点数に変換
 pub fn native_to_float(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-float"]));
-    }
+    check_args!(args, 1, "to-float");
 
     match &args[0] {
         Value::Integer(i) => Ok(Value::Float(*i as f64)),
@@ -69,9 +66,7 @@ pub fn native_to_float(args: &[Value]) -> Result<Value, String> {
 
 /// to-string - 値を文字列に変換
 pub fn native_to_string(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["to-string"]));
-    }
+    check_args!(args, 1, "to-string");
 
     let s = match &args[0] {
         Value::String(s) => s.clone(),
@@ -92,9 +87,7 @@ pub fn native_to_string(args: &[Value]) -> Result<Value, String> {
 
 /// now - 現在時刻（UNIXタイムスタンプ秒）
 pub fn native_now(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["now"]));
-    }
+    check_args!(args, 0, "now");
 
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -105,9 +98,7 @@ pub fn native_now(args: &[Value]) -> Result<Value, String> {
 
 /// timestamp - 現在時刻（UNIXタイムスタンプミリ秒）
 pub fn native_timestamp(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["timestamp"]));
-    }
+    check_args!(args, 0, "timestamp");
 
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -2,6 +2,7 @@
 //!
 //! トレース、ブレークポイント、スタックトレースなどのデバッグ機能
 
+use crate::check_args;
 use crate::builtins::util::kw;
 use crate::debugger::GLOBAL_DEBUGGER;
 use crate::i18n::{fmt_msg, MsgKey};
@@ -24,9 +25,7 @@ pub static TRACED_FUNCTIONS: LazyLock<RwLock<HashSet<String>>> =
 /// @qi-doc:category debug
 /// @qi-doc:description トレース機能を有効/無効にする
 pub fn native_debug_trace(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["debug/trace"]));
-    }
+    check_args!(args, 1, "debug/trace");
 
     let enabled = match &args[0] {
         Value::Bool(b) => *b,

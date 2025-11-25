@@ -1,5 +1,6 @@
 //! コマンドライン引数パース関数
 
+use crate::check_args;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -10,9 +11,7 @@ use std::env;
 /// 引数: なし
 /// 例: (args/all) => ["./qi" "script.qi" "arg1" "arg2"]
 pub fn native_args_all(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["args/all"]));
-    }
+    check_args!(args, 0, "args/all");
 
     let cmd_args: Vec<Value> = env::args().map(Value::String).collect();
     Ok(Value::List(cmd_args.into()))
@@ -63,9 +62,7 @@ pub fn native_args_get(args: &[Value]) -> Result<Value, String> {
 ///           :options {"port" "3000"}
 ///           :args ["./qi" "script.qi" "input.txt"]}
 pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["args/parse"]));
-    }
+    check_args!(args, 0, "args/parse");
 
     let cmd_args: Vec<String> = env::args().collect();
 
@@ -163,9 +160,7 @@ pub fn native_args_parse(args: &[Value]) -> Result<Value, String> {
 /// 引数: なし
 /// 例: (args/count) => 5
 pub fn native_args_count(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["args/count"]));
-    }
+    check_args!(args, 0, "args/count");
 
     let count = env::args().count();
     Ok(Value::Integer(count as i64))
