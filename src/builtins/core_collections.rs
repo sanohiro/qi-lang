@@ -29,23 +29,22 @@ pub fn native_first(args: &[Value]) -> Result<Value, String> {
 /// rest - リストの残り
 pub fn native_rest(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "rest");
-    match &args[0] {
-        Value::List(v) => {
-            if v.is_empty() {
-                Ok(Value::List(im::Vector::new()))
-            } else {
-                Ok(Value::List(v.iter().skip(1).cloned().collect()))
-            }
-        }
-        Value::Vector(v) => {
-            if v.is_empty() {
-                Ok(Value::Vector(im::Vector::new()))
-            } else {
-                Ok(Value::Vector(v.iter().skip(1).cloned().collect()))
-            }
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["rest", "lists or vectors"])),
-    }
+    let seq = args[0]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["rest", "lists or vectors"]))?;
+
+    let result: im::Vector<Value> = if seq.is_empty() {
+        im::Vector::new()
+    } else {
+        seq.iter().skip(1).cloned().collect()
+    };
+
+    // 元の型を維持
+    Ok(match &args[0] {
+        Value::List(_) => Value::List(result),
+        Value::Vector(_) => Value::Vector(result),
+        _ => unreachable!(),
+    })
 }
 
 /// last - リストの最後の要素
@@ -100,15 +99,16 @@ pub fn native_cons(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 2, "cons");
     match &args[1] {
         Value::Nil => Ok(Value::List(vec![args[0].clone()].into())),
-        Value::List(v) => {
-            let mut new_list = v.clone();
-            new_list.push_front(args[0].clone());
-            Ok(Value::List(new_list))
-        }
-        Value::Vector(v) => {
-            let mut new_vec = v.clone();
-            new_vec.push_front(args[0].clone());
-            Ok(Value::Vector(new_vec))
+        Value::List(_) | Value::Vector(_) => {
+            let seq = args[1].as_seq().unwrap(); // 上でマッチ済み
+            let mut new_seq = seq.clone();
+            new_seq.push_front(args[0].clone());
+            // 元の型を維持
+            Ok(match &args[1] {
+                Value::List(_) => Value::List(new_seq),
+                Value::Vector(_) => Value::Vector(new_seq),
+                _ => unreachable!(),
+            })
         }
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["cons", "lists or vectors"])),
     }
@@ -119,22 +119,27 @@ pub fn native_conj(args: &[Value]) -> Result<Value, String> {
     if args.len() < 2 {
         return Err(fmt_msg(MsgKey::NeedAtLeastNArgs, &["conj", "2"]));
     }
+    let seq = args[0]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["conj", "lists or vectors"]))?;
+
+    let mut new_seq = seq.clone();
     match &args[0] {
-        Value::List(v) => {
-            let mut new_list = v.clone();
+        Value::List(_) => {
+            // Listは先頭に追加（逆順）
             for item in args[1..].iter().rev() {
-                new_list.push_front(item.clone());
+                new_seq.push_front(item.clone());
             }
-            Ok(Value::List(new_list))
+            Ok(Value::List(new_seq))
         }
-        Value::Vector(v) => {
-            let mut new_vec = v.clone();
+        Value::Vector(_) => {
+            // Vectorは末尾に追加
             for item in &args[1..] {
-                new_vec.push_back(item.clone());
+                new_seq.push_back(item.clone());
             }
-            Ok(Value::Vector(new_vec))
+            Ok(Value::Vector(new_seq))
         }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["conj", "lists or vectors"])),
+        _ => unreachable!(),
     }
 }
 
@@ -238,17 +243,18 @@ pub fn native_repeat(args: &[Value]) -> Result<Value, String> {
 /// reverse - リストを反転
 pub fn native_reverse(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "reverse");
-    match &args[0] {
-        Value::List(v) => {
-            let reversed: im::Vector<Value> = v.iter().rev().cloned().collect();
-            Ok(Value::List(reversed))
-        }
-        Value::Vector(v) => {
-            let reversed: im::Vector<Value> = v.iter().rev().cloned().collect();
-            Ok(Value::Vector(reversed))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["reverse", "lists or vectors"])),
-    }
+    let seq = args[0]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["reverse", "lists or vectors"]))?;
+
+    let reversed: im::Vector<Value> = seq.iter().rev().cloned().collect();
+
+    // 元の型を維持
+    Ok(match &args[0] {
+        Value::List(_) => Value::List(reversed),
+        Value::Vector(_) => Value::Vector(reversed),
+        _ => unreachable!(),
+    })
 }
 
 /// take - リストの最初のn要素を取得
@@ -262,11 +268,19 @@ pub fn native_take(args: &[Value]) -> Result<Value, String> {
         Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["take", "count"])),
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["take", "an integer"])),
     };
-    match &args[1] {
-        Value::List(v) => Ok(Value::List(v.iter().take(n).cloned().collect())),
-        Value::Vector(v) => Ok(Value::Vector(v.iter().take(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["take", "lists or vectors"])),
-    }
+
+    let seq = args[1]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["take", "lists or vectors"]))?;
+
+    let result: im::Vector<Value> = seq.iter().take(n).cloned().collect();
+
+    // 元の型を維持
+    Ok(match &args[1] {
+        Value::List(_) => Value::List(result),
+        Value::Vector(_) => Value::Vector(result),
+        _ => unreachable!(),
+    })
 }
 
 /// drop - リストの最初のn要素をスキップ
@@ -280,75 +294,70 @@ pub fn native_drop(args: &[Value]) -> Result<Value, String> {
         Value::Integer(_) => return Err(fmt_msg(MsgKey::MustBeNonNegative, &["drop", "count"])),
         _ => return Err(fmt_msg(MsgKey::FirstArgMustBe, &["drop", "an integer"])),
     };
-    match &args[1] {
-        Value::List(v) => Ok(Value::List(v.iter().skip(n).cloned().collect())),
-        Value::Vector(v) => Ok(Value::Vector(v.iter().skip(n).cloned().collect())),
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["drop", "lists or vectors"])),
-    }
+
+    let seq = args[1]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["drop", "lists or vectors"]))?;
+
+    let result: im::Vector<Value> = seq.iter().skip(n).cloned().collect();
+
+    // 元の型を維持
+    Ok(match &args[1] {
+        Value::List(_) => Value::List(result),
+        Value::Vector(_) => Value::Vector(result),
+        _ => unreachable!(),
+    })
 }
 
 /// sort - リストをソート
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_sort(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "sort");
-    match &args[0] {
-        Value::List(v) => {
-            let mut sorted: Vec<Value> = v.iter().cloned().collect();
-            sorted.sort_by(|a, b| match (a, b) {
-                (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-                (Value::Float(x), Value::Float(y)) => {
-                    x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                }
-                (Value::String(x), Value::String(y)) => x.cmp(y),
-                _ => std::cmp::Ordering::Equal,
-            });
-            Ok(Value::List(sorted.into()))
+    let seq = args[0]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["sort", "lists or vectors"]))?;
+
+    let mut sorted: Vec<Value> = seq.iter().cloned().collect();
+    sorted.sort_by(|a, b| match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+        (Value::Float(x), Value::Float(y)) => {
+            x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
         }
-        Value::Vector(v) => {
-            let mut sorted: Vec<Value> = v.iter().cloned().collect();
-            sorted.sort_by(|a, b| match (a, b) {
-                (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-                (Value::Float(x), Value::Float(y)) => {
-                    x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                }
-                (Value::String(x), Value::String(y)) => x.cmp(y),
-                _ => std::cmp::Ordering::Equal,
-            });
-            Ok(Value::Vector(sorted.into()))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["sort", "lists or vectors"])),
-    }
+        (Value::String(x), Value::String(y)) => x.cmp(y),
+        _ => std::cmp::Ordering::Equal,
+    });
+
+    // 元の型を維持
+    Ok(match &args[0] {
+        Value::List(_) => Value::List(sorted.into()),
+        Value::Vector(_) => Value::Vector(sorted.into()),
+        _ => unreachable!(),
+    })
 }
 
 /// distinct - 重複を排除
 /// 戻り値は入力コレクションの型を維持します
 pub fn native_distinct(args: &[Value]) -> Result<Value, String> {
     check_args!(args, 1, "distinct");
-    match &args[0] {
-        Value::List(v) => {
-            let mut result = im::Vector::new();
-            let mut seen = std::collections::HashSet::new();
-            for item in v {
-                let key = format!("{:?}", item);
-                if seen.insert(key) {
-                    result.push_back(item.clone());
-                }
-            }
-            Ok(Value::List(result))
+    let seq = args[0]
+        .as_seq()
+        .ok_or_else(|| fmt_msg(MsgKey::TypeOnly, &["distinct", "lists or vectors"]))?;
+
+    let mut result = im::Vector::new();
+    let mut seen = std::collections::HashSet::new();
+    for item in seq {
+        let key = format!("{:?}", item);
+        if seen.insert(key) {
+            result.push_back(item.clone());
         }
-        Value::Vector(v) => {
-            let mut result = im::Vector::new();
-            let mut seen = std::collections::HashSet::new();
-            for item in v {
-                let key = format!("{:?}", item);
-                if seen.insert(key) {
-                    result.push_back(item.clone());
-                }
-            }
-            Ok(Value::Vector(result))
-        }
-        _ => Err(fmt_msg(MsgKey::TypeOnly, &["distinct", "lists or vectors"])),
     }
+
+    // 元の型を維持
+    Ok(match &args[0] {
+        Value::List(_) => Value::List(result),
+        Value::Vector(_) => Value::Vector(result),
+        _ => unreachable!(),
+    })
 }
 
 /// zip - 2つのリストを組み合わせる（List/Vectorの混在も可）
