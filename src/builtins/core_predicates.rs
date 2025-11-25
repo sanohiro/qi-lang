@@ -6,6 +6,7 @@
 //! 数値（5個）: even?, odd?, positive?, negative?, zero?
 //! 合計25個のCore関数
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 
@@ -15,73 +16,55 @@ use crate::value::Value;
 
 /// nil? - nilかどうか判定
 pub fn native_nil(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["nil?"]));
-    }
+    check_args!(args, 1, "nil?");
     Ok(Value::Bool(matches!(args[0], Value::Nil)))
 }
 
 /// list? - リストかどうか判定
 pub fn native_list_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["list?"]));
-    }
+    check_args!(args, 1, "list?");
     Ok(Value::Bool(matches!(args[0], Value::List(_))))
 }
 
 /// vector? - ベクタかどうか判定
 pub fn native_vector_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["vector?"]));
-    }
+    check_args!(args, 1, "vector?");
     Ok(Value::Bool(matches!(args[0], Value::Vector(_))))
 }
 
 /// map? - マップかどうか判定
 pub fn native_map_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["map?"]));
-    }
+    check_args!(args, 1, "map?");
     Ok(Value::Bool(matches!(args[0], Value::Map(_))))
 }
 
 /// string? - 文字列かどうか判定
 pub fn native_string_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["string?"]));
-    }
+    check_args!(args, 1, "string?");
     Ok(Value::Bool(matches!(args[0], Value::String(_))))
 }
 
 /// bytes? - バイナリデータかどうか判定
 pub fn native_bytes_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["bytes?"]));
-    }
+    check_args!(args, 1, "bytes?");
     Ok(Value::Bool(matches!(args[0], Value::Bytes(_))))
 }
 
 /// integer? - 整数かどうか判定
 pub fn native_integer_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["integer?"]));
-    }
+    check_args!(args, 1, "integer?");
     Ok(Value::Bool(matches!(args[0], Value::Integer(_))))
 }
 
 /// float? - 浮動小数点数かどうか判定
 pub fn native_float_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["float?"]));
-    }
+    check_args!(args, 1, "float?");
     Ok(Value::Bool(matches!(args[0], Value::Float(_))))
 }
 
 /// number? - 数値判定
 pub fn native_number_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["number?"]));
-    }
+    check_args!(args, 1, "number?");
     Ok(Value::Bool(matches!(
         args[0],
         Value::Integer(_) | Value::Float(_)
@@ -90,17 +73,13 @@ pub fn native_number_q(args: &[Value]) -> Result<Value, String> {
 
 /// keyword? - キーワードかどうか判定
 pub fn native_keyword_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["keyword?"]));
-    }
+    check_args!(args, 1, "keyword?");
     Ok(Value::Bool(matches!(args[0], Value::Keyword(_))))
 }
 
 /// function? - 関数判定
 pub fn native_function_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["function?"]));
-    }
+    check_args!(args, 1, "function?");
     Ok(Value::Bool(matches!(
         args[0],
         Value::Function(_) | Value::NativeFunc(_)
@@ -109,17 +88,13 @@ pub fn native_function_q(args: &[Value]) -> Result<Value, String> {
 
 /// atom? - atom判定
 pub fn native_atom_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["atom?"]));
-    }
+    check_args!(args, 1, "atom?");
     Ok(Value::Bool(matches!(args[0], Value::Atom(_))))
 }
 
 /// stream? - ストリームかどうか判定
 pub fn native_stream_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["stream?"]));
-    }
+    check_args!(args, 1, "stream?");
     Ok(Value::Bool(matches!(args[0], Value::Stream(_))))
 }
 
@@ -129,9 +104,7 @@ pub fn native_stream_q(args: &[Value]) -> Result<Value, String> {
 
 /// coll? - コレクション型かどうか判定
 pub fn native_coll_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["coll?"]));
-    }
+    check_args!(args, 1, "coll?");
     Ok(Value::Bool(matches!(
         args[0],
         Value::List(_) | Value::Vector(_) | Value::Map(_)
@@ -140,9 +113,7 @@ pub fn native_coll_q(args: &[Value]) -> Result<Value, String> {
 
 /// sequential? - シーケンシャル型かどうか判定
 pub fn native_sequential_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["sequential?"]));
-    }
+    check_args!(args, 1, "sequential?");
     Ok(Value::Bool(matches!(
         args[0],
         Value::List(_) | Value::Vector(_)
@@ -151,9 +122,7 @@ pub fn native_sequential_q(args: &[Value]) -> Result<Value, String> {
 
 /// empty? - コレクションが空かどうか判定
 pub fn native_empty(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["empty?"]));
-    }
+    check_args!(args, 1, "empty?");
     match &args[0] {
         Value::Nil => Ok(Value::Bool(true)),
         Value::List(v) | Value::Vector(v) => Ok(Value::Bool(v.is_empty())),
@@ -172,33 +141,25 @@ pub fn native_empty(args: &[Value]) -> Result<Value, String> {
 
 /// some? - nilでないかどうか判定
 pub fn native_some_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["some?"]));
-    }
+    check_args!(args, 1, "some?");
     Ok(Value::Bool(!matches!(args[0], Value::Nil)))
 }
 
 /// true? - 厳密にtrueかどうか判定
 pub fn native_true_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["true?"]));
-    }
+    check_args!(args, 1, "true?");
     Ok(Value::Bool(matches!(args[0], Value::Bool(true))))
 }
 
 /// false? - 厳密にfalseかどうか判定
 pub fn native_false_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["false?"]));
-    }
+    check_args!(args, 1, "false?");
     Ok(Value::Bool(matches!(args[0], Value::Bool(false))))
 }
 
 /// error? - 値が{:error ...}形式かどうか判定
 pub fn native_error_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["error?"]));
-    }
+    check_args!(args, 1, "error?");
     Ok(Value::Bool(args[0].is_error()))
 }
 
@@ -208,9 +169,7 @@ pub fn native_error_q(args: &[Value]) -> Result<Value, String> {
 
 /// even? - 偶数かどうか判定
 pub fn native_even_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["even?"]));
-    }
+    check_args!(args, 1, "even?");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Bool(n % 2 == 0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["even?", "integers"])),
@@ -219,9 +178,7 @@ pub fn native_even_q(args: &[Value]) -> Result<Value, String> {
 
 /// odd? - 奇数かどうか判定
 pub fn native_odd_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["odd?"]));
-    }
+    check_args!(args, 1, "odd?");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Bool(n % 2 != 0)),
         _ => Err(fmt_msg(MsgKey::TypeOnly, &["odd?", "integers"])),
@@ -230,9 +187,7 @@ pub fn native_odd_q(args: &[Value]) -> Result<Value, String> {
 
 /// positive? - 正の数かどうか判定
 pub fn native_positive_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["positive?"]));
-    }
+    check_args!(args, 1, "positive?");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Bool(*n > 0)),
         Value::Float(f) => Ok(Value::Bool(*f > 0.0)),
@@ -242,9 +197,7 @@ pub fn native_positive_q(args: &[Value]) -> Result<Value, String> {
 
 /// negative? - 負の数かどうか判定
 pub fn native_negative_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["negative?"]));
-    }
+    check_args!(args, 1, "negative?");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Bool(*n < 0)),
         Value::Float(f) => Ok(Value::Bool(*f < 0.0)),
@@ -254,9 +207,7 @@ pub fn native_negative_q(args: &[Value]) -> Result<Value, String> {
 
 /// zero? - ゼロかどうか判定
 pub fn native_zero_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["zero?"]));
-    }
+    check_args!(args, 1, "zero?");
     match &args[0] {
         Value::Integer(n) => Ok(Value::Bool(*n == 0)),
         Value::Float(f) => Ok(Value::Bool(*f == 0.0)),
