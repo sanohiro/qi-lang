@@ -79,7 +79,9 @@ fn json_to_value(json: serde_json::Value) -> Value {
             } else if let Some(f) = n.as_f64() {
                 Value::Float(f)
             } else {
-                Value::Nil
+                // i64/f64で表現できない大きな数値は文字列として保持（データロスを防ぐ）
+                // 例: 2^63以上の整数、高精度の小数
+                Value::String(n.to_string())
             }
         }
         serde_json::Value::String(s) => Value::String(s),

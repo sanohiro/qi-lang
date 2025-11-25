@@ -962,10 +962,9 @@ fn run_tests(args: &[String]) {
 
     println!("running {} test files\n", test_files.len());
 
-    let evaluator = Evaluator::new();
     let start_time = Instant::now();
 
-    // テストファイルを順次実行
+    // テストファイルを順次実行（各ファイルごとに新しいEvaluatorを作成して独立性を保証）
     for test_file in &test_files {
         let content = match std::fs::read_to_string(test_file) {
             Ok(c) => c,
@@ -975,8 +974,10 @@ fn run_tests(args: &[String]) {
             }
         };
 
-        // テストファイルを評価（エラーが出ても続行）
+        // ファイルごとに新しいEvaluatorを作成（テストの独立性を保証）
+        let evaluator = Evaluator::new();
         evaluator.set_source(test_file.clone(), content.clone());
+
         match Parser::new(&content) {
             Ok(mut parser) => {
                 parser.set_source_name(test_file.clone());
@@ -999,7 +1000,8 @@ fn run_tests(args: &[String]) {
         }
     }
 
-    // test/run-all を呼び出して結果を表示
+    // test/run-all を新しいEvaluatorで呼び出して結果を表示
+    let evaluator = Evaluator::new();
     match Parser::new("(test/run-all)") {
         Ok(mut parser) => match parser.parse() {
             Ok(expr) => {

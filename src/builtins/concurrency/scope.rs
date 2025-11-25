@@ -209,43 +209,24 @@ pub fn native_parallel_do(args: &[Value], evaluator: &Evaluator) -> Result<Value
     // Arcで共有することでcloneコストを削減
     let evaluator = Arc::new(evaluator.clone());
 
-    // 結果を格納するチャネルのベクタ
-    let channels: Vec<_> = args
-        .iter()
-        .map(|func| {
-            let (sender, receiver) = unbounded();
-            let ch = Arc::new(Channel {
-                sender: Arc::new(parking_lot::Mutex::new(Some(sender.clone()))),
-                receiver: receiver.clone(),
-            });
+    // Rayonのスレッドプールを使って並列実行（スレッド枯渇を防ぐ）
+    use rayon::prelude::*;
 
+    let results: Vec<_> = args
+        .par_iter() // 並列イテレータ（Rayonのスレッドプールを使用）
+        .map(|func| {
             let func = Arc::new(func.clone());
             let evaluator = Arc::clone(&evaluator);
 
-            // 各タスクを並列実行
-            std::thread::spawn(move || {
-                let result = evaluator.apply_function(&func, &[]);
-                // エラー情報を保持（Railway Oriented Programming）
-                let value = match result {
-                    Ok(v) => v,
-                    Err(e) => Value::error(e),
-                };
-                let _ = sender.send(value);
-            });
-
-            ch
+            // スレッドプール内で実行
+            let result = evaluator.apply_function(&func, &[]);
+            // エラー情報を保持（Railway Oriented Programming）
+            match result {
+                Ok(v) => v,
+                Err(e) => Value::error(e),
+            }
         })
         .collect();
 
-    // 全ての結果を収集
-    let results: Result<Vec<_>, _> = channels
-        .iter()
-        .map(|ch| {
-            ch.receiver
-                .recv()
-                .map_err(|_| fmt_msg(MsgKey::ChannelClosed, &["parallel-do"]))
-        })
-        .collect();
-
-    Ok(Value::Vector(results?.into()))
+    Ok(Value::Vector(results.into()))
 }

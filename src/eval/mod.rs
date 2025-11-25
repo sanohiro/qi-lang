@@ -82,8 +82,10 @@ impl Clone for Evaluator {
             loading_modules: Arc::new(RwLock::new(Default::default())), // スレッドローカル（意図的）
             current_module: Arc::new(RwLock::new(Default::default())),
             call_stack: Arc::new(RwLock::new(Default::default())),
-            source_name: Arc::new(RwLock::new(Default::default())),
-            source_code: Arc::new(RwLock::new(Default::default())),
+
+            // ソース情報を保持（エラーメッセージのファイル名・行番号を保持）
+            source_name: Arc::new(RwLock::new(self.source_name.read().clone())),
+            source_code: Arc::new(RwLock::new(self.source_code.read().clone())),
         }
     }
 }

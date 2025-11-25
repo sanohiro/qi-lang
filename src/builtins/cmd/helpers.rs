@@ -14,18 +14,37 @@ pub(super) static PROCESS_MAP: Lazy<Mutex<HashMap<u32, ProcessStreams>>> =
 
 /// シェルメタ文字をチェック
 ///
-/// コマンドインジェクション攻撃に利用される可能性のある文字を検出する。
-/// 検出された場合はエラーを返す。
+/// **セキュリティ警告**: この関数は最小限のチェックのみを行います。
+/// ユーザー入力を含むコマンドを実行する場合は、**必ずベクター形式**を使用してください。
+///
+/// 文字列形式でコマンドを実行する場合、シェル経由で実行されるため、
+/// コマンドインジェクション攻撃のリスクがあります。
+///
+/// # チェック内容
+/// - NULLバイト（明らかな攻撃）
+/// - 制御文字（改行、復帰、タブ以外）
+/// - コマンド連結文字（`;`, `|`, `&`）
+///
+/// # 安全な使い方
+/// ```qi
+/// ; ユーザー入力を含む場合は必ずベクター形式を使用
+/// (cmd/exec ["ls" "-la" user-input])
+///
+/// ; ハードコードされたコマンドのみ文字列形式を使用
+/// (cmd/exec "ls -la")
+/// ```
 pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
-    // 危険な文字の定義（文字列パターンと文字パターンの両方）
-    const DANGEROUS_CHARS: &[&str] = &[
-        ";", "|", "&", "$", "`", "(", ")", "<", ">", "\n", "\r", "\"", "'", "\\", "*", "?", "[",
-        "]", "{", "}", "~", // グロブパターン、ブレース展開、チルダ展開
-    ];
+    // NULLバイトのチェック（明らかな攻撃）
+    if cmd.contains('\0') {
+        return Err(fmt_msg(
+            MsgKey::CmdDangerousCharacters,
+            &["NULL byte"],
+        ));
+    }
 
-    // 制御文字とNULLバイトのチェック
+    // 制御文字のチェック（改行、復帰、タブは許可）
     for ch in cmd.chars() {
-        if ch.is_ascii_control() || ch == '\0' {
+        if ch.is_ascii_control() && ch != '\n' && ch != '\r' && ch != '\t' {
             return Err(fmt_msg(
                 MsgKey::CmdDangerousCharacters,
                 &[&format!("control character: {}", ch.escape_default())],
@@ -33,8 +52,14 @@ pub(super) fn check_shell_metacharacters(cmd: &str) -> Result<(), String> {
         }
     }
 
-    // 危険な文字列パターンのチェック
-    let found_chars: Vec<&str> = DANGEROUS_CHARS
+    // コマンド連結文字のチェック（明らかな攻撃パターン）
+    const DANGEROUS_PATTERNS: &[&str] = &[
+        ";", // コマンド連結
+        "|", // パイプ（コマンド連結）
+        "&", // バックグラウンド実行・AND連結
+    ];
+
+    let found_chars: Vec<&str> = DANGEROUS_PATTERNS
         .iter()
         .filter(|&&c| cmd.contains(c))
         .copied()
@@ -76,13 +101,14 @@ pub(super) fn parse_command_args(val: &Value) -> Result<(String, Vec<String>), S
             if args_vec.is_empty() {
                 return Err(fmt_msg(MsgKey::CmdEmptyCommand, &[]));
             }
-            let args_slice: Vec<Value> = args_vec.iter().cloned().collect();
-            let cmd = match &args_slice[0] {
-                Value::String(s) => s.clone(),
-                _ => return Err(fmt_msg(MsgKey::CmdFirstArgMustBeString, &[])),
+            // イテレータを直接使用（不要なクローンを削減）
+            let mut iter = args_vec.iter();
+            let cmd = match iter.next() {
+                Some(Value::String(s)) => s.clone(),
+                Some(_) => return Err(fmt_msg(MsgKey::CmdFirstArgMustBeString, &[])),
+                None => return Err(fmt_msg(MsgKey::CmdEmptyCommand, &[])),
             };
-            let args: Result<Vec<String>, String> = args_slice[1..]
-                .iter()
+            let args: Result<Vec<String>, String> = iter
                 .map(|v| match v {
                     Value::String(s) => Ok(s.clone()),
                     _ => Err(fmt_msg(MsgKey::CmdArgsMustBeStrings, &[])),
