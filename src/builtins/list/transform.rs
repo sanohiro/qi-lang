@@ -1,6 +1,7 @@
 //! リスト操作 - 変換関数
 
 use super::helpers::values_equal;
+use crate::check_args;
 use crate::builtins::value_helpers::{to_nonnegative_usize, to_positive_usize};
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -36,9 +37,7 @@ pub fn native_split_at(args: &[Value]) -> Result<Value, String> {
 
 /// interleave - 2つのリストを交互に組み合わせる
 pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["interleave"]));
-    }
+    check_args!(args, 2, "interleave");
 
     let list1 = match &args[0] {
         Value::List(items) | Value::Vector(items) => items,
@@ -75,9 +74,7 @@ pub fn native_interleave(args: &[Value]) -> Result<Value, String> {
 pub fn native_frequencies(args: &[Value]) -> Result<Value, String> {
     use std::collections::HashMap;
 
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["frequencies"]));
-    }
+    check_args!(args, 1, "frequencies");
 
     match &args[0] {
         Value::List(items) | Value::Vector(items) => {
@@ -213,9 +210,7 @@ pub fn native_take_nth(args: &[Value]) -> Result<Value, String> {
 
 /// dedupe - 連続する重複を除去
 pub fn native_dedupe(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["dedupe"]));
-    }
+    check_args!(args, 1, "dedupe");
 
     let collection = match &args[0] {
         Value::List(v) | Value::Vector(v) => v,

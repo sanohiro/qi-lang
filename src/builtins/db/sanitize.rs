@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::with_global;
 
@@ -14,9 +15,7 @@ use crate::with_global;
 /// # 注
 /// バインドパラメータを使う方が推奨されます。この関数は必要に応じてのみ使用してください。
 pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/sanitize"]));
-    }
+    check_args!(args, 2, "db/sanitize");
 
     let conn_id = extract_conn_id(&args[0])?;
     let value = match &args[1] {
@@ -31,9 +30,7 @@ pub fn native_sanitize(args: &[Value]) -> Result<Value, String> {
 
 /// db/sanitize-identifier - 識別子をサニタイズ
 pub fn native_sanitize_identifier(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/sanitize-identifier"]));
-    }
+    check_args!(args, 2, "db/sanitize-identifier");
 
     let conn_id = extract_conn_id(&args[0])?;
     let name = match &args[1] {
@@ -53,9 +50,7 @@ pub fn native_sanitize_identifier(args: &[Value]) -> Result<Value, String> {
 
 /// db/escape-like - LIKE句のパターンをエスケープ
 pub fn native_escape_like(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/escape-like"]));
-    }
+    check_args!(args, 2, "db/escape-like");
 
     let conn_id = extract_conn_id(&args[0])?;
     let pattern = match &args[1] {

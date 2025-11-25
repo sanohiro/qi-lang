@@ -1,6 +1,7 @@
 //! コマンド実行 - interactive
 
 use super::helpers::*;
+use crate::check_args;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
@@ -27,9 +28,7 @@ use std::sync::Arc;
 ///     (cmd/write py "print(1+1)\n")
 ///     (cmd/read-line py)
 pub fn native_interactive(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/interactive", "1"]));
-    }
+    check_args!(args, 1, "cmd/interactive");
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
@@ -114,9 +113,7 @@ pub fn native_interactive(args: &[Value]) -> Result<Value, String> {
 /// 戻り値: nil
 /// 例: (cmd/write py "print(1+1)\n")
 pub fn native_proc_write(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["cmd/write"]));
-    }
+    check_args!(args, 2, "cmd/write");
 
     let handle = match &args[0] {
         Value::Map(m) => m,
@@ -162,9 +159,7 @@ pub fn native_proc_write(args: &[Value]) -> Result<Value, String> {
 /// 戻り値: 読み取った行（文字列）、EOFならnil
 /// 例: (cmd/read-line py)
 pub fn native_proc_read_line(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["cmd/read-line"]));
-    }
+    check_args!(args, 1, "cmd/read-line");
 
     let handle = match &args[0] {
         Value::Map(m) => m,
@@ -212,9 +207,7 @@ pub fn native_proc_read_line(args: &[Value]) -> Result<Value, String> {
 /// 戻り値: {:exit exit_code :stderr "..."}
 /// 例: (cmd/wait py)
 pub fn native_proc_wait(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["cmd/wait"]));
-    }
+    check_args!(args, 1, "cmd/wait");
 
     let handle = match &args[0] {
         Value::Map(m) => m,

@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
@@ -55,9 +56,7 @@ pub fn native_call(args: &[Value]) -> Result<Value, String> {
 
 /// db/supports? - 機能をサポートしているか確認
 pub fn native_supports(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/supports?"]));
-    }
+    check_args!(args, 2, "db/supports?");
 
     let conn_id = extract_conn_id(&args[0])?;
     let feature = match &args[1] {
@@ -79,9 +78,7 @@ pub fn native_supports(args: &[Value]) -> Result<Value, String> {
 
 /// db/driver-info - ドライバー情報を取得
 pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/driver-info"]));
-    }
+    check_args!(args, 1, "db/driver-info");
 
     let conn_id = extract_conn_id(&args[0])?;
 
@@ -103,9 +100,7 @@ pub fn native_driver_info(args: &[Value]) -> Result<Value, String> {
 
 /// db/query-info - クエリのメタデータを取得
 pub fn native_query_info(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/query-info"]));
-    }
+    check_args!(args, 2, "db/query-info");
 
     let conn_id = extract_conn_id(&args[0])?;
     let sql = match &args[1] {

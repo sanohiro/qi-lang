@@ -2,6 +2,7 @@
 //!
 //! このモジュールは `io-temp` feature でコンパイルされます。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use parking_lot::Mutex;
@@ -25,9 +26,7 @@ fn temp_dirs() -> &'static Mutex<HashMap<String, TempDir>> {
 /// 返値: 一時ファイルのパス
 /// 例: (io/temp-file) => "/tmp/qi-12345.tmp"
 pub fn native_temp_file(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-file"]));
-    }
+    check_args!(args, 0, "io/temp-file");
 
     let temp_file = NamedTempFile::new()
         .map_err(|e| format!("io/temp-file: failed to create temp file: {}", e))?;
@@ -49,9 +48,7 @@ pub fn native_temp_file(args: &[Value]) -> Result<Value, String> {
 /// 返値: 一時ファイルのパス
 /// 例: (io/temp-file-keep) => "/tmp/qi-12345.tmp"
 pub fn native_temp_file_keep(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-file-keep"]));
-    }
+    check_args!(args, 0, "io/temp-file-keep");
 
     let temp_file = NamedTempFile::new()
         .map_err(|e| format!("io/temp-file-keep: failed to create temp file: {}", e))?;
@@ -74,9 +71,7 @@ pub fn native_temp_file_keep(args: &[Value]) -> Result<Value, String> {
 /// 返値: 一時ディレクトリのパス
 /// 例: (io/temp-dir) => "/tmp/qi-dir-12345"
 pub fn native_temp_dir(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-dir"]));
-    }
+    check_args!(args, 0, "io/temp-dir");
 
     let temp_dir = TempDir::new()
         .map_err(|e| format!("io/temp-dir: failed to create temp directory: {}", e))?;
@@ -98,9 +93,7 @@ pub fn native_temp_dir(args: &[Value]) -> Result<Value, String> {
 /// 返値: 一時ディレクトリのパス
 /// 例: (io/temp-dir-keep) => "/tmp/qi-dir-12345"
 pub fn native_temp_dir_keep(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["io/temp-dir-keep"]));
-    }
+    check_args!(args, 0, "io/temp-dir-keep");
 
     let temp_dir = TempDir::new()
         .map_err(|e| format!("io/temp-dir-keep: failed to create temp directory: {}", e))?;

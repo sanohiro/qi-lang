@@ -1,5 +1,6 @@
 //! チャネル基本操作
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};
 use crossbeam_channel::{bounded, unbounded};
@@ -59,9 +60,7 @@ pub fn native_chan(args: &[Value]) -> Result<Value, String> {
 /// (go/send! ch 42)
 /// ```
 pub fn native_send(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["send!"]));
-    }
+    check_args!(args, 2, "send!");
 
     match &args[0] {
         Value::Channel(ch) => {
@@ -162,9 +161,7 @@ pub fn native_recv(args: &[Value]) -> Result<Value, String> {
 /// (go/try-recv! ch)  ;; すぐに返る（nilまたは値）
 /// ```
 pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["try-recv!"]));
-    }
+    check_args!(args, 1, "try-recv!");
 
     match &args[0] {
         Value::Channel(ch) => {
@@ -205,9 +202,7 @@ pub fn native_try_recv(args: &[Value]) -> Result<Value, String> {
 /// (go/recv! ch)  ;; => Error: channel closed
 /// ```
 pub fn native_close(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["close!"]));
-    }
+    check_args!(args, 1, "close!");
 
     match &args[0] {
         Value::Channel(ch) => {

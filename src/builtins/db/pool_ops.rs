@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::builtins::db::types::*;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::builtins::value_helpers::to_positive_usize;
@@ -59,9 +60,7 @@ pub fn native_create_pool(args: &[Value]) -> Result<Value, String> {
 
 /// db/pool-acquire - プールから接続を取得
 pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-acquire"]));
-    }
+    check_args!(args, 1, "db/pool-acquire");
 
     let pool_id = extract_pool_id(&args[0])?;
 
@@ -83,9 +82,7 @@ pub fn native_pool_acquire(args: &[Value]) -> Result<Value, String> {
 
 /// db/pool-release - 接続をプールに返却
 pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/pool-release"]));
-    }
+    check_args!(args, 2, "db/pool-release");
 
     let pool_id = extract_pool_id(&args[0])?;
     let conn_id = extract_conn_id(&args[1])?;
@@ -142,9 +139,7 @@ pub fn native_pool_release(args: &[Value]) -> Result<Value, String> {
 
 /// db/pool-close - プール全体をクローズ
 pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-close"]));
-    }
+    check_args!(args, 1, "db/pool-close");
 
     let pool_id = extract_pool_id(&args[0])?;
 
@@ -187,9 +182,7 @@ pub fn native_pool_close(args: &[Value]) -> Result<Value, String> {
 
 /// db/pool-stats - プールの統計情報を取得
 pub fn native_pool_stats(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/pool-stats"]));
-    }
+    check_args!(args, 1, "db/pool-stats");
 
     let pool_id = extract_pool_id(&args[0])?;
 

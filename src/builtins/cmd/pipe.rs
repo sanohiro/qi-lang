@@ -1,6 +1,7 @@
 //! コマンド実行 - pipe
 
 use super::helpers::*;
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::io::Write;
@@ -129,9 +130,7 @@ pub fn native_pipe(args: &[Value]) -> Result<Value, String> {
 /// 戻り値: 行のリスト
 /// 例: ("a\nb\nc" |> cmd/lines) => ["a" "b" "c"]
 pub fn native_lines(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/lines", "1"]));
-    }
+    check_args!(args, 1, "cmd/lines");
 
     let text = match &args[0] {
         Value::String(s) => s,

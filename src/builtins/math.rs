@@ -143,9 +143,7 @@ pub fn native_clamp(args: &[Value]) -> Result<Value, String> {
 /// `std-math`
 #[cfg(feature = "std-math")]
 pub fn native_rand(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["rand"]));
-    }
+    check_args!(args, 0, "rand");
 
     let mut rng = rand::rng();
     Ok(Value::Float(rng.random::<f64>()))

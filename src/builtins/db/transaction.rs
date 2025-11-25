@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::with_global;
@@ -59,9 +60,7 @@ pub fn native_begin(args: &[Value]) -> Result<Value, String> {
 
 /// db/commit - トランザクションをコミット
 pub fn native_commit(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/commit"]));
-    }
+    check_args!(args, 1, "db/commit");
 
     let tx_id = extract_tx_id(&args[0])?;
 
@@ -84,9 +83,7 @@ pub fn native_commit(args: &[Value]) -> Result<Value, String> {
 
 /// db/rollback - トランザクションをロールバック
 pub fn native_rollback(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/rollback"]));
-    }
+    check_args!(args, 1, "db/rollback");
 
     let tx_id = extract_tx_id(&args[0])?;
 

@@ -1,6 +1,7 @@
 //! コマンド実行 - exec
 
 use super::helpers::*;
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::Value;
 use std::process::Command;
@@ -22,9 +23,7 @@ use std::process::Command;
 ///     (cmd/exec ["ls" "-la"])  ;=> 0
 ///     (cmd/exec "false")  ;=> 1
 pub fn native_exec(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/exec", "1"]));
-    }
+    check_args!(args, 1, "cmd/exec");
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 
@@ -70,9 +69,7 @@ pub fn native_exec(args: &[Value]) -> Result<Value, String> {
 /// 例: (cmd/exec! "ls -la")  ;=> {:stdout "..." :stderr "" :exit 0}
 ///     (cmd/exec! ["ls" "-la"])  ;=> {:stdout "..." :stderr "" :exit 0}
 pub fn native_exec_bang(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::NeedExactlyNArgs, &["cmd/exec!", "1"]));
-    }
+    check_args!(args, 1, "cmd/exec!");
 
     let (cmd, cmd_args) = parse_command_args(&args[0])?;
 

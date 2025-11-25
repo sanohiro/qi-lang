@@ -1,5 +1,6 @@
 //! Promise/非同期操作
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Value};
@@ -66,9 +67,7 @@ where
 /// (go/await p)  ;; => 30
 /// ```
 pub fn native_await(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["await"]));
-    }
+    check_args!(args, 1, "await");
 
     match &args[0] {
         Value::Channel(ch) => ch

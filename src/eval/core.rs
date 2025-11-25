@@ -2,6 +2,7 @@
 //!
 //! リテラル、Symbol、コレクションの評価ロジックを提供します。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Env, FStringPart, Value};
 use parking_lot::RwLock;
@@ -34,9 +35,7 @@ pub fn native_vector(args: &[Value]) -> Result<Value, String> {
 
 /// to-list - List/VectorをListに変換
 pub fn native_to_list(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(qerr(MsgKey::Need1Arg, &["to-list"]));
-    }
+    check_args!(args, 1, "to-list");
     match &args[0] {
         Value::List(_) => Ok(args[0].clone()),
         Value::Vector(v) => Ok(Value::List(v.clone())),
@@ -46,9 +45,7 @@ pub fn native_to_list(args: &[Value]) -> Result<Value, String> {
 
 /// to-vector - List/VectorをVectorに変換
 pub fn native_to_vector(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(qerr(MsgKey::Need1Arg, &["to-vector"]));
-    }
+    check_args!(args, 1, "to-vector");
     match &args[0] {
         Value::Vector(_) => Ok(args[0].clone()),
         Value::List(v) => Ok(Value::Vector(v.clone())),

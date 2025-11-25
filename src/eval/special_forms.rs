@@ -3,6 +3,7 @@
 //! def, fn, let, if, do, try, defer, loop, recur, mac, quasiquote等の
 //! 特殊形式の評価ロジックを提供します。
 
+use crate::check_args;
 use crate::i18n::{fmt_msg, msg, MsgKey};
 use crate::value::{Env, Expr, Macro, Value};
 use parking_lot::RwLock;
@@ -57,9 +58,7 @@ impl Drop for RecurGuard {
 impl Evaluator {
     /// quote式を評価
     pub(super) fn eval_quote(&self, args: &[Expr]) -> Result<Value, String> {
-        if args.len() != 1 {
-            return Err(qerr(MsgKey::Need1Arg, &["quote"]));
-        }
+        check_args!(args, 1, "quote");
         self.expr_to_value(&args[0])
     }
 

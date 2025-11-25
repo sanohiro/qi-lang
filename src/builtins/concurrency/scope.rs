@@ -1,5 +1,6 @@
 //! スコープ・キャンセル・並列実行
 
+use crate::check_args;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::value::{Channel, Scope, Value};
@@ -20,9 +21,7 @@ use std::sync::Arc;
 /// (go/cancel! ctx)  ;; スコープをキャンセル
 /// ```
 pub fn native_make_scope(args: &[Value]) -> Result<Value, String> {
-    if !args.is_empty() {
-        return Err(fmt_msg(MsgKey::Need0Args, &["make-scope"]));
-    }
+    check_args!(args, 0, "make-scope");
 
     let scope = Scope {
         cancelled: Arc::new(RwLock::new(false)),
@@ -102,9 +101,7 @@ pub fn native_scope_go(args: &[Value], evaluator: &Evaluator) -> Result<Value, S
 /// (go/cancel! ctx)
 /// ```
 pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["cancel!"]));
-    }
+    check_args!(args, 1, "cancel!");
 
     match &args[0] {
         Value::Scope(s) => {
@@ -131,9 +128,7 @@ pub fn native_cancel(args: &[Value]) -> Result<Value, String> {
 /// (go/cancelled? ctx)  ;; => true
 /// ```
 pub fn native_cancelled_q(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["cancelled?"]));
-    }
+    check_args!(args, 1, "cancelled?");
 
     match &args[0] {
         Value::Scope(s) => {

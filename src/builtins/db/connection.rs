@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::builtins::db::traits::*;
 use crate::builtins::db::types::*;
 use crate::i18n::{fmt_msg, MsgKey};
@@ -92,9 +93,7 @@ pub fn native_connect(args: &[Value]) -> Result<Value, String> {
 
 /// db/query - SQLクエリを実行
 pub fn native_close(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/close"]));
-    }
+    check_args!(args, 1, "db/close");
 
     let conn_id = extract_conn_id(&args[0])?;
 

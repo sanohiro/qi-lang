@@ -1,6 +1,7 @@
 //! タスク実行・パイプライン・Select操作
 
 use super::promise::spawn_promise;
+use crate::check_args;
 use crate::builtins::value_helpers::to_positive_usize;
 use crate::eval::Evaluator;
 use crate::i18n::{fmt_msg, MsgKey};
@@ -21,9 +22,7 @@ use std::sync::Arc;
 /// (def result (go/await p))
 /// ```
 pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["go/run"]));
-    }
+    check_args!(args, 1, "go/run");
 
     let expr = args[0].clone();
     let eval = evaluator.clone();
@@ -57,9 +56,7 @@ pub fn native_run(args: &[Value], evaluator: &Evaluator) -> Result<Value, String
 /// (def out-chs (go/fan-out in-ch 3))  ;; 3つに分岐
 /// ```
 pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["fan-out"]));
-    }
+    check_args!(args, 2, "fan-out");
 
     let in_channel = match &args[0] {
         Value::Channel(ch) => ch.clone(),
@@ -120,9 +117,7 @@ pub fn native_fan_out(args: &[Value]) -> Result<Value, String> {
 /// (def merged (go/fan-in chs))
 /// ```
 pub fn native_fan_in(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["fan-in"]));
-    }
+    check_args!(args, 1, "fan-in");
 
     let channels = match &args[0] {
         Value::List(chs) | Value::Vector(chs) => chs,

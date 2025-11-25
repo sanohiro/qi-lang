@@ -1,4 +1,5 @@
 use super::*;
+use crate::check_args;
 use crate::builtins::util::convert_string_map_to_mapkey;
 use crate::i18n::{fmt_msg, MsgKey};
 use crate::with_global;
@@ -17,9 +18,7 @@ use crate::with_global;
 /// ;; => ["users" "posts" "comments"]
 /// ```
 pub fn native_tables(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err(fmt_msg(MsgKey::Need1Arg, &["db/tables"]));
-    }
+    check_args!(args, 1, "db/tables");
 
     let conn_id = extract_conn_id(&args[0])?;
 
@@ -34,9 +33,7 @@ pub fn native_tables(args: &[Value]) -> Result<Value, String> {
 
 /// db/columns - テーブルのカラム情報を取得
 pub fn native_columns(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/columns"]));
-    }
+    check_args!(args, 2, "db/columns");
 
     let conn_id = extract_conn_id(&args[0])?;
     let table = match &args[1] {
@@ -70,9 +67,7 @@ pub fn native_columns(args: &[Value]) -> Result<Value, String> {
 
 /// db/indexes - テーブルのインデックス一覧を取得
 pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/indexes"]));
-    }
+    check_args!(args, 2, "db/indexes");
 
     let conn_id = extract_conn_id(&args[0])?;
     let table = match &args[1] {
@@ -105,9 +100,7 @@ pub fn native_indexes(args: &[Value]) -> Result<Value, String> {
 
 /// db/foreign-keys - テーブルの外部キー一覧を取得
 pub fn native_foreign_keys(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err(fmt_msg(MsgKey::Need2Args, &["db/foreign-keys"]));
-    }
+    check_args!(args, 2, "db/foreign-keys");
 
     let conn_id = extract_conn_id(&args[0])?;
     let table = match &args[1] {
