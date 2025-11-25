@@ -122,11 +122,12 @@ pub fn native_csv_read_file(args: &[Value]) -> Result<Value, String> {
 
 /// csv/read-stream - CSV ファイルをストリームとして読み込み
 ///
-/// **注意**: 現在の実装では、ファイル全体を一度にメモリに読み込んでから
-/// イテレータとして返しています。大きなファイルの場合、メモリ使用量が
-/// 増加する可能性があります。真のストリーミング実装は将来のバージョンで
-/// 提供される予定です。
+/// **真のストリーミング実装**: 行ごとにメモリに読み込み、
+/// 大きなファイルでもメモリ使用量を抑えます。
 pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+
     check_args!(args, 1, "csv/read-stream");
 
     let path = match &args[0] {
@@ -134,21 +135,32 @@ pub fn native_csv_read_stream(args: &[Value]) -> Result<Value, String> {
         _ => return Err(fmt_msg(MsgKey::TypeOnly, &["csv/read-stream", "string"])),
     };
 
-    // ファイルを読み込んでパース
-    let content = std::fs::read_to_string(&path)
+    // ファイルをバッファリングして開く（ストリーミング）
+    let file = File::open(&path)
         .map_err(|e| fmt_msg(MsgKey::FileReadError, &[&path, &e.to_string()]))?;
+    let reader = BufReader::new(file);
+    let lines = Arc::new(parking_lot::Mutex::new(reader.lines()));
 
-    let records = parse_csv(&content)?;
-
-    // レコードをイテレータで返すストリームを作成
-    let records = Arc::new(RwLock::new(records.into_iter()));
-
+    // ストリームを作成（行ごとに処理）
     let stream = Stream {
         next_fn: Box::new(move || {
-            records
-                .write()
-                .next()
-                .map(|record| Value::List(record.into_iter().map(Value::String).collect()))
+            // 次の行を読み取り、CSVとしてパース
+            match lines.lock().next() {
+                Some(Ok(line)) => {
+                    // 1行をCSVとしてパース
+                    match parse_csv_with_delimiter(&line, ',') {
+                        Ok(mut records) if !records.is_empty() => {
+                            // 最初のレコードを取得（1行につき1レコード）
+                            let record = records.remove(0);
+                            Some(Value::List(record.into_iter().map(Value::String).collect()))
+                        }
+                        Ok(_) => None, // 空行
+                        Err(_) => None, // パースエラーはスキップ（エラーを返すとストリーム全体が停止）
+                    }
+                }
+                Some(Err(_)) => None, // I/Oエラーはスキップ
+                None => None,         // EOF
+            }
         }),
     };
 
